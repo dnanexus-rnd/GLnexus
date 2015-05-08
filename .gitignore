@@ -26,3 +26,22 @@
 *.exe
 *.out
 *.app
+playground
+unit_tests
+
+# Dependencies
+catch/
+src/rocksdb-3.10.2.zip
+src/rocksdb/
+src/rocksdb-stamp/
+src/fc1c76d.zip
+src/htslib/
+src/htslib-stamp/
+
+# CMake stuff
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+tmp/
+

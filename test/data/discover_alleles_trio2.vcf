@@ -1,0 +1,12 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FILTER=<ID=PASS,Description="All filters passed">
+##contig=<ID=A,length=1000000>
+##contig=<ID=B,length=1000000>
+##contig=<ID=C,length=1000000>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	trio2.fa	trio2.mo	trio2.ch
+A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	0/0
+A	1002	.	C	A	.	PASS	.	GT	1/1	1/1	1/1
+A	1011	.	CCC	AGA	.	PASS	.	GT	0/1	0/1	0/0
+B	1002	.	CCCCCCCCCCCCCCC	AAAAAAAAAAAAAAA	.	PASS	.	GT	0/0	1/1	1/0
+C	1001	.	G	A	.	PASS	.	GT	0/1	0/1	1/1
