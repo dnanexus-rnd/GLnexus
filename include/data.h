@@ -60,9 +60,38 @@ public:
     /// bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not
     /// be mutated. They aren't declared const because some vcf.h accessor
     /// functions don't take const bcf1_t*
+    ///
+    /// The header is shared for all positions in the data set. It's returned
+    /// here because the implementation typically needs to load it in order to
+    /// parse BCF records anyway.
     virtual Status dataset_bcf(const std::string& dataset, const range& pos,
                                std::shared_ptr<const bcf_hdr_t>& hdr,
                                std::vector<std::shared_ptr<bcf1_t> >& records) const = 0;
+};
+
+/// Wraps Data to provide in-memory caching/indexing useful for any underlying
+/// storage engine
+class DataCache : public Data {
+    struct body;
+    body* body_;
+
+public:
+    DataCache() : body_(nullptr) {}
+    Status Init(Data *data);
+    ~DataCache();
+
+    Status contigs(std::vector<std::pair<std::string,size_t> >& ans) const override;
+    Status sampleset_samples(const std::string& sampleset,
+                             std::shared_ptr<const std::set<std::string> >& ans) const override;
+    Status sample_dataset(const std::string& sampleset, std::string& ans) const override;
+    Status dataset_bcf_header(const std::string& dataset,
+                              std::shared_ptr<const bcf_hdr_t>& hdr) const override;
+    Status dataset_bcf(const std::string& dataset, const range& pos,
+                       std::shared_ptr<const bcf_hdr_t>& hdr,
+                       std::vector<std::shared_ptr<bcf1_t> >& records) const override;
+
+    const std::vector<std::pair<std::string,size_t> >& contigs() const;
+    Status sampleset_datasets(const std::string& sampleset, std::shared_ptr<const std::set<std::string>>& ans) const;
 };
 
 }

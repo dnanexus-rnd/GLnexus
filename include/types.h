@@ -30,9 +30,10 @@ public:
 
     /// Default Status constructor.
 
-    /// If provided, msg SHOULD BE a string literal (not subject to moving or deallocation)
+    /// If provided, msg SHOULD be a string literal (not subject to moving or deallocation)
     Status(StatusCode code = StatusCode::OK, const char* msg = nullptr) noexcept
         : code_(code), msg_(msg) {}
+
 
     /// Extended Status constructor.
 
@@ -77,6 +78,9 @@ public:
         return ans.str();
     }
 };
+
+// Convenience macro for re-raising a bad status when no recovery/cleanup is needed
+#define S(st) s = st; if (s.bad()) return s;
 
 /// Genomic range (chromosome id, begin coordinate, end coordinate)
 struct range {
@@ -150,8 +154,8 @@ struct unified_site {
 
     /// Alleles at the position.
 
-    /// Each allele is a string over [ACTGN]+ and all the alleles have the same length.
-    /// The first allele is the reference. The order of the remaining alleles is unspecified.
+    /// Each allele is a string over [ACTGN]+. The first allele is the
+    /// reference. The order of the remaining alleles is arbitrary.
     std::vector<std::string> alleles;
 
 

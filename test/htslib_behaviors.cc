@@ -63,11 +63,13 @@ TEST_CASE("htslib VCF missing data representation") {
 
     // more genotypes
     REQUIRE(bcf_get_genotypes(hdr, vt, &gt, &gtsz) == 6);
-    REQUIRE(bcf_gt_allele(gt[0]) == -1);    // .
+    REQUIRE(bcf_gt_is_missing(gt[0]));    // .
     REQUIRE(gt[1] == bcf_int32_vector_end);
-    REQUIRE(bcf_gt_allele(gt[2]) == -1);    // ./.
-    REQUIRE(bcf_gt_allele(gt[3]) == -1);
-    REQUIRE(bcf_gt_allele(gt[4]) == 0);     // 0/1
+    REQUIRE(bcf_gt_is_missing(gt[2]));    // ./.
+    REQUIRE(bcf_gt_is_missing(gt[3]));
+    REQUIRE_FALSE(bcf_gt_is_missing(gt[4]));
+    REQUIRE_FALSE(bcf_gt_is_missing(gt[5]));
+    REQUIRE(bcf_gt_allele(gt[4]) == 0);   // 0/1
     REQUIRE(bcf_gt_allele(gt[5]) == 1);
 
     // genotype likelihoods '.'
@@ -119,6 +121,10 @@ TEST_CASE("htslib VCF header synthesis") {
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
 
+    REQUIRE(bcf_hdr_add_sample(hdr.get(),"fa") == 0);
+    REQUIRE(bcf_hdr_add_sample(hdr.get(),"mo") == 0);
+    REQUIRE(bcf_hdr_add_sample(hdr.get(),"ch") == 0);
+
     bcf_hdr_sync(hdr.get());
 
     int ncontigs = 0;
@@ -139,4 +145,9 @@ TEST_CASE("htslib VCF header synthesis") {
     REQUIRE(hdr->id[BCF_DT_CTG][2].val->info[0] == 10000);
 
     free(contignames);
+
+    REQUIRE(bcf_hdr_nsamples(hdr.get()) == 3);
+    REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 0)) == "fa");
+    REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 1)) == "mo");
+    REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 2)) == "ch");
 }

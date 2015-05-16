@@ -57,10 +57,11 @@ include_directories(${COMMON_INCLUDES} src)
 
 add_library(glnexus
             include/types.h src/types.cc
-            include/data.h
+            include/data.h src/data.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
-            include/alleles.h src/alleles.cc)
+            include/alleles.h src/alleles.cc
+            include/genotyper.h src/genotyper.cc)
 add_dependencies(glnexus libhts)
 add_dependencies(glnexus rocksdb)
 add_library(libglnexus ALIAS glnexus)

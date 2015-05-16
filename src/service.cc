@@ -1,9 +1,11 @@
 #include "service.h"
 #include "data.h"
 #include "alleles.h"
+#include "genotyper.h"
 #include <algorithm>
 #include <map>
 #include <assert.h>
+#include <sstream>
 
 using namespace std;
 
@@ -11,35 +13,38 @@ namespace GLnexus{
 
 Status Service::Start(Data *data, unique_ptr<Service>& svc) {
     svc.reset(new Service());
-    svc->data_ = data;
-    // TODO: contigs_ should be loaded from service config, and checked against Data?
-    return data->contigs(svc->contigs_);
+    svc->data_ = make_unique<DataCache>();
+    return svc->data_->Init(data);
+}
+
+Status Service::sampleset_datasets(const string& sampleset, shared_ptr<const set<string>>& ans) {
+    // TODO cache this stuff
+    shared_ptr<const set<string> > samples;
+    auto datasets = make_shared<set<string>>();
+    Status s;
+    S(data_->sampleset_samples(sampleset, samples));
+    for (const auto& it : *samples) {
+        string dataset;
+        S(data_->sample_dataset(it, dataset));
+        datasets->insert(dataset);
+    }
+    ans = datasets;
+    return Status::OK();
 }
 
 Status Service::discover_alleles(const string& sampleset, const range& pos, discovered_alleles& ans) {
-    Status s;
-
     // Find the data sets containing the samples in the sample set.
-    // TODO results could be cached
-    shared_ptr<const set<string> > samples;
-    set<string> datasets;
-    s = data_->sampleset_samples(sampleset, samples);
-    if (s.bad()) return s;
-    for (const auto& it : *samples) {
-        string dataset;
-        s = data_->sample_dataset(it, dataset);
-        if (s.bad()) return s;
-        datasets.insert(dataset);
-    }
+    shared_ptr<const set<string>> datasets;
+    Status s;
+    S(sampleset_datasets(sampleset, datasets));
 
     // extract alleles from each dataset
     ans.clear();
-    for (const auto& dataset : datasets) {
+    for (const auto& dataset : *datasets) {
         // get dataset BCF records
         shared_ptr<const bcf_hdr_t> dataset_header;
         vector<shared_ptr<bcf1_t>> records;
-        s = data_->dataset_bcf(dataset, pos, dataset_header, records);
-        if (s.bad()) return s;
+        S(data_->dataset_bcf(dataset, pos, dataset_header, records));
 
         // for each BCF record
         discovered_alleles dsals;
@@ -73,8 +78,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
         }
 
         // merge in this dataset's alleles
-        s = merge_discovered_alleles(dsals, ans);
-        if (s.bad()) return s;
+        S(merge_discovered_alleles(dsals, ans));
     }
 
     // ex post facto check: exactly one reference allele at any given range
@@ -101,26 +105,74 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
         }
         if (refs.size() > 1) {
             ostringstream errmsg;
-            errmsg << rng.str(contigs_);
+            errmsg << rng.str(data_->contigs());
             for (const auto& r : refs) {
                 errmsg << ' ' << r;
             }
             return Status::Invalid("data sets contain inconsistent reference alleles", errmsg.str());
         } else if (refs.size() == 0) {
-            return Status::Invalid("data sets contain no reference allele", rng.str(contigs_));
+            return Status::Invalid("data sets contain no reference allele", rng.str(data_->contigs()));
         }
     }
 
     return Status::OK();
 }
 
-Status Service::genotype_sites(const string& sampleset, const vector<unified_site>& sites, std::string& filename) {
-    // for each site,
-    // for each dataset,
-    // load the dataset's overlapping records
-    // load the dataset's GLs for pertinent samples
-    // unify the alleles and call the genotypes in a new bcf1_t record.
-    return Status::Failure();
+Status Service::genotype_sites(const string& sampleset, const vector<unified_site>& sites, const string& filename) {
+    Status s;
+    shared_ptr<const set<string>> samples, datasets;
+    S(data_->sampleset_samples(sampleset, samples));
+    S(data_->sampleset_datasets(sampleset, datasets));
+
+    // get a BCF header for this sample set
+    // TODO: memoize
+    shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
+    const char* hdrGT = "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">";
+    if (bcf_hdr_append(hdr.get(), hdrGT) != 0) {
+        return Status::Failure("bcf_hdr_append", hdrGT);
+    }
+    for (const auto& ctg : data_->contigs()) {
+        ostringstream stm;
+        stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
+        if (bcf_hdr_append(hdr.get(), stm.str().c_str()) != 0) {
+            return Status::Failure("bcf_hdr_append", stm.str());
+        }
+    }
+    for (const auto& sample : *samples) {
+        if (bcf_hdr_add_sample(hdr.get(), sample.c_str()) != 0) {
+            return Status::Failure("bcf_hdr_add_sample", sample);
+        }
+    }
+    if (bcf_hdr_sync(hdr.get()) != 0) {
+        return Status::Failure("bcf_hdr_sync");
+    }
+
+    // open output BCF file
+    unique_ptr<vcfFile, void(*)(vcfFile*)> outfile(bcf_open(filename.c_str(), "wb"), [](vcfFile* f) { bcf_close(f); });
+    if (!outfile) {
+        return Status::IOError("failed to open BCF file for writing", filename);
+    }
+    if (bcf_hdr_write(outfile.get(), hdr.get()) != 0) {
+        return Status::IOError("bcf_hdr_write", filename);
+    }
+
+    // for each site
+    for (const auto& site : sites) {
+        // compute genotypes
+        shared_ptr<bcf1_t> site_bcf;
+        S(genotype_site(*data_, site, *samples, *datasets, hdr.get(), site_bcf));
+
+        // write out a BCF record
+        if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {
+            return Status::IOError("bcf_write", filename);
+        }
+    }
+
+    if (bcf_close(outfile.release()) != 0) {
+        return Status::IOError("bcf_close", filename);
+    }
+
+    return Status::OK();
 }
 
 }

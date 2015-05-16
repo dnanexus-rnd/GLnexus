@@ -12,13 +12,16 @@
 namespace GLnexus {
 
 class Service {
-    Data* data_;
+    std::unique_ptr<DataCache> data_;
     std::vector<std::pair<std::string,size_t> > contigs_;
 
     Service() {}
 
+    Status sampleset_datasets(const std::string& sampleset, std::shared_ptr<const std::set<std::string>>& ans);
+
 public:
     static Status Start(Data* data, std::unique_ptr<Service>& svc);
+
 
     /// Discover all the alleles overlapping the given range for a sample set.
 
@@ -30,7 +33,9 @@ public:
     /// "unification"
     Status discover_alleles(const std::string& sampleset, const range& pos, discovered_alleles& ans);
 
-    Status genotype_sites(const std::string& sampleset, const std::vector<unified_site>& sites, std::string& filename);
+
+    /// Genotype a set of samples at the given sites, producing a BCF file.
+    Status genotype_sites(const std::string& sampleset, const std::vector<unified_site>& sites, const std::string& filename);
 };
 
 }
