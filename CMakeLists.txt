@@ -62,7 +62,7 @@ add_library(glnexus
             include/service.h src/service.cc
             include/alleles.h src/alleles.cc
             include/genotyper.h src/genotyper.cc)
-add_dependencies(glnexus libhts)
+add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
 add_library(libglnexus ALIAS glnexus)
 
