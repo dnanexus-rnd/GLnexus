@@ -10,21 +10,19 @@ struct DataCache::body {
     vector<pair<string,size_t> > contigs;
 };
 
+DataCache::DataCache() = default;
+DataCache::~DataCache() = default;
+
 Status DataCache::Start(Data* data, unique_ptr<DataCache>& ptr) {
     ptr.reset(new DataCache);
-    ptr->body_ = new DataCache::body;
+    ptr->body_.reset(new DataCache::body);
     ptr->body_->data = data;
     return ptr->body_->data->contigs(ptr->body_->contigs);
 }
 
-DataCache::~DataCache() {
-    if (body_) {
-        delete body_;
-    }
-}
-
 Status DataCache::contigs(vector<pair<string,size_t> >& ans) const {
-    return body_->data->contigs(ans);
+    ans = body_->contigs;
+    return Status::OK();
 }
 
 Status DataCache::sampleset_samples(const string& sampleset, shared_ptr<const set<string> >& ans) const {

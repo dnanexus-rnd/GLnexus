@@ -73,9 +73,9 @@ public:
 /// caching/indexing of immutable relationships
 class DataCache : public Data {
     struct body;
-    body* body_;
+    std::unique_ptr<body> body_;
 
-    DataCache() : body_(nullptr) {}
+    DataCache();
 
 public:
     static Status Start(Data *data, std::unique_ptr<DataCache>& ptr);
