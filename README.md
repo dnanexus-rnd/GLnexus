@@ -1,5 +1,6 @@
 # GLnexus
-From DNAnexus R&D: a scalable datastore for population genome sequencing, with on-demand joint genotyping
+**From DNAnexus R&D: a scalable datastore for population genome sequencing, with on-demand joint genotyping.**
+(GL = genotype likelihood)
 
 ### Build & run tests
 
