@@ -10,10 +10,11 @@ struct DataCache::body {
     vector<pair<string,size_t> > contigs;
 };
 
-Status DataCache::Init(Data* data) {
-    body_ = new body;
-    body_->data = data;
-    return data->contigs(body_->contigs);
+Status DataCache::Start(Data* data, unique_ptr<DataCache>& ptr) {
+    ptr.reset(new DataCache);
+    ptr->body_ = new DataCache::body;
+    ptr->body_->data = data;
+    return ptr->body_->data->contigs(ptr->body_->contigs);
 }
 
 DataCache::~DataCache() {

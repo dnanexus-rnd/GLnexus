@@ -69,15 +69,16 @@ public:
                                std::vector<std::shared_ptr<bcf1_t> >& records) const = 0;
 };
 
-/// Wraps Data to provide in-memory caching/indexing useful for any underlying
-/// storage engine
+/// Wraps any Data implementation to provide some useful in-memory
+/// caching/indexing of immutable relationships
 class DataCache : public Data {
     struct body;
     body* body_;
 
-public:
     DataCache() : body_(nullptr) {}
-    Status Init(Data *data);
+
+public:
+    static Status Start(Data *data, std::unique_ptr<DataCache>& ptr);
     ~DataCache();
 
     Status contigs(std::vector<std::pair<std::string,size_t> >& ans) const override;

@@ -14,7 +14,7 @@
 
 namespace GLnexus {
 
-enum class StatusCode { OK, FAILURE, INVALID, NOT_FOUND, IO_ERROR };
+enum class StatusCode { OK, FAILURE, INVALID, NOT_FOUND, EXISTS, IO_ERROR };
 
 /// Function status (return) codes.
 
@@ -58,6 +58,7 @@ public:
     STATUS_SUGAR(Failure,StatusCode::FAILURE)
     STATUS_SUGAR(Invalid,StatusCode::INVALID)
     STATUS_SUGAR(NotFound,StatusCode::NOT_FOUND)
+    STATUS_SUGAR(Exists,StatusCode::EXISTS)
     STATUS_SUGAR(IOError,StatusCode::IO_ERROR)
 
     std::string str() const {
@@ -66,6 +67,7 @@ public:
             case StatusCode::OK: ans << "OK"; break;
             case StatusCode::INVALID: ans << "Invalid"; break;
             case StatusCode::NOT_FOUND: ans << "NotFound"; break;
+            case StatusCode::EXISTS: ans << "Exists"; break;
             case StatusCode::IO_ERROR: ans << "IOError"; break;
             default: ans << "Failure";
         }

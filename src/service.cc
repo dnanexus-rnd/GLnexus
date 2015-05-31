@@ -13,8 +13,7 @@ namespace GLnexus{
 
 Status Service::Start(Data *data, unique_ptr<Service>& svc) {
     svc.reset(new Service());
-    svc->data_ = make_unique<DataCache>();
-    return svc->data_->Init(data);
+    return DataCache::Start(data, svc->data_);
 }
 
 Status Service::sampleset_datasets(const string& sampleset, shared_ptr<const set<string>>& ans) {
