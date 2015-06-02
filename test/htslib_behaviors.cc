@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vcf.h>
+#include <hfile.h>
 #include <string.h>
 #include <math.h>
 #include <memory>
@@ -151,3 +152,81 @@ TEST_CASE("htslib VCF header synthesis") {
     REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 1)) == "mo");
     REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 2)) == "ch");
 }
+
+TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
+    // load trio_denovo.vcf
+    UPD(vcfFile, vcf, bcf_open("test/data/trio_denovo.vcf", "r"), [](vcfFile* f) { bcf_close(f); });
+    UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
+    shared_ptr<bcf1_t> vt;
+    vector<shared_ptr<bcf1_t>> records;
+
+    bcf_hdr_append(hdr,"##contig=<ID=21,length=1000000>");
+    bcf_hdr_sync(hdr);
+
+    do {
+        if (vt) {
+            records.push_back(vt);
+        }
+        vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+    } while (bcf_read(vcf, hdr, vt.get()) == 0);
+
+    REQUIRE(records.size() == 3);
+
+    // serialize the BCF records into a memory buffer - without the header
+    char *buf = nullptr;
+    size_t bufsz;
+    char fn[4+sizeof(void**)+sizeof(size_t*)];
+    char *pfn = fn;
+
+    memcpy(pfn, "mem:", 4);
+    *(char***)(pfn+4) = &buf;
+    *(size_t**)(pfn+4+sizeof(void**)) = &bufsz;
+
+    // bcf_open mode "u" is supposed to cause htslib to write "uncompressed
+    // BCF", per the hts_open documentation in hts.h, but instead it writes
+    // text VCF. Indeed the implementation of bcf_write in vcf.c hard-codes
+    // bgzf_write, so it's incapable of writing out "uncompressed BCF" without
+    // the BGZF container. So too for the BCF reading functions which hard-code
+    // bgzf_read.
+    //
+    // We could use 0 to get BCF wrapped in the BGZF container format (with no
+    // compression), but that would be less efficient, and carry some useless
+    // block compression baggage.
+    //
+    // We may need to write a significant htslib patch to make it actually
+    // able to read & write "uncompressed BCF"
+
+    up_vcf.reset(bcf_open(pfn, "wu"));
+    vcf = up_vcf.get();
+
+    //REQUIRE(bcf_hdr_write(vcf, hdr) == 0);
+    for (const auto& rec : records) {
+        REQUIRE(bcf_write(vcf, hdr, rec.get()) == 0);
+    }
+    size_t memlen = htell(vcf->fp.hfile);
+    REQUIRE(hflush(vcf->fp.hfile) == 0);
+
+    //cout << string(buf, memlen);
+
+    // now read the records back from memory & ensure they match the originals
+    REQUIRE(bufsz >= memlen);
+    bufsz = memlen;
+    up_vcf.reset(bcf_open(pfn, "r"));
+    vcf = up_vcf.get();
+
+    for (const auto& rec : records) {
+        REQUIRE(vcf_read(vcf, hdr, vt.get()) == 0);
+        REQUIRE(vt->rid == rec->rid);
+        REQUIRE(vt->pos == rec->pos);
+        REQUIRE(vt->n_sample == rec->n_sample);
+        REQUIRE(vt->n_allele == rec->n_allele);
+        REQUIRE(vt->n_info == rec->n_info);
+        REQUIRE(bcf_unpack(vt.get(), BCF_UN_ALL) == 0);
+    }
+
+    if (buf) {
+        free(buf);
+    }
+}
+
+// TODO test representation of GVCF records
