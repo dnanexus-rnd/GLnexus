@@ -229,4 +229,37 @@ TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
     }
 }
 
-// TODO test representation of GVCF records
+TEST_CASE("htslib gVCF representation") {
+    UPD(vcfFile, vcf, bcf_open("test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });
+    UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
+    shared_ptr<bcf1_t> vt;
+    vector<shared_ptr<bcf1_t>> records;
+
+    do {
+        if (vt) {
+            REQUIRE(bcf_unpack(vt.get(), BCF_UN_ALL) == 0);
+            records.push_back(vt);
+        }
+        vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+    } while (bcf_read(vcf, hdr, vt.get()) == 0);
+
+    REQUIRE(records.size() == 5);
+
+    REQUIRE(records[0]->pos == 10009461);
+    REQUIRE(records[0]->n_allele == 2);
+    REQUIRE(string(records[0]->d.allele[0]) == "T");
+    REQUIRE(string(records[0]->d.allele[1]) == "<NON_REF>");
+    REQUIRE(bcf_get_info(hdr, records[0].get(), "END")->v1.i == 10009463); // nb END stays 1-based!
+
+    REQUIRE(records[1]->pos == 10009463);
+    REQUIRE(records[1]->n_allele == 3);
+    REQUIRE(string(records[1]->d.allele[0]) == "TA");
+    REQUIRE(string(records[1]->d.allele[1]) == "T");
+    REQUIRE(string(records[1]->d.allele[2]) == "<NON_REF>");
+
+    REQUIRE(records[4]->pos == 10009468);
+    REQUIRE(records[4]->n_allele == 2);
+    REQUIRE(string(records[4]->d.allele[0]) == "A");
+    REQUIRE(string(records[4]->d.allele[1]) == "<NON_REF>");
+    REQUIRE(bcf_get_info(hdr, records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
+}
