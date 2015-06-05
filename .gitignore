@@ -37,6 +37,9 @@ src/rocksdb-stamp/
 src/3c8ae031.zip
 src/htslib/
 src/htslib-stamp/
+src/release-0.5.2.zip
+src/yaml-cpp/
+src/yaml-cpp-stamp/
 
 # CMake stuff
 CMakeCache.txt

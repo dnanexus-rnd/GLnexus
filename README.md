@@ -4,7 +4,7 @@
 
 ### Build & run tests
 
-First [install gcc 4.9](http://askubuntu.com/a/581497) and `libjemalloc-dev`. Then:
+First [install gcc 4.9](http://askubuntu.com/a/581497), `libjemalloc-dev`, `libboost-dev`. Then:
 
 ```
 cmake -Dtest=ON . && make && ./unit_tests

@@ -26,7 +26,7 @@ ExternalProject_Get_Property(htslib source_dir)
 set(HTSLIB_INCLUDE_DIR ${source_dir}/htslib)
 include_directories(${HTSLIB_INCLUDE_DIR})
 ExternalProject_Get_Property(htslib binary_dir)
-add_library(libhts STATIC IMPORTED)  
+add_library(libhts STATIC IMPORTED)
 set(LIBHTS_A ${binary_dir}/libhts.a)
 set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 
@@ -43,9 +43,26 @@ ExternalProject_Get_Property(rocksdb source_dir)
 set(ROCKSDB_INCLUDE_DIR ${source_dir}/include)
 include_directories(${ROCKSDB_INCLUDE_DIR})
 ExternalProject_Get_Property(rocksdb binary_dir)
-add_library(librocksdb STATIC IMPORTED)  
+add_library(librocksdb STATIC IMPORTED)
 set(LIBROCKSDB_A ${binary_dir}/librocksdb.a)
 set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
+
+ExternalProject_Add(yaml-cpp
+    URL https://github.com/jbeder/yaml-cpp/archive/release-0.5.2.zip
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
+    CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF .
+    BUILD_IN_SOURCE 1
+    BUILD_COMMAND make -j8 OPT="-DNDEBUG -O2"
+    INSTALL_COMMAND ""
+    LOG_DOWNLOAD ON
+  )
+ExternalProject_Get_Property(yaml-cpp source_dir)
+set(YAML_CPP_INCLUDE_DIR ${source_dir}/include)
+include_directories(${YAML_CPP_INCLUDE_DIR})
+ExternalProject_Get_Property(yaml-cpp binary_dir)
+add_library(libyaml-cpp STATIC IMPORTED)
+set(LIBYAML_CPP_A ${binary_dir}/libyaml-cpp.a)
+set_property(TARGET libyaml-cpp PROPERTY IMPORTED_LOCATION ${LIBYAML_CPP_A})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14")
 
@@ -64,11 +81,12 @@ add_library(glnexus
             include/genotyper.h src/genotyper.cc)
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
+add_dependencies(glnexus yaml-cpp)
 add_library(libglnexus ALIAS glnexus)
 
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
-target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb)
+target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
 
 install(TARGETS playground DESTINATION bin)
 
@@ -94,7 +112,7 @@ if (test)
   ##############
   add_executable(unit_tests src/diploid.cc test/unit_tests.cc test/htslib_behaviors.cc test/diploid.cc test/types.cc test/service.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests -pthread jemalloc glnexus libhts z librocksdb)
+  target_link_libraries(unit_tests -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
 
   add_test(unit_tests unit_tests)
 endif()
