@@ -46,7 +46,7 @@ public:
     /// The resulting data structure may be shared, so the strings must not be
     /// mutated. They aren't declared const because...C++
     /// http://stackoverflow.com/a/21365478
-    virtual Status sample_dataset(const std::string& sampleset, std::string& ans) const = 0;
+    virtual Status sample_dataset(const std::string& sample, std::string& ans) const = 0;
 
 
     /// Retrieve the BCF header for a data set.
@@ -79,12 +79,12 @@ class DataCache : public Data {
 
 public:
     static Status Start(Data *data, std::unique_ptr<DataCache>& ptr);
-    ~DataCache();
+    virtual ~DataCache();
 
     Status contigs(std::vector<std::pair<std::string,size_t> >& ans) const override;
     Status sampleset_samples(const std::string& sampleset,
                              std::shared_ptr<const std::set<std::string> >& ans) const override;
-    Status sample_dataset(const std::string& sampleset, std::string& ans) const override;
+    Status sample_dataset(const std::string& sample, std::string& ans) const override;
     Status dataset_bcf_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
     Status dataset_bcf(const std::string& dataset, const range& pos,

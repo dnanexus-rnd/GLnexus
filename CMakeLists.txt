@@ -78,7 +78,9 @@ add_library(glnexus
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
             include/alleles.h src/alleles.cc
-            include/genotyper.h src/genotyper.cc)
+            include/genotyper.h src/genotyper.cc
+            include/KeyValue.h src/KeyValue.cc
+            include/BCFKeyValueData.h src/BCFKeyValueData.cc)
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
 add_dependencies(glnexus yaml-cpp)
@@ -110,7 +112,13 @@ if (test)
   ##############
   # Unit Tests
   ##############
-  add_executable(unit_tests src/diploid.cc test/unit_tests.cc test/htslib_behaviors.cc test/diploid.cc test/types.cc test/service.cc)
+  add_executable(unit_tests
+                 src/diploid.cc test/diploid.cc
+                 test/unit_tests.cc
+                 test/htslib_behaviors.cc
+                 test/types.cc
+                 test/service.cc
+                 test/BCFKeyValueData.cc)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
 

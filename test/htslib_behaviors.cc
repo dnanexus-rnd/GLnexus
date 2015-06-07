@@ -214,6 +214,13 @@ TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
     up_vcf.reset(bcf_open(pfn, "r"));
     vcf = up_vcf.get();
 
+    REQUIRE(hts_get_format(vcf)->compression == no_compression);
+    // TODO: without the header, htslib auto-detects the file format as SAM
+    // instead of VCF. This is okay as long as we're using vcf_read below. But
+    // if we use bcf_read, then because the file format is not set to VCF, it
+    // tries to read it as bgzipped BCF.
+    //REQUIRE(hts_get_format(vcf)->format == htsExactFormat::vcf);
+
     for (const auto& rec : records) {
         REQUIRE(vcf_read(vcf, hdr, vt.get()) == 0);
         REQUIRE(vt->rid == rec->rid);
