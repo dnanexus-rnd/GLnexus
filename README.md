@@ -1,6 +1,8 @@
 # GLnexus
 **From DNAnexus R&D: a scalable datastore for population genome sequencing, with on-demand joint genotyping.**
-(GL = genotype likelihood)
+(GL, genotype likelihood)
+
+This is an early-stage DNAnexus R&D project we're developing openly. The code doesn't yet do anything useful! There's a [wiki project roadmap](https://github.com/dnanexus-rnd/GLnexus/wiki), which should be read in the spirit of "plans are worthless, but planning is insdispensable."
 
 ### Build & run tests
 
