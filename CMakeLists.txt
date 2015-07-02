@@ -71,6 +71,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14")
 ################################
 set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
 include_directories(${COMMON_INCLUDES} src)
+include_directories(${COMMON_INCLUDES} src/rocksdb/include)
 
 add_library(glnexus
             include/types.h src/types.cc
@@ -91,6 +92,11 @@ add_dependencies(playground libglnexus)
 target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
 
 install(TARGETS playground DESTINATION bin)
+
+add_executable(rock_toy src/rock_toy.cc)
+target_link_libraries(rock_toy -pthread jemalloc librocksdb snappy z lz4 bz2)
+
+install(TARGETS rock_toy DESTINATION bin)
 
 ################################
 # Testing
