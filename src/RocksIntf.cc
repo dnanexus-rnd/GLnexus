@@ -17,21 +17,31 @@ namespace RocksIntf {
         rocksdb::Status::Code code = s.code();
         switch (code) {
             // good case
-        case kOk: return Status::OK();
+        case rocksdb::Status::kOk: return Status::OK();
 
             // error cases
-        case kNotFound: return Status::NotFound();
-        case kCorruption: return Status::Failure("corruption");
-        case kNotSupported: return Status::NotImplemented();
-        case kInvalidArgument: return Status::Invalid();
-        case kIOError: return Status::IOError();
-        case kMergeInProgress: return Status::Failure("merge in progress");
-        case kIncomplete: return Status::Failure("incomplete");
-        case kShutdownInProgress: return Status::Failure("shutdown in progress");
-        case kTimedOut: return Status::Failure("timed out");
-        case kAborted: return Status::Failure("aborted");
+        case rocksdb::Status::kNotFound: 
+            return Status::NotFound();
+        case rocksdb::Status::kCorruption: 
+            return Status::Failure("corruption");
+        case rocksdb::Status::kNotSupported: 
+            return Status::NotImplemented();
+        case rocksdb::Status::kInvalidArgument: 
+            return Status::Invalid();
+        case rocksdb::Status::kIOError: 
+            return Status::IOError();
+        case rocksdb::Status::kMergeInProgress: 
+            return Status::Failure("merge in progress");
+        case rocksdb::Status::kIncomplete: 
+            return Status::Failure("incomplete");
+        case rocksdb::Status::kShutdownInProgress: 
+            return Status::Failure("shutdown in progress");
+        case rocksdb::Status::kTimedOut: 
+            return Status::Failure("timed out");
+        case rocksdb::Status::kAborted: 
+            return Status::Failure("aborted");
 
-            // catch all for other cases that currently unlisted.
+            // catch all for unlisted cases, all errors
         default: return Status::Failure("other reason");
         }
     }
@@ -51,7 +61,7 @@ namespace RocksIntf {
         {
             rocksdb::ReadOptions options;  // default values
             iter_ = db->NewIterator(options, coll);
-            iter_.SeekToFirst();
+            iter_->SeekToFirst();
         }
 
         // desctructor. We need to release the heap memory used by the
@@ -64,21 +74,21 @@ namespace RocksIntf {
             // It seems kind of silly to call Valid twice here. I am
             // not sure how to avoid doing this, while maintaining safety.
             //
-            if (!iter_.Valid())
+            if (!iter_->Valid())
                 return Status::NotFound();
-            iter_.Next();
-            if (!iter_.Valid())
+            iter_->Next();
+            if (!iter_->Valid())
                 return Status::NotFound();
-            key = iter_.key();
-            value = iter_.value();
+            key = iter_->key().ToString();
+            value = iter_->value().ToString();
             return Status::OK();
         }
 
         Status seek(std::string& key) {
-            if (!iter_.Valid())
+            if (!iter_->Valid())
                 return Status::NotFound();
-            iter_.Seek(key);
-            if (!iter_.Valid())
+            iter_->Seek(key);
+            if (!iter_->Valid())
                 return Status::NotFound();
             return Status::OK();
         }

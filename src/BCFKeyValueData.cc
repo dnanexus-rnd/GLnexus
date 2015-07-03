@@ -346,7 +346,7 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
     int ncontigs = 0;
     const char **contignames = bcf_hdr_seqnames(hdr, &ncontigs);
 
-    if (ncontigs != contigs.size()) return false;
+    if (((uint)ncontigs) != contigs.size()) return false;
 
     for (int i = 0; i < ncontigs; i++) {
         if (string(contignames[i]) != contigs[i].first) return false;
