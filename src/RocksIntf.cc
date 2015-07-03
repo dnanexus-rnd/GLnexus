@@ -1,9 +1,7 @@
 // Implement a KeyValue interface to a RocksDB on-disk database.
 //
-// Interface that we need to support.
+#include <map>
 #include "KeyValue.h"
-
-// RocksDB header files that are needed.
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
@@ -42,20 +40,24 @@ namespace RocksIntf {
     class Iterator : public KeyValue::Iterator {
     private:
         rocksdb::Iterator* iter_;
-        friend class Reader;
+
+        // No copying allowed
+        Iterator(const Iterator&);
+        void operator=(const Iterator&);
 
     public:
-        Iterator(rocksdb::DB* db, const rocksdb::ColumnFamilyHandle& coll)
+        // Note: the NewIterator call allocates heap-memory
+        Iterator(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* coll)
         {
-            // FIXME: type safety problem here.
-            // coll should be:
-            //   rocksdb::ColumnFamilyHandle*
-            // but is:
-            //   const rocksdb::ColumnFamilyHandle&
-            //
             rocksdb::ReadOptions options;  // default values
             iter_ = db->NewIterator(options, coll);
             iter_.SeekToFirst();
+        }
+
+        // desctructor. We need to release the heap memory used by the
+        // the iterator.
+        ~Iterator() {
+            delete iter_;
         }
 
         Status next(std::string& key, std::string& value) override {
@@ -72,7 +74,7 @@ namespace RocksIntf {
             return Status::OK();
         }
 
-        Status Seek(std::string& key) {
+        Status seek(std::string& key) {
             if (!iter_.Valid())
                 return Status::NotFound();
             iter_.Seek(key);
@@ -83,12 +85,22 @@ namespace RocksIntf {
     };
 
 
-    class Reader : public KeyValue::Reader<rocksdb::ColumnFamilyHandle,Iterator> {
+    class Reader : public KeyValue::Reader<rocksdb::ColumnFamilyHandle*,Iterator> {
     private:
         rocksdb::DB* db_;
 
+        // No copying allowed
+        Reader(const Reader&);
+        void operator=(const Reader&);
+        
     public:
-        Status get(const rocksdb::ColumnFamilyHandle* coll,
+        Reader(rocksdb::DB *db) {
+            db_ = db;
+        }
+
+        ~Reader() {}
+
+        Status get(rocksdb::ColumnFamilyHandle* coll,
                    const std::string& key,
                    std::string& value) const override {
             const ReadOptions r_options; // what should this be set to?
@@ -96,15 +108,8 @@ namespace RocksIntf {
             return convertStatus(s);
         }
 
-        Status iterator(const rocksdb::ColumnFamilyHandle& coll,
+        Status iterator(rocksdb::ColumnFamilyHandle* coll,
                         std::unique_ptr<Iterator>& it) const override {
-            // FIXME: type safety problem here.
-            // coll should be:
-            //   rocksdb::ColumnFamilyHandle*
-            // but is:
-            //   const rocksdb::ColumnFamilyHandle&
-
-            //
             // Make sure this column family actually exists
             rocksdb::ColumnFamilyMetaData *colMd;
             rocksdb::Status s = db_->GetColumnFamilyMetaData(coll, colMd);
@@ -115,7 +120,7 @@ namespace RocksIntf {
             return Status::OK();
         }
 
-        Status iterator(const rocksdb::ColumnFamilyHandle& coll,
+        Status iterator(rocksdb::ColumnFamilyHandle* coll,
                         const std::string& key,
                         std::unique_ptr<Iterator>& it) const override {
             //
@@ -126,32 +131,44 @@ namespace RocksIntf {
                 return convertStatus(s);
 
             it = std::make_unique<Iterator>(db_, coll);
-            return it->Seek(key);
+            return it->seek(key);
         }
     };
 
 
-    class WriteBatch : public KeyValue::WriteBatch<uint64_t> {
-    public:
-        Status put(const uint64_t& coll, const std::string& key, const std::string& value) override {
-            assert(false);
-            return Status::OK();
-        }
-    };
-
-
-    class DB : public KeyValue::DB<uint64_t, RocksIntf::Reader, RocksIntf::Iterator, RocksIntf::WriteBatch> {
-        // a collection is a partition of the key value space. Think, separate
-        // databases. They all share the same log, so can be modified atomically.
-        //
-        // In RocksDB, this is called a column family.
-        //
-        // map a collection-name to an ID.
-        // std::map<std::string,uint64_t> collections_;
-
-        //std::vector<std::map<std::string,std::string>> data_;
+    class WriteBatch : public KeyValue::WriteBatch<rocksdb::ColumnFamilyHandle*> {
     private:
-        rocksdb::DB* db = null;
+        rocksdb::WriteBatch *wb_;
+
+        // No copying allowed
+        WriteBatch(const WriteBatch&);
+        void operator=(const WriteBatch&);
+
+    public:
+        WriteBatch() {
+            wb_ = new rocskdb::WriteBatch();
+        }
+
+        ~WriteBatch() {
+            delete wb_;
+        }
+
+        Status put(rocksdb::ColumnFamilyHandle* coll,
+                   const std::string& key,
+                   const std::string& value) override {
+            wb_->Put(coll, key, value);
+        }
+    };
+
+
+    class DB : public KeyValue::DB<rocksdb::ColumnFamilyHandle*, Reader, Iterator, WriteBatch> {
+    private:
+        rocksdb::DB* db_ = null;
+        std::map<const std::string& name, rocksdb::ColumnFamilyHandle*> coll2handle_;
+
+        // No copying allowed
+        DB(const DB&);
+        void operator=(const DB&);
 
     public:
         DB() {
@@ -162,37 +179,65 @@ namespace RocksIntf {
             options.create_if_missing = true;
 
             // open DB
-            printf("Opening database [...");
-            rocksdb::Status s = DB::Open(options, kDBPath, &db);
+            rocksdb::Status s = DB::Open(options, kDBPath, &db_);
             assert(s.ok());
-            printf("]\n");
+
+            coll2handle_ = new std::map<const std::string&, rocksdb::ColumnFamilyHandle*> ();
         }
 
-        Status collection(const std::string& name, uint64_t& coll) const override {
-            assert(false);
+        ~DB() {
+            delete db;
+            delete coll2handle_;
+        }
+
+        Status collection(const std::string& name, 
+                          rocskdb::ColumnFamilyHandle*& coll) const override {
+            auto p = coll2handle_.find(name);
+            if (p != coll2handle_.end()) {
+                coll = p->second;
+                return Status::OK();
+            }
+            return Status::NotFound("column family does not exist", name);
         }
 
         Status create_collection(const std::string& name) override {
-            // FIXME: what do we do with the handle?
-            ColumnFamilyOptions options; // defaults for now
-            ColumnFamilyHandle *handle;
+            if (coll2handle_.find(name) != coll2handle_.end()) {
+                return Status::Exists("column family already exists", name);
+            }
+
+            // create new column family in rocksdb
+            rocksdb::ColumnFamilyOptions options; // defaults for now
+            rocksdb::ColumnFamilyHandle *handle;
             rocksdb::Status s = rocksdb::CreateColumnFamily(options, name, handle);
+            if (!s.ok())
+                return convertStatus(s);
+
+            // success, add a mapping from the column family name to the handle.
+            coll2handle_.put(name, handle);
             return Status::OK();
         }
 
-        Status current(std::unique_ptr<RocksIntf::Reader>& reader) const override {
-            assert(false);
+        Status current(std::unique_ptr<Reader>& reader) const override {
+            reader = std::make_unique<Reader>(db_);
+            return Status::OK();
         }
 
-        Status begin_writes(std::unique_ptr<RocksIntf::WriteBatch>& writes) override {
-            assert(false);
+        Status begin_writes(std::unique_ptr<WriteBatch>& writes) override {
+            writes = std::make_unique<WriteBatch>();
+            return Status::OK();
         }
 
-        Status commit_writes(RocksIntf::WriteBatch* writes) override {
-            assert(false);
+        Status commit_writes(WriteBatch* updates) override {
+            rocksdb::WriteOptions options;
+            options.sync = true;
+            rocksdb::Status s = db_->Write(options, updates);
+            return convertStatus(s);
         }
 
         void wipe() {
+            // Not sure what the semantics are supposed to be here. 
+            rocksdb::Options options;
+            db_->DestroyDB(kDBPath, options);
         }
     };
 }}

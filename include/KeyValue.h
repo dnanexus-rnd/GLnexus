@@ -26,21 +26,21 @@ public:
 
     /// Get the value corresponding to the key and return OK. Return NotFound
     /// if no corresponding record exists in the collection, or any error code
-    virtual Status get(const CollectionHandle& coll, const std::string& key, std::string& value) const = 0;
+    virtual Status get(CollectionHandle& coll, const std::string& key, std::string& value) const = 0;
 
     /// Create an iterator over the whole collection.
-    virtual Status iterator(const CollectionHandle& coll, std::unique_ptr<IteratorImpl>& it) const = 0;
+    virtual Status iterator(CollectionHandle& coll, std::unique_ptr<IteratorImpl>& it) const = 0;
 
     /// Create an iterator beginning at the key if a corresponding record
     /// exists, or the first subsequent record otherwise
-    virtual Status iterator(const CollectionHandle& coll, const std::string& key, std::unique_ptr<IteratorImpl>& it) const = 0;
+    virtual Status iterator(CollectionHandle& coll, const std::string& key, std::unique_ptr<IteratorImpl>& it) const = 0;
 };
 
 /// A batch of writes to apply atomically if possible
 template<typename CollectionHandle>
 class WriteBatch {
 public:
-    virtual Status put(const CollectionHandle& coll, const std::string& key, const std::string& value) = 0;
+    virtual Status put(CollectionHandle& coll, const std::string& key, const std::string& value) = 0;
     //virtual Status delete(Collection* coll, const std::string& key) = 0;
 };
 
@@ -80,10 +80,10 @@ public:
     // create a snapshot just to read one record (or begin one iterator), or
     // apply a "batch" of one write. Derived classes may want to provide more
     // efficient overrides.
-    Status get(const CollectionHandle& coll, const std::string& key, std::string& value) const override;
-    Status iterator(const CollectionHandle& coll, std::unique_ptr<IteratorImpl>& it) const override;
-    Status iterator(const CollectionHandle& coll, const std::string& key, std::unique_ptr<IteratorImpl>& it) const override;
-    Status put(const CollectionHandle& coll, const std::string& key, const std::string& value) override;
+    Status get(CollectionHandle& coll, const std::string& key, std::string& value) const override;
+    Status iterator(CollectionHandle& coll, std::unique_ptr<IteratorImpl>& it) const override;
+    Status iterator(CollectionHandle& coll, const std::string& key, std::unique_ptr<IteratorImpl>& it) const override;
+    Status put(CollectionHandle& coll, const std::string& key, const std::string& value) override;
 };
 
 // Trivial in-memory KeyValue::DB implementation used in unit tests. I'd
@@ -110,7 +110,7 @@ namespace Mem {
         friend class DB;
 
     public:
-        Status get(const uint64_t& coll, const std::string& key, std::string& value) const override {
+        Status get(uint64_t& coll, const std::string& key, std::string& value) const override {
             assert(coll < data_.size());
             const auto& m = data_[coll];
             auto p = m.find(key);
@@ -119,7 +119,7 @@ namespace Mem {
             return Status::OK();
         }
 
-        Status iterator(const uint64_t& coll, std::unique_ptr<Iterator>& it) const override {
+        Status iterator(uint64_t& coll, std::unique_ptr<Iterator>& it) const override {
             assert(coll < data_.size());
             auto it2 = std::make_unique<Iterator>();
             it2->data_ = data_[coll];
@@ -128,7 +128,7 @@ namespace Mem {
             return Status::OK();
         }
 
-        Status iterator(const uint64_t& coll, const std::string& key, std::unique_ptr<Iterator>& it) const override {
+        Status iterator(uint64_t& coll, const std::string& key, std::unique_ptr<Iterator>& it) const override {
             assert(coll < data_.size());
             auto it2 = std::make_unique<Iterator>();
             it2->data_ = data_[coll];
@@ -143,7 +143,7 @@ namespace Mem {
         friend class DB;
 
     public:
-        Status put(const uint64_t& coll, const std::string& key, const std::string& value) override {
+        Status put(uint64_t& coll, const std::string& key, const std::string& value) override {
             assert(coll < data_.size());
             data_[coll][key] = value;
             return Status::OK();
