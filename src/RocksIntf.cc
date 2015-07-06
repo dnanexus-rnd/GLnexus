@@ -1,5 +1,6 @@
 // Implement a KeyValue interface to a RocksDB on-disk database.
 //
+#include <cstddef>
 #include <map>
 #include "KeyValue.h"
 #include "rocksdb/db.h"
@@ -84,7 +85,7 @@ namespace RocksIntf {
             return Status::OK();
         }
 
-        Status seek(std::string& key) {
+        Status seek(const std::string& key) {
             if (!iter_->Valid())
                 return Status::NotFound();
             iter_->Seek(key);
@@ -97,49 +98,40 @@ namespace RocksIntf {
 
     class Reader : public KeyValue::Reader<rocksdb::ColumnFamilyHandle*,Iterator> {
     private:
-        rocksdb::DB* db_;
+        rocksdb::DB* db_ = NULL;
 
         // No copying allowed
         Reader(const Reader&);
         void operator=(const Reader&);
         
     public:
+        Reader() {}
+            
         Reader(rocksdb::DB *db) {
             db_ = db;
         }
 
         ~Reader() {}
 
-        Status get(rocksdb::ColumnFamilyHandle* coll,
+        Status get(rocksdb::ColumnFamilyHandle* &coll,
                    const std::string& key,
                    std::string& value) const override {
-            const ReadOptions r_options; // what should this be set to?
-            rocksdb::Status s = db_->Get(r_options, coll, key, value);
+            const rocksdb::ReadOptions r_options; // what should this be set to?
+            std::string* v_tmp; // convert from pointer to reference, can we 
+            rocksdb::Status s = db_->Get(r_options, coll, key, v_tmp);
+            value = *v_tmp; 
             return convertStatus(s);
         }
 
-        Status iterator(rocksdb::ColumnFamilyHandle* coll,
+        Status iterator(rocksdb::ColumnFamilyHandle* &coll,
                         std::unique_ptr<Iterator>& it) const override {
-            // Make sure this column family actually exists
-            rocksdb::ColumnFamilyMetaData *colMd;
-            rocksdb::Status s = db_->GetColumnFamilyMetaData(coll, colMd);
-            if (!s.ok())
-                return convertStatus(s);
-
             it = std::make_unique<Iterator>(db_, coll);
             return Status::OK();
         }
 
-        Status iterator(rocksdb::ColumnFamilyHandle* coll,
+        Status iterator(rocksdb::ColumnFamilyHandle* &coll,
                         const std::string& key,
                         std::unique_ptr<Iterator>& it) const override {
-            //
-            // Make sure this column family actually exists
-            rocksdb::ColumnFamilyMetaData *colMd;
-            rocksdb::Status s = db_->GetColumnFamilyMetaData(coll, colMd);
-            if (!s.ok())
-                return convertStatus(s);
-
             it = std::make_unique<Iterator>(db_, coll);
             return it->seek(key);
         }
@@ -149,6 +141,7 @@ namespace RocksIntf {
     class WriteBatch : public KeyValue::WriteBatch<rocksdb::ColumnFamilyHandle*> {
     private:
         rocksdb::WriteBatch *wb_;
+        friend class DB;
 
         // No copying allowed
         WriteBatch(const WriteBatch&);
@@ -156,32 +149,37 @@ namespace RocksIntf {
 
     public:
         WriteBatch() {
-            wb_ = new rocskdb::WriteBatch();
+            wb_ = new rocksdb::WriteBatch();
         }
 
         ~WriteBatch() {
             delete wb_;
         }
 
-        Status put(rocksdb::ColumnFamilyHandle* coll,
+        rocksdb::WriteBatch* GetImplObj() {
+            return wb_;
+        }
+
+        Status put(rocksdb::ColumnFamilyHandle* &coll,
                    const std::string& key,
                    const std::string& value) override {
             wb_->Put(coll, key, value);
+            return Status::OK();
         }
     };
 
 
     class DB : public KeyValue::DB<rocksdb::ColumnFamilyHandle*, Reader, Iterator, WriteBatch> {
     private:
-        rocksdb::DB* db_ = null;
-        std::map<const std::string& name, rocksdb::ColumnFamilyHandle*> coll2handle_;
+        rocksdb::DB* db_ = NULL;
+        std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle_;
 
         // No copying allowed
         DB(const DB&);
         void operator=(const DB&);
 
     public:
-        DB() {
+        DB(const std::vector<std::string>& collections) {
             // Default optimization choices, could use a deeper look.
             rocksdb::Options options;
             options.IncreaseParallelism();
@@ -189,19 +187,27 @@ namespace RocksIntf {
             options.create_if_missing = true;
 
             // open DB
-            rocksdb::Status s = DB::Open(options, kDBPath, &db_);
+            rocksdb::Status s = rocksdb::DB::Open(options, kDBPath, &db_);
             assert(s.ok());
 
-            coll2handle_ = new std::map<const std::string&, rocksdb::ColumnFamilyHandle*> ();
+            // create initial collections
+            for (const auto &colName : collections) {
+                rocksdb::ColumnFamilyOptions options; // defaults for now
+                rocksdb::ColumnFamilyHandle *handle;
+                rocksdb::Status s = db_->CreateColumnFamily(options, colName, &handle);
+                assert(s.ok());
+                
+                // success, add a mapping from the column family name to the handle.
+                coll2handle_[colName] = handle;
+            }
         }
 
         ~DB() {
-            delete db;
-            delete coll2handle_;
+            delete db_;
         }
 
         Status collection(const std::string& name, 
-                          rocskdb::ColumnFamilyHandle*& coll) const override {
+                          rocksdb::ColumnFamilyHandle*& coll) const override {
             auto p = coll2handle_.find(name);
             if (p != coll2handle_.end()) {
                 coll = p->second;
@@ -218,12 +224,12 @@ namespace RocksIntf {
             // create new column family in rocksdb
             rocksdb::ColumnFamilyOptions options; // defaults for now
             rocksdb::ColumnFamilyHandle *handle;
-            rocksdb::Status s = rocksdb::CreateColumnFamily(options, name, handle);
+            rocksdb::Status s = db_->CreateColumnFamily(options, name, &handle);
             if (!s.ok())
                 return convertStatus(s);
 
             // success, add a mapping from the column family name to the handle.
-            coll2handle_.put(name, handle);
+            coll2handle_[name] = handle;
             return Status::OK();
         }
 
@@ -240,14 +246,14 @@ namespace RocksIntf {
         Status commit_writes(WriteBatch* updates) override {
             rocksdb::WriteOptions options;
             options.sync = true;
-            rocksdb::Status s = db_->Write(options, updates);
+            rocksdb::Status s = db_->Write(options, updates->GetImplObj());
             return convertStatus(s);
         }
 
         void wipe() {
             // Not sure what the semantics are supposed to be here. 
             rocksdb::Options options;
-            db_->DestroyDB(kDBPath, options);
+            rocksdb::DestroyDB(kDBPath, options);
         }
     };
 }}
