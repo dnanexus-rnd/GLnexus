@@ -5,17 +5,153 @@
 using namespace std;
 using namespace GLnexus;
 
-using T = BCFKeyValueData<KeyValue::Mem::DB>;
+// Trivial in-memory KeyValue implementation used in unit tests.
+namespace KeyValueMem {
+    using namespace KeyValue;
+
+    class Iterator : public KeyValue::Iterator {
+        std::map<std::string,std::string> data_;
+        std::map<std::string,std::string>::const_iterator it_;
+        friend class Reader;
+
+    public:
+        Status next(std::string& key, std::string& value) override {
+            if (it_ == data_.end()) return Status::NotFound();
+            key = it_->first;
+            value = it_->second;
+            it_++;
+            return Status::OK();
+        }
+    };
+
+    class Reader : public KeyValue::Reader {
+        std::vector<std::map<std::string,std::string>> data_;
+        friend class DB;
+
+    public:
+        Status get(CollectionHandle _coll, const std::string& key, std::string& value) const override {
+            auto coll = reinterpret_cast<uint64_t>(_coll);
+            assert(coll < data_.size());
+            const auto& m = data_[coll];
+            auto p = m.find(key);
+            if (p == m.end()) return Status::NotFound("key", key);
+            value = p->second;
+            return Status::OK();
+        }
+
+        Status iterator(CollectionHandle _coll, std::unique_ptr<KeyValue::Iterator>& it) const override {
+            auto coll = reinterpret_cast<uint64_t>(_coll);
+            assert(coll < data_.size());
+            auto it2 = std::make_unique<Iterator>();
+            it2->data_ = data_[coll];
+            it2->it_ = it2->data_.begin();
+            it.reset(it2.release());
+            return Status::OK();
+        }
+
+        Status iterator(CollectionHandle _coll, const std::string& key, std::unique_ptr<KeyValue::Iterator>& it) const override {
+            auto coll = reinterpret_cast<uint64_t>(_coll);
+            assert(coll < data_.size());
+            auto it2 = std::make_unique<Iterator>();
+            it2->data_ = data_[coll];
+            it2->it_ = it2->data_.lower_bound(key);
+            it.reset(it2.release());
+            return Status::OK();
+        }
+    };
+
+    class DB;
+
+    class WriteBatch : public KeyValue::WriteBatch {
+        std::vector<std::map<std::string,std::string>> data_;
+        DB* db_;
+        friend class DB;
+
+    public:
+        Status put(CollectionHandle _coll, const std::string& key, const std::string& value) override {
+            auto coll = reinterpret_cast<uint64_t>(_coll);
+            assert(coll < data_.size());
+            data_[coll][key] = value;
+            return Status::OK();
+        }
+        Status commit() override;
+    };
+
+    class DB : public KeyValue::DB {
+        std::map<std::string,uint64_t> collections_;
+        std::vector<std::map<std::string,std::string>> data_;
+        friend class WriteBatch;
+
+    public:
+        DB(const std::vector<std::string>& collections) {
+            for (uint64_t i = 0; i < collections.size(); i++) {
+                assert(collections_.find(collections[i]) == collections_.end());
+                collections_[collections[i]] = i;
+            }
+            data_ = std::vector<std::map<std::string,std::string>>(collections_.size());
+        }
+
+        Status collection(const std::string& name, CollectionHandle& coll) const override {
+            auto p = collections_.find(name);
+            if (p != collections_.end()) {
+                coll = reinterpret_cast<CollectionHandle>(p->second);
+                return Status::OK();
+            }
+            return Status::NotFound("KeyValueMem::collection", name);
+        }
+
+        Status create_collection(const std::string& name) override {
+            if (collections_.find(name) != collections_.end()) {
+                return Status::Exists("key-value collection already exists", name);
+            }
+            collections_[name] = data_.size();
+            data_.emplace_back();
+            return Status::OK();
+        }
+
+        Status current(std::unique_ptr<KeyValue::Reader>& reader) const override {
+            auto p = std::make_unique<KeyValueMem::Reader>();
+            p->data_ = data_;
+            reader = std::move(p);
+            return Status::OK();
+        }
+
+        Status begin_writes(std::unique_ptr<KeyValue::WriteBatch>& writes) override {
+            auto p = std::make_unique<KeyValueMem::WriteBatch>();
+            p->db_ = this;
+            p->data_ = std::vector<std::map<std::string,std::string>>(data_.size());
+            writes = std::move(p);
+            return Status::OK();
+        }
+
+        void wipe() {
+            collections_.clear();
+            data_.clear();
+        }
+    };
+
+    Status WriteBatch::commit() {
+        assert(data_.size() <= db_->data_.size());
+        for (size_t i = 0; i < data_.size(); i++) {
+            for (const auto& p : data_[i]) {
+                db_->data_[i][p.first] = p.second;
+            }
+        }
+        return Status::OK();
+    }
+}
+
+using T = BCFKeyValueData;
 
 TEST_CASE("BCFKeyValueData construction on improperly initialized database") {
     vector<string> collections = {"header","bcf"};
-    KeyValue::Mem::DB db(collections);
+    KeyValueMem::DB db(collections);
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data) == StatusCode::INVALID);
 }
 
 TEST_CASE("BCFKeyValueData initialization") {
-    KeyValue::Mem::DB db({});
+    KeyValueMem::DB db({});
     auto contigs = {make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000001)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
@@ -33,7 +169,7 @@ TEST_CASE("BCFKeyValueData initialization") {
     }
 
     SECTION("sampleset_samples") {
-        typename KeyValue::Mem::DB::collection_handle_type coll;
+        KeyValue::CollectionHandle coll;
         string null(1, '\0');
         REQUIRE(db.collection("sampleset", coll).ok());
         REQUIRE(db.put(coll, "trio1", "").ok());
@@ -64,7 +200,7 @@ TEST_CASE("BCFKeyValueData initialization") {
     }
 
     SECTION("sample_dataset") {
-        typename KeyValue::Mem::DB::collection_handle_type coll;
+        KeyValue::CollectionHandle coll;
         REQUIRE(db.collection("sample_dataset", coll).ok());
         REQUIRE(db.put(coll, "fa", "trio1").ok());
         REQUIRE(db.put(coll, "mo", "trio1").ok());
@@ -85,7 +221,7 @@ TEST_CASE("BCFKeyValueData initialization") {
 }
 
 TEST_CASE("BCFKeyValueData::import_gvcf") {
-    KeyValue::Mem::DB db({});
+    KeyValueMem::DB db({});
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
@@ -115,7 +251,7 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 }
 
 TEST_CASE("BCFKeyValueData BCF retrieval") {
-    KeyValue::Mem::DB db({});
+    KeyValueMem::DB db({});
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
