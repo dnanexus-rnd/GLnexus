@@ -9,45 +9,52 @@ namespace GLnexus { namespace KeyValue {
     // iterator), or apply a "batch" of one write. Derived classes may want to
     // provide more efficient overrides.
 
-    template<typename CollectionHandle, class ReaderImpl, class IteratorImpl, class WriteBatchImpl>
-    Status DB<CollectionHandle,ReaderImpl,IteratorImpl,WriteBatchImpl>::get(CollectionHandle& coll, const std::string& key, std::string& value) const {
+    Status DB::get(CollectionHandle coll, const std::string& key, std::string& value) const {
         Status s;
-        unique_ptr<ReaderImpl> curr;
+        unique_ptr<Reader> curr;
         S(current(curr));
         return curr->get(coll, key, value);
     }
 
-    template<typename CollectionHandle, class ReaderImpl, class IteratorImpl, class WriteBatchImpl>
-    Status DB<CollectionHandle,ReaderImpl,IteratorImpl,WriteBatchImpl>::iterator(CollectionHandle& coll, unique_ptr<IteratorImpl>& it) const {
+    Status DB::iterator(CollectionHandle coll, unique_ptr<Iterator>& it) const {
         Status s;
-        unique_ptr<ReaderImpl> curr;
+        unique_ptr<Reader> curr;
         S(current(curr));
         return curr->iterator(coll, it);
     }
 
-    template<typename CollectionHandle, class ReaderImpl, class IteratorImpl, class WriteBatchImpl>
-    Status DB<CollectionHandle,ReaderImpl,IteratorImpl,WriteBatchImpl>::iterator(CollectionHandle& coll, const string& key, unique_ptr<IteratorImpl>& it) const {
+    Status DB::iterator(CollectionHandle coll, const string& key, unique_ptr<Iterator>& it) const {
         Status s;
-        unique_ptr<ReaderImpl> curr;
+        unique_ptr<Reader> curr;
         S(current(curr));
         return curr->iterator(coll, key, it);
     }
 
-    template<typename CollectionHandle, class ReaderImpl, class IteratorImpl, class WriteBatchImpl>
-    Status DB<CollectionHandle,ReaderImpl,IteratorImpl,WriteBatchImpl>::put(CollectionHandle& coll, const std::string& key, const std::string& value) {
+    Status DB::put(CollectionHandle coll, const std::string& key, const std::string& value) {
         Status s;
-        unique_ptr<WriteBatchImpl> batch;
+        unique_ptr<WriteBatch> batch;
         S(begin_writes(batch));
         assert(batch);
         S(batch->put(coll, key, value));
-        return commit_writes(batch.get());
+        return batch->commit();
     }
 
-    // instantiate these template member functions for the test in-memory implementation
-    template Status DB<uint64_t,Mem::Reader,Mem::Iterator,Mem::WriteBatch>::get(uint64_t& coll, const std::string& key, std::string& value) const;
-    template Status DB<uint64_t,Mem::Reader,Mem::Iterator,Mem::WriteBatch>::iterator(uint64_t& coll, unique_ptr<Mem::Iterator>& it) const;
-    template Status DB<uint64_t,Mem::Reader,Mem::Iterator,Mem::WriteBatch>::iterator(uint64_t& coll, const std::string& key, unique_ptr<Mem::Iterator>& it) const;
-    template Status DB<uint64_t,Mem::Reader,Mem::Iterator,Mem::WriteBatch>::put(uint64_t& coll, const std::string& key, const std::string& value);
+    namespace Mem {
+         Status WriteBatch::put(CollectionHandle _coll, const std::string& key, const std::string& value) {
+            auto coll = reinterpret_cast<uint64_t>(_coll);
+            assert(coll < data_.size());
+            data_[coll][key] = value;
+            return Status::OK();
+        };
 
-
+        Status WriteBatch::commit() {
+            assert(data_.size() <= db_->data_.size());
+            for (size_t i = 0; i < data_.size(); i++) {
+                for (const auto& p : data_[i]) {
+                    db_->data_[i][p.first] = p.second;
+                }
+            }
+            return Status::OK();
+        }
+    }
 }}

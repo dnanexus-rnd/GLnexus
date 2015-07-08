@@ -5,7 +5,7 @@
 using namespace std;
 using namespace GLnexus;
 
-using T = BCFKeyValueData<KeyValue::Mem::DB>;
+using T = BCFKeyValueData;
 
 TEST_CASE("BCFKeyValueData construction on improperly initialized database") {
     vector<string> collections = {"header","bcf"};
@@ -33,7 +33,7 @@ TEST_CASE("BCFKeyValueData initialization") {
     }
 
     SECTION("sampleset_samples") {
-        typename KeyValue::Mem::DB::collection_handle_type coll;
+        KeyValue::CollectionHandle coll;
         string null(1, '\0');
         REQUIRE(db.collection("sampleset", coll).ok());
         REQUIRE(db.put(coll, "trio1", "").ok());
@@ -64,7 +64,7 @@ TEST_CASE("BCFKeyValueData initialization") {
     }
 
     SECTION("sample_dataset") {
-        typename KeyValue::Mem::DB::collection_handle_type coll;
+        KeyValue::CollectionHandle coll;
         REQUIRE(db.collection("sample_dataset", coll).ok());
         REQUIRE(db.put(coll, "fa", "trio1").ok());
         REQUIRE(db.put(coll, "mo", "trio1").ok());

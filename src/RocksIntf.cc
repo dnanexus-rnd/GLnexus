@@ -58,8 +58,9 @@ namespace RocksIntf {
 
     public:
         // Note: the NewIterator call allocates heap-memory
-        Iterator(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* coll)
+        Iterator(rocksdb::DB* db, KeyValue::CollectionHandle _coll)
         {
+            auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
             rocksdb::ReadOptions options;  // default values
             iter_ = db->NewIterator(options, coll);
             iter_->SeekToFirst();
@@ -96,7 +97,7 @@ namespace RocksIntf {
     };
 
 
-    class Reader : public KeyValue::Reader<rocksdb::ColumnFamilyHandle*,Iterator> {
+    class Reader : public KeyValue::Reader {
     private:
         rocksdb::DB* db_ = NULL;
 
@@ -113,9 +114,10 @@ namespace RocksIntf {
 
         ~Reader() {}
 
-        Status get(rocksdb::ColumnFamilyHandle* &coll,
+        Status get(KeyValue::CollectionHandle _coll,
                    const std::string& key,
                    std::string& value) const override {
+            auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
             const rocksdb::ReadOptions r_options; // what should this be set to?
             std::string* v_tmp; // convert from pointer to reference, can we 
             rocksdb::Status s = db_->Get(r_options, coll, key, v_tmp);
@@ -123,24 +125,30 @@ namespace RocksIntf {
             return convertStatus(s);
         }
 
-        Status iterator(rocksdb::ColumnFamilyHandle* &coll,
-                        std::unique_ptr<Iterator>& it) const override {
+        Status iterator(KeyValue::CollectionHandle _coll,
+                        std::unique_ptr<KeyValue::Iterator>& it) const override {
+            auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
             it = std::make_unique<Iterator>(db_, coll);
             return Status::OK();
         }
 
-        Status iterator(rocksdb::ColumnFamilyHandle* &coll,
+        Status iterator(KeyValue::CollectionHandle _coll,
                         const std::string& key,
-                        std::unique_ptr<Iterator>& it) const override {
-            it = std::make_unique<Iterator>(db_, coll);
-            return it->seek(key);
+                        std::unique_ptr<KeyValue::Iterator>& it) const override {
+            auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
+            auto ans = std::make_unique<Iterator>(db_, coll);
+            Status s;
+            S(ans->seek(key));
+            it = std::move(ans);
+            return Status::OK();
         }
     };
 
-
-    class WriteBatch : public KeyValue::WriteBatch<rocksdb::ColumnFamilyHandle*> {
+    class DB;
+    class WriteBatch : public KeyValue::WriteBatch {
     private:
         rocksdb::WriteBatch *wb_;
+        rocksdb::DB* db_;
         friend class DB;
 
         // No copying allowed
@@ -148,7 +156,7 @@ namespace RocksIntf {
         void operator=(const WriteBatch&);
 
     public:
-        WriteBatch() {
+        WriteBatch(rocksdb::DB* db) : db_(db) {
             wb_ = new rocksdb::WriteBatch();
         }
 
@@ -156,20 +164,24 @@ namespace RocksIntf {
             delete wb_;
         }
 
-        rocksdb::WriteBatch* GetImplObj() {
-            return wb_;
-        }
-
-        Status put(rocksdb::ColumnFamilyHandle* &coll,
+        Status put(KeyValue::CollectionHandle _coll,
                    const std::string& key,
                    const std::string& value) override {
+            auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
             wb_->Put(coll, key, value);
             return Status::OK();
+        }
+
+        Status commit() override {
+            rocksdb::WriteOptions options;
+            options.sync = true;
+            rocksdb::Status s = db_->Write(options, wb_);
+            return convertStatus(s);
         }
     };
 
 
-    class DB : public KeyValue::DB<rocksdb::ColumnFamilyHandle*, Reader, Iterator, WriteBatch> {
+    class DB : public KeyValue::DB {
     private:
         rocksdb::DB* db_ = NULL;
         std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle_;
@@ -207,10 +219,10 @@ namespace RocksIntf {
         }
 
         Status collection(const std::string& name, 
-                          rocksdb::ColumnFamilyHandle*& coll) const override {
+                          KeyValue::CollectionHandle& coll) const override {
             auto p = coll2handle_.find(name);
             if (p != coll2handle_.end()) {
-                coll = p->second;
+                coll = reinterpret_cast<KeyValue::CollectionHandle>(p->second);
                 return Status::OK();
             }
             return Status::NotFound("column family does not exist", name);
@@ -233,21 +245,14 @@ namespace RocksIntf {
             return Status::OK();
         }
 
-        Status current(std::unique_ptr<Reader>& reader) const override {
-            reader = std::make_unique<Reader>(db_);
+        Status current(std::unique_ptr<KeyValue::Reader>& reader) const override {
+            reader = std::make_unique<RocksIntf::Reader>(db_);
             return Status::OK();
         }
 
-        Status begin_writes(std::unique_ptr<WriteBatch>& writes) override {
-            writes = std::make_unique<WriteBatch>();
+        Status begin_writes(std::unique_ptr<KeyValue::WriteBatch>& writes) override {
+            writes = std::make_unique<RocksIntf::WriteBatch>(db_);
             return Status::OK();
-        }
-
-        Status commit_writes(WriteBatch* updates) override {
-            rocksdb::WriteOptions options;
-            options.sync = true;
-            rocksdb::Status s = db_->Write(options, updates->GetImplObj());
-            return convertStatus(s);
         }
 
         void wipe() {

@@ -12,18 +12,16 @@ using namespace std;
 namespace GLnexus {
 
 // pImpl idiom
-template<class KeyValueDB>
-struct BCFKeyValueData<KeyValueDB>::body {
-    KeyValueDB* db;
+struct BCFKeyValueData::body {
+    KeyValue::DB* db;
 };
-
-template<class KeyValueDB> BCFKeyValueData<KeyValueDB>::BCFKeyValueData() = default;
-template<class KeyValueDB> BCFKeyValueData<KeyValueDB>::~BCFKeyValueData() = default;
 
 auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::InitializeDB(KeyValueDB* db, const vector<pair<string,size_t>>& contigs) {
+BCFKeyValueData::BCFKeyValueData() = default;
+BCFKeyValueData::~BCFKeyValueData() = default;
+
+Status BCFKeyValueData::InitializeDB(KeyValue::DB* db, const vector<pair<string,size_t>>& contigs) {
     Status s;
 
     // create collections
@@ -32,7 +30,7 @@ Status BCFKeyValueData<KeyValueDB>::InitializeDB(KeyValueDB* db, const vector<pa
     }
 
     // store contigs
-    typename KeyValueDB::collection_handle_type config;
+    KeyValue::CollectionHandle config;
     S(db->collection("config", config));
     set<string> prev_contigs;
     YAML::Emitter yaml;
@@ -50,29 +48,27 @@ Status BCFKeyValueData<KeyValueDB>::InitializeDB(KeyValueDB* db, const vector<pa
     return db->put(config, "contigs", yaml.c_str());
 }
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::Open(KeyValueDB* db, unique_ptr<BCFKeyValueData<KeyValueDB>>& ans) {
+Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
     assert(db != nullptr);
     
     // check database has been initialized
-    typename KeyValueDB::collection_handle_type coll;
+    KeyValue::CollectionHandle coll;
     for (const auto& collnm : collections) {
         if (db->collection(collnm, coll).bad()) {
             return Status::Invalid("database hasn't been properly initialized");
         }
     }
 
-    ans.reset(new BCFKeyValueData<KeyValueDB>());
+    ans.reset(new BCFKeyValueData());
     ans->body_.reset(new body);
     ans->body_->db = db;
 
     return Status::OK();
 }
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::contigs(vector<pair<string,size_t> >& ans) const {
+Status BCFKeyValueData::contigs(vector<pair<string,size_t> >& ans) const {
     Status s;
-    typename KeyValueDB::collection_handle_type coll;
+    KeyValue::CollectionHandle coll;
     S(body_->db->collection("config", coll));
 
     // the contigs entry in config contains a YAML list of contigname-size pairs:
@@ -107,14 +103,13 @@ Status BCFKeyValueData<KeyValueDB>::contigs(vector<pair<string,size_t> >& ans) c
     return Status::OK();
 }
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::sampleset_samples(const string& sampleset,
-                                                      shared_ptr<const set<string> >& ans) const {
+Status BCFKeyValueData::sampleset_samples(const string& sampleset,
+                                          shared_ptr<const set<string> >& ans) const {
     Status s;
-    typename KeyValueDB::collection_handle_type coll;
+    KeyValue::CollectionHandle coll;
     S(body_->db->collection("sampleset",coll));
 
-    unique_ptr<typename KeyValueDB::iterator_type> it;
+    unique_ptr<KeyValue::Iterator> it;
     S(body_->db->iterator(coll, sampleset, it));
 
     // samplesets collection key scheme:
@@ -154,10 +149,9 @@ Status BCFKeyValueData<KeyValueDB>::sampleset_samples(const string& sampleset,
 
 }
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::sample_dataset(const string& sample, string& ans) const {
+Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const {
     Status s;
-    typename KeyValueDB::collection_handle_type coll;
+    KeyValue::CollectionHandle coll;
     S(body_->db->collection("sample_dataset",coll));
     return body_->db->get(coll, sample, ans);
 }
@@ -284,12 +278,11 @@ public:
     }
 };
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::dataset_bcf_header(const string& dataset,
-                                                       shared_ptr<const bcf_hdr_t>& hdr) const {
+Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
+                                           shared_ptr<const bcf_hdr_t>& hdr) const {
     // Retrieve the header
     Status s;
-    typename KeyValueDB::collection_handle_type coll;
+    KeyValue::CollectionHandle coll;
     S(body_->db->collection("header",coll));
     string data;
     S(body_->db->get(coll, dataset, data));
@@ -302,17 +295,16 @@ Status BCFKeyValueData<KeyValueDB>::dataset_bcf_header(const string& dataset,
     return Status::OK();
 }
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::dataset_bcf(const string& dataset, const range& pos,
-                                                shared_ptr<const bcf_hdr_t>& hdr,
-                                                vector<shared_ptr<bcf1_t> >& records) const {
+Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
+                                    shared_ptr<const bcf_hdr_t>& hdr,
+                                    vector<shared_ptr<bcf1_t> >& records) const {
     // TODO cache header...
     Status s;
     S(dataset_bcf_header(dataset, hdr));
 
     // Retrieve the pertinent DB entries
     // Placeholder: one DB entry per dataset...
-    typename KeyValueDB::collection_handle_type coll;
+    KeyValue::CollectionHandle coll;
     S(body_->db->collection("bcf",coll));
     string data;
     S(body_->db->get(coll, dataset, data));
@@ -358,8 +350,7 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
     return true;
 }
 
-template<class KeyValueDB>
-Status BCFKeyValueData<KeyValueDB>::import_gvcf(const DataCache* cache, const string& dataset, const string& filename) {
+Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& dataset, const string& filename) {
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(filename.c_str(), "r"),
                                                [](vcfFile* f) { bcf_close(f); });
     if (!vcf) return Status::IOError("opening gVCF file", filename);
@@ -397,7 +388,7 @@ Status BCFKeyValueData<KeyValueDB>::import_gvcf(const DataCache* cache, const st
     string data;
     S(writer->contents(data));
 
-    typename KeyValueDB::collection_handle_type coll_bcf;
+    KeyValue::CollectionHandle coll_bcf;
     S(body_->db->collection("bcf", coll_bcf));
     S(body_->db->put(coll_bcf, dataset, data));
 
@@ -407,19 +398,17 @@ Status BCFKeyValueData<KeyValueDB>::import_gvcf(const DataCache* cache, const st
     S(writer->contents(data));
 
     // Store header and metadata
-    typename KeyValueDB::collection_handle_type coll_header, coll_sample_dataset;
+    KeyValue::CollectionHandle coll_header, coll_sample_dataset;
     S(body_->db->collection("header", coll_header));
     S(body_->db->collection("sample_dataset", coll_sample_dataset));
-    unique_ptr<typename KeyValueDB::write_batch_type> wb;
+    unique_ptr<KeyValue::WriteBatch> wb;
     S(body_->db->begin_writes(wb));
     S(wb->put(coll_header, dataset, data));
     for (const auto& sample : samples) {
         S(wb->put(coll_sample_dataset, sample, dataset));
     }
-    return body_->db->commit_writes(wb.get());
+    return wb->commit();
     
 }
-
-template class BCFKeyValueData<KeyValue::Mem::DB>;
 
 } // namespace GLnexus
