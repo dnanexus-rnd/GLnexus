@@ -38,23 +38,4 @@ namespace GLnexus { namespace KeyValue {
         S(batch->put(coll, key, value));
         return batch->commit();
     }
-
-    namespace Mem {
-         Status WriteBatch::put(CollectionHandle _coll, const std::string& key, const std::string& value) {
-            auto coll = reinterpret_cast<uint64_t>(_coll);
-            assert(coll < data_.size());
-            data_[coll][key] = value;
-            return Status::OK();
-        };
-
-        Status WriteBatch::commit() {
-            assert(data_.size() <= db_->data_.size());
-            for (size_t i = 0; i < data_.size(); i++) {
-                for (const auto& p : data_[i]) {
-                    db_->data_[i][p.first] = p.second;
-                }
-            }
-            return Status::OK();
-        }
-    }
 }}
