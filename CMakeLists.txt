@@ -125,9 +125,9 @@ if (test)
                  test/htslib_behaviors.cc
                  test/types.cc
                  test/service.cc
-                 test/BCFKeyValueData.cc)
+                 test/MemDBTest.cc test/RocksDBTest.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
+  target_link_libraries(unit_tests librocksdb -pthread jemalloc glnexus libhts rt snappy z bz2 lz4 libyaml-cpp)
 
   add_test(unit_tests unit_tests)
 endif()
