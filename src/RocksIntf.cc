@@ -3,9 +3,11 @@
 #include <cstddef>
 #include <map>
 #include "KeyValue.h"
+#include "RocksIntf.h"
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
+#include "rocksdb/write_batch.h"
 
 std::string kDBPath = "/tmp/rocksdb_simple_example";
 
@@ -21,25 +23,25 @@ namespace RocksIntf {
         case rocksdb::Status::kOk: return Status::OK();
 
             // error cases
-        case rocksdb::Status::kNotFound: 
+        case rocksdb::Status::kNotFound:
             return Status::NotFound();
-        case rocksdb::Status::kCorruption: 
+        case rocksdb::Status::kCorruption:
             return Status::Failure("corruption");
-        case rocksdb::Status::kNotSupported: 
+        case rocksdb::Status::kNotSupported:
             return Status::NotImplemented();
-        case rocksdb::Status::kInvalidArgument: 
+        case rocksdb::Status::kInvalidArgument:
             return Status::Invalid();
-        case rocksdb::Status::kIOError: 
+        case rocksdb::Status::kIOError:
             return Status::IOError();
-        case rocksdb::Status::kMergeInProgress: 
+        case rocksdb::Status::kMergeInProgress:
             return Status::Failure("merge in progress");
-        case rocksdb::Status::kIncomplete: 
+        case rocksdb::Status::kIncomplete:
             return Status::Failure("incomplete");
-        case rocksdb::Status::kShutdownInProgress: 
+        case rocksdb::Status::kShutdownInProgress:
             return Status::Failure("shutdown in progress");
-        case rocksdb::Status::kTimedOut: 
+        case rocksdb::Status::kTimedOut:
             return Status::Failure("timed out");
-        case rocksdb::Status::kAborted: 
+        case rocksdb::Status::kAborted:
             return Status::Failure("aborted");
 
             // catch all for unlisted cases, all errors
@@ -104,10 +106,10 @@ namespace RocksIntf {
         // No copying allowed
         Reader(const Reader&);
         void operator=(const Reader&);
-        
+
     public:
         Reader() {}
-            
+
         Reader(rocksdb::DB *db) {
             db_ = db;
         }
@@ -119,9 +121,9 @@ namespace RocksIntf {
                    std::string& value) const override {
             auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
             const rocksdb::ReadOptions r_options; // what should this be set to?
-            std::string* v_tmp; // convert from pointer to reference, can we 
+            std::string* v_tmp; // convert from pointer to reference, can we
             rocksdb::Status s = db_->Get(r_options, coll, key, v_tmp);
-            value = *v_tmp; 
+            value = *v_tmp;
             return convertStatus(s);
         }
 
@@ -208,7 +210,7 @@ namespace RocksIntf {
                 rocksdb::ColumnFamilyHandle *handle;
                 rocksdb::Status s = db_->CreateColumnFamily(options, colName, &handle);
                 assert(s.ok());
-                
+
                 // success, add a mapping from the column family name to the handle.
                 coll2handle_[colName] = handle;
             }
@@ -218,7 +220,7 @@ namespace RocksIntf {
             delete db_;
         }
 
-        Status collection(const std::string& name, 
+        Status collection(const std::string& name,
                           KeyValue::CollectionHandle& coll) const override {
             auto p = coll2handle_.find(name);
             if (p != coll2handle_.end()) {
@@ -255,10 +257,17 @@ namespace RocksIntf {
             return Status::OK();
         }
 
-        void wipe() {
-            // Not sure what the semantics are supposed to be here. 
+        void destroy() override {
+            // Not sure what the semantics are supposed to be here.
             rocksdb::Options options;
             rocksdb::DestroyDB(kDBPath, options);
         }
     };
-}}
+}
+
+    KeyValue::DB* makeRocksIntf(const std::vector<std::string>& collections)
+    {
+        RocksIntf::DB *db = new RocksIntf::DB(collections);
+        return db;
+    }
+}
