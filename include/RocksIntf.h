@@ -6,7 +6,12 @@
 #include "KeyValue.h"
 
 namespace GLnexus {
-    KeyValue::DB* makeRocksIntf(const std::vector<std::string>& collections);
+    namespace RocksIntf {
+
+        Status make(const std::vector<std::string>& collections,
+                    std::unique_ptr<KeyValue::DB> &db,
+                    const std::string dbPath);
+    }
 }
 
 #endif

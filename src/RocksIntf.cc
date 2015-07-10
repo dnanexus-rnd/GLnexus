@@ -2,6 +2,10 @@
 //
 #include <cstddef>
 #include <map>
+#include <iostream>
+#include <iomanip>
+#include <sstream> // for ostringstream
+#include <string>
 #include "KeyValue.h"
 #include "RocksIntf.h"
 #include "rocksdb/db.h"
@@ -9,10 +13,27 @@
 #include "rocksdb/options.h"
 #include "rocksdb/write_batch.h"
 
-std::string kDBPath = "/tmp/rocksdb_simple_example";
+std::string kDBPathBase = "/tmp/rocksdb_dir";
+static int NUM_LIMIT = 1024 * 1024 * 1024;
 
 namespace GLnexus {
 namespace RocksIntf {
+
+    // generate a random number in the range [0 .. n-1]
+    static int genRandNumber(int n)
+    {
+        static bool firstTime = true;
+
+        // initialization
+        if (firstTime) {
+            firstTime = false;
+            srand (time(NULL));
+        }
+
+        int i = rand() % n;
+        return i;
+    }
+
 
     // Convert a rocksdb Status into a GLnexus Status structure
     static Status convertStatus(const rocksdb::Status &s)
@@ -49,11 +70,19 @@ namespace RocksIntf {
         }
     }
 
+    /*    void destroy()
+    {
+        rocksdb::Options options;
+        rocksdb::Status s = rocksdb::DestroyDB(kDBPath, options);
+        assert(s.ok());
+        }*/
+
 
     class Iterator : public KeyValue::Iterator {
     private:
         rocksdb::Iterator* iter_;
-
+        bool atStart_ = false;
+        
         // No copying allowed
         Iterator(const Iterator&);
         void operator=(const Iterator&);
@@ -66,6 +95,7 @@ namespace RocksIntf {
             rocksdb::ReadOptions options;  // default values
             iter_ = db->NewIterator(options, coll);
             iter_->SeekToFirst();
+            atStart_ = true;
         }
 
         // desctructor. We need to release the heap memory used by the
@@ -75,12 +105,14 @@ namespace RocksIntf {
         }
 
         Status next(std::string& key, std::string& value) override {
-            // It seems kind of silly to call Valid twice here. I am
-            // not sure how to avoid doing this, while maintaining safety.
-            //
-            if (!iter_->Valid())
-                return Status::NotFound();
-            iter_->Next();
+            if (atStart_) {
+                // We are at the first element
+                atStart_ = false;
+            }
+            else {
+                // We are beyong the first element 
+                iter_->Next();
+            }
             if (!iter_->Valid())
                 return Status::NotFound();
             key = iter_->key().ToString();
@@ -121,9 +153,9 @@ namespace RocksIntf {
                    std::string& value) const override {
             auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
             const rocksdb::ReadOptions r_options; // what should this be set to?
-            std::string* v_tmp; // convert from pointer to reference, can we
-            rocksdb::Status s = db_->Get(r_options, coll, key, v_tmp);
-            value = *v_tmp;
+            std::string v_tmp; // convert from pointer to reference, can we
+            rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
+            value = v_tmp;
             return convertStatus(s);
         }
 
@@ -146,7 +178,6 @@ namespace RocksIntf {
         }
     };
 
-    class DB;
     class WriteBatch : public KeyValue::WriteBatch {
     private:
         rocksdb::WriteBatch *wb_;
@@ -164,6 +195,8 @@ namespace RocksIntf {
 
         ~WriteBatch() {
             delete wb_;
+            wb_ = NULL; // extra sanitation
+            db_ = NULL;
         }
 
         Status put(KeyValue::CollectionHandle _coll,
@@ -185,7 +218,7 @@ namespace RocksIntf {
 
     class DB : public KeyValue::DB {
     private:
-        rocksdb::DB* db_ = NULL;
+        rocksdb::DB* db_;
         std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle_;
 
         // No copying allowed
@@ -201,8 +234,15 @@ namespace RocksIntf {
             options.create_if_missing = true;
 
             // open DB
-            rocksdb::Status s = rocksdb::DB::Open(options, kDBPath, &db_);
+            std::ostringstream out;
+            int rndNum = genRandNumber(NUM_LIMIT);
+            out << kDBPathBase << "_" << std::setfill('0') << std::setw(10) << rndNum;
+            std::string dbFullPath = out.str();
+            rocksdb::Status s = rocksdb::DB::Open(options, dbFullPath, &db_);
             assert(s.ok());
+
+            std::cout << "Construct RocksDB at "<< dbFullPath << "\n";
+            std::cout.flush();
 
             // create initial collections
             for (const auto &colName : collections) {
@@ -216,7 +256,8 @@ namespace RocksIntf {
             }
         }
 
-        ~DB() {
+        ~DB() override {
+            printf("Delete RocksDB\n"); fflush(stdout);
             delete db_;
         }
 
@@ -256,18 +297,17 @@ namespace RocksIntf {
             writes = std::make_unique<RocksIntf::WriteBatch>(db_);
             return Status::OK();
         }
-
-        void destroy() override {
-            // Not sure what the semantics are supposed to be here.
-            rocksdb::Options options;
-            rocksdb::DestroyDB(kDBPath, options);
-        }
     };
-}
 
-    KeyValue::DB* makeRocksIntf(const std::vector<std::string>& collections)
+    Status make(const std::vector<std::string>& collections,
+                std::unique_ptr<KeyValue::DB> &db,
+                const std::string dbPath)
     {
-        RocksIntf::DB *db = new RocksIntf::DB(collections);
-        return db;
+        auto db_uq = std::make_unique<RocksIntf::DB>(collections);
+        db = std::move(db_uq);
+        if (db.get() != NULL)
+            return Status::OK();
+            return Status::Failure();
+        return Status::OK();        
     }
-}
+}}

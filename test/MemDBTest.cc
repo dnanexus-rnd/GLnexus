@@ -129,9 +129,6 @@ namespace KeyValueMem {
             data_.clear();
         }
 
-        void destroy() override {
-            wipe();
-        }
     };
 
     Status WriteBatch::commit() {

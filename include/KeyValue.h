@@ -53,6 +53,9 @@ public:
 /// Reader or WriteBatch object is used.
 class DB : public Reader {
 public:
+    // virtual destructor, needed so we could customize the database close routine.
+    virtual ~DB() {};
+
     /// Get the handle to a collection, or return NotFound.
     virtual Status collection(const std::string& name, CollectionHandle& coll) const = 0;
 
@@ -64,9 +67,6 @@ public:
 
     /// Begin preparing a batch of writes.
     virtual Status begin_writes(std::unique_ptr<WriteBatch>& writes) = 0;
-
-    /// Delete the database
-    virtual void destroy() = 0;
 
     // Base implementations of Reader and WriteBatch interfaces. They simply
     // create a snapshot just to read one record (or begin one iterator), or

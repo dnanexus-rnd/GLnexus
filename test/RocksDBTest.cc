@@ -18,17 +18,23 @@ using T = BCFKeyValueData;
 
 TEST_CASE("RocksDB construction on improperly initialized database") {
     vector<string> collections = {"header","bcf"};
-    KeyValue::DB *db = makeRocksIntf(collections);
+    std::unique_ptr<KeyValue::DB> db;
+    Status s = RocksIntf::make(collections, db, "");
+    REQUIRE(s.ok());
     unique_ptr<T> data;
-    REQUIRE(T::Open(db, data) == StatusCode::INVALID);
+    REQUIRE(T::Open(db.get(), data) == StatusCode::INVALID);
 }
 
+
 TEST_CASE("RocksDB initialization") {
-    KeyValue::DB *db = makeRocksIntf({});
+    std::unique_ptr<KeyValue::DB> db;
+    Status s = RocksIntf::make({}, db, "");
+    REQUIRE(s.ok());
+    
     auto contigs = {make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000001)};
-    REQUIRE(T::InitializeDB(db, contigs).ok());
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
-    REQUIRE(T::Open(db, data).ok());
+    REQUIRE(T::Open(db.get(), data).ok());
 
     SECTION("contigs") {
         vector<pair<string,size_t>> contigs;
@@ -91,16 +97,17 @@ TEST_CASE("RocksDB initialization") {
         REQUIRE(dataset == "trio2");
         REQUIRE(data->sample_dataset("bogus", dataset) == StatusCode::NOT_FOUND);
     }
-
-    db->destroy();
 }
 
 TEST_CASE("RocksDB::import_gvcf") {
-    KeyValue::DB *db = makeRocksIntf({});
+    std::unique_ptr<KeyValue::DB> db;
+    Status s = RocksIntf::make({}, db, "");
+    REQUIRE(s.ok());
+
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
-    REQUIRE(T::InitializeDB(db, contigs).ok());
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
-    REQUIRE(T::Open(db, data).ok());
+    REQUIRE(T::Open(db.get(), data).ok());
     unique_ptr<DataCache> cache;
     REQUIRE(DataCache::Start(data.get(), cache).ok());
 
@@ -112,31 +119,41 @@ TEST_CASE("RocksDB::import_gvcf") {
         REQUIRE(data->sample_dataset("NA12878", dataset).ok());
         REQUIRE(dataset == "NA12878D");
     }
-
-/*    SECTION("incompatible contigs") {
-        db->wipe();
-        contigs = { make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000000) };
-        Status s = T::InitializeDB(db, contigs);
-        REQUIRE(s.ok());
-
-        REQUIRE(DataCache::Start(data.get(), cache).ok());
-        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
-        REQUIRE(s == StatusCode::INVALID);
-        }*/
-
-    db->destroy();
 }
 
-TEST_CASE("RocksDB BCF retrieval") {
-    KeyValue::DB *db = makeRocksIntf({});
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
-    REQUIRE(T::InitializeDB(db, contigs).ok());
+
+TEST_CASE("RocksDB::import_gvcf incompatible") {
+    std::unique_ptr<KeyValue::DB> db;
+    Status s = RocksIntf::make({}, db, "");
+    REQUIRE(s.ok());
+
+    auto contigs = { make_pair<string,uint64_t>("21", 1000000),
+                     make_pair<string,uint64_t>("22", 1000000) };
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
-    REQUIRE(T::Open(db, data).ok());
+    REQUIRE(T::Open(db.get(), data).ok());
     unique_ptr<DataCache> cache;
     REQUIRE(DataCache::Start(data.get(), cache).ok());
 
-    Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+    SECTION("incompatible contigs") {
+        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        REQUIRE(s == StatusCode::INVALID);
+    }
+}
+
+TEST_CASE("RocksDB BCF retrieval") {
+    std::unique_ptr<KeyValue::DB> db;
+    Status s = RocksIntf::make({}, db, "");
+    REQUIRE(s.ok());
+
+    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(db.get(), data).ok());
+    unique_ptr<DataCache> cache;
+    REQUIRE(DataCache::Start(data.get(), cache).ok());
+
+    s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
     REQUIRE(s.ok());
 
     SECTION("dataset_bcf_header") {
@@ -214,6 +231,5 @@ TEST_CASE("RocksDB BCF retrieval") {
         s = data->dataset_bcf("bogus", range(1, 10009463, 10009466), hdr, records);
         REQUIRE(s == StatusCode::NOT_FOUND);
     }
-
-    db->destroy();
 }
+
