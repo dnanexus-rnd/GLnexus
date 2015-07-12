@@ -6,6 +6,8 @@ This is an early-stage R&D project we're developing openly. The code doesn't yet
 
 ### Build & run tests
 
+<a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg"/></a>
+
 First [install gcc 4.9](http://askubuntu.com/a/581497), `libjemalloc-dev`, `libboost-dev`. Then:
 
 ```
