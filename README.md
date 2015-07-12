@@ -22,4 +22,5 @@ cmake -Dtest=ON . && make && ./unit_tests
  * [Catch](https://github.com/philsquared/Catch) test framework
 * Avoid exceptions; prefer returning a `Status`, defined early in [types.h](https://github.com/dnanexus-rnd/GLnexus/blob/master/include/types.h)
  * nb the frequently-used convenience macro `S()` defined just below `Status`
+* Avoid elaborate templated class hierarchies
 * Prefer static initializer function returning `Status` over public constructor for any nontrivial body
