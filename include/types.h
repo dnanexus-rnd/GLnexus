@@ -96,6 +96,8 @@ struct range {
         }
     }
 
+    // TODO: if the bcf1_t INFO has an END field, that should be used instead of the reference
+    // length to determine the end coordinate.
     range(const bcf1_t* bcf) : range(bcf->rid, bcf->pos, bcf->pos+bcf->rlen) {}
     range(const bcf1_t& bcf) : range(&bcf) {}
     range(const std::shared_ptr<const bcf1_t>& bcf) : range(bcf.get()) {}
