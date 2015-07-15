@@ -4,7 +4,7 @@
 #include <map>
 #include "KeyValue.h"
 #include "BCFKeyValueData.h"
-#include "RocksIntf.h"
+#include "RocksKeyValue.h"
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
@@ -16,10 +16,36 @@ using namespace GLnexus;
 
 using T = BCFKeyValueData;
 
+std::string kDBPathBase = "/tmp/rocksdb_dir";
+static int NUM_LIMIT = 1024 * 1024 * 1024;
+
+// generate a random number in the range [0 .. n-1]
+static int genRandNumber(int n)
+{
+    static bool firstTime = true;
+
+    // initialization
+    if (firstTime) {
+        firstTime = false;
+        srand (time(NULL));
+    }
+
+    int i = rand() % n;
+    return i;
+}
+
+static const std::string createRandomDBFileName()
+{
+    std::ostringstream out;
+    int rndNum = genRandNumber(NUM_LIMIT);
+    out << kDBPathBase << "_" << std::setfill('0') << std::setw(10) << rndNum;
+    return out.str();
+}
+
 TEST_CASE("RocksDB construction on improperly initialized database") {
     vector<string> collections = {"header","bcf"};
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksIntf::make(collections, db, "");
+    Status s = RocksKeyValue::Open(collections, createRandomDBFileName(), db);
     REQUIRE(s.ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data) == StatusCode::INVALID);
@@ -28,9 +54,9 @@ TEST_CASE("RocksDB construction on improperly initialized database") {
 
 TEST_CASE("RocksDB initialization") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksIntf::make({}, db, "");
+    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
     REQUIRE(s.ok());
-    
+
     auto contigs = {make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000001)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
@@ -101,7 +127,7 @@ TEST_CASE("RocksDB initialization") {
 
 TEST_CASE("RocksDB::import_gvcf") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksIntf::make({}, db, "");
+    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
@@ -124,7 +150,7 @@ TEST_CASE("RocksDB::import_gvcf") {
 
 TEST_CASE("RocksDB::import_gvcf incompatible") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksIntf::make({}, db, "");
+    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
     REQUIRE(s.ok());
 
     auto contigs = { make_pair<string,uint64_t>("21", 1000000),
@@ -143,7 +169,7 @@ TEST_CASE("RocksDB::import_gvcf incompatible") {
 
 TEST_CASE("RocksDB BCF retrieval") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksIntf::make({}, db, "");
+    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
@@ -232,4 +258,3 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(s == StatusCode::NOT_FOUND);
     }
 }
-

@@ -28,7 +28,6 @@
 *.app
 playground
 unit_tests
-rock_toy
 
 # Dependencies
 catch/
