@@ -71,6 +71,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14")
 ################################
 set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
 include_directories(${COMMON_INCLUDES} src)
+include_directories(${COMMON_INCLUDES} src/rocksdb/include)
 
 add_library(glnexus
             include/types.h src/types.cc
@@ -80,7 +81,8 @@ add_library(glnexus
             include/alleles.h src/alleles.cc
             include/genotyper.h src/genotyper.cc
             include/KeyValue.h src/KeyValue.cc
-            include/BCFKeyValueData.h src/BCFKeyValueData.cc)
+            include/BCFKeyValueData.h src/BCFKeyValueData.cc
+            include/RocksKeyValue.h src/RocksKeyValue.cc)
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
 add_dependencies(glnexus yaml-cpp)
@@ -116,11 +118,13 @@ if (test)
                  src/diploid.cc test/diploid.cc
                  test/unit_tests.cc
                  test/htslib_behaviors.cc
+                 test/rocks_behaviors.cc
                  test/types.cc
                  test/service.cc
-                 test/BCFKeyValueData.cc)
+                 test/BCFKeyValueData.cc
+                 test/rocks_integration.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
+  target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts boost_system boost_filesystem rt snappy z bz2 lz4 rt libyaml-cpp)
 
   add_test(unit_tests unit_tests)
 endif()

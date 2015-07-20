@@ -48,3 +48,5 @@ Makefile
 cmake_install.cmake
 tmp/
 
+# cscope 
+cscope*

@@ -9,7 +9,6 @@ namespace GLnexus {
 /// records in a given key-value database. One imported gVCF file (potentially
 /// with multiple samples) becomes a data set. The key schema permits
 /// efficient retrieval by genomic range across the datasets.
-template<class KeyValueDB>
 class BCFKeyValueData : public Data {
     // pImpl idiom
     struct body;
@@ -18,10 +17,10 @@ class BCFKeyValueData : public Data {
     BCFKeyValueData();
 public:
     /// Initialize a brand-new database, which SHOULD be empty.
-    static Status InitializeDB(KeyValueDB* db, const std::vector<std::pair<std::string,size_t> >& contigs);
+    static Status InitializeDB(KeyValue::DB* db, const std::vector<std::pair<std::string,size_t> >& contigs);
 
     /// Open an existing database
-    static Status Open(KeyValueDB* db, std::unique_ptr<BCFKeyValueData<KeyValueDB>>& ans);
+    static Status Open(KeyValue::DB* db, std::unique_ptr<BCFKeyValueData>& ans);
 
     virtual ~BCFKeyValueData();
 
