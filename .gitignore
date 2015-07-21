@@ -41,3 +41,7 @@ external/
 
 # cscope
 cscope*
+
+# htslib stuff
+mem:*
+src/1.*.zip
