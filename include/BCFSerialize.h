@@ -22,24 +22,28 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr);
 //  Read a BCF record from memory, return the length of the packed record in RAM.
 int bcf_raw_read_from_mem(const char *addr, bcf1_t *v);
 
+
 class BCFWriter {
  private:
     static int STACK_ALLOC_LIMIT;
 
     std::ostringstream oss_;
     int valid_bytes_ = 0;
+    int num_entries_ = 0;
 
  public:
     BCFWriter();
 
     /// Serializes BCF records into a memory buffer (without the header)
     static Status Open(std::unique_ptr<BCFWriter>& ans);
-    ~BCFWriter();
-    Status write(bcf1_t* x);
-    Status contents(std::string& ans);
 
     /// Writes a BCF header into a memory buffer
     static std::string write_header(const bcf_hdr_t *hdr);
+
+    ~BCFWriter();
+    Status write(bcf1_t* x);
+    Status contents(std::string& ans);
+    int get_num_entries() const;
 };
 
 class BCFReader {
@@ -49,10 +53,10 @@ class BCFReader {
     int current_ = 0;
 
     BCFReader(const char* buf, size_t bufsz);
-
  public:
     /// Reads BCF records from a memory buffer (without the header)
     static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFReader>& ans);
+
     ~BCFReader();
     Status read(std::shared_ptr<bcf1_t>& ans);
 

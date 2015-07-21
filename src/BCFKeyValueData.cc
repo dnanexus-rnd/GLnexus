@@ -174,22 +174,33 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
     return Status::OK();
 }
 
-Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr, const range& pos,
+// Note: if the bucket(s) does not exist, return NotFound.
+// If the bucket(s) exists, but no records were found, return an empty list
+Status BCFKeyValueData::dataset_bcf(const string& dataset,
+                                    const bcf_hdr_t* hdr,
+                                    const range& pos,
                                     vector<shared_ptr<bcf1_t> >& records) const {
     Status s;
 
     // Retrieve the pertinent DB entries
-    // Placeholder: one DB entry per dataset...
     KeyValue::CollectionHandle coll;
     S(body_->db->collection("bcf",coll));
     string data;
-    S(body_->db->get(coll, dataset, data));
+
+    std::string key(dataset);
+    key += ":";
+    key += std::to_string(pos.rid);
+    s = body_->db->get(coll, key, data);
+    if (s == StatusCode::NOT_FOUND) {
+        // FIXME: look at adjacent ranges?
+        return Status::NotFound();
+    }
 
     // Parse the records and extract those overlapping pos
+    records.clear();
     unique_ptr<BCFReader> reader;
     S(BCFReader::Open(data.c_str(), data.size(), reader));
 
-    records.clear();
     shared_ptr<bcf1_t> vt;
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
@@ -228,7 +239,37 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
     return true;
 }
 
-Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& dataset, const string& filename) {
+// Add a <key,value> pair to the database.
+// The key is a concatenation of the dataset name and the chromosome.
+// The data is
+static Status write_chrom(KeyValue::DB* db,
+                          BCFWriter *writer,
+                          const string& dataset,
+                          int chrom_id)
+{
+    Status s;
+    //cout << "write_chrom (" << dataset << ":" << chrom_id << ")" << endl;
+
+    // extract the data
+    string data;
+    S(writer->contents(data));
+
+    // Generate the key
+    string key(dataset);
+    key += ":";
+    key += std::to_string(chrom_id);
+
+    // write to the database
+    KeyValue::CollectionHandle coll_bcf;
+    S(db->collection("bcf", coll_bcf));
+    S(db->put(coll_bcf, key, data));
+    return Status::OK();
+}
+
+
+Status BCFKeyValueData::import_gvcf(const DataCache* cache,
+                                    const string& dataset,
+                                    const string& filename) {
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(filename.c_str(), "r"),
                                                [](vcfFile* f) { bcf_close(f); });
     if (!vcf) return Status::IOError("opening gVCF file", filename);
@@ -246,31 +287,37 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     }
     // TODO check uniqueness of samples and dataset
 
-    // Placeholder functionality: pile all the bcf records into one DB
-    // entry...later we need to split it up by genomic range bucket, with
-    // records overlapping bucket boundaries duplicated. hence some unique
-    // record ID will also be needed for later deduplication...
 
+    // This code assumes that the VCF is sorted by chromosome, and position.
     Status s;
     unique_ptr<BCFWriter> writer;
+    unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
     S(BCFWriter::Open(writer));
 
-    unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
-
     int c;
+    int chrom_id = -1;
     for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
         c == 0;
         c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
+        // Moved to the next chromosome, write this key.
+        if ( vt->rid != chrom_id &&
+             writer->get_num_entries() > 0) {
+            S(write_chrom(body_->db, writer.get(), dataset, chrom_id));
+
+            // start a new in-memory chunk
+            writer = NULL;
+            S(BCFWriter::Open(writer));
+        }
+        chrom_id = vt->rid;
         S(writer->write(vt.get()));
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
-    string data;
-    S(writer->contents(data));
-
-    KeyValue::CollectionHandle coll_bcf;
-    S(body_->db->collection("bcf", coll_bcf));
-    S(body_->db->put(coll_bcf, dataset, data));
+    // close last chromosome
+    if (writer->get_num_entries() > 0) {
+        S(write_chrom(body_->db, writer.get(), dataset, chrom_id));
+    }
+    writer = NULL;  // clear the memory state
 
     // Serialize header into a string
     string hdr_data = BCFWriter::write_header(hdr.get());

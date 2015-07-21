@@ -18,7 +18,7 @@ Status range_of_bcf(const bcf_hdr_t* hdr, bcf1_t* bcf, range& ans) {
 
     bcf_info_t *info = bcf_get_info(hdr, bcf, "END");
     if (info) {
-        if (info->type != BCF_BT_INT32) {
+        if (info->type != BCF_BT_INT8 && info->type != BCF_BT_INT16 && info->type != BCF_BT_INT32) {
             return Status::Invalid("range_of_bcf: END field has unexpected type", bcf_pos_errmsg(bcf));
         }
         if (info->len != 1) {

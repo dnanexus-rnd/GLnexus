@@ -121,9 +121,11 @@ Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
 BCFWriter::~BCFWriter() {
     oss_.clear();
     valid_bytes_ = 0;
+    num_entries_ = 0;
 }
 
 Status BCFWriter::write(bcf1_t* x) {
+    num_entries_ += 1;
     int reclen = bcf_raw_calc_packed_len(x);
 
     // Note: allocation on the stack for small memory
@@ -145,6 +147,7 @@ Status BCFWriter::write(bcf1_t* x) {
     bcf_raw_write_to_mem(x, reclen, scratch_pad);
     oss_.write(scratch_pad, reclen);
     valid_bytes_ += reclen;
+    num_entries_ ++;
 
     if (heap_allocation) {
         free(scratch_pad);
@@ -156,6 +159,10 @@ Status BCFWriter::contents(string& ans) {
     ans.clear();
     ans.append(oss_.str(), 0, valid_bytes_);
     return Status::OK();
+}
+
+int BCFWriter::get_num_entries() const {
+    return num_entries_;
 }
 
 /* Adapted from [htslib::vcf.c::bcf_hdr_write] to write
