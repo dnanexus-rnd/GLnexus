@@ -112,7 +112,7 @@ public:
 
 class Reader : public KeyValue::Reader {
 private:
-    rocksdb::DB* db_ = NULL;
+    rocksdb::DB* db_ = nullptr;
 
     // No copying allowed
     Reader(const Reader&);
@@ -174,8 +174,8 @@ public:
 
     ~WriteBatch() {
         delete wb_;
-        wb_ = NULL; // extra sanitation
-        db_ = NULL;
+        wb_ = nullptr; // extra sanitation
+        db_ = nullptr;
     }
 
     Status put(KeyValue::CollectionHandle _coll,

@@ -12,9 +12,107 @@ using namespace std;
 
 namespace GLnexus {
 
+
+// Memory efficient representation of a bucket range. This could
+// be turned into a standard C++ iterator, although, that might be
+// a bit of an overkill.
+class BucketExtent {
+private:
+    int rid_ = 0;
+    int step_ = 0;
+    int bgn_ = 0;
+    int end_ = 0;
+    int current_ = 0;
+
+    // disable copy and assignment constructors
+    BucketExtent(const BucketExtent&);
+    BucketExtent& operator=(const BucketExtent&);
+
+public:
+    BucketExtent(const range &query, int interval_len) {
+        rid_ = query.rid;
+        step_ = interval_len;
+        bgn_ = std::max((query.beg / interval_len) -1, 0);
+        bgn_ *= interval_len;
+        end_ = ((query.end / interval_len)) * interval_len;
+        current_ = 0;
+    }
+
+    range begin() {
+        range r = range(rid_, bgn_, bgn_ + step_);
+        current_ = bgn_;
+        return r;
+    }
+
+    range next() {
+        current_ += step_;
+        range r = range(rid_, current_, current_ + step_);
+        return r;
+    }
+
+    range end() {
+        range r = range(rid_, end_, end_ + step_);
+        return r;
+    }
+};
+
+// Map a range into a set of buckets. The records in the range
+// can be found by scanning all the buckets. Note that a BCF record
+// is placed in a bucket based on its start position.
+// It could start in one bucket, and extend into an adjacent bucket(s).
+//
+// This class separates out the logic for answering the following questions:
+//   1) Which buckets should I scan for this query range?
+//   2) Which bucket does a bcf1_t with this range go into?
+class BCFBucketRange {
+private:
+    // disable copy and assignment constructors
+    BCFBucketRange(const BCFBucketRange&);
+    BCFBucketRange& operator=(const BCFBucketRange&);
+
+public:
+    int interval_len;
+
+    // constructor
+    BCFBucketRange(int interval_len) : interval_len(interval_len) {};
+
+// Create a key for a bucket that includes records from [dataset],
+// on chromosome [rid], whose start position is in the genomic range [beg,end).
+//
+// Note that the end position might be outside the [beg,end) genomic range.
+// The search logic needs to compensate for this, by looking at several buckets.
+// The key is generated so that data for a genomic range from all samples will be
+// located contiguously on disk.
+    std::string gen_key(const std::string &dataset, const range& rng) {
+        stringstream ss;
+        // We add leading zeros to ensure that string lexicographic ordering will sort
+        // keys in ascending order.
+        ss << setw(3) << setfill('0') << rng.rid
+           << setw(10) << setfill('0') << rng.beg
+           << setw(10) << setfill('0') << rng.end
+           << dataset;
+        string key = ss.str();
+        return key;
+    }
+
+    // Given a [query] range, return a structure describing all the buckets
+    // to search through.
+    std::shared_ptr<BucketExtent> scan(const std::string &dataset, const range& query) {
+        return make_shared<BucketExtent>(query, interval_len);
+    }
+
+    // Which bucket should a BCF record be placed in?
+    range bucket(const std::string &dataset, bcf1_t *rec) {
+        int bgn = (rec->pos / interval_len) * interval_len;
+        return range(rec->rid, bgn, bgn + interval_len);
+    }
+};
+
+
 // pImpl idiom
 struct BCFKeyValueData::body {
     KeyValue::DB* db;
+    std::unique_ptr<BCFBucketRange> rangeHelper;
 };
 
 auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
@@ -22,7 +120,9 @@ auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
 BCFKeyValueData::BCFKeyValueData() = default;
 BCFKeyValueData::~BCFKeyValueData() = default;
 
-Status BCFKeyValueData::InitializeDB(KeyValue::DB* db, const vector<pair<string,size_t>>& contigs) {
+Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
+                                     const vector<pair<string,size_t>>& contigs,
+                                     int interval_len) {
     Status s;
 
     // create collections
@@ -30,23 +130,40 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db, const vector<pair<string,
         S(db->create_collection(coll));
     }
 
-    // store contigs
     KeyValue::CollectionHandle config;
     S(db->collection("config", config));
-    set<string> prev_contigs;
-    YAML::Emitter yaml;
-    yaml << YAML::BeginSeq;
-    for (const auto& p : contigs) {
-        if (prev_contigs.find(p.first) != prev_contigs.end()) {
-            return Status::Invalid("duplicate reference contig", p.first);
+
+    // store contigs
+    {
+        set<string> prev_contigs;
+        YAML::Emitter yaml;
+        yaml << YAML::BeginSeq;
+        for (const auto& p : contigs) {
+            if (prev_contigs.find(p.first) != prev_contigs.end()) {
+                return Status::Invalid("duplicate reference contig", p.first);
+            }
+            yaml << YAML::BeginMap;
+            yaml << YAML::Key << p.first;
+            yaml << YAML::Value << p.second;
+            yaml << YAML::EndMap;
         }
-        yaml << YAML::BeginMap;
-        yaml << YAML::Key << p.first;
-        yaml << YAML::Value << p.second;
-        yaml << YAML::EndMap;
+        yaml << YAML::EndSeq;
+        S(db->put(config, "contigs", yaml.c_str()));
     }
-    yaml << YAML::EndSeq;
-    return db->put(config, "contigs", yaml.c_str());
+
+    // store parameters
+    {
+        YAML::Emitter yaml;
+        yaml << YAML::BeginSeq;
+        yaml << YAML::BeginMap;
+        yaml << YAML::Key << "interval_len";
+        yaml << YAML::Value << interval_len;
+        yaml << YAML::EndMap;
+        yaml << YAML::EndSeq;
+        S(db->put(config, "param", yaml.c_str()));
+    }
+
+    return Status::OK();
 }
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
@@ -64,6 +181,44 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
     ans->body_.reset(new body);
     ans->body_->db = db;
 
+    // Read the parameters from the DB
+    const char *unexpected = "BCFKeyValueData::Open unexpected YAML";
+    Status s;
+    vector<pair<string,size_t> > param;
+    S(ans->body_->db->collection("config", coll));
+    try {
+        string param_yaml;
+        S(ans->body_->db->get(coll, "param", param_yaml));
+        YAML::Node n = YAML::Load(param_yaml);
+        if (!n.IsSequence()) {
+            return Status::Invalid(unexpected, param_yaml);
+        }
+        for (const auto& item : n) {
+            if (!item.IsMap() || item.size() != 1) {
+                return Status::Invalid(unexpected, param_yaml);
+            }
+            auto m = item.as<map<string,size_t>>();
+            assert (m.size() == 1);
+            param.push_back(*(m.begin()));
+        }
+    } catch(YAML::Exception& exn) {
+        return Status::Invalid("BCFKeyValueData::Open YAML parse error in param", exn.msg);
+    }
+    if (param.empty()) {
+        return Status::Invalid("database has empty parameter metadata");
+    }
+
+    // Sift through parameters, sanity check
+    int interval_len = -1;
+    for (auto item : param) {
+        if (item.first == "interval_len") {
+            interval_len = item.second;
+            if (interval_len <= 0)
+                return Status::Invalid("bad interval length ", std::to_string(interval_len));
+        }
+    }
+
+    ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     return Status::OK();
 }
 
@@ -174,30 +329,38 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
     return Status::OK();
 }
 
-// Note: if the bucket(s) does not exist, return NotFound.
-// If the bucket(s) exists, but no records were found, return an empty list
-Status BCFKeyValueData::dataset_bcf(const string& dataset,
-                                    const bcf_hdr_t* hdr,
-                                    const range& pos,
-                                    vector<shared_ptr<bcf1_t> >& records) const {
-    Status s;
-
-    // Retrieve the pertinent DB entries
-    KeyValue::CollectionHandle coll;
-    S(body_->db->collection("bcf",coll));
+// Add a <key,value> pair to the database.
+// The key is a concatenation of the dataset name and the chromosome and genomic range.
+Status BCFKeyValueData::write_bucket(KeyValue::DB* db,
+                                     BCFWriter *writer,
+                                     const string& dataset,
+                                     const range& rng) {
+    // extract the data
     string data;
+    Status s;
+    S(writer->contents(data));
 
-    std::string key(dataset);
-    key += ":";
-    key += std::to_string(pos.rid);
-    s = body_->db->get(coll, key, data);
-    if (s == StatusCode::NOT_FOUND) {
-        // FIXME: look at adjacent ranges?
-        return Status::NotFound();
-    }
+    // Generate the key
+    string key = body_->rangeHelper->gen_key(dataset, rng);
 
-    // Parse the records and extract those overlapping pos
-    records.clear();
+    // write to the database
+    KeyValue::CollectionHandle coll_bcf;
+    S(db->collection("bcf", coll_bcf));
+    S(db->put(coll_bcf, key, data));
+    return Status::OK();
+}
+
+
+// Parse the records and extract those overlapping the query range
+static Status scan_bucket(
+    const string &dataset,
+    const string &key,
+    const string &data,
+    const bcf_hdr_t* hdr,
+    const range& query,
+    vector<shared_ptr<bcf1_t> >& records)
+{
+    Status s;
     unique_ptr<BCFReader> reader;
     S(BCFReader::Open(data.c_str(), data.size(), reader));
 
@@ -205,14 +368,55 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset,
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
         range vt_rng(vt);
-        if (pos.overlaps(vt_rng)) {
+        if (query.overlaps(vt_rng)) {
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
-                return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", dataset + "@" + pos.str());
+                return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
+                                       dataset + "@" + query.str());
             }
             records.push_back(vt);
         }
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
+    return Status::OK();
+}
+
+// Search all the buckets that may hold records within the query range. The tricky
+// corner case is the bucket immediately before the beginning of the query range.
+// It may hold records that start outside the range, but end inside it. We want
+// to return those as well.
+//
+// Return value: list of records that overlap with the query
+// range. This list may be empty, if no overlapping records were
+// found. If an invalid rid is requested, the return value will be an
+// empty list.
+Status BCFKeyValueData::dataset_bcf(const string& dataset,
+                                    const bcf_hdr_t* hdr,
+                                    const range& query,
+                                    vector<shared_ptr<bcf1_t> >& records) const {
+    Status s;
+    records.clear();
+
+    // basic sanity checks
+    if (query.rid < 0 || query.beg < 0 || query.end < 0)
+        return Status::Invalid("BCFKeyValueData::dataset_bcf: invalid query range", query.str());
+
+    // Retrieve the pertinent DB entries
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("bcf",coll));
+
+    // iterate through the buckets in range
+    shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan(dataset, query);
+
+    for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
+        //cout << "scanning bucket " << r.str() << endl;
+        string key = body_->rangeHelper->gen_key(dataset, r);
+        string data;
+        s = body_->db->get(coll, key, data);
+        if (s != StatusCode::NOT_FOUND) {
+            scan_bucket(dataset, key, data, hdr, query, records);
+        }
+    }
+
     return Status::OK();
 }
 
@@ -239,7 +443,7 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
 }
 
 // Sanity-check an individual bcf1_t record before ingestion.
-static Status validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
+Status BCFKeyValueData::validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
     // Check that bcf->rlen is calculated correctly based on POS,END if
     // available or POS,strlen(REF) otherwise
     bcf_info_t *info = bcf_get_info(hdr, bcf, "END");
@@ -262,36 +466,13 @@ static Status validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
         }
     }
 
+    if (bcf->rlen > body_->rangeHelper->interval_len) {
+        return Status::Invalid("gVCF has record that is longer than ",
+                               std::to_string(body_->rangeHelper->interval_len));
+    }
+
     return Status::OK();
 }
-
-// Add a <key,value> pair to the database.
-// The key is a concatenation of the dataset name and the chromosome.
-// The data is
-static Status write_chrom(KeyValue::DB* db,
-                          BCFWriter *writer,
-                          const string& dataset,
-                          int chrom_id)
-{
-    Status s;
-    //cout << "write_chrom (" << dataset << ":" << chrom_id << ")" << endl;
-
-    // extract the data
-    string data;
-    S(writer->contents(data));
-
-    // Generate the key
-    string key(dataset);
-    key += ":";
-    key += std::to_string(chrom_id);
-
-    // write to the database
-    KeyValue::CollectionHandle coll_bcf;
-    S(db->collection("bcf", coll_bcf));
-    S(db->put(coll_bcf, key, data));
-    return Status::OK();
-}
-
 
 Status BCFKeyValueData::import_gvcf(const DataCache* cache,
                                     const string& dataset,
@@ -318,33 +499,40 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     Status s;
     unique_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
-    S(BCFWriter::Open(writer));
 
+    range bucket(-1, 0, body_->rangeHelper->interval_len);
     int c;
-    int chrom_id = -1;
     for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
         c == 0;
         c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
+        // Make sure a record is not longer than [BCFBucketRange::interval_len].
+        // If this is not true, then we need to compensate in the search
+        // routine.
         S(validate_bcf(hdr.get(), vt.get()));
-        // Moved to the next chromosome, write this key.
-        if ( vt->rid != chrom_id &&
-             writer->get_num_entries() > 0) {
-            S(write_chrom(body_->db, writer.get(), dataset, chrom_id));
+
+        // should we start a new bucket?
+        if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
+            // write old bucket to DB
+            if (writer != nullptr && writer->get_num_entries() > 0)
+                S(write_bucket(body_->db, writer.get(), dataset, bucket));
 
             // start a new in-memory chunk
-            writer = NULL;
+            writer = nullptr;
             S(BCFWriter::Open(writer));
+
+            // Move to a new genomic range. Round down the start address to
+            // a natural multiple of the interval length.
+            bucket = body_->rangeHelper->bucket(dataset, vt.get());
         }
-        chrom_id = vt->rid;
         S(writer->write(vt.get()));
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
-    // close last chromosome
-    if (writer->get_num_entries() > 0) {
-        S(write_chrom(body_->db, writer.get(), dataset, chrom_id));
+    // close last bucket
+    if (writer != nullptr && writer->get_num_entries() > 0) {
+        S(write_bucket(body_->db, writer.get(), dataset, bucket));
     }
-    writer = NULL;  // clear the memory state
+    writer = nullptr;  // clear the memory state
 
     // Serialize header into a string
     string hdr_data = BCFWriter::write_header(hdr.get());
