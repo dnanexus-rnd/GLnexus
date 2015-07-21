@@ -14,7 +14,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(GLnexus)
 
 ExternalProject_Add(htslib
-    URL https://github.com/dnanexus/htslib/archive/3c8ae031.zip
+    URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
