@@ -50,7 +50,7 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db, const vector<pair<string,
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
     assert(db != nullptr);
-    
+
     // check database has been initialized
     KeyValue::CollectionHandle coll;
     for (const auto& collnm : collections) {
@@ -408,7 +408,7 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
         S(wb->put(coll_sample_dataset, sample, dataset));
     }
     return wb->commit();
-    
+
 }
 
 } // namespace GLnexus
