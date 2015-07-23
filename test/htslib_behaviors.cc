@@ -1,4 +1,4 @@
-// Test certain non-obvious behaviors of htslib 
+// Test certain non-obvious behaviors of htslib
 
 #include <iostream>
 #include <vcf.h>
@@ -12,6 +12,9 @@ using namespace std;
 
 // sugar for declaring a unique_ptr with a custom deleter function
 #define UPD(T,name,ini,del) std::unique_ptr<T, void(*)(T*)> up_##name((ini), (del)); auto name = up_##name.get();
+
+// Number of bytes in memory that a packed BCF records takes
+#define BCF_SIZE_PACKED_RECORD ()
 
 TEST_CASE("htslib VCF missing data representation") {
     // Verify how htslib data structures represent missing data such as ./.
@@ -117,7 +120,7 @@ TEST_CASE("htslib VCF header chrom injection") {
 
 TEST_CASE("htslib VCF header synthesis") {
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-    
+
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=A,length=1000000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
@@ -196,7 +199,7 @@ TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
     // We may need to write a significant htslib patch to make it actually
     // able to read & write "uncompressed BCF"
 
-    up_vcf.reset(bcf_open(pfn, "wu"));
+    up_vcf.reset(bcf_open(pfn, "wb"));
     vcf = up_vcf.get();
 
     //REQUIRE(bcf_hdr_write(vcf, hdr) == 0);
@@ -223,6 +226,128 @@ TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
 
     for (const auto& rec : records) {
         REQUIRE(vcf_read(vcf, hdr, vt.get()) == 0);
+        REQUIRE(vt->rid == rec->rid);
+        REQUIRE(vt->pos == rec->pos);
+        REQUIRE(vt->n_sample == rec->n_sample);
+        REQUIRE(vt->n_allele == rec->n_allele);
+        REQUIRE(vt->n_info == rec->n_info);
+        REQUIRE(bcf_unpack(vt.get(), BCF_UN_ALL) == 0);
+    }
+
+    if (buf) {
+        free(buf);
+    }
+}
+
+/* Ccalculate the amount of bytes it would take to pack this bcf1 record.
+ */
+static int bcf_calc_packed_len(const std::shared_ptr<bcf1_t> &v)
+{
+    return 32 + v.get()->shared.l + v.get()->indiv.l;
+}
+
+
+/*
+  Write the BCF record directly to a memory location. Return how much
+  space was used.
+
+  Note: the code is adapted from the bcf_write routine in htslib/vcf.c.
+  The original prototype is:
+      int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
+  The original routine writes to a file, not to memory.
+*/
+static int bcf_write_to_mem(bcf1_t *v, char *addr) {
+    int loc = 0;
+
+    uint32_t x[8];
+    x[0] = v->shared.l + 24; // to include six 32-bit integers
+    x[1] = v->indiv.l;
+    memcpy(x + 2, v, 16);
+    x[6] = (uint32_t)v->n_allele<<16 | v->n_info;
+    x[7] = (uint32_t)v->n_fmt<<24 | v->n_sample;
+
+    memcpy(&addr[loc], (char*)x, sizeof(x));
+    loc += sizeof(x);
+    memcpy(&addr[loc], v->shared.s, v->shared.l);
+    loc += v->shared.l;
+    memcpy(&addr[loc], v->indiv.s, v->indiv.l);
+    loc += v->indiv.l;
+
+    return loc;
+}
+
+/*
+  Read a BCF record from memory, return the length of the packed record in RAM.
+
+  Note: the code is adapted from the bcf_read1_core routine in htslib/vcf.c.
+  The original prototype is:
+       int bcf_read1_core(BGZF *fp, bcf1_t *v)
+  The original routine reads from a file, not from memory.
+*/
+static int bcf_read_from_mem(char *addr, bcf1_t *v) {
+    int loc = 0;
+    uint32_t x[8];
+    memcpy(x, &addr[loc], 32);
+    loc += 32;
+
+    x[0] -= 24; // to exclude six 32-bit integers
+    ks_resize(&v->shared, x[0]);
+    ks_resize(&v->indiv, x[1]);
+    memcpy(v, x + 2, 16);
+    v->n_allele = x[6]>>16; v->n_info = x[6]&0xffff;
+    v->n_fmt = x[7]>>24; v->n_sample = x[7]&0xffffff;
+    v->shared.l = x[0], v->indiv.l = x[1];
+
+    // silent fix of broken BCFs produced by earlier versions of
+    // bcf_subset, prior to and including bd6ed8b4
+    if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
+
+    memcpy(v->shared.s, &addr[loc], v->shared.l);
+    loc += v->shared.l;
+    memcpy(v->indiv.s, &addr[loc], v->indiv.l);
+    loc += v->indiv.l;
+
+    return loc;
+}
+
+
+TEST_CASE("DNAnexus VCF/BCF serialization") {
+    // load trio_denovo.vcf
+    UPD(vcfFile, vcf, bcf_open("test/data/trio_denovo.vcf", "r"), [](vcfFile* f) { bcf_close(f); });
+    UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
+    shared_ptr<bcf1_t> vt;
+    vector<shared_ptr<bcf1_t>> records;
+
+    bcf_hdr_append(hdr,"##contig=<ID=21,length=1000000>");
+    bcf_hdr_sync(hdr);
+
+    do {
+        if (vt) {
+            records.push_back(vt);
+        }
+        vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+    } while (bcf_read(vcf, hdr, vt.get()) == 0);
+
+    REQUIRE(records.size() == 3);
+
+    // serialize the BCF records into a memory buffer - without the header
+    int memlen = 0;
+    for (const auto& rec : records) {
+        memlen += bcf_calc_packed_len(rec);
+    }
+    std::cout << "memlen=" << memlen << std::endl;
+    char *buf = (char*) malloc(memlen);
+    REQUIRE(buf != NULL);
+
+    int loc = 0;
+    for (const auto& rec : records) {
+        loc += bcf_write_to_mem(rec.get(), &buf[loc]);
+    }
+
+    // now read the records back from memory & ensure they match the originals
+    loc = 0;
+    for (const auto& rec : records) {
+        loc += bcf_read_from_mem(&buf[loc], vt.get());
         REQUIRE(vt->rid == rec->rid);
         REQUIRE(vt->pos == rec->pos);
         REQUIRE(vt->n_sample == rec->n_sample);
