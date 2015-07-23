@@ -14,6 +14,10 @@ First [install gcc 4.9](http://askubuntu.com/a/581497), `libjemalloc-dev`, `libb
 cmake -Dtest=ON . && make && ./unit_tests
 ```
 
+### Developer documentation
+
+Evolving developer documentation can be found on the [project github page](http://dnanexus-rnd.github.io/GLnexus/index.html).
+
 ### Coding conventions
 
 * C++14, CMake
