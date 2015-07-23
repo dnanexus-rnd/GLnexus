@@ -12,11 +12,16 @@ addons:
       - libboost-dev
 
 before_install:
+  # Install current version of doxygen
+  - sudo add-apt-repository -y ppa:libreoffice/ppa
+  - sudo apt-get update
+  - sudo apt-get install doxygen
+
   # The lz4 library requires a special repository
   - sudo add-apt-repository -y ppa:nathan-renniewaldock/ppa
   - sudo apt-get update
-  - sudo apt-get install liblz4-dev 
-  
+  - sudo apt-get install liblz4-dev
+
   # install updated version of cmake
   - wget http://www.cmake.org/files/v3.3/cmake-3.3.0-rc3-Linux-x86_64.sh
   - sh cmake-3.3.0-rc3-Linux-x86_64.sh --prefix=$HOME --exclude-subdir
@@ -41,3 +46,28 @@ script:
   - gcc --version
   # Build and run unit tests
   - cmake -Dtest=ON . && make && ./unit_tests
+
+# Encrypted Github credential (using yifei's account)
+env:
+  global:
+    - secure: "i/0Zm5ZtBe8oHaRHGBmlXzcaS61VoovEz758LY4GFKl0PncwFfFWAN8Yt2iWBZPLu5hHXudHKNaJc5ORqoqggLYzgDue++6mqL5lQfJbl9Luh/itoi20M9pt+I2dMW+9qLipROH3tTxGSiIVxacRcAbkxMdHz71iiHZ0PViLQ0UyE12ugSqNn81VYUDzgPISc0vs+8I76FGXB7i4Ox1HO2d8OLJwfnzriBXuQyHbLJT4fA1yz53sT+RNc5iTR4/xGA5qfnuGgrjcLZYsjh8bSzjvsYeA3RddIcsjmOhCw/ZvEMIvvqi9oAV//EiO95c8l+GG3U0k/78u7YafROnr901aDXSkS+1KitOT3n9KoQkuDZMpqUGCX30tSBefpnpq8EdxibaUfauhrkf0mNbZepZU18vIGB3h49lGGkBkJ1tR5fw/htnm7hUywXVRkcur/DYqPtsc3aM0HViEGsMplTIEsCYJE/O39Lde1ksJrYQCYp4AAlgmSsrKo0WLydc8gnbfYhxws+NzI2VH5mkr7BCEiK6fG2CIOT0xFJqCQbkhFOKVKyArUBou8bKTAbB7CFZNeMcbUEuVWY5NJ0Gvn4uiYOa47e/P+i8FO/LV+Rcpx8Jabn0E5bL1gRHuMqo7RfdF9B7ape6w2+Qyn2MFkplSfjadVP8mFefMIckYjU4="
+
+# Publish documentation after success
+after_success:
+  # prepare for pushing documentation
+  - mkdir html
+  - cd html
+  - git clone https://github.com/dnanexus-rnd/GLnexus.git .
+  - git checkout gh-pages
+  - git config --global user.name $GIT_NAME
+  - git config --global user.email $GIT_EMAIL
+
+  # Make doxygen documentation and publish
+  - cd ..
+  - timeNow=`date`; echo  $'\n\n'Documentation Last Updated:$timeNow >> README.md
+  - doxygen Doxyfile
+  - cd html
+  - ls
+  - git add --all .
+  - git commit -m "Auto-updating Doxygen developer documentation"
+  - git push https://$GH_TOKEN@github.com/dnanexus-rnd/GLnexus gh-pages
