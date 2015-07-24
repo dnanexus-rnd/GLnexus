@@ -41,6 +41,9 @@ src/release-0.5.2.zip
 src/yaml-cpp/
 src/yaml-cpp-stamp/
 
+# Documnentation folder
+html/
+
 # CMake stuff
 CMakeCache.txt
 CMakeFiles/

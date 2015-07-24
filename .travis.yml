@@ -12,28 +12,8 @@ addons:
       - libboost-dev
 
 before_install:
-  # The lz4 library requires a special repository
-  - sudo add-apt-repository -y ppa:nathan-renniewaldock/ppa
-  - sudo apt-get update
-  - sudo apt-get install liblz4-dev 
-  
-  # install updated version of cmake
-  - wget http://www.cmake.org/files/v3.3/cmake-3.3.0-rc3-Linux-x86_64.sh
-  - sh cmake-3.3.0-rc3-Linux-x86_64.sh --prefix=$HOME --exclude-subdir
-
-  # Install GCC 4.9
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo apt-get update
-  - sudo apt-get install gcc-4.9 g++-4.9
-  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
-
-  # Install somewhat current version of boost for use in yaml-cpp
-  - sudo add-apt-repository -y ppa:boost-latest/ppa
-  - sudo apt-get update
-  - sudo apt-get install boost1.55
-
-  # install support compression libraries
-  - sudo apt-get install libsnappy-dev libsnappy1
+  - chmod u+x .travis/before_install.sh
+  - .travis/before_install.sh
 
 script:
   # Report version of CMake and GCC
@@ -41,3 +21,12 @@ script:
   - gcc --version
   # Build and run unit tests
   - cmake -Dtest=ON . && make && ./unit_tests
+
+# Encrypted Github credential (using yifei's account)
+env:
+  global:
+    - secure: "i/0Zm5ZtBe8oHaRHGBmlXzcaS61VoovEz758LY4GFKl0PncwFfFWAN8Yt2iWBZPLu5hHXudHKNaJc5ORqoqggLYzgDue++6mqL5lQfJbl9Luh/itoi20M9pt+I2dMW+9qLipROH3tTxGSiIVxacRcAbkxMdHz71iiHZ0PViLQ0UyE12ugSqNn81VYUDzgPISc0vs+8I76FGXB7i4Ox1HO2d8OLJwfnzriBXuQyHbLJT4fA1yz53sT+RNc5iTR4/xGA5qfnuGgrjcLZYsjh8bSzjvsYeA3RddIcsjmOhCw/ZvEMIvvqi9oAV//EiO95c8l+GG3U0k/78u7YafROnr901aDXSkS+1KitOT3n9KoQkuDZMpqUGCX30tSBefpnpq8EdxibaUfauhrkf0mNbZepZU18vIGB3h49lGGkBkJ1tR5fw/htnm7hUywXVRkcur/DYqPtsc3aM0HViEGsMplTIEsCYJE/O39Lde1ksJrYQCYp4AAlgmSsrKo0WLydc8gnbfYhxws+NzI2VH5mkr7BCEiK6fG2CIOT0xFJqCQbkhFOKVKyArUBou8bKTAbB7CFZNeMcbUEuVWY5NJ0Gvn4uiYOa47e/P+i8FO/LV+Rcpx8Jabn0E5bL1gRHuMqo7RfdF9B7ape6w2+Qyn2MFkplSfjadVP8mFefMIckYjU4="
+
+# Publish documentation after success for the master branch
+after_success:
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then chmod u+x .travis/after_success.sh; .travis/after_success.sh; fi
