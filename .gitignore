@@ -39,5 +39,5 @@ Makefile
 cmake_install.cmake
 external/
 
-# cscope 
+# cscope
 cscope*
