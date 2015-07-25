@@ -9,7 +9,7 @@ addons:
   apt:
     packages:
       - libjemalloc-dev
-      - libboost-dev
+      - libsnappy-dev
 
 before_install:
   - chmod u+x .travis/before_install.sh

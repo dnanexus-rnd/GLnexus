@@ -25,5 +25,3 @@ sudo add-apt-repository -y ppa:boost-latest/ppa
 sudo apt-get update
 sudo apt-get install boost1.55
 
-# install support compression libraries
-sudo apt-get install libsnappy-dev libsnappy1
