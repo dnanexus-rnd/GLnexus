@@ -39,9 +39,5 @@ Makefile
 cmake_install.cmake
 external/
 
-# htslib stuff
-mem:*
-src/1.*.zip
-
-# cscope 
+# cscope
 cscope*
