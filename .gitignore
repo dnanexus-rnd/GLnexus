@@ -40,6 +40,7 @@ src/htslib-stamp/
 src/release-0.5.2.zip
 src/yaml-cpp/
 src/yaml-cpp-stamp/
+src/1.*.zip
 
 # CMake stuff
 CMakeCache.txt
@@ -48,9 +49,5 @@ Makefile
 cmake_install.cmake
 tmp/
 
-# htslib stuff
-mem:*
-src/1.*.zip
-
-# cscope 
+# cscope
 cscope*
