@@ -37,26 +37,11 @@ using namespace std;
 
 namespace GLnexus {
 
-class BCFWriter {
-    static int INIT_SIZE = 1024;
-    static int SIZE_MULTIPLIER = 2;
-    static int MAX_REASONABLE_SIZE = 16 * 1024 * 1024;
-
-    // A string that that keeps serialized records. We add to its end addtional records
-    // as these are written.
-    string buf_;
-    int valid_bytes_ = 0;
-    char *scratch_pad_ = NULL;
-    int scratch_pad_size_ = 0;
-    
-    BCFWriter() = default;
-
     // Ccalculate the amount of bytes it would take to pack this bcf1 record.
-    static int bcf_calc_packed_len(const std::shared_ptr<bcf1_t> &v)
+    static int bcf_calc_packed_len(bcf1_t *v)
     {
-        return 32 + v.get()->shared.l + v.get()->indiv.l;
+        return 32 + v->shared.l + v->indiv.l;
     }
-
 
     /*
       Write the BCF record directly to a memory location. Return how much
@@ -86,69 +71,6 @@ class BCFWriter {
         assert(loc == reclen);
     }
 
-public:
-
-    static Status Open(unique_ptr<BCFWriter>& ans) {
-        ans.reset(new BCFWriter);
-        ans.valid_bytes_ = 0;
-        ans.buf_.resize(INIT_SIZE);
-        ans.scratch_pad_ = (char*) malloc(INIT_SIZE);
-        assert(ans.scratch_pad_ != NULL);
-        ans.scratch_pad_size_ = INIT_SIZE;
-        
-        return Status::OK();
-    }
-
-    virtual ~BCFWriter() {
-        buf_.resize(0);
-        valid_bytes_ = 0;
-        free(scratch_pad_);
-        scratch_pad_ = NULL;
-        scratch_pad_size_ = 0;
-    }
-
-    Status write(bcf1_t* x) {
-        int reclen = bcf_calc_packed_len(x);
-
-        // Make sure the buffer has enough space for the
-        // new record. Multiply the size by a constant factor
-        // until we have sufficient space.
-        int remaining_len = buf_.capacity() - valid_bytes_;
-        while (remaining_len < reclen) {
-            buf_.resize(buf_.capacity() * SIZE_MULTIPLIER);
-            remaining_len = buf_.capacity() - valid_bytes_;
-            assert(buf_.capacity() < MAX_REASONABLE_SIZE);
-        }
-
-        // make sure we have enough scratch space
-        if (scratch_pad_size_ < reclen) {
-            free(scratch_pad_);
-            scratch_pad_ = (char*) malloc(reclen);
-            assert(scratch_pad_ != NULL);
-            scratch_pad_size_ = reclen;
-        }
-
-        // Separate the C code, from the C++ code
-        // Serialize the bcf1_t stuct into a [char*], then
-        // append it to the end of the buffer.
-        bcf_write_to_mem(x, reclen, scratch_pad_);
-        buf_.append(scratch_pad_, reclen);
-        return Status::OK();
-    }
-
-    Status contents(string& ans) {
-        ans.clear();
-        ans.replace(0, valid_bytes_, buf_);
-        return Status::OK();
-    }
-};
-
-class BCFReader {
-    const char* buf_ = nullptr;
-    size_t bufsz_;
-    int current_ = 0;
-    
-    BCFReader(const char* buf, size_t bufsz) : buf_(buf), bufsz_(bufsz) {}
 
     /*
       Read a BCF record from memory, return the length of the packed record in RAM.
@@ -158,7 +80,7 @@ class BCFReader {
           int bcf_read1_core(BGZF *fp, bcf1_t *v)
       The original routine reads from a file, not from memory.
     */
-    static int bcf_read_from_mem(char *addr, bcf1_t *v) {
+    static int bcf_read_from_mem(const char *addr, bcf1_t *v) {
         int loc = 0;
         uint32_t x[8];
         memcpy(x, &addr[loc], 32);
@@ -184,29 +106,97 @@ class BCFReader {
         return loc;
     }
 
-public:
-    static Status Open(const char* buf, size_t bufsz, unique_ptr<BCFReader>& ans) {
+
+    int BCFWriter::INIT_SIZE = 1024;
+    int BCFWriter::SIZE_MULTIPLIER = 2;
+    int BCFWriter::MAX_REASONABLE_SIZE = 16 * 1024 * 1024;
+
+    BCFWriter::BCFWriter() {}
+
+    Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
+        ans.reset(new BCFWriter);
+        ans->valid_bytes_ = 0;
+        ans->buf_.resize(INIT_SIZE);
+        ans->scratch_pad_ = (char*) malloc(INIT_SIZE);
+        assert(ans->scratch_pad_ != NULL);
+        ans->scratch_pad_size_ = INIT_SIZE;
+        
+        return Status::OK();
+    }
+
+    BCFWriter::~BCFWriter() {
+        buf_.resize(0);
+        valid_bytes_ = 0;
+        free(scratch_pad_);
+        scratch_pad_ = NULL;
+        scratch_pad_size_ = 0;
+    }
+
+    Status BCFWriter::write(bcf1_t* x) {
+        int reclen = bcf_calc_packed_len(x);
+
+        // Make sure the buffer has enough space for the
+        // new record. Multiply the size by a constant factor
+        // until we have sufficient space.
+        int remaining_len = buf_.capacity() - valid_bytes_;
+        while (remaining_len < reclen) {
+            buf_.resize(buf_.capacity() * SIZE_MULTIPLIER);
+            remaining_len = buf_.capacity() - valid_bytes_;
+            assert(buf_.capacity() < (size_t)MAX_REASONABLE_SIZE);
+        }
+
+        // make sure we have enough scratch space
+        if (scratch_pad_size_ < reclen) {
+            free(scratch_pad_);
+            scratch_pad_ = (char*) malloc(reclen);
+            assert(scratch_pad_ != NULL);
+            scratch_pad_size_ = reclen;
+        }
+
+        // Separate the C code, from the C++ code
+        // Serialize the bcf1_t stuct into a [char*], then
+        // append it to the end of the buffer.
+        bcf_write_to_mem(x, reclen, scratch_pad_);
+        buf_.append(scratch_pad_, reclen);
+        return Status::OK();
+    }
+
+    Status BCFWriter::contents(string& ans) {
+        ans.clear();
+        ans.replace(0, valid_bytes_, buf_);
+        return Status::OK();
+    }
+
+
+
+    // constructor
+    BCFReader::BCFReader(const char* buf, size_t bufsz) :
+        buf_(buf), bufsz_(bufsz)
+    {}
+
+    Status BCFReader::Open(const char* buf,
+                                  size_t bufsz,
+                                  unique_ptr<BCFReader>& ans) {
         ans.reset(new BCFReader(buf, bufsz));
         return Status::OK();
     }
 
-    virtual ~BCFReader() {
+    BCFReader::~BCFReader() {
         buf_ = NULL;
         bufsz_ = 0;
         current_ = 0;
     }
 
-    Status read(shared_ptr<bcf1_t>& ans) {
+    Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
         if (!ans) {
             ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
         }
 
-        if (current_ >= bufsz)
-            return Status::Not_Found;
+        if ((size_t)current_ >= bufsz_)
+            return Status::NotFound();
         int reclen = bcf_read_from_mem(&buf_[current_], ans.get());
         current_ += reclen;
         return Status::OK();
     }
-};
 
 } // namespace GLnexus
