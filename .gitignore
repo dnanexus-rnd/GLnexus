@@ -42,6 +42,9 @@ src/yaml-cpp/
 src/yaml-cpp-stamp/
 src/1.*.zip
 
+# Documnentation folder
+html/
+
 # CMake stuff
 CMakeCache.txt
 CMakeFiles/

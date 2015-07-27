@@ -125,7 +125,7 @@ if (test)
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts boost_system boost_filesystem rt snappy z bz2 lz4 rt libyaml-cpp)
+  target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts rt snappy z bz2 lz4 rt libyaml-cpp)
 
   add_test(unit_tests unit_tests)
 endif()

@@ -4,7 +4,6 @@
 #include <string>
 #include <stdio.h>
 #include <iostream>
-#include <boost/filesystem.hpp>
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
@@ -19,9 +18,7 @@ static std::string COLL_NAME = "rocky2";
 
 TEST_CASE("Basic operations on RocksDB") {
   // Remove the files under the DB path
-  const boost::filesystem::path path(kDBPath);
-  if (boost::filesystem::exists(path))
-      boost::filesystem::remove_all(path);
+  system(("rm -rf " + kDBPath).c_str());
 
   DB* db;
   Options options;
@@ -105,5 +102,5 @@ TEST_CASE("Basic operations on RocksDB") {
 
   // destroy is not sufficient, we also need to remove the files 
   // under the path
-  boost::filesystem::remove_all(kDBPath);
+  system(("rm -rf " + kDBPath).c_str());
 }
