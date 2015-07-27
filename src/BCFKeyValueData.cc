@@ -1,4 +1,5 @@
 #include "BCFKeyValueData.h"
+#include "BCFSerialize.h"
 #include "yaml-cpp/yaml.h"
 #include "vcf.h"
 #include "hfile.h"
@@ -167,9 +168,7 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
 
     // Parse the header
     unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(nullptr, data.c_str(), data.size(), reader));
-    hdr = reader->header();
-    assert(hdr);
+    S(BCFReader::Open(data.c_str(), data.size(), reader));
     return Status::OK();
 }
 
@@ -189,7 +188,7 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
 
     // Parse the records and extract those overlapping pos
     unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(hdr, data.c_str(), data.size(), reader));
+    S(BCFReader::Open(data.c_str(), data.size(), reader));
 
     records.clear();
     shared_ptr<bcf1_t> vt;
@@ -253,7 +252,7 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
 
     Status s;
     unique_ptr<BCFWriter> writer;
-    S(BCFWriter::Open(hdr.get(), false, writer));
+    S(BCFWriter::Open(writer));
 
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
 
@@ -272,7 +271,7 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
 
     // Serialize header
     writer.release();
-    S(BCFWriter::Open(hdr.get(), true, writer));
+    S(BCFWriter::Open(writer));
     S(writer->contents(data));
 
     // Store header and metadata
