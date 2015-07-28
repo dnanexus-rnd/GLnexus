@@ -15,7 +15,7 @@ project(GLnexus)
 
 ExternalProject_Add(htslib
     URL https://github.com/dnanexus/htslib/archive/3c8ae031.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j8
@@ -32,7 +32,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 
 ExternalProject_Add(rocksdb
     URL https://github.com/facebook/rocksdb/archive/rocksdb-3.10.2.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j8 OPT="-DNDEBUG -O2" static_lib
@@ -49,7 +49,7 @@ set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
 
 ExternalProject_Add(yaml-cpp
     URL https://github.com/jbeder/yaml-cpp/archive/release-0.5.2.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF .
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j8 OPT="-DNDEBUG -O2"
@@ -101,7 +101,7 @@ if (test)
 
   ExternalProject_Add(catch
     URL https://github.com/philsquared/Catch/archive/master.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/catch
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
