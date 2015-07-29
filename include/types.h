@@ -105,6 +105,7 @@ struct range {
     size_t size() const noexcept { return end-beg; }
 
     bool operator==(const range& r) const noexcept { return rid == r.rid && beg == r.beg && end == r.end; }
+    bool operator!=(const range& r) const noexcept { return !(*this == r); }
     bool operator<(const range& r) const noexcept { 
         return rid < r.rid || (rid == r.rid && (beg < r.beg || (beg == r.beg && end < r.end)));
     }

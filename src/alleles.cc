@@ -7,7 +7,10 @@ using namespace std;
 
 namespace GLnexus {
 
-// partition discovered alleles into non-overlapping "sites"
+using discovered_allele = pair<allele,pair<bool,float>>;
+
+// Partition discovered alleles into non-overlapping "sites". However,
+// individual pairs of alleles within "sites" may not overlap.
 auto partition_alleles(const discovered_alleles& alleles) {
     map<range,discovered_alleles> ans;
 
@@ -39,9 +42,9 @@ auto partition_alleles(const discovered_alleles& alleles) {
     return ans;
 }
 
-// prune rare alt alleles until the remaining set can be partitioned into non-
-// overlapping "sites", where all alleles at a site overlap by at least 1
-// position
+// Partition discovered alleles into non-overlapping "sites", where all
+// alleles at a site share at least one position. Prunes rare alleles until
+// that condition can be satisfied.
 auto prune_alleles(const discovered_alleles& alleles, discovered_alleles& pruned) {
     map<range,discovered_alleles> ans;
     pruned.clear();
@@ -99,8 +102,17 @@ auto prune_alleles(const discovered_alleles& alleles, discovered_alleles& pruned
 
     // add back in the ref alleles matching the remaining alt alleles
     for (const auto& refal : ref_alleles) {
-        if (ans.find(refal.first.pos) != ans.end()) {
-            ans[refal.first.pos].insert(refal);
+        auto site =
+            find_if(ans.begin(), ans.end(),
+                    [&] (const pair<range,discovered_alleles>& p) {
+                        return find_if(p.second.begin(), p.second.end(),
+                                       [&] (const discovered_allele& dsal) {
+                                        return (dsal.first.pos == refal.first.pos);
+                                       }) != p.second.end();
+                    });
+        if (site != ans.end()) {
+            assert(site->first.overlaps(refal.first.pos));
+            site->second.insert(refal);
         } else {
             pruned.insert(refal);
         }
@@ -109,102 +121,96 @@ auto prune_alleles(const discovered_alleles& alleles, discovered_alleles& pruned
     return ans;
 }
 
-// PLACEHOLDER no-op unification. just groups exact range matches
-Status unify_alleles_placeholder(const discovered_alleles& alleles, vector<unified_site>& ans) {
-    set<range> ph_ranges;
-    multimap<range,tuple<allele,bool,float> > ph_alleles;
+Status delineate_sites(const discovered_alleles& alleles, map<range,discovered_alleles>& ans) {
+    // Start with an initial partition_alleles to delineate totally non-
+    // interacting active regions. Individual pairs of alleles within each
+    // active region may be non-overlapping.
+    auto active_regions = partition_alleles(alleles);
 
-    // group alleles by exact range
-    for (const auto& it : alleles) {
-        UNPAIR(it,allele,ai)
-        UNPAIR(ai,is_ref,obs_count)
-        ph_ranges.insert(allele.pos);
-        ph_alleles.insert(make_pair(allele.pos,make_tuple(allele,is_ref,obs_count)));
-    }
-
-    // for each range
+    // Use prune_alleles to decompose each active region into sites in which
+    // all alleles share at least one position -- rare or lengthy alleles may
+    // need to be pruned in order to achieve this
     ans.clear();
-    for (const auto& ph_range : ph_ranges) {
-        unified_site us(ph_range);
-
-        // fill in the list of allele DNAs, with the ref allele first
-        string ph_ref_dna;
-        float ph_ref_obs;
-        vector<pair<string,float> > us_alleles;
-        auto its = ph_alleles.equal_range(ph_range);
-        for (auto it = its.first; it != its.second; it++) {
-            UNPAIR(*it,range2,p)
-            assert(ph_range == range2);
-            auto allele = get<0>(p);
-            auto is_ref = get<1>(p);
-            auto obs_count = get<2>(p);
-            if (is_ref) {
-                assert(ph_ref_dna.empty());
-                ph_ref_dna = allele.dna;
-                ph_ref_obs = obs_count;
-            } else {
-                us_alleles.push_back(make_pair(allele.dna,obs_count));
-            }
-        }
-        assert(!ph_ref_dna.empty());
-        us.alleles.push_back(ph_ref_dna);
-        us.observation_count.push_back(ph_ref_obs);
-
-        // sort alt alleles by decreasing observation count
-        sort(us_alleles.begin(), us_alleles.end(),
-             [] (const pair<string,float>& p1, const pair<string,float>& p2) {
-                return get<1>(p2) < get<1>(p1);
-             });
-        for (const auto& it : us_alleles) {
-            us.alleles.push_back(get<0>(it));
-            us.observation_count.push_back(get<1>(it));
-        }
-        
-
-        // fill in the unification
-        map<string,int> ph_alleles_indices;
-        for (unsigned i = 0; i < us.alleles.size(); i++) {
-            ph_alleles_indices[us.alleles[i]] = i;
-        }
-        for (auto it = its.first; it != its.second; it++) {
-            UNPAIR(*it,range2,p)
-            assert(ph_range == range2);
-            auto allele = get<0>(p);
-            us.unification[make_pair(ph_range.beg,allele.dna)] = ph_alleles_indices[allele.dna];
-        }
-
-        ans.push_back(us);
+    for (const auto& active_region : active_regions) {
+        discovered_alleles pruned_alleles;
+        auto site = prune_alleles(active_region.second, pruned_alleles);
+        ans.insert(site.begin(), site.end());
     }
-
     return Status::OK();
 }
 
-Status unify_alleles(const discovered_alleles& alleles, vector<unified_site>& ans) {
+// Placeholder unification: avoids the need for reference padding by pruning
+// any alleles covering a different reference range than the most common
+// alt allele
+//
+// alleles is a set of alleles which all overlap by at least 1 position
+Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site& ans) {
+
+    // sort the alleles ref first, then by decreasing observation count
+    vector<discovered_allele> allelesv(alleles.begin(), alleles.end());
+    sort(allelesv.begin(), allelesv.end(),
+         [] (const discovered_allele& p1, const discovered_allele& p2) {
+            if (p1.second.first == true && p2.second.first == false) {
+                return true;
+            } else if (p2.second.first == true && p1.second.first == false) {
+                return false;
+            }
+            return p2.second.second < p1.second.second;
+         });
+
+    // find the most common alt allele
+    auto most_common_alt_it =
+        find_if(allelesv.begin(), allelesv.end(),
+                [&] (const discovered_allele& p) {
+                    return p.second.first == false;
+                });
+    assert(most_common_alt_it != allelesv.end());
+    auto most_common_alt = most_common_alt_it->first;
+
+    // remove alleles not covering exactly the same reference range
+    allelesv.erase(remove_if(allelesv.begin(), allelesv.end(),
+                             [&] (const discovered_allele& p) {
+                                return p.first.pos != most_common_alt.pos;
+                             }), allelesv.end());
+
+    // sanity check: exactly one reference allele should remain
+    assert(count_if(allelesv.begin(), allelesv.end(),
+                    [] (const discovered_allele& p) { return p.second.first == true; }) == 1);
+    assert(count_if(allelesv.begin(), allelesv.end(),
+                    [] (const discovered_allele& p) { return p.second.first == false; }) > 0);
+
+    // fill out the unification
+    unified_site us(most_common_alt.pos);
+    for (int i = 0; i < allelesv.size(); i++) {
+        const discovered_allele& p = allelesv[i];
+        const allele& al = p.first;
+
+        us.alleles.push_back(al.dna);
+        us.unification[make_pair(al.pos.beg,al.dna)] = i;
+        us.observation_count.push_back(p.second.second);
+    }
+    ans = std::move(us);
+    return Status::OK();
+}
+
+/// Unify the alleles at one site
+Status unify_alleles(const range& pos, const discovered_alleles& alleles, unified_site& ans) {
     return unify_alleles_placeholder(alleles, ans);
+}
 
-    // TODO prune alleles
-    // 1. overhanging target region
-    // 2. rare
-    // 3. top N
+Status unified_sites(const discovered_alleles& alleles, vector<unified_site>& ans) {
+    Status s;
 
-    auto sites = partition_alleles(alleles);
+    map<range,discovered_alleles> sites;
+    S(delineate_sites(alleles, sites));
 
     ans.clear();
     for (const auto& site : sites) {
-        unified_site us(site.first);
-
-        // compute the reference allele covering the site. all reference sub-alleles unify into it.
-        // compute alt alleles by splicing in the non-ref alleles at appropriate offsets; remember their unification.
-
-        for (const auto& allele : site.second) {
-            assert(allele.first.pos.within(us.pos));
-            us.alleles.push_back(allele.first.dna);
-            // TODO: actually unify alleles!
-            // TODO: ensure ref allele comes first
-        }
+        UNPAIR(site, pos, site_alleles);
+        unified_site us(pos);
+        S(unify_alleles(pos, site_alleles, us));
         ans.push_back(us);
     }
-
     return Status::OK();
 }
 
