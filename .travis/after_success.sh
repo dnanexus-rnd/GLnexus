@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Prepare for pushing documentation
 mkdir html
