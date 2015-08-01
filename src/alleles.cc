@@ -7,7 +7,7 @@ using namespace std;
 
 namespace GLnexus {
 
-using discovered_allele = pair<allele,pair<bool,float>>;
+using discovered_allele = pair<allele,discovered_allele_info>;
 
 // Partition discovered alleles into non-overlapping "sites". However,
 // individual pairs of alleles within "sites" may not overlap.
@@ -53,8 +53,7 @@ auto prune_alleles(const discovered_alleles& alleles, discovered_alleles& pruned
     discovered_alleles ref_alleles, working_set;
     for (const auto& dsal : alleles) {
         UNPAIR(dsal,allele,ai)
-        bool is_ref = ai.first;
-        if (is_ref) {
+        if (ai.is_ref) {
             ref_alleles.insert(dsal);
         } else {
             working_set.insert(dsal);
@@ -90,9 +89,9 @@ auto prune_alleles(const discovered_alleles& alleles, discovered_alleles& pruned
         auto rare_allele = working_set.cend();
         float rare_count = numeric_limits<float>::max();
         for (auto it = working_set.cbegin(); it != working_set.cend(); it++) {
-            if(it->second.second < rare_count) {
+            if(it->second.observation_count < rare_count) {
                 rare_allele = it;
-                rare_count = it->second.second;
+                rare_count = it->second.observation_count;
             }
         }
         assert(rare_allele != working_set.cend());
@@ -150,19 +149,19 @@ Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site
     vector<discovered_allele> allelesv(alleles.begin(), alleles.end());
     sort(allelesv.begin(), allelesv.end(),
          [] (const discovered_allele& p1, const discovered_allele& p2) {
-            if (p1.second.first == true && p2.second.first == false) {
+            if (p1.second.is_ref == true && p2.second.is_ref == false) {
                 return true;
-            } else if (p2.second.first == true && p1.second.first == false) {
+            } else if (p2.second.is_ref == true && p1.second.is_ref == false) {
                 return false;
             }
-            return p2.second.second < p1.second.second;
+            return p2.second.observation_count < p1.second.observation_count;
          });
 
     // find the most common alt allele
     auto most_common_alt_it =
         find_if(allelesv.begin(), allelesv.end(),
                 [&] (const discovered_allele& p) {
-                    return p.second.first == false;
+                    return p.second.is_ref == false;
                 });
     assert(most_common_alt_it != allelesv.end());
     auto most_common_alt = most_common_alt_it->first;
@@ -175,9 +174,9 @@ Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site
 
     // sanity check: exactly one reference allele should remain
     assert(count_if(allelesv.begin(), allelesv.end(),
-                    [] (const discovered_allele& p) { return p.second.first == true; }) == 1);
+                    [] (const discovered_allele& p) { return p.second.is_ref == true; }) == 1);
     assert(count_if(allelesv.begin(), allelesv.end(),
-                    [] (const discovered_allele& p) { return p.second.first == false; }) > 0);
+                    [] (const discovered_allele& p) { return p.second.is_ref == false; }) > 0);
 
     // fill out the unification
     unified_site us(most_common_alt.pos);
@@ -187,7 +186,7 @@ Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site
 
         us.alleles.push_back(al.dna);
         us.unification[make_pair(al.pos.beg,al.dna)] = i;
-        us.observation_count.push_back(p.second.second);
+        us.observation_count.push_back(p.second.observation_count);
     }
     ans = std::move(us);
     return Status::OK();

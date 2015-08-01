@@ -75,7 +75,8 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
             for (int i = 0; i < record->n_allele; i++) {
                 allele al(rng, record->d.allele[i]);
                 bool is_ref = (i == 0);
-                dsals.insert(make_pair(al, make_pair(is_ref, obs_counts[i])));
+                discovered_allele_info ai = { is_ref, obs_counts[i] };
+                dsals.insert(make_pair(al, ai));
             }
         }
 
@@ -89,9 +90,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     multimap<range,pair<string,bool> > refcheck;
     for (const auto& it : ans) {
         UNPAIR(it,allele,ai)
-        UNPAIR(ai,is_ref,obs_count)
-        assert(obs_count == obs_count);
-        refcheck.insert(make_pair(allele.pos, make_pair(allele.dna, is_ref)));
+        refcheck.insert(make_pair(allele.pos, make_pair(allele.dna, ai.is_ref)));
         ranges.insert(allele.pos);
     }
     for (const auto& rng : ranges) {

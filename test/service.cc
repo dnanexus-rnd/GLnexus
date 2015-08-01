@@ -187,10 +187,10 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(als.size() == 7);
         auto p = als.find(allele(range(0, 1000, 1001), "G"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.second == 4);
+        REQUIRE(p->second.observation_count == 4);
         p = als.find(allele(range(0, 1010, 1012), "CC"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.second == 3);
+        REQUIRE(p->second.observation_count == 3);
     }
 
     SECTION("trio1 partial") {
@@ -198,7 +198,7 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(s.ok());
 
         REQUIRE(als.size() == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.second == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.observation_count == 3);
     }
 
     SECTION("2 trios") {
@@ -206,18 +206,17 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(s.ok());
 
         REQUIRE(als.size() == 10);
-        REQUIRE(is_sorted(als.begin(), als.end()));
 
-        REQUIRE(als.find(allele(range(0, 1000, 1001), "A"))->second.second == 6);
-        REQUIRE(als.find(allele(range(0, 1000, 1001), "G"))->second.second == 6);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "A"))->second.second == 6);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.second == 2);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.second == 2);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.second == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "AG"))->second.second == 3);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.second == 3);
-        REQUIRE(als.find(allele(range(0, 1010, 1013), "AGA"))->second.second == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1013), "CCC"))->second.second == 4);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "A"))->second.observation_count == 6);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "G"))->second.observation_count == 6);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "A"))->second.observation_count == 6);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "AG"))->second.observation_count == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.observation_count == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1013), "AGA"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1010, 1013), "CCC"))->second.observation_count == 4);
     }
 
     SECTION("spanning allele") {
@@ -225,9 +224,8 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(s.ok());
 
         REQUIRE(als.size() == 4);
-        REQUIRE(is_sorted(als.begin(), als.end()));
      
-        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.second == 3);
+        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.observation_count == 3);
         // tentative: by default alleles that extend outside of the range of interest get unified to no-call
     }
 

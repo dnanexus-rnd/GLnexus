@@ -151,8 +151,11 @@ struct allele {
     bool operator<=(const allele& rhs) const noexcept { return *this < rhs || *this == rhs; }
 };
 
-/// table of allele and (is_ref,observation_count)
-using discovered_alleles = std::map<allele,std::pair<bool,float> >;
+struct discovered_allele_info {
+    bool is_ref;
+    float observation_count;
+};
+using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);
 
 struct unified_site {
