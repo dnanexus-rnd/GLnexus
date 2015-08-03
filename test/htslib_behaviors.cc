@@ -17,9 +17,6 @@ using namespace std;
 // sugar for declaring a unique_ptr with a custom deleter function
 #define UPD(T,name,ini,del) std::unique_ptr<T, void(*)(T*)> up_##name((ini), (del)); auto name = up_##name.get();
 
-// Number of bytes in memory that a packed BCF records takes
-#define BCF_SIZE_PACKED_RECORD ()
-
 TEST_CASE("htslib VCF missing data representation") {
     // Verify how htslib data structures represent missing data such as ./.
     // genotypes, . genotype likelihoods, etc.
