@@ -1,4 +1,4 @@
-// Test certain non-obvious behaviors of htslib
+// Test certain non-obvious behaviors of htslib 
 
 #include <iostream>
 #include <fstream>
@@ -16,9 +16,6 @@ using namespace std;
 
 // sugar for declaring a unique_ptr with a custom deleter function
 #define UPD(T,name,ini,del) std::unique_ptr<T, void(*)(T*)> up_##name((ini), (del)); auto name = up_##name.get();
-
-// Number of bytes in memory that a packed BCF records takes
-#define BCF_SIZE_PACKED_RECORD ()
 
 TEST_CASE("htslib VCF missing data representation") {
     // Verify how htslib data structures represent missing data such as ./.
@@ -124,7 +121,7 @@ TEST_CASE("htslib VCF header chrom injection") {
 
 TEST_CASE("htslib VCF header synthesis") {
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-
+    
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=A,length=1000000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
