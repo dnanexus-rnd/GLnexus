@@ -159,16 +159,21 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
 
 Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
                                            shared_ptr<const bcf_hdr_t>& hdr) const {
-    // Retrieve the header
-    Status s;
-    KeyValue::CollectionHandle coll;
-    S(body_->db->collection("header",coll));
-    string data;
-    S(body_->db->get(coll, dataset, data));
+    if (!hdr) {
+        // Retrieve the header
+        Status s;
+        KeyValue::CollectionHandle coll;
+        S(body_->db->collection("header",coll));
+        string data;
+        S(body_->db->get(coll, dataset, data));
 
-    // Parse the header
-    unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(data.c_str(), data.size(), reader));
+        // Parse the header
+        bcf_hdr_t *hdr_ref = BCFReader::read_header(data.c_str(), data.size());
+        if (hdr_ref == NULL) {
+            return Status::Invalid("Bad BCF header");
+        }
+        hdr = shared_ptr<bcf_hdr_t>(hdr_ref, &bcf_hdr_destroy);
+    }
     return Status::OK();
 }
 
@@ -257,7 +262,9 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
 
     int c;
-    for(c = bcf_read(vcf.get(), hdr.get(), vt.get()); c == 0; c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
+    for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
+        c == 0;
+        c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
         S(writer->write(vt.get()));
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
@@ -269,10 +276,11 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     S(body_->db->collection("bcf", coll_bcf));
     S(body_->db->put(coll_bcf, dataset, data));
 
-    // Serialize header
-    writer.release();
-    S(BCFWriter::Open(writer));
-    S(writer->contents(data));
+    // Serialize header into a string
+    int hdrlen;
+    char *buf;
+    BCFWriter::write_header(hdr.get(), &hdrlen, &buf);
+    string hdr_data(buf, hdrlen);
 
     // Store header and metadata
     KeyValue::CollectionHandle coll_header, coll_sample_dataset;
@@ -280,12 +288,11 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     S(body_->db->collection("sample_dataset", coll_sample_dataset));
     unique_ptr<KeyValue::WriteBatch> wb;
     S(body_->db->begin_writes(wb));
-    S(wb->put(coll_header, dataset, data));
+    S(wb->put(coll_header, dataset, hdr_data));
     for (const auto& sample : samples) {
         S(wb->put(coll_sample_dataset, sample, dataset));
     }
     return wb->commit();
-
 }
 
 } // namespace GLnexus

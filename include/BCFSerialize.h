@@ -10,7 +10,7 @@ class BCFWriter {
  public:
     static int INIT_SIZE;
     static int SIZE_MULTIPLIER;
-    static int MAX_REASONABLE_SIZE;
+    static int MAX_BUF_SIZE;
 
     std::string buf_;
     int valid_bytes_ = 0;
@@ -23,7 +23,11 @@ class BCFWriter {
     ~BCFWriter();
     Status write(bcf1_t* x);
     Status contents(std::string& ans);
-};
+
+    static void write_header(const bcf_hdr_t *hdr,
+                             // OUT arguments
+                             int *hdrlen, char **buf_o);
+    };
 
 class BCFReader {
  public:
@@ -36,6 +40,8 @@ class BCFReader {
     static Status Open(const char* buf, size_t bufsz,  std::unique_ptr<BCFReader>& ans);
     ~BCFReader();
     Status read(std::shared_ptr<bcf1_t>& ans);
+
+    static bcf_hdr_t* read_header(const char* buf, int len);
 };
 
 } // namespace GLnexus
