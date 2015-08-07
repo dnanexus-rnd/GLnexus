@@ -50,6 +50,11 @@ class BCFWriter {
 class BCFReader {
  private:
     BCFReader(const char* buf, size_t bufsz);
+
+    const char* buf_ = nullptr;
+    size_t bufsz_;
+    int current_ = 0;
+
  public:
     /// Reads BCF records from a memory buffer (without the header)
     static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFReader>& ans);
