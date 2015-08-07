@@ -15,7 +15,8 @@ class BCFKeyValueData : public Data {
     std::unique_ptr<body> body_;
 
     BCFKeyValueData();
-public:
+
+ public:
     /// Initialize a brand-new database, which SHOULD be empty.
     static Status InitializeDB(KeyValue::DB* db, const std::vector<std::pair<std::string,size_t> >& contigs);
 

@@ -281,7 +281,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         // get all records
         shared_ptr<const bcf_hdr_t> hdr;
         s = data->dataset_bcf_header("NA12878D", hdr);
-        REQUIRE(s.ok());        
+        REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
         s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
         REQUIRE(s.ok());
@@ -333,8 +333,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(records.size() == 0);
 
         s = data->dataset_bcf("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
-        REQUIRE(s.ok());
-        REQUIRE(records.size() == 0);
+        REQUIRE(s == StatusCode::NOT_FOUND);
 
         // bogus dataset
         s = data->dataset_bcf("bogus", hdr.get(), range(1, 10009463, 10009466), records);

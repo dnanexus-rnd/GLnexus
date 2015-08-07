@@ -29,23 +29,29 @@ class BCFWriter {
 
     std::ostringstream oss_;
     int valid_bytes_ = 0;
+    int num_entries_ = 0;
 
  public:
     BCFWriter();
 
     /// Serializes BCF records into a memory buffer (without the header)
     static Status Open(std::unique_ptr<BCFWriter>& ans);
-    ~BCFWriter();
-    Status write(bcf1_t* x);
-    Status contents(std::string& ans);
 
     /// Writes a BCF header into a memory buffer
     static std::string write_header(const bcf_hdr_t *hdr);
+
+    ~BCFWriter();
+    Status write(bcf1_t* x);
+    Status contents(std::string& ans);
+    int get_num_entries() const;
 };
 
 class BCFReader {
  private:
     BCFReader(const char* buf, size_t bufsz);
+    const char* buf_ = nullptr;
+    size_t bufsz_;
+    int current_;
 
  public:
     /// Reads BCF records from a memory buffer (without the header)

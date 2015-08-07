@@ -126,7 +126,7 @@ public:
                std::string& value) const override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
         const rocksdb::ReadOptions r_options; // what should this be set to?
-        std::string v_tmp; // convert from pointer to reference, can we
+        std::string v_tmp;
         rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
         value = v_tmp;
         return convertStatus(s);
@@ -265,6 +265,26 @@ public:
     Status begin_writes(std::unique_ptr<KeyValue::WriteBatch>& writes) override {
         writes = std::make_unique<RocksKeyValue::WriteBatch>(db_);
         return Status::OK();
+    }
+
+    Status get(KeyValue::CollectionHandle _coll,
+               const std::string& key,
+               std::string& value) const override {
+        auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);        
+        const rocksdb::ReadOptions r_options; // what should this be set to?
+        std::string v_tmp;
+        rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
+        value = v_tmp;        
+        return convertStatus(s);
+    }
+    
+    Status put(KeyValue::CollectionHandle _coll,
+               const std::string& key,
+               const std::string& value) {
+        auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
+        const rocksdb::WriteOptions options;
+        rocksdb::Status s = db_->Put(options, coll, key, value);
+        return convertStatus(s);
     }
 };
 
