@@ -188,62 +188,61 @@ std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
 
 
 
-    // constructor
-    BCFReader::BCFReader(const char* buf, size_t bufsz) :
-        buf_(buf), bufsz_(bufsz)
-    {}
+// constructor
+BCFReader::BCFReader(const char* buf, size_t bufsz) :
+    buf_(buf), bufsz_(bufsz)
+{}
 
-    Status BCFReader::Open(const char* buf,
-                           size_t bufsz,
-                           unique_ptr<BCFReader>& ans) {
-        ans.reset(new BCFReader(buf, bufsz));
-        return Status::OK();
+Status BCFReader::Open(const char* buf,
+                       size_t bufsz,
+                       unique_ptr<BCFReader>& ans) {
+    ans.reset(new BCFReader(buf, bufsz));
+    return Status::OK();
+}
+
+BCFReader::~BCFReader() {
+    buf_ = NULL;
+    bufsz_ = 0;
+    current_ = 0;
+}
+
+Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
+    if (!ans) {
+        ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+    }
+    if ((size_t)current_ >= bufsz_)
+        return Status::NotFound();
+    int reclen = bcf_read_from_mem(&buf_[current_], ans.get());
+    current_ += reclen;
+    return Status::OK();
+}
+
+/* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
+   from memory instead of disk.
+*/
+bcf_hdr_t* BCFReader::read_header(const char* buf, int hdrlen) {
+    if (strncmp(buf, "BCF\2\2", 5) != 0) {
+        //fprintf("invalid BCF2 magic string");
+        return NULL;
     }
 
-    BCFReader::~BCFReader() {
-        buf_ = NULL;
-        bufsz_ = 0;
-        current_ = 0;
-    }
+    bcf_hdr_t *hdr = bcf_hdr_init("r");
+    int loc = 5;
+    int hlen;
+    char *htxt;
+    memcpy(&hlen, &buf[loc], 4);
+    loc += 4;
 
-    Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
-        if (!ans) {
-            ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
-        }
-        if ((size_t)current_ >= bufsz_)
-            return Status::NotFound();
-        int reclen = bcf_read_from_mem(&buf_[current_], ans.get());
-        current_ += reclen;
-        return Status::OK();
-    }
+    // sanity check; make sure we do not  over the record length
+    assert(loc + hlen <= hdrlen);
 
-    /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
-       from memory instead of disk.
-    */
-    bcf_hdr_t* BCFReader::read_header(const char* buf, int hdrlen) {
-        if (strncmp(buf, "BCF\2\2", 5) != 0) {
-            //fprintf("invalid BCF2 magic string");
-            return NULL;
-        }
+    htxt = (char*)malloc(hlen);
+    memcpy(htxt, &buf[loc], hlen);
+    bcf_hdr_parse(hdr, htxt);
 
-        bcf_hdr_t *hdr = bcf_hdr_init("r");
-        int loc = 5;
-        int hlen;
-        char *htxt;
-        memcpy(&hlen, &buf[loc], 4);
-        loc += 4;
-
-        // sanity check; make sure we do not  over the record length
-        assert(loc + hlen <= hdrlen);
-
-        htxt = (char*)malloc(hlen);
-        memcpy(htxt, &buf[loc], hlen);
-        bcf_hdr_parse(hdr, htxt);
-
-        // release resources
-        free(htxt);
-        return hdr;
-    }
-
+    // release resources
+    free(htxt);
+    return hdr;
+}
 
 } // namespace GLnexus
