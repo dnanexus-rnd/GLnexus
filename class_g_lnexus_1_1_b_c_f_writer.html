@@ -89,6 +89,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="class_g_lnexus_1_1_b_c_f_writer-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">GLnexus::BCFWriter Class Reference</div>  </div>
@@ -100,18 +102,52 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab4e4572e3a81972097aa8cd7a4df0973"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab4e4572e3a81972097aa8cd7a4df0973"></a>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>write</b> (bcf1_t *x)</td></tr>
 <tr class="separator:ab4e4572e3a81972097aa8cd7a4df0973"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0cee0488b5bcc73500b915ea2798d17c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0cee0488b5bcc73500b915ea2798d17c"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>contents</b> (string &amp;ans)</td></tr>
-<tr class="separator:a0cee0488b5bcc73500b915ea2798d17c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac1248d7939fb7028609693661ab9a90c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac1248d7939fb7028609693661ab9a90c"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>contents</b> (std::string &amp;ans)</td></tr>
+<tr class="separator:ac1248d7939fb7028609693661ab9a90c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac60c5f0c47ed04a5b33e30e50ae2acbd"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac60c5f0c47ed04a5b33e30e50ae2acbd"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>get_num_entries</b> () const </td></tr>
+<tr class="separator:ac60c5f0c47ed04a5b33e30e50ae2acbd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a551d0fc87e7b292392fb3f1ea88a704f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a551d0fc87e7b292392fb3f1ea88a704f"></a>
-static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Open</b> (bcf_hdr_t *hdr, bool write_header, unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a> &gt; &amp;ans)</td></tr>
-<tr class="separator:a551d0fc87e7b292392fb3f1ea88a704f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a469a2a295b0746770eeb5f03b8430c5b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a469a2a295b0746770eeb5f03b8430c5b"></a>
+static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Open</b> (std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a> &gt; &amp;ans)</td></tr>
+<tr class="separator:a469a2a295b0746770eeb5f03b8430c5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a008c0fe46b3c73dfac184299a84717d2"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a008c0fe46b3c73dfac184299a84717d2"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>write_header</b> (const bcf_hdr_t *hdr, int *hdrlen, char **buf_o)</td></tr>
+<tr class="separator:a008c0fe46b3c73dfac184299a84717d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a6e170b9f88e26dc90a0ca391c3230c34"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6e170b9f88e26dc90a0ca391c3230c34"></a>
+std::string&#160;</td><td class="memItemRight" valign="bottom"><b>buf_</b></td></tr>
+<tr class="separator:a6e170b9f88e26dc90a0ca391c3230c34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8671946091b2d3b3deb98180c3f828bb"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8671946091b2d3b3deb98180c3f828bb"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>valid_bytes_</b> = 0</td></tr>
+<tr class="separator:a8671946091b2d3b3deb98180c3f828bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd20c5ce72cab01df941d3af3244443f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="afd20c5ce72cab01df941d3af3244443f"></a>
+char *&#160;</td><td class="memItemRight" valign="bottom"><b>scratch_pad_</b> = NULL</td></tr>
+<tr class="separator:afd20c5ce72cab01df941d3af3244443f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6cf78618f8c9253b309069e51a6c085c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6cf78618f8c9253b309069e51a6c085c"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>scratch_pad_size_</b> = 0</td></tr>
+<tr class="separator:a6cf78618f8c9253b309069e51a6c085c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:ae18d42f08ed8e6f37e908337eeba7aaa"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae18d42f08ed8e6f37e908337eeba7aaa"></a>
+static int&#160;</td><td class="memItemRight" valign="bottom"><b>INIT_SIZE</b> = 8 * 1024</td></tr>
+<tr class="separator:ae18d42f08ed8e6f37e908337eeba7aaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a12715ef9eb9a6dcc150ff90eefefe74d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a12715ef9eb9a6dcc150ff90eefefe74d"></a>
+static int&#160;</td><td class="memItemRight" valign="bottom"><b>SIZE_MULTIPLIER</b> = 2</td></tr>
+<tr class="separator:a12715ef9eb9a6dcc150ff90eefefe74d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a35a0d8e4a3f2a770004de600c66b0b5e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a35a0d8e4a3f2a770004de600c66b0b5e"></a>
+static int&#160;</td><td class="memItemRight" valign="bottom"><b>MAX_BUF_SIZE</b> = 16 * 1024 * 1024</td></tr>
+<tr class="separator:a35a0d8e4a3f2a770004de600c66b0b5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this class was generated from the following file:<ul>
-<li>src/BCFKeyValueData.cc</li>
+<hr/>The documentation for this class was generated from the following files:<ul>
+<li>include/<a class="el" href="_b_c_f_serialize_8h_source.html">BCFSerialize.h</a></li>
+<li>src/BCFSerialize.cc</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->
