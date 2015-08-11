@@ -11,8 +11,9 @@ class BCFWriter {
     static int INIT_SIZE;
     static int SIZE_MULTIPLIER;
     static int MAX_BUF_SIZE;
+    static int STACK_ALLOC_LIMIT;
 
-    std::string buf_;
+    std::ostringstream oss_;
     int valid_bytes_ = 0;
     char *scratch_pad_ = NULL;
     int scratch_pad_size_ = 0;
@@ -24,9 +25,7 @@ class BCFWriter {
     Status write(bcf1_t* x);
     Status contents(std::string& ans);
 
-    static void write_header(const bcf_hdr_t *hdr,
-                             // OUT arguments
-                             int *hdrlen, char **buf_o);
+    static std::string write_header(const bcf_hdr_t *hdr);
     };
 
 class BCFReader {

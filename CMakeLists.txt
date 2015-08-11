@@ -36,16 +36,8 @@ MARK_AS_ADVANCED(
 project(GLnexus)
 
 ExternalProject_Add(htslib
-<<<<<<< HEAD
     URL https://github.com/dnanexus/htslib/archive/3c8ae031.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-||||||| merged common ancestors
-    URL https://github.com/samtools/htslib/archive/1.2.1.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
-=======
-    URL https://github.com/dnanexus/htslib/archive/3c8ae031.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
->>>>>>> Reverting back to our htslib fork
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j8

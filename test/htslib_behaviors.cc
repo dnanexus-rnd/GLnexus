@@ -1,4 +1,4 @@
-// Test certain non-obvious behaviors of htslib 
+// Test certain non-obvious behaviors of htslib
 
 #include <iostream>
 #include <vcf.h>
@@ -117,7 +117,7 @@ TEST_CASE("htslib VCF header chrom injection") {
 
 TEST_CASE("htslib VCF header synthesis") {
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-    
+
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=A,length=1000000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
@@ -391,4 +391,21 @@ TEST_CASE("htslib gVCF representation") {
     REQUIRE(string(records[4]->d.allele[0]) == "A");
     REQUIRE(string(records[4]->d.allele[1]) == "<NON_REF>");
     REQUIRE(bcf_get_info(hdr, records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
+}
+
+/*
+ensure the code we've torn out remains functionally equivalent going
+forward -- i.e. the test should break in the unlikely event a future
+change in htslib causes its BCF [de]serialization to diverge from
+ours.
+
+The test might test read one of the test GVCF files and write it
+out to BCF, first using htslib functions (file to file), and then
+using the new BCFSerialize functions (read file into buffer, parse
+with BCFReader, write to buffer with BCFWriter). Then assert the
+htslib-emitted file is byte-by-byte equal to the BCFWriter-generated
+buffer.
+*/
+
+TEST_CASE("ensure uncompressed BCF encoding remains consistet") {
 }

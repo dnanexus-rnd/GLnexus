@@ -159,21 +159,19 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
 
 Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
                                            shared_ptr<const bcf_hdr_t>& hdr) const {
-    if (!hdr) {
-        // Retrieve the header
-        Status s;
-        KeyValue::CollectionHandle coll;
-        S(body_->db->collection("header",coll));
-        string data;
-        S(body_->db->get(coll, dataset, data));
+    // Retrieve the header
+    Status s;
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("header",coll));
+    string data;
+    S(body_->db->get(coll, dataset, data));
 
-        // Parse the header
-        bcf_hdr_t *hdr_ref = BCFReader::read_header(data.c_str(), data.size());
-        if (hdr_ref == NULL) {
-            return Status::Invalid("Bad BCF header");
-        }
-        hdr = shared_ptr<bcf_hdr_t>(hdr_ref, &bcf_hdr_destroy);
+    // Parse the header
+    bcf_hdr_t *hdr_ref = BCFReader::read_header(data.c_str(), data.size());
+    if (hdr_ref == NULL) {
+        return Status::Invalid("Bad BCF header");
     }
+    hdr = shared_ptr<bcf_hdr_t>(hdr_ref, &bcf_hdr_destroy);
     return Status::OK();
 }
 
@@ -182,7 +180,10 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
                                     vector<shared_ptr<bcf1_t> >& records) const {
     // TODO cache header...
     Status s;
-    S(dataset_bcf_header(dataset, hdr));
+    if (!hdr) {
+        // don't read the header multiple times
+        S(dataset_bcf_header(dataset, hdr));
+    }
 
     // Retrieve the pertinent DB entries
     // Placeholder: one DB entry per dataset...
@@ -277,10 +278,7 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     S(body_->db->put(coll_bcf, dataset, data));
 
     // Serialize header into a string
-    int hdrlen;
-    char *buf;
-    BCFWriter::write_header(hdr.get(), &hdrlen, &buf);
-    string hdr_data(buf, hdrlen);
+    string hdr_data = BCFWriter::write_header(hdr.get());
 
     // Store header and metadata
     KeyValue::CollectionHandle coll_header, coll_sample_dataset;

@@ -39,157 +39,152 @@ using namespace std;
 
 namespace GLnexus {
 
-    // Ccalculate the amount of bytes it would take to pack this bcf1 record.
-    int bcf_calc_packed_len(bcf1_t *v)
-    {
-        return 32 + v->shared.l + v->indiv.l;
+// Ccalculate the amount of bytes it would take to pack this bcf1 record.
+int bcf_calc_packed_len(bcf1_t *v)
+{
+    return 32 + v->shared.l + v->indiv.l;
+}
+
+/*
+  Write the BCF record directly to a memory location. Return how much
+  space was used.
+   Note: the code is adapted from the bcf_write routine in htslib/vcf.c.
+  The original prototype is:
+      int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
+  The original routine writes to a file, not to memory.
+*/
+void bcf_write_to_mem(bcf1_t *v, int reclen, char *addr) {
+    int loc = 0;
+    uint32_t x[8];
+    assert(sizeof(x) == 32);
+    x[0] = v->shared.l + 24; // to include six 32-bit integers
+    x[1] = v->indiv.l;
+    memcpy(x + 2, v, 16);
+    x[6] = (uint32_t)v->n_allele<<16 | v->n_info;
+    x[7] = (uint32_t)v->n_fmt<<24 | v->n_sample;
+     memcpy(&addr[loc], (char*)x, sizeof(x));
+    loc += sizeof(x);
+    memcpy(&addr[loc], v->shared.s, v->shared.l);
+    loc += v->shared.l;
+    memcpy(&addr[loc], v->indiv.s, v->indiv.l);
+    loc += v->indiv.l;
+     assert(loc == reclen);
+}
+
+/*
+    Read a BCF record from memory, return the length of the packed record in RAM.
+
+    Note: the code is adapted from the bcf_read1_core routine in htslib/vcf.c.
+    The original prototype is:
+         int bcf_read1_core(BGZF *fp, bcf1_t *v)
+    The original routine reads from a file, not from memory.
+*/
+int bcf_read_from_mem(const char *addr, bcf1_t *v) {
+    int loc = 0;
+    uint32_t x[8];
+    memcpy(x, &addr[loc], 32);
+    loc += 32;
+
+    assert(x[0] > 0);
+    x[0] -= 24; // to exclude six 32-bit integers
+    ks_resize(&v->shared, x[0]);
+    ks_resize(&v->indiv, x[1]);
+    memcpy(v, (char*)&x[2], 16);
+    v->n_allele = x[6]>>16; v->n_info = x[6]&0xffff;
+    v->n_fmt = x[7]>>24; v->n_sample = x[7]&0xffffff;
+    v->shared.l = x[0], v->indiv.l = x[1];
+
+    // silent fix of broken BCFs produced by earlier versions of
+    // bcf_subset, prior to and including bd6ed8b4
+    if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
+
+    memcpy(v->shared.s, &addr[loc], v->shared.l);
+    loc += v->shared.l;
+    memcpy(v->indiv.s, &addr[loc], v->indiv.l);
+    loc += v->indiv.l;
+
+    return loc;
+}
+
+
+int BCFWriter::INIT_SIZE = 8 * 1024;
+int BCFWriter::SIZE_MULTIPLIER = 2;
+int BCFWriter::MAX_BUF_SIZE = 16 * 1024 * 1024;
+int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
+
+BCFWriter::BCFWriter() {}
+
+Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
+    ans.reset(new BCFWriter);
+    ans->valid_bytes_ = 0;
+    //ans->oss_;
+    return Status::OK();
+}
+
+BCFWriter::~BCFWriter() {
+    oss_.clear();
+    valid_bytes_ = 0;
+}
+
+Status BCFWriter::write(bcf1_t* x) {
+    int reclen = bcf_calc_packed_len(x);
+
+    // Note: allocation on the stack for small memory
+    // sizes, this should be the normal usage case. The idea
+    // is to avoid contention if multiple threads access this
+    // method.
+    char *scratch_pad;
+    bool heap_allocation = false;
+    if (reclen <= STACK_ALLOC_LIMIT) {
+        scratch_pad = (char*) alloca(reclen);
+    } else {
+        heap_allocation = true;
+        scratch_pad = (char*) malloc(reclen);
     }
 
-    /*
-      Write the BCF record directly to a memory location. Return how much
-      space was used.
+    // Separate the C code, from the C++ code
+    // Serialize the bcf1_t stuct into a [char*], then
+    // append it to the end of the buffer.
+    bcf_write_to_mem(x, reclen, scratch_pad);
+    oss_.write(scratch_pad, reclen);
+    valid_bytes_ += reclen;
 
-      Note: the code is adapted from the bcf_write routine in htslib/vcf.c.
-      The original prototype is:
-          int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
-      The original routine writes to a file, not to memory.
-    */
-    void bcf_write_to_mem(bcf1_t *v, int reclen, char *addr) {
-        int loc = 0;
-        uint32_t x[8];
-        assert(sizeof(x) == 32);
-
-        x[0] = v->shared.l + 24; // to include six 32-bit integers
-        x[1] = v->indiv.l;
-        memcpy(x + 2, v, 16);
-        x[6] = (uint32_t)v->n_allele<<16 | v->n_info;
-        x[7] = (uint32_t)v->n_fmt<<24 | v->n_sample;
-
-        memcpy(&addr[loc], (char*)x, sizeof(x));
-        loc += sizeof(x);
-        memcpy(&addr[loc], v->shared.s, v->shared.l);
-        loc += v->shared.l;
-        memcpy(&addr[loc], v->indiv.s, v->indiv.l);
-        loc += v->indiv.l;
-
-        assert(loc == reclen);
+    if (heap_allocation) {
+        free(scratch_pad);
     }
+    return Status::OK();
+}
 
+Status BCFWriter::contents(string& ans) {
+    ans.clear();
+    ans.append(oss_.str(), 0, valid_bytes_);
+    return Status::OK();
+}
 
-    /*
-      Read a BCF record from memory, return the length of the packed record in RAM.
+/* Adapted from [htslib::vcf.c::bcf_hdr_write] to write
+   to memory instead of disk.
+*/
+std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
+    int hlen;
+    char *htxt = bcf_hdr_fmt_text(hdr, 1, &hlen);
+    hlen++; // include the \0 byte
 
-      Note: the code is adapted from the bcf_read1_core routine in htslib/vcf.c.
-      The original prototype is:
-          int bcf_read1_core(BGZF *fp, bcf1_t *v)
-      The original routine reads from a file, not from memory.
-    */
-     int bcf_read_from_mem(const char *addr, bcf1_t *v) {
-        int loc = 0;
-        uint32_t x[8];
-        memcpy(x, &addr[loc], 32);
-        loc += 32;
+    char *buf = (char*) malloc(5 + 4 + hlen);
+    assert(buf != NULL);
+    int loc = 0;
+    memcpy(&buf[loc], "BCF\2\2", 5);
+    loc += 5;
+    memcpy(&buf[loc], &hlen, 4);
+    loc += 4;
+    memcpy(&buf[loc], htxt, hlen);
+    loc += hlen;
 
-        assert(x[0] > 0);
-        x[0] -= 24; // to exclude six 32-bit integers
-        ks_resize(&v->shared, x[0]);
-        ks_resize(&v->indiv, x[1]);
-        memcpy(v, (char*)&x[2], 16);
-        v->n_allele = x[6]>>16; v->n_info = x[6]&0xffff;
-        v->n_fmt = x[7]>>24; v->n_sample = x[7]&0xffffff;
-        v->shared.l = x[0], v->indiv.l = x[1];
-
-        // silent fix of broken BCFs produced by earlier versions of
-        // bcf_subset, prior to and including bd6ed8b4
-        if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
-
-        memcpy(v->shared.s, &addr[loc], v->shared.l);
-        loc += v->shared.l;
-        memcpy(v->indiv.s, &addr[loc], v->indiv.l);
-        loc += v->indiv.l;
-
-        return loc;
-    }
-
-
-    int BCFWriter::INIT_SIZE = 8 * 1024;
-    int BCFWriter::SIZE_MULTIPLIER = 2;
-    int BCFWriter::MAX_BUF_SIZE = 16 * 1024 * 1024;
-
-    BCFWriter::BCFWriter() {}
-
-    Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
-        ans.reset(new BCFWriter);
-        ans->valid_bytes_ = 0;
-        ans->buf_.reserve(INIT_SIZE);
-        return Status::OK();
-    }
-
-    BCFWriter::~BCFWriter() {
-        buf_.clear();
-        valid_bytes_ = 0;
-    }
-
-    Status BCFWriter::write(bcf1_t* x) {
-        int reclen = bcf_calc_packed_len(x);
-
-        // Note: allocation on the stack. This works well if
-        // the memory allocated is no larger than a few KiB.
-        char *scratch_pad = (char*) alloca(reclen);
-
-        // Make sure the buffer has enough space for the
-        // new record. Multiply the size by a constant factor
-        // until we have sufficient space.
-        int remaining_len = buf_.capacity() - valid_bytes_;
-        if (remaining_len < reclen) {
-            int new_len = buf_.capacity() * SIZE_MULTIPLIER;
-            if (new_len - valid_bytes_ < reclen) {
-                // The increase was insufficient
-                new_len += reclen;
-            }
-            assert(new_len <= MAX_BUF_SIZE);
-            buf_.reserve(new_len);
-        }
-
-        // Separate the C code, from the C++ code
-        // Serialize the bcf1_t stuct into a [char*], then
-        // append it to the end of the buffer.
-        bcf_write_to_mem(x, reclen, scratch_pad);
-        buf_.append(scratch_pad, reclen);
-        valid_bytes_ += reclen;
-        return Status::OK();
-    }
-
-    Status BCFWriter::contents(string& ans) {
-        ans.clear();
-        ans.append(buf_, 0, valid_bytes_);
-        return Status::OK();
-    }
-
-    /* Adapted from [htslib::vcf.c::bcf_hdr_write] to write
-       to memory instead of disk.
-    */
-    void BCFWriter::write_header(const bcf_hdr_t *hdr, int *hdrlen, char **buf_o) {
-        int hlen;
-        char *htxt = bcf_hdr_fmt_text(hdr, 1, &hlen);
-        hlen++; // include the \0 byte
-
-        char *buf = (char*) malloc(5 + 4 + hlen);
-        assert(buf != NULL);
-        int loc = 0;
-        memcpy(&buf[loc], "BCF\2\2", 5);
-        loc += 5;
-        memcpy(&buf[loc], &hlen, 4);
-        loc += 4;
-        memcpy(&buf[loc], htxt, hlen);
-        loc += hlen;
-
-        // cleanup and return values
-        free(htxt);
-        *buf_o = buf;
-        *hdrlen = loc;
-    }
-
+    // cleanup and return
+    string rc(buf, loc);
+    free(htxt);
+    free(buf);
+    return rc;
+}
 
 
 
