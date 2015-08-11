@@ -188,8 +188,7 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
     key += std::to_string(pos.rid);
     s = body_->db->get(coll, key, data);
     if (s == StatusCode::NOT_FOUND) {
-        // FIXME: do we want to look ranges close by too?
-        // This would be relevant when we use ranges.
+        // FIXME: look at adjacent ranges?
         return Status::NotFound();
     }
         
