@@ -8,10 +8,6 @@
 
 #include <vcf.h>
 #include <hfile.h>
-//#include <htslib/hts.h>
-//#include <htslib/vcf.h>
-//#include <htslib/kstring.h>
-//#include <htslib/kseq.h>
 
 #include "BCFSerialize.h"
 #include "catch.hpp"

@@ -176,14 +176,8 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
 }
 
 Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
-                                    shared_ptr<const bcf_hdr_t>& hdr,
                                     vector<shared_ptr<bcf1_t> >& records) const {
-    // TODO cache header...
     Status s;
-    if (!hdr) {
-        // don't read the header multiple times
-        S(dataset_bcf_header(dataset, hdr));
-    }
 
     // Retrieve the pertinent DB entries
     // Placeholder: one DB entry per dataset...
