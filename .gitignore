@@ -29,22 +29,6 @@
 playground
 unit_tests
 
-# Dependencies
-catch/
-src/rocksdb-3.10.2.zip
-src/rocksdb/
-src/rocksdb-stamp/
-src/3c8ae031.zip
-src/htslib/
-src/htslib-stamp/
-src/release-0.5.2.zip
-src/yaml-cpp/
-src/yaml-cpp-stamp/
-src/1.*.zip
-
-# Temporary build stuff
-tmp/
-
 # Documnentation folder
 html/
 
@@ -55,5 +39,5 @@ Makefile
 cmake_install.cmake
 external/
 
-# cscope
+# cscope 
 cscope*
