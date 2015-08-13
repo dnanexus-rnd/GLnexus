@@ -1,11 +1,15 @@
-// Test certain non-obvious behaviors of htslib 
+// Test certain non-obvious behaviors of htslib
 
 #include <iostream>
-#include <vcf.h>
-#include <hfile.h>
+#include <fstream>
 #include <string.h>
 #include <math.h>
 #include <memory>
+
+#include <vcf.h>
+#include <hfile.h>
+
+#include "BCFSerialize.h"
 #include "catch.hpp"
 
 using namespace std;
@@ -117,7 +121,7 @@ TEST_CASE("htslib VCF header chrom injection") {
 
 TEST_CASE("htslib VCF header synthesis") {
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-    
+
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=A,length=1000000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
@@ -153,7 +157,8 @@ TEST_CASE("htslib VCF header synthesis") {
     REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 2)) == "ch");
 }
 
-TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
+
+TEST_CASE("DNAnexus VCF/BCF serialization") {
     // load trio_denovo.vcf
     UPD(vcfFile, vcf, bcf_open("test/data/trio_denovo.vcf", "r"), [](vcfFile* f) { bcf_close(f); });
     UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
@@ -173,56 +178,25 @@ TEST_CASE("htslib hfile_mem VCF/BCF serialization") {
     REQUIRE(records.size() == 3);
 
     // serialize the BCF records into a memory buffer - without the header
-    char *buf = nullptr;
-    size_t bufsz;
-    char fn[4+sizeof(void**)+sizeof(size_t*)];
-    char *pfn = fn;
-
-    memcpy(pfn, "mem:", 4);
-    *(char***)(pfn+4) = &buf;
-    *(size_t**)(pfn+4+sizeof(void**)) = &bufsz;
-
-    // bcf_open mode "u" is supposed to cause htslib to write "uncompressed
-    // BCF", per the hts_open documentation in hts.h, but instead it writes
-    // text VCF. Indeed the implementation of bcf_write in vcf.c hard-codes
-    // bgzf_write, so it's incapable of writing out "uncompressed BCF" without
-    // the BGZF container. So too for the BCF reading functions which hard-code
-    // bgzf_read.
-    //
-    // We could use 0 to get BCF wrapped in the BGZF container format (with no
-    // compression), but that would be less efficient, and carry some useless
-    // block compression baggage.
-    //
-    // We may need to write a significant htslib patch to make it actually
-    // able to read & write "uncompressed BCF"
-
-    up_vcf.reset(bcf_open(pfn, "wu"));
-    vcf = up_vcf.get();
-
-    //REQUIRE(bcf_hdr_write(vcf, hdr) == 0);
+    int memlen = 0;
     for (const auto& rec : records) {
-        REQUIRE(bcf_write(vcf, hdr, rec.get()) == 0);
+        memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
     }
-    size_t memlen = htell(vcf->fp.hfile);
-    REQUIRE(hflush(vcf->fp.hfile) == 0);
+    std::cout << "memlen=" << memlen << std::endl;
+    char *buf = (char*) malloc(memlen);
+    REQUIRE(buf != NULL);
 
-    //cout << string(buf, memlen);
+    int loc = 0;
+    for (const auto& rec : records) {
+        int reclen = GLnexus::bcf_raw_calc_packed_len(rec.get());
+        GLnexus::bcf_raw_write_to_mem(rec.get(), reclen, &buf[loc]);
+        loc += reclen;
+    }
 
     // now read the records back from memory & ensure they match the originals
-    REQUIRE(bufsz >= memlen);
-    bufsz = memlen;
-    up_vcf.reset(bcf_open(pfn, "r"));
-    vcf = up_vcf.get();
-
-    REQUIRE(hts_get_format(vcf)->compression == no_compression);
-    // TODO: without the header, htslib auto-detects the file format as SAM
-    // instead of VCF. This is okay as long as we're using vcf_read below. But
-    // if we use bcf_read, then because the file format is not set to VCF, it
-    // tries to read it as bgzipped BCF.
-    //REQUIRE(hts_get_format(vcf)->format == htsExactFormat::vcf);
-
+    loc = 0;
     for (const auto& rec : records) {
-        REQUIRE(vcf_read(vcf, hdr, vt.get()) == 0);
+        loc += GLnexus::bcf_raw_read_from_mem(&buf[loc], vt.get());
         REQUIRE(vt->rid == rec->rid);
         REQUIRE(vt->pos == rec->pos);
         REQUIRE(vt->n_sample == rec->n_sample);
@@ -269,4 +243,112 @@ TEST_CASE("htslib gVCF representation") {
     REQUIRE(string(records[4]->d.allele[0]) == "A");
     REQUIRE(string(records[4]->d.allele[1]) == "<NON_REF>");
     REQUIRE(bcf_get_info(hdr, records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
+}
+
+
+/*
+Ensure the code we've torn out remains functionally equivalent going
+forward -- i.e. the test should break in the unlikely event a future
+change in htslib causes its BCF [de]serialization to diverge from
+ours.
+
+Step 1: Read a VCF file, write it to a new file in uncompressed BCF
+format. Also, store the results in a memory buffer using our own serialization routines.
+
+Step 2: Read the BCF file, and compare that it is byte-for-byte equal
+with the memory buffer.
+*/
+TEST_CASE("Ensure uncompressed BCF encoding remains consistent") {
+    const char *tmp_bcf_file = "test/data/tmp.bcf";
+
+    // Read a VCF file into an array of in-memory records
+    vector<shared_ptr<bcf1_t>> records;
+    {
+        UPD(vcfFile, vcf, bcf_open("test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });
+        UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
+        shared_ptr<bcf1_t> vt;
+
+        do {
+            if (vt) {
+                REQUIRE(bcf_unpack(vt.get(), BCF_UN_ALL) == 0);
+                records.push_back(vt);
+            }
+            vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+        } while (bcf_read(vcf, hdr, vt.get()) == 0);
+    }
+
+    // Write the records to disk in uncompressed BCF format
+    {
+        std::remove(tmp_bcf_file);
+        UPD(htsFile, fp, bcf_open(tmp_bcf_file, "wbu"),
+            [](htsFile* f) { bcf_close(f); });
+        shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
+
+        // Crafg a dummy VCF header. We can get away
+        // with not matching the original file header, because it does not matter
+        // (in this case).
+        bcf_hdr_append(hdr.get(), "##fileDate=20090805");
+        bcf_hdr_append(hdr.get(), "##FORMAT=<ID=UF,Number=1,Type=Integer,Description=\"Unused FORMAT\">");
+        bcf_hdr_add_sample(hdr.get(), "NA00001");
+        bcf_hdr_add_sample(hdr.get(), NULL);      // to update internal structures
+        bcf_hdr_write(fp, hdr.get());
+
+        REQUIRE(hts_get_format(fp)->compression == no_compression);
+        //REQUIRE(hts_get_format(fp)->format == bcf);
+        // force BCF format; not sure why this doesn't just work. Opening
+        // the file in 'wbu' mode is supposed to
+        fp->format.format = bcf;
+
+        // write to the file
+        for (const auto& rec : records) {
+            bcf_write1(fp, hdr.get(), rec.get());
+        }
+
+        // note: the file is now closed, we can read it in the next phase.
+    }
+
+    // serialize the BCF records into a memory buffer  (without the header)
+    int memlen = 0;
+    char *buf;
+    {
+        for (const auto& rec : records) {
+            memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
+        }
+        buf = (char*) malloc(memlen);
+        REQUIRE(buf != NULL);
+
+        int loc = 0;
+        for (const auto& rec : records) {
+            int reclen = GLnexus::bcf_raw_calc_packed_len(rec.get());
+            GLnexus::bcf_raw_write_to_mem(rec.get(), reclen, &buf[loc]);
+            loc += reclen;
+        }
+    }
+
+    // compare the file data, while skipping the header
+    //
+    // read file data
+    std::ifstream ifs(tmp_bcf_file);
+    std::string content( (std::istreambuf_iterator<char>(ifs) ),
+                         (std::istreambuf_iterator<char>()    ) );
+    int filelen = content.length();
+    const char *filebuf = content.c_str();
+    std::cout << "filelen=" << filelen << " memlen=" << memlen << std::endl;
+    assert(filelen >= memlen);
+
+    // compare the last [memlen] bytes
+    int rc = memcmp(&filebuf[filelen - memlen], buf, memlen);
+    if (rc == 0) {
+        std::cout << "BCF formats match" << std::endl;
+    }
+    else {
+        std::cout << "BCF format mismatch" << std::endl;
+    }
+    REQUIRE(rc == 0);
+
+    // cleanup
+    if (buf != NULL) {
+        free(buf);
+    }
+    std::remove(tmp_bcf_file);
 }

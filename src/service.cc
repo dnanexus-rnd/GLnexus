@@ -40,10 +40,13 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     // extract alleles from each dataset
     ans.clear();
     for (const auto& dataset : *datasets) {
-        // get dataset BCF records
+        // read the header
         shared_ptr<const bcf_hdr_t> dataset_header;
+        S(data_->dataset_bcf_header(dataset, dataset_header));
+
+        // get dataset BCF records
         vector<shared_ptr<bcf1_t>> records;
-        S(data_->dataset_bcf(dataset, pos, dataset_header, records));
+        S(data_->dataset_bcf(dataset, pos, records));
 
         // for each BCF record
         discovered_alleles dsals;
