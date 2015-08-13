@@ -1,4 +1,5 @@
 #include "BCFKeyValueData.h"
+#include "BCFSerialize.h"
 #include "yaml-cpp/yaml.h"
 #include "vcf.h"
 #include "hfile.h"
@@ -50,7 +51,7 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db, const vector<pair<string,
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
     assert(db != nullptr);
-    
+
     // check database has been initialized
     KeyValue::CollectionHandle coll;
     for (const auto& collnm : collections) {
@@ -156,128 +157,6 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
     return body_->db->get(coll, sample, ans);
 }
 
-/// Helper classes to de/serialize BCF records to memory buffers
-class BCFReader {
-    shared_ptr<const bcf_hdr_t> hdr_;
-    vcfFile *bcf_ = nullptr;
-    const char* buf_ = nullptr;
-    size_t bufsz_;
-
-    BCFReader(const char* buf) : buf_(buf) {}
-
-public:
-    // hdr should be null iff the data begins with the header.
-    static Status Open(shared_ptr<const bcf_hdr_t> hdr, const char* buf, size_t bufsz, unique_ptr<BCFReader>& ans) {
-        ans.reset(new BCFReader(buf));
-        ans->bufsz_ = bufsz;
-
-        char fn[4+sizeof(void**)+sizeof(size_t*)];
-        char *pfn = fn;
-
-        memcpy(pfn, "mem:", 4);
-        *(char***)(pfn+4) = (char**) &(ans->buf_);
-        *(size_t**)(pfn+4+sizeof(void**)) = &(ans->bufsz_);
-
-        ans->bcf_ = bcf_open(pfn, "r");
-        if (!ans->bcf_) return Status::Failure("BCFReader::Open");
-
-        if (!hdr) {
-            hdr = shared_ptr<bcf_hdr_t>(bcf_hdr_read(ans->bcf_), &bcf_hdr_destroy);
-            if (!hdr) {
-                return Status::IOError("BCFReader::Open bcf_hdr_read");
-            }
-        }
-        ans->hdr_ = hdr;
-
-        return Status::OK();
-    }
-
-    virtual ~BCFReader() {
-        if (bcf_) {
-            bcf_close(bcf_);
-        }
-    }
-
-    shared_ptr<const bcf_hdr_t> header() const {
-        assert(hdr_);
-        return hdr_;
-    }
-
-    Status read(shared_ptr<bcf1_t>& ans) {
-        if (!ans) {
-            ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
-        }
-        // TODO use bcf_read; need to override htsFile format detection
-        switch (vcf_read(bcf_, hdr_.get(), ans.get())) {
-            case 0: return Status::OK();
-            case -1: return Status::NotFound();
-        }
-        return Status::IOError("BCFReader::read bcf_read");
-    }
-};
-
-class BCFWriter {
-    bcf_hdr_t *hdr_;
-    vcfFile *bcf_ = nullptr;
-    char *buf_ = nullptr;
-    size_t bufsz_;
-
-    BCFWriter() = default;
-
-public:
-
-    static Status Open(bcf_hdr_t *hdr, bool write_header, unique_ptr<BCFWriter>& ans) {
-        ans.reset(new BCFWriter);
-        ans->hdr_ = hdr;
-
-        char fn[4+sizeof(void**)+sizeof(size_t*)];
-        char *pfn = fn;
-
-        memcpy(pfn, "mem:", 4);
-        *(char***)(pfn+4) = &(ans->buf_);
-        *(size_t**)(pfn+4+sizeof(void**)) = &(ans->bufsz_);
-
-        ans->bcf_ = bcf_open(pfn, "wu");
-        if (!ans->bcf_) return Status::Failure("BCFWriter::Open");
-
-        if (write_header) {
-            if (bcf_hdr_write(ans->bcf_, hdr) != 0) {
-                return Status::IOError("BCFWriter::Open bcf_hdr_write");
-            }
-        }
-
-        return Status::OK();
-    }
-
-    virtual ~BCFWriter() {
-        if (bcf_) {
-            bcf_close(bcf_);
-        }
-        if (buf_) {
-            free(buf_);
-        }
-    }
-
-    Status write(bcf1_t* x) {
-        if (bcf_write(bcf_, hdr_, x) != 0) {
-            return Status::IOError("BCFWriter::write");
-        }
-        return Status::OK();
-    }
-
-    Status contents(string& ans) {
-        if (hflush(bcf_->fp.hfile) != 0) {
-            return Status::IOError("BCFWriter::buffer hflush");
-        }
-        size_t sz = htell(bcf_->fp.hfile);
-        ans.clear();
-        if (buf_) {
-            ans = string(buf_, sz);
-        }
-        return Status::OK();
-    }
-};
-
 Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
                                            shared_ptr<const bcf_hdr_t>& hdr) const {
     // Retrieve the header
@@ -288,19 +167,17 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
     S(body_->db->get(coll, dataset, data));
 
     // Parse the header
-    unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(nullptr, data.c_str(), data.size(), reader));
-    hdr = reader->header();
-    assert(hdr);
+    bcf_hdr_t *hdr_ref = BCFReader::read_header(data.c_str(), data.size());
+    if (hdr_ref == NULL) {
+        return Status::Invalid("Bad BCF header");
+    }
+    hdr = shared_ptr<bcf_hdr_t>(hdr_ref, &bcf_hdr_destroy);
     return Status::OK();
 }
 
 Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
-                                    shared_ptr<const bcf_hdr_t>& hdr,
                                     vector<shared_ptr<bcf1_t> >& records) const {
-    // TODO cache header...
     Status s;
-    S(dataset_bcf_header(dataset, hdr));
 
     // Retrieve the pertinent DB entries
     // Placeholder: one DB entry per dataset...
@@ -311,7 +188,7 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
 
     // Parse the records and extract those overlapping pos
     unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(hdr, data.c_str(), data.size(), reader));
+    S(BCFReader::Open(data.c_str(), data.size(), reader));
 
     records.clear();
     shared_ptr<bcf1_t> vt;
@@ -375,12 +252,14 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
 
     Status s;
     unique_ptr<BCFWriter> writer;
-    S(BCFWriter::Open(hdr.get(), false, writer));
+    S(BCFWriter::Open(writer));
 
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
 
     int c;
-    for(c = bcf_read(vcf.get(), hdr.get(), vt.get()); c == 0; c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
+    for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
+        c == 0;
+        c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
         S(writer->write(vt.get()));
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
@@ -392,10 +271,8 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     S(body_->db->collection("bcf", coll_bcf));
     S(body_->db->put(coll_bcf, dataset, data));
 
-    // Serialize header
-    writer.release();
-    S(BCFWriter::Open(hdr.get(), true, writer));
-    S(writer->contents(data));
+    // Serialize header into a string
+    string hdr_data = BCFWriter::write_header(hdr.get());
 
     // Store header and metadata
     KeyValue::CollectionHandle coll_header, coll_sample_dataset;
@@ -403,12 +280,11 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache, const string& datase
     S(body_->db->collection("sample_dataset", coll_sample_dataset));
     unique_ptr<KeyValue::WriteBatch> wb;
     S(body_->db->begin_writes(wb));
-    S(wb->put(coll_header, dataset, data));
+    S(wb->put(coll_header, dataset, hdr_data));
     for (const auto& sample : samples) {
         S(wb->put(coll_sample_dataset, sample, dataset));
     }
     return wb->commit();
-    
 }
 
 } // namespace GLnexus

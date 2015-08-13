@@ -40,8 +40,8 @@ Status DataCache::dataset_bcf_header(const string& dataset, shared_ptr<const bcf
     return body_->data->dataset_bcf_header(dataset, hdr);
 }
 
-Status DataCache::dataset_bcf(const string& dataset, const range& pos, shared_ptr<const bcf_hdr_t>& hdr, vector<shared_ptr<bcf1_t> >& records) const {
-    return body_->data->dataset_bcf(dataset, pos, hdr, records);
+Status DataCache::dataset_bcf(const string& dataset, const range& pos, vector<shared_ptr<bcf1_t> >& records) const {
+    return body_->data->dataset_bcf(dataset, pos, records);
 }
 
 const vector<pair<string,size_t> >& DataCache::contigs() const {

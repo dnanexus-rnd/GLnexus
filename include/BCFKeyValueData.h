@@ -33,7 +33,6 @@ public:
     Status dataset_bcf_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
     Status dataset_bcf(const std::string& dataset, const range& pos,
-                       std::shared_ptr<const bcf_hdr_t>& hdr,
                        std::vector<std::shared_ptr<bcf1_t> >& records) const override;
 
     /// Import a new dataset

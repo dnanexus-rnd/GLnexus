@@ -61,11 +61,7 @@ public:
     /// be mutated. They aren't declared const because some vcf.h accessor
     /// functions don't take const bcf1_t*
     ///
-    /// The header is shared for all positions in the data set. It's returned
-    /// here because the implementation typically needs to load it in order to
-    /// parse BCF records anyway.
     virtual Status dataset_bcf(const std::string& dataset, const range& pos,
-                               std::shared_ptr<const bcf_hdr_t>& hdr,
                                std::vector<std::shared_ptr<bcf1_t> >& records) const = 0;
 };
 
@@ -88,7 +84,6 @@ public:
     Status dataset_bcf_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
     Status dataset_bcf(const std::string& dataset, const range& pos,
-                       std::shared_ptr<const bcf_hdr_t>& hdr,
                        std::vector<std::shared_ptr<bcf1_t> >& records) const override;
 
     const std::vector<std::pair<std::string,size_t> >& contigs() const;

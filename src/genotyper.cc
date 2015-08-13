@@ -76,8 +76,9 @@ Status genotype_site(const DataCache& data, const unified_site& site, const set<
     for (const auto& dataset : datasets) {
         // load BCF records overlapping the site
         shared_ptr<const bcf_hdr_t> dataset_header;
+        S(data.dataset_bcf_header(dataset, dataset_header));
         vector<shared_ptr<bcf1_t>> records;
-        S(data.dataset_bcf(dataset, site.pos, dataset_header, records));
+        S(data.dataset_bcf(dataset, site.pos, records));
 
         // index the samples shared between the sample set and the BCFs
         // TODO: better algorithm, with caching (LRU given sampleset-dataset cross)
