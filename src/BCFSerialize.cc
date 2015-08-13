@@ -40,7 +40,7 @@ using namespace std;
 namespace GLnexus {
 
 // Ccalculate the amount of bytes it would take to pack this bcf1 record.
-int bcf_calc_packed_len(bcf1_t *v)
+int bcf_raw_calc_packed_len(bcf1_t *v)
 {
     return 32 + v->shared.l + v->indiv.l;
 }
@@ -53,7 +53,7 @@ int bcf_calc_packed_len(bcf1_t *v)
       int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
   The original routine writes to a file, not to memory.
 */
-void bcf_write_to_mem(bcf1_t *v, int reclen, char *addr) {
+void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr) {
     int loc = 0;
     uint32_t x[8];
     assert(sizeof(x) == 32);
@@ -79,7 +79,7 @@ void bcf_write_to_mem(bcf1_t *v, int reclen, char *addr) {
          int bcf_read1_core(BGZF *fp, bcf1_t *v)
     The original routine reads from a file, not from memory.
 */
-int bcf_read_from_mem(const char *addr, bcf1_t *v) {
+int bcf_raw_read_from_mem(const char *addr, bcf1_t *v) {
     int loc = 0;
     uint32_t x[8];
     memcpy(x, &addr[loc], 32);
@@ -107,9 +107,6 @@ int bcf_read_from_mem(const char *addr, bcf1_t *v) {
 }
 
 
-int BCFWriter::INIT_SIZE = 8 * 1024;
-int BCFWriter::SIZE_MULTIPLIER = 2;
-int BCFWriter::MAX_BUF_SIZE = 16 * 1024 * 1024;
 int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
 
 BCFWriter::BCFWriter() {}
@@ -127,7 +124,7 @@ BCFWriter::~BCFWriter() {
 }
 
 Status BCFWriter::write(bcf1_t* x) {
-    int reclen = bcf_calc_packed_len(x);
+    int reclen = bcf_raw_calc_packed_len(x);
 
     // Note: allocation on the stack for small memory
     // sizes, this should be the normal usage case. The idea
@@ -145,7 +142,7 @@ Status BCFWriter::write(bcf1_t* x) {
     // Separate the C code, from the C++ code
     // Serialize the bcf1_t stuct into a [char*], then
     // append it to the end of the buffer.
-    bcf_write_to_mem(x, reclen, scratch_pad);
+    bcf_raw_write_to_mem(x, reclen, scratch_pad);
     oss_.write(scratch_pad, reclen);
     valid_bytes_ += reclen;
 
@@ -212,7 +209,7 @@ Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
     }
     if ((size_t)current_ >= bufsz_)
         return Status::NotFound();
-    int reclen = bcf_read_from_mem(&buf_[current_], ans.get());
+    int reclen = bcf_raw_read_from_mem(&buf_[current_], ans.get());
     current_ += reclen;
     return Status::OK();
 }
