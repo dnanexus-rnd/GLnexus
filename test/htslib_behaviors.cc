@@ -210,7 +210,6 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
     }
 }
 
-
 TEST_CASE("htslib gVCF representation") {
     UPD(vcfFile, vcf, bcf_open("test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });
     UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);

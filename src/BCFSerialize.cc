@@ -121,16 +121,18 @@ Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
 BCFWriter::~BCFWriter() {
     oss_.clear();
     valid_bytes_ = 0;
+    num_entries_ = 0;
 }
 
 Status BCFWriter::write(bcf1_t* x) {
+    num_entries_ += 1;
     int reclen = bcf_raw_calc_packed_len(x);
 
     // Note: allocation on the stack for small memory
     // sizes, this should be the normal usage case. The idea
     // is to avoid contention if multiple threads access this
     // method.
-    char *scratch_pad = NULL;
+    char *scratch_pad;
     bool heap_allocation = false;
     if (reclen <= STACK_ALLOC_LIMIT) {
         scratch_pad = (char*) alloca(reclen);
@@ -147,8 +149,9 @@ Status BCFWriter::write(bcf1_t* x) {
     valid_bytes_ += reclen;
     num_entries_ ++;
 
-    if (heap_allocation)
+    if (heap_allocation) {
         free(scratch_pad);
+    }
     return Status::OK();
 }
 
@@ -161,7 +164,6 @@ Status BCFWriter::contents(string& ans) {
 int BCFWriter::get_num_entries() const {
     return num_entries_;
 }
-
 
 /* Adapted from [htslib::vcf.c::bcf_hdr_write] to write
    to memory instead of disk.

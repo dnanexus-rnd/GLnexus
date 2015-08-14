@@ -193,6 +193,7 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
     }
         
     // Parse the records and extract those overlapping pos
+    records.clear();
     unique_ptr<BCFReader> reader;
     S(BCFReader::Open(data.c_str(), data.size(), reader));
 
@@ -294,9 +295,6 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
         c == 0;
         c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
-        // FIXME: we need to normalize the rid by mapping through
-        // the contig table.
-
         // Moved to the next chromosome, write this key.
         if ( vt->rid != chrom_id &&
              writer->get_num_entries() > 0) {

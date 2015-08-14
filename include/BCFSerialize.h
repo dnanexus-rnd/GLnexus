@@ -4,7 +4,6 @@
 #include "types.h"
 
 namespace GLnexus {
-
 // Classes for serializing BCF structures to/from RAM
 
 // The following three functions, prefixed with bcf_raw, are copied
@@ -22,6 +21,7 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr);
 
 //  Read a BCF record from memory, return the length of the packed record in RAM.
 int bcf_raw_read_from_mem(const char *addr, bcf1_t *v);
+
 
 class BCFWriter {
  private:
@@ -48,14 +48,15 @@ class BCFWriter {
 
 class BCFReader {
  private:
-    BCFReader(const char* buf, size_t bufsz);
     const char* buf_ = nullptr;
     size_t bufsz_;
-    int current_;
+    int current_ = 0;
 
+    BCFReader(const char* buf, size_t bufsz);
  public:
     /// Reads BCF records from a memory buffer (without the header)
     static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFReader>& ans);
+
     ~BCFReader();
     Status read(std::shared_ptr<bcf1_t>& ans);
 
