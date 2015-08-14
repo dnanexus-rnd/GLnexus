@@ -132,7 +132,7 @@ Status BCFWriter::write(bcf1_t* x) {
     // sizes, this should be the normal usage case. The idea
     // is to avoid contention if multiple threads access this
     // method.
-    char *scratch_pad = NULL;
+    char *scratch_pad;
     bool heap_allocation = false;
     if (reclen <= STACK_ALLOC_LIMIT) {
         scratch_pad = (char*) alloca(reclen);
@@ -149,8 +149,9 @@ Status BCFWriter::write(bcf1_t* x) {
     valid_bytes_ += reclen;
     num_entries_ ++;
 
-    if (heap_allocation)
+    if (heap_allocation) {
         free(scratch_pad);
+    }
     return Status::OK();
 }
 

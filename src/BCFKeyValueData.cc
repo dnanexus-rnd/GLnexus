@@ -295,9 +295,6 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
         c == 0;
         c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
-        // FIXME: we need to normalize the rid by mapping through
-        // the contig table.
-
         // Moved to the next chromosome, write this key.
         if ( vt->rid != chrom_id &&
              writer->get_num_entries() > 0) {
