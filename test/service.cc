@@ -629,11 +629,11 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[3] == 1));
         REQUIRE(bcf_gt_allele(gt[4] == 0));
         REQUIRE(bcf_gt_allele(gt[5] == 1));
-        REQUIRE(bcf_gt_is_missing(gt[6]));
-        REQUIRE(bcf_gt_is_missing(gt[7]));
-        REQUIRE(bcf_gt_is_missing(gt[8]));
+        REQUIRE(bcf_gt_allele(gt[6]) == 0);
+        REQUIRE(bcf_gt_allele(gt[7]) == 0);
+        REQUIRE(bcf_gt_allele(gt[8]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[9]));
-        REQUIRE(bcf_gt_is_missing(gt[10]));
+        REQUIRE(bcf_gt_allele(gt[10]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[11]));
 
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
@@ -651,12 +651,11 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[3] == 1));
         REQUIRE(bcf_gt_allele(gt[4] == 0));
         REQUIRE(bcf_gt_allele(gt[5] == 1));
-        // TODO: ought to be able to make reference half-calls in trio2
-        REQUIRE(bcf_gt_is_missing(gt[6]));
-        REQUIRE(bcf_gt_is_missing(gt[7]));
-        REQUIRE(bcf_gt_is_missing(gt[8]));
+        REQUIRE(bcf_gt_allele(gt[6]) == 0);
+        REQUIRE(bcf_gt_allele(gt[7]) == 0);
+        REQUIRE(bcf_gt_allele(gt[8]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[9]));
-        REQUIRE(bcf_gt_is_missing(gt[10]));
+        REQUIRE(bcf_gt_allele(gt[10]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[11]));
 
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
@@ -674,12 +673,11 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[3] == 1));
         REQUIRE(bcf_gt_allele(gt[4] == 0));
         REQUIRE(bcf_gt_allele(gt[5] == 1));
-        // TODO: ought to be able to make reference half-calls in trio2
-        REQUIRE(bcf_gt_is_missing(gt[6]));
-        REQUIRE(bcf_gt_is_missing(gt[7]));
-        REQUIRE(bcf_gt_is_missing(gt[8]));
+        REQUIRE(bcf_gt_allele(gt[6]) == 0);
+        REQUIRE(bcf_gt_allele(gt[7]) == 0);
+        REQUIRE(bcf_gt_allele(gt[8]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[9]));
-        REQUIRE(bcf_gt_is_missing(gt[10]));
+        REQUIRE(bcf_gt_allele(gt[10]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[11]));
 
         free(gt);
@@ -753,11 +751,11 @@ TEST_CASE("genotyper placeholder") {
 
         nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
         REQUIRE(nGT == 6);
-        REQUIRE(bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_is_missing(gt[2]));
+        REQUIRE(bcf_gt_allele(gt[0]) == 0);
+        REQUIRE(bcf_gt_allele(gt[1]) == 0);
+        REQUIRE(bcf_gt_allele(gt[2]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[3]));
-        REQUIRE(bcf_gt_is_missing(gt[4]));
+        REQUIRE(bcf_gt_allele(gt[4]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[5]));
 
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
@@ -769,11 +767,11 @@ TEST_CASE("genotyper placeholder") {
 
         nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
         REQUIRE(nGT == 6);
-        REQUIRE(bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_is_missing(gt[2]));
+        REQUIRE(bcf_gt_allele(gt[0]) == 0);
+        REQUIRE(bcf_gt_allele(gt[1]) == 0);
+        REQUIRE(bcf_gt_allele(gt[2]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[3]));
-        REQUIRE(bcf_gt_is_missing(gt[4]));
+        REQUIRE(bcf_gt_allele(gt[4]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[5]));
 
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
@@ -785,11 +783,11 @@ TEST_CASE("genotyper placeholder") {
 
         nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
         REQUIRE(nGT == 6);
-        REQUIRE(bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_is_missing(gt[2]));
+        REQUIRE(bcf_gt_allele(gt[0]) == 0);
+        REQUIRE(bcf_gt_allele(gt[1]) == 0);
+        REQUIRE(bcf_gt_allele(gt[2]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[3]));
-        REQUIRE(bcf_gt_is_missing(gt[4]));
+        REQUIRE(bcf_gt_allele(gt[4]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[5]));
 
         free(gt);

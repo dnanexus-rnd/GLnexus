@@ -113,6 +113,7 @@ struct range {
 
     bool overlaps(const range& r) const noexcept { return rid == r.rid && end > r.beg && beg < r.end; }
     bool within(const range& r) const noexcept { return rid == r.rid && beg >= r.beg && end <= r.end; }
+    bool contains(const range& r) const noexcept { return r.within(*this); }
 
     std::unique_ptr<range> intersect(const range& r) const {
         if (!overlaps(r)) return nullptr;

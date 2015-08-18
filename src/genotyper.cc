@@ -14,8 +14,13 @@ Status translate_genotypes(const unified_site& site, const shared_ptr<const bcf_
 
     // map the BCF's alleles onto the unified alleles
     vector<int> allele_mapping;
+
+    // reference allele maps if it contains the unified site
+    allele_mapping.push_back(range(record).contains(site.pos) ? 0 : -1);
+
+    // map alt alleles according to unification
     int pos = range(*record).beg;
-    for (int i = 0; i < record->n_allele; i++) {
+    for (int i = 1; i < record->n_allele; i++) {
         auto p = site.unification.find(make_pair(pos,string(record->d.allele[i])));
         allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
     }
