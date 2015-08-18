@@ -31,6 +31,11 @@ Status Service::sampleset_datasets(const string& sampleset, shared_ptr<const set
     return Status::OK();
 }
 
+bool is_dna(const string& str) {
+    return all_of(str.begin(), str.end(),
+                  [](char ch) { return ch == 'A' || ch == 'C' || ch == 'G' || ch == 'T'; });
+}
+
 Status Service::discover_alleles(const string& sampleset, const range& pos, discovered_alleles& ans) {
     // Find the data sets containing the samples in the sample set.
     shared_ptr<const set<string>> datasets;
@@ -71,12 +76,31 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
                 free(gt);
             }
 
-            // create a discovered_alleles entry
-            for (int i = 0; i < record->n_allele; i++) {
-                allele al(rng, record->d.allele[i]);
-                bool is_ref = (i == 0);
-                discovered_allele_info ai = { is_ref, obs_counts[i] };
-                dsals.insert(make_pair(al, ai));
+            // create a discovered_alleles entry for each alt allele matching [ACGT]+
+            // In particular this excludes gVCF <NON_REF> symbolic alleles
+            bool any_alt = false;
+            for (int i = 1; i < record->n_allele; i++) {
+                string aldna(record->d.allele[i]);
+                transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
+                if (aldna.size() > 0 && is_dna(aldna)) {
+                    discovered_allele_info ai = { false, obs_counts[i] };
+                    dsals.insert(make_pair(allele(rng, aldna), ai));
+                    any_alt = true;
+                }
+            }
+
+            // create an entry for the ref allele, if we discovered at least one alt allele.
+            string refdna(record->d.allele[0]);
+            transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
+            if (refdna.size() > 0 && is_dna(refdna)) {
+                if (any_alt) {
+                    discovered_allele_info ai = { true, obs_counts[0] };
+                    dsals.insert(make_pair(allele(rng, refdna), ai));
+                }
+            } else {
+                ostringstream errmsg;
+                errmsg << dataset << " " << refdna << "@" << pos.str();
+                return Status::Invalid("invalid reference allele", errmsg.str());
             }
         }
 

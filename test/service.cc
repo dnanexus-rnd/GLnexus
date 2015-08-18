@@ -23,7 +23,7 @@ class VCFData : public Data {
     VCFData() {}
 
     static Status load_vcf(const string& name, vcf_data_t& ans) {
-        string path = "test/data/" + name + ".vcf";
+        string path = "test/data/" + name;
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(path.c_str(), "r"),
                                                    [](vcfFile* f) { bcf_close(f); });
         if (!vcf) {
@@ -70,7 +70,8 @@ public:
             vcf_data_t d;
             s = load_vcf(nm, d);
             if (s.bad()) return s;
-            datasets[nm] = d;
+
+            datasets[nm.substr(0,nm.find_last_of("."))] = d;
         }
 
         // TODO: verify all headers are mutually "compatible"
@@ -167,7 +168,7 @@ public:
 
 TEST_CASE("service::discover_alleles") {
     unique_ptr<VCFData> data;
-    Status s = VCFData::Open({"discover_alleles_trio1", "discover_alleles_trio2"}, data);
+    Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
     s = Service::Start(data.get(), svc);
@@ -253,9 +254,49 @@ TEST_CASE("service::discover_alleles") {
     }
 }
 
+
+TEST_CASE("service::discover_alleles gVCF") {
+    unique_ptr<VCFData> data;
+    Status s = VCFData::Open({"NA12878D_HiSeqX.21.10009462-10009469.gvcf", "NA12878D_HiSeqX.21.10009462-10009469.bogus.gvcf"}, data);
+    cout << s.str() << endl;
+    REQUIRE(s.ok());
+    unique_ptr<Service> svc;
+    s = Service::Start(data.get(), svc);
+    REQUIRE(s.ok());
+
+    discovered_alleles als;
+
+    SECTION("exclude symbolic alleles") {
+        s = svc->discover_alleles("<ALL>", range(0, 10000000, 10010000), als);
+
+        REQUIRE(als.size() == 2);
+        auto p = als.find(allele(range(0, 10009463, 10009465), "TA"));
+        REQUIRE(p != als.end());
+        REQUIRE(p->second.observation_count == 1);
+        p = als.find(allele(range(0, 10009463, 10009465), "T"));
+        REQUIRE(p != als.end());
+        REQUIRE(p->second.observation_count == 1);
+    }
+
+    SECTION("exclusion/detection of bogus alleles") {
+        s = svc->discover_alleles("<ALL>", range(1, 10009463, 10009465), als);
+
+        REQUIRE(als.size() == 2);
+        auto p = als.find(allele(range(1, 10009463, 10009465), "TA"));
+        REQUIRE(p != als.end());
+        REQUIRE(p->second.observation_count == 1);
+        p = als.find(allele(range(1, 10009463, 10009465), "T"));
+        REQUIRE(p != als.end());
+        REQUIRE(p->second.observation_count == 1);
+
+        s = svc->discover_alleles("<ALL>", range(1, 10009465, 10009466), als);
+        REQUIRE(s == StatusCode::INVALID);
+    }
+}
+
 TEST_CASE("unified_sites placeholder") {
     unique_ptr<VCFData> data;
-    Status s = VCFData::Open({"discover_alleles_trio1", "discover_alleles_trio2"}, data);
+    Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
     s = Service::Start(data.get(), svc);
@@ -421,7 +462,7 @@ TEST_CASE("unified_sites placeholder") {
 
 TEST_CASE("genotyper placeholder") {
     unique_ptr<VCFData> data;
-    Status s = VCFData::Open({"discover_alleles_trio1", "discover_alleles_trio2"}, data);
+    Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
     s = Service::Start(data.get(), svc);
