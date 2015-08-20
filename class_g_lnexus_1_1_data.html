@@ -124,9 +124,9 @@ Public Member Functions</h2></td></tr>
 virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_data.html#a26f28298e9fa5b5f5f865c1941ed9c4a">dataset_bcf_header</a> (const std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr) const =0</td></tr>
 <tr class="memdesc:a26f28298e9fa5b5f5f865c1941ed9c4a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the BCF header for a data set. <br /></td></tr>
 <tr class="separator:a26f28298e9fa5b5f5f865c1941ed9c4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa0a0be816c5114aa8b39d046a42061eb"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_data.html#aa0a0be816c5114aa8b39d046a42061eb">dataset_bcf</a> (const std::string &amp;dataset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const =0</td></tr>
-<tr class="memdesc:aa0a0be816c5114aa8b39d046a42061eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve all BCF records in the data set overlapping a range.  <a href="#aa0a0be816c5114aa8b39d046a42061eb">More...</a><br /></td></tr>
-<tr class="separator:aa0a0be816c5114aa8b39d046a42061eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a90e5d9afc91d55962a73c2d843c9f264"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_data.html#a90e5d9afc91d55962a73c2d843c9f264">dataset_bcf</a> (const std::string &amp;dataset, const bcf_hdr_t *hdr, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const =0</td></tr>
+<tr class="memdesc:a90e5d9afc91d55962a73c2d843c9f264"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve all BCF records in the data set overlapping a range.  <a href="#a90e5d9afc91d55962a73c2d843c9f264">More...</a><br /></td></tr>
+<tr class="separator:a90e5d9afc91d55962a73c2d843c9f264"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstract interface to sample sets, data sets, and alelle/genotype/likelihood data. </p>
@@ -161,7 +161,7 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 
 </div>
 </div>
-<a class="anchor" id="aa0a0be816c5114aa8b39d046a42061eb"></a>
+<a class="anchor" id="a90e5d9afc91d55962a73c2d843c9f264"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -173,6 +173,12 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
           <td>(</td>
           <td class="paramtype">const std::string &amp;&#160;</td>
           <td class="paramname"><em>dataset</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const bcf_hdr_t *&#160;</td>
+          <td class="paramname"><em>hdr</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -200,9 +206,10 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 </div><div class="memdoc">
 
 <p>Retrieve all BCF records in the data set overlapping a range. </p>
-<p>Each record x will already have been "unpacked" with bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not be mutated. They aren't declared const because some vcf.h accessor functions don't take const bcf1_t* </p>
+<p>Each record x will already have been "unpacked" with bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not be mutated. (They aren't declared const because some vcf.h accessor functions don't take const bcf1_t*)</p>
+<p>The provided header must match the data set, otherwise the behavior is undefined! </p>
 
-<p>Implemented in <a class="el" href="class_g_lnexus_1_1_data_cache.html#ab2cf9a7fd5893584416879ff64df277a">GLnexus::DataCache</a>, and <a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#aed601545a4bf8c3c62cc44ba696be32e">GLnexus::BCFKeyValueData</a>.</p>
+<p>Implemented in <a class="el" href="class_g_lnexus_1_1_data_cache.html#ab8ff3f0a566354ed78afd137e803c16b">GLnexus::DataCache</a>, and <a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#ac4e4b179b5d20f9b74710e56711b89b9">GLnexus::BCFKeyValueData</a>.</p>
 
 </div>
 </div>
