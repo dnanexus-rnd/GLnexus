@@ -14,18 +14,20 @@ First [install gcc 4.9](http://askubuntu.com/a/581497), `libjemalloc-dev`, `libb
 cmake -Dtest=ON . && make && ./unit_tests
 ```
 
+Other dependencies (should be set up automatically by CMake):
+* [htslib](https://github.com/samtools/htslib)
+* [rocksdb](https://github.com/facebook/rocksdb)
+* [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+* [Catch](https://github.com/philsquared/Catch) test framework
+
 ### Developer documentation
 
 Evolving developer documentation can be found on the [project github page](http://dnanexus-rnd.github.io/GLnexus/index.html).
 
 ### Coding conventions
 
-* C++14, CMake
-* Dependencies (should be set up automatically by CMake)
- * [htslib](https://github.com/samtools/htslib)
- * [rocksdb](https://github.com/facebook/rocksdb)
- * [yaml-cpp](https://github.com/jbeder/yaml-cpp)
- * [Catch](https://github.com/philsquared/Catch) test framework
+* C++14 - take advantage of [the goodies](http://shop.oreilly.com/product/0636920033707.do)
+* Use smart pointers to avoid passing resources needing manual deallocation across function/class boundaries
 * Avoid exceptions; prefer returning a `Status`, defined early in [types.h](https://github.com/dnanexus-rnd/GLnexus/blob/master/include/types.h)
  * nb the frequently-used convenience macro `S()` defined just below `Status`
 * Avoid elaborate templated class hierarchies
