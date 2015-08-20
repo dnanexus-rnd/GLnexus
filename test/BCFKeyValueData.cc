@@ -355,6 +355,9 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 
     Status s = data->import_gvcf(cache.get(), "synth_A", "test/data/synthetic_A.21.gvcf");
     REQUIRE(s.ok());
+    shared_ptr<const bcf_hdr_t> hdr;
+    s = data->dataset_bcf_header("synth_A", hdr);
+    REQUIRE(s.ok());
 
     vector<shared_ptr<bcf1_t>> records;
     /* Case 1
@@ -362,7 +365,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
        |<-A1->)       |<-A2->)
        Expected result: empty set
     */
-    s = data->dataset_bcf("synth_A", range(0, 1005, 1010), records);
+    s = data->dataset_bcf("synth_A", hdr.get(), range(0, 1005, 1010), records);
     REQUIRE(s.ok());
     REQUIRE(records.size() == 0);
 
@@ -372,7 +375,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
                 |<-A2->)  |<-A4->)
         Expected result: {A1, A2, A3}
     */
-    s = data->dataset_bcf("synth_A", range(0, 2003, 2006), records);
+    s = data->dataset_bcf("synth_A", hdr.get(), range(0, 2003, 2006), records);
     REQUIRE(s.ok());
     REQUIRE(records.size() == 3);
 
@@ -384,7 +387,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
                |<-A3->)
       Expected result: {A1, A2, A3}
     */
-    s = data->dataset_bcf("synth_A", range(0, 3004, 3006), records);
+    s = data->dataset_bcf("synth_A", hdr.get(), range(0, 3004, 3006), records);
     REQUIRE(s.ok());
     REQUIRE(records.size() == 3);
 }

@@ -183,7 +183,6 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
     S(body_->db->collection("bcf",coll));
     string data;
 
-<<<<<<< HEAD
     std::string key(dataset);
     key += ":";
     key += std::to_string(pos.rid);
@@ -193,18 +192,6 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
         return Status::NotFound();
     }
 
-||||||| merged common ancestors
-=======
-    std::string key(dataset);
-    key += ":";
-    key += std::to_string(pos.rid);
-    s = body_->db->get(coll, key, data);
-    if (s == StatusCode::NOT_FOUND) {
-        // FIXME: look at adjacent ranges?
-        return Status::NotFound();
-    }
-
->>>>>>> First working version
     // Parse the records and extract those overlapping pos
     records.clear();
     unique_ptr<BCFReader> reader;
