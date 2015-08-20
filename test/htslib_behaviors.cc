@@ -230,13 +230,17 @@ TEST_CASE("htslib gVCF representation") {
     REQUIRE(records[0]->n_allele == 2);
     REQUIRE(string(records[0]->d.allele[0]) == "T");
     REQUIRE(string(records[0]->d.allele[1]) == "<NON_REF>");
-    REQUIRE(bcf_get_info(hdr, records[0].get(), "END")->v1.i == 10009463); // nb END stays 1-based!
+    bcf_info_t *info = bcf_get_info(hdr, records[0].get(), "END");
+    REQUIRE(info->type == BCF_BT_INT32);
+    REQUIRE(info->len == 1);
+    REQUIRE(info->v1.i == 10009463); // nb END stays 1-based!
 
     REQUIRE(records[1]->pos == 10009463);
     REQUIRE(records[1]->n_allele == 3);
     REQUIRE(string(records[1]->d.allele[0]) == "TA");
     REQUIRE(string(records[1]->d.allele[1]) == "T");
     REQUIRE(string(records[1]->d.allele[2]) == "<NON_REF>");
+    REQUIRE(bcf_get_info(hdr, records[1].get(), "END") == NULL);
 
     REQUIRE(records[4]->pos == 10009468);
     REQUIRE(records[4]->n_allele == 2);
