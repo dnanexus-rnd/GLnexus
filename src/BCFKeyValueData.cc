@@ -183,6 +183,7 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
     S(body_->db->collection("bcf",coll));
     string data;
 
+<<<<<<< HEAD
     std::string key(dataset);
     key += ":";
     key += std::to_string(pos.rid);
@@ -191,7 +192,20 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
         // FIXME: look at adjacent ranges?
         return Status::NotFound();
     }
-        
+
+||||||| merged common ancestors
+=======
+    std::string key(dataset);
+    key += ":";
+    key += std::to_string(pos.rid);
+    s = body_->db->get(coll, key, data);
+    if (s == StatusCode::NOT_FOUND) {
+        // FIXME: do we want to look ranges close by too?
+        // This would be relevant when we use ranges.
+        return Status::NotFound();
+    }
+
+>>>>>>> First working version
     // Parse the records and extract those overlapping pos
     records.clear();
     unique_ptr<BCFReader> reader;
@@ -237,7 +251,7 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
 
 // Add a <key,value> pair to the database.
 // The key is a concatenation of the dataset name and the chromosome.
-// The data is 
+// The data is
 static Status write_chrom(KeyValue::DB* db,
                           BCFWriter *writer,
                           const string& dataset,
@@ -245,24 +259,24 @@ static Status write_chrom(KeyValue::DB* db,
 {
     Status s;
     //cout << "write_chrom (" << dataset << ":" << chrom_id << ")" << endl;
-    
-    // extract the data 
+
+    // extract the data
     string data;
     S(writer->contents(data));
 
-    // Generate the key 
+    // Generate the key
     string key(dataset);
     key += ":";
     key += std::to_string(chrom_id);
-    
+
     // write to the database
     KeyValue::CollectionHandle coll_bcf;
     S(db->collection("bcf", coll_bcf));
     S(db->put(coll_bcf, key, data));
     return Status::OK();
 }
-    
-    
+
+
 Status BCFKeyValueData::import_gvcf(const DataCache* cache,
                                     const string& dataset,
                                     const string& filename) {
@@ -289,7 +303,7 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     unique_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
     S(BCFWriter::Open(writer));
-            
+
     int c;
     int chrom_id = -1;
     for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
@@ -301,12 +315,10 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
             S(write_chrom(body_->db, writer.get(), dataset, chrom_id));
 
             // start a new in-memory chunk
-            writer = NULL;  
+            writer = NULL;
             S(BCFWriter::Open(writer));
         }
         chrom_id = vt->rid;
-
-        // We remain on the same chromosome, append to the key
         S(writer->write(vt.get()));
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
