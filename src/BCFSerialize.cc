@@ -253,3 +253,4 @@ Status BCFReader::read_header(const char* buf, int hdrlen, int& consumed, shared
 }
 
 } // namespace GLnexus
+

@@ -188,7 +188,8 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr,
     key += std::to_string(pos.rid);
     s = body_->db->get(coll, key, data);
     if (s == StatusCode::NOT_FOUND) {
-        // FIXME: look at adjacent ranges?
+        // FIXME: do we want to look ranges close by too?
+        // This would be relevant when we use ranges.
         return Status::NotFound();
     }
 
@@ -305,8 +306,6 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
             S(BCFWriter::Open(writer));
         }
         chrom_id = vt->rid;
-
-        // We remain on the same chromosome, append to the key
         S(writer->write(vt.get()));
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);

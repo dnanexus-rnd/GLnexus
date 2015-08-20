@@ -64,3 +64,4 @@ class BCFReader {
 } // namespace GLnexus
 
 #endif
+
