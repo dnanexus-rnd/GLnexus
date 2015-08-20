@@ -127,9 +127,9 @@ Public Member Functions</h2></td></tr>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a88aabfb7f89cc681f2cb7df345412612">dataset_bcf_header</a> (const std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr) const override</td></tr>
 <tr class="memdesc:a88aabfb7f89cc681f2cb7df345412612"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the BCF header for a data set. <br /></td></tr>
 <tr class="separator:a88aabfb7f89cc681f2cb7df345412612"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac4e4b179b5d20f9b74710e56711b89b9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#ac4e4b179b5d20f9b74710e56711b89b9">dataset_bcf</a> (const std::string &amp;dataset, const bcf_hdr_t *hdr, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const override</td></tr>
-<tr class="memdesc:ac4e4b179b5d20f9b74710e56711b89b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve all BCF records in the data set overlapping a range.  <a href="#ac4e4b179b5d20f9b74710e56711b89b9">More...</a><br /></td></tr>
-<tr class="separator:ac4e4b179b5d20f9b74710e56711b89b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed601545a4bf8c3c62cc44ba696be32e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#aed601545a4bf8c3c62cc44ba696be32e">dataset_bcf</a> (const std::string &amp;dataset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const override</td></tr>
+<tr class="memdesc:aed601545a4bf8c3c62cc44ba696be32e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve all BCF records in the data set overlapping a range.  <a href="#aed601545a4bf8c3c62cc44ba696be32e">More...</a><br /></td></tr>
+<tr class="separator:aed601545a4bf8c3c62cc44ba696be32e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a7e7d8638c30a2600b15829cb6cf8d6"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7a7e7d8638c30a2600b15829cb6cf8d6"></a>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a7a7e7d8638c30a2600b15829cb6cf8d6">import_gvcf</a> (const <a class="el" href="class_g_lnexus_1_1_data_cache.html">DataCache</a> *cache, const std::string &amp;dataset, const std::string &amp;filename)</td></tr>
 <tr class="memdesc:a7a7e7d8638c30a2600b15829cb6cf8d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Import a new dataset. <br /></td></tr>
@@ -178,7 +178,7 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
 
 </div>
 </div>
-<a class="anchor" id="ac4e4b179b5d20f9b74710e56711b89b9"></a>
+<a class="anchor" id="aed601545a4bf8c3c62cc44ba696be32e"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -190,12 +190,6 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
           <td>(</td>
           <td class="paramtype">const std::string &amp;&#160;</td>
           <td class="paramname"><em>dataset</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const bcf_hdr_t *&#160;</td>
-          <td class="paramname"><em>hdr</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -223,10 +217,9 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
 </div><div class="memdoc">
 
 <p>Retrieve all BCF records in the data set overlapping a range. </p>
-<p>Each record x will already have been "unpacked" with bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not be mutated. (They aren't declared const because some vcf.h accessor functions don't take const bcf1_t*)</p>
-<p>The provided header must match the data set, otherwise the behavior is undefined! </p>
+<p>Each record x will already have been "unpacked" with bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not be mutated. They aren't declared const because some vcf.h accessor functions don't take const bcf1_t* </p>
 
-<p>Implements <a class="el" href="class_g_lnexus_1_1_data.html#a90e5d9afc91d55962a73c2d843c9f264">GLnexus::Data</a>.</p>
+<p>Implements <a class="el" href="class_g_lnexus_1_1_data.html#aa0a0be816c5114aa8b39d046a42061eb">GLnexus::Data</a>.</p>
 
 </div>
 </div>
