@@ -167,11 +167,10 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
     S(body_->db->get(coll, dataset, data));
 
     // Parse the header
-    bcf_hdr_t *hdr_ref = BCFReader::read_header(data.c_str(), data.size());
-    if (hdr_ref == NULL) {
-        return Status::Invalid("Bad BCF header");
-    }
-    hdr = shared_ptr<bcf_hdr_t>(hdr_ref, &bcf_hdr_destroy);
+    shared_ptr<bcf_hdr_t> ans;
+    int consumed;
+    S(BCFReader::read_header(data.c_str(), data.size(), consumed, ans));
+    hdr = ans;
     return Status::OK();
 }
 
