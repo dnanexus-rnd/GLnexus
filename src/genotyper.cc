@@ -11,17 +11,19 @@ Status translate_genotypes(const unified_site& site, const shared_ptr<const bcf_
                            vector<int32_t>& genotypes, vector<bool>& genotyped) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
+    Status s;
 
     // map the BCF's alleles onto the unified alleles
     vector<int> allele_mapping;
 
     // reference allele maps if it contains the unified site
-    allele_mapping.push_back(range(record).contains(site.pos) ? 0 : -1);
+    range rng;
+    S(range_of_bcf(dataset_header, record, rng));
+    allele_mapping.push_back(rng.contains(site.pos) ? 0 : -1);
 
     // map alt alleles according to unification
-    int pos = range(*record).beg;
     for (int i = 1; i < record->n_allele; i++) {
-        auto p = site.unification.find(make_pair(pos,string(record->d.allele[i])));
+        auto p = site.unification.find(make_pair(rng.beg, string(record->d.allele[i])));
         allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
     }
 
@@ -36,6 +38,9 @@ Status translate_genotypes(const unified_site& site, const shared_ptr<const bcf_
         assert(ij.second < genotyped.size());
 
         if (!genotyped[ij.second]) {
+            // TODO: accept the call only if the allele is supported by at
+            // least N reads -- including reference. The cutoff should be
+            // configurable somehow.
             #define fill_allele(ofs)                                \
                 if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&   \
                     !bcf_gt_is_missing(gt[2*ij.first+ofs])) {       \
@@ -81,9 +86,8 @@ Status genotype_site(const DataCache& data, const unified_site& site, const set<
     for (const auto& dataset : datasets) {
         // load BCF records overlapping the site
         shared_ptr<const bcf_hdr_t> dataset_header;
-        S(data.dataset_bcf_header(dataset, dataset_header));
         vector<shared_ptr<bcf1_t>> records;
-        S(data.dataset_bcf(dataset, site.pos, records));
+        S(data.dataset_bcf(dataset, site.pos, dataset_header, records));
 
         // index the samples shared between the sample set and the BCFs
         // TODO: better algorithm, with caching (LRU given sampleset-dataset cross)

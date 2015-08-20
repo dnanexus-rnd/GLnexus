@@ -202,7 +202,7 @@ TEST_CASE("RocksDB BCF retrieval") {
         s = data->dataset_bcf_header("NA12878D", hdr);
         REQUIRE(s.ok());        
         vector<shared_ptr<bcf1_t>> records;
-        s = data->dataset_bcf("NA12878D", range(0, 0, 1000000000), records);
+        s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);
@@ -230,7 +230,7 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(bcf_get_info(hdr.get(), records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
 
         // subset of records
-        s = data->dataset_bcf("NA12878D", range(0, 10009463, 10009466), records);
+        s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 2);
@@ -247,16 +247,16 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
 
         // empty results
-        s = data->dataset_bcf("NA12878D", range(0, 0, 1000), records);
+        s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 0, 1000), records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 0);
 
-        s = data->dataset_bcf("NA12878D", range(1, 10009463, 10009466), records);
+        s = data->dataset_bcf("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 0);
 
         // bogus dataset
-        s = data->dataset_bcf("bogus", range(1, 10009463, 10009466), records);
+        s = data->dataset_bcf("bogus", hdr.get(), range(1, 10009463, 10009466), records);
         REQUIRE(s == StatusCode::NOT_FOUND);
     }
 }

@@ -150,15 +150,17 @@ public:
         return Status::OK();
     }
 
-    Status dataset_bcf(const string& dataset, const range& pos, vector<shared_ptr<bcf1_t> >& records) const override {
+    Status dataset_bcf(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) const override {
+        Status s;
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
             return Status::NotFound("unknown data set", dataset);
         }
-        //hdr = p->second.header;
         records.clear();
         for (const auto& bcf : p->second.records) {
-            if (range(bcf).overlaps(pos)) {
+            range rng;
+            S(range_of_bcf(hdr, bcf, rng));
+            if (rng.overlaps(pos)) {
                 records.push_back(bcf);
             }
         }
