@@ -58,10 +58,11 @@ public:
 
     /// Each record x will already have been "unpacked" with
     /// bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not
-    /// be mutated. They aren't declared const because some vcf.h accessor
-    /// functions don't take const bcf1_t*
+    /// be mutated. (They aren't declared const because some vcf.h accessor
+    /// functions don't take const bcf1_t*)
     ///
-    virtual Status dataset_bcf(const std::string& dataset, const range& pos,
+    /// The provided header must match the data set, otherwise the behavior is undefined!
+    virtual Status dataset_bcf(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
                                std::vector<std::shared_ptr<bcf1_t> >& records) const = 0;
 };
 
@@ -83,8 +84,14 @@ public:
     Status sample_dataset(const std::string& sample, std::string& ans) const override;
     Status dataset_bcf_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
-    Status dataset_bcf(const std::string& dataset, const range& pos,
+    Status dataset_bcf(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
                        std::vector<std::shared_ptr<bcf1_t> >& records) const override;
+
+    /// Wrapper for dataset_bcf which also finds the required header from the
+    /// cache (useful if the caller doesn't already have the header in hand)
+    Status dataset_bcf(const std::string& dataset, const range& pos,
+                       std::shared_ptr<const bcf_hdr_t>& hdr,
+                       std::vector<std::shared_ptr<bcf1_t> >& records) const;
 
     const std::vector<std::pair<std::string,size_t> >& contigs() const;
     Status sampleset_datasets(const std::string& sampleset, std::shared_ptr<const std::set<std::string>>& ans) const;

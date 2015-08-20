@@ -174,7 +174,7 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
     return Status::OK();
 }
 
-Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
+Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr, const range& pos,
                                     vector<shared_ptr<bcf1_t> >& records) const {
     Status s;
 
@@ -193,7 +193,9 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset, const range& pos,
     shared_ptr<bcf1_t> vt;
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
-        if (pos.overlaps(vt.get())) {
+        range vt_rng;
+        S(range_of_bcf(hdr, vt, vt_rng));
+        if (pos.overlaps(vt_rng)) {
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
                 return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", dataset + "@" + pos.str());
             }

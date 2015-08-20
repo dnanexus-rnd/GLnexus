@@ -45,18 +45,16 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     // extract alleles from each dataset
     ans.clear();
     for (const auto& dataset : *datasets) {
-        // read the header
-        shared_ptr<const bcf_hdr_t> dataset_header;
-        S(data_->dataset_bcf_header(dataset, dataset_header));
-
         // get dataset BCF records
+        shared_ptr<const bcf_hdr_t> dataset_header;
         vector<shared_ptr<bcf1_t>> records;
-        S(data_->dataset_bcf(dataset, pos, records));
+        S(data_->dataset_bcf(dataset, pos, dataset_header, records));
 
         // for each BCF record
         discovered_alleles dsals;
         for (const auto& record : records) {
-            range rng(*record);
+            range rng;
+            S(range_of_bcf(dataset_header, record, rng));
             vector<float> obs_counts(record->n_allele, 0.0);
 
             // count hard-called allele observations

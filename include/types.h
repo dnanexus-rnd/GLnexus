@@ -90,17 +90,13 @@ public:
 struct range {
     int rid=-1, beg=-1, end=-1;
 
+    range() noexcept = default;
+
     range(int rid_, int beg_, int end_) noexcept : rid(rid_), beg(beg_), end(end_) {
         if (beg_ > end_) {
             throw std::invalid_argument("invalid range (beginning > end)");
         }
     }
-
-    // TODO: if the bcf1_t INFO has an END field, that should be used instead of the reference
-    // length to determine the end coordinate.
-    range(const bcf1_t* bcf) : range(bcf->rid, bcf->pos, bcf->pos+bcf->rlen) {}
-    range(const bcf1_t& bcf) : range(&bcf) {}
-    range(const std::shared_ptr<const bcf1_t>& bcf) : range(bcf.get()) {}
 
     size_t size() const noexcept { return end-beg; }
 
@@ -134,6 +130,15 @@ struct range {
         return str({});
     }
 };
+
+/// Get the genomic range covered by a bcf1_t record. The end position is
+/// determined by the END INFO field if present (for structural variants and
+/// gVCF reference coverage records), or from the length of the reference
+/// allele otherwise. The operation can fail if the END field is present but
+/// somehow misformulated.
+Status range_of_bcf(const bcf_hdr_t* hdr, bcf1_t* bcf, range& ans);
+Status range_of_bcf(const bcf_hdr_t* hdr, const std::shared_ptr<bcf1_t>& bcf, range& ans);
+Status range_of_bcf(const std::shared_ptr<const bcf_hdr_t>& hdr, const std::shared_ptr<bcf1_t>& bcf, range& ans);
 
 struct allele {
     range pos;
