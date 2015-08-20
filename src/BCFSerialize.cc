@@ -209,6 +209,7 @@ Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
     }
     if ((size_t)current_ >= bufsz_)
         return Status::NotFound();
+    // FIXME bcf_raw_read_from_mem does not seem to check bounds -- potential security issue
     int reclen = bcf_raw_read_from_mem(&buf_[current_], ans.get());
     current_ += reclen;
     return Status::OK();
@@ -217,29 +218,32 @@ Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
 /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
    from memory instead of disk.
 */
-bcf_hdr_t* BCFReader::read_header(const char* buf, int hdrlen) {
+Status BCFReader::read_header(const char* buf, int hdrlen, int& consumed, shared_ptr<bcf_hdr_t>& ans) {
     if (strncmp(buf, "BCF\2\2", 5) != 0) {
-        //fprintf("invalid BCF2 magic string");
-        return NULL;
+        return Status::Invalid("BCFReader::read_header invalid BCF2 magic string");
     }
 
-    bcf_hdr_t *hdr = bcf_hdr_init("r");
+    ans = shared_ptr<bcf_hdr_t>(bcf_hdr_init("r"), &bcf_hdr_destroy);
     int loc = 5;
     int hlen;
-    char *htxt;
     memcpy(&hlen, &buf[loc], 4);
     loc += 4;
 
-    // sanity check; make sure we do not  over the record length
-    assert(loc + hlen <= hdrlen);
+    // make sure we do not read beyond the buffer end
+    if (loc + hlen > hdrlen) {
+        return Status::Invalid("BCFReader::read_header truncated header");
+    }
 
-    htxt = (char*)malloc(hlen);
-    memcpy(htxt, &buf[loc], hlen);
-    bcf_hdr_parse(hdr, htxt);
+    auto htxt = make_unique<char[]>(hlen);
+    memcpy(htxt.get(), &buf[loc], hlen);
 
-    // release resources
-    free(htxt);
-    return hdr;
+    // FIXME bcf_hdr_parse does not seem to check bounds -- potential security issue
+    if (bcf_hdr_parse(ans.get(), htxt.get()) != 0) {
+        return Status::Invalid("BCFReader::read_header parse error");
+    }
+
+    consumed = loc + hlen;
+    return Status::OK();
 }
 
 } // namespace GLnexus
