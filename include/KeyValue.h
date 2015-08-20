@@ -75,7 +75,7 @@ public:
     Status get(CollectionHandle coll, const std::string& key, std::string& value) const override;
     Status iterator(CollectionHandle coll, std::unique_ptr<Iterator>& it) const override;
     Status iterator(CollectionHandle coll, const std::string& key, std::unique_ptr<Iterator>& it) const override;
-    Status put(CollectionHandle coll, const std::string& key, const std::string& value);
+    virtual Status put(CollectionHandle coll, const std::string& key, const std::string& value);
 };
 
 }}
