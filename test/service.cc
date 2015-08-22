@@ -1020,8 +1020,6 @@ TEST_CASE("gVCF genotyper") {
         REQUIRE(nGT == 2);
         REQUIRE(bcf_gt_is_missing(gt[0]));
         REQUIRE(bcf_gt_is_missing(gt[1]));
-
-        // TODO: need a test where only one allele will be called missing
     }
 
 
@@ -1064,6 +1062,6 @@ TEST_CASE("gVCF genotyper") {
         REQUIRE(nGT == 2);
         REQUIRE(bcf_gt_allele(gt[0]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[1]));
-        // TODO consider normalizing half-calls so that the missing allele is always first
+        // TODO consider normalizing half-calls so that the missing allele is always first (or second)
     }
 }

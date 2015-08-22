@@ -7,9 +7,13 @@ using namespace std;
 // at unified sites. It's merely capable of substituting in hard genotype
 // calls for exactly matching alleles from our gVCF input data (with some
 // simple filters on depth of coverage). It does not handle genotype
-// likelihoods or reference base padding.
+// likelihoods or reference base padding. Also it assumes diploid.
 
 namespace GLnexus {
+
+bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
+    return record->n_allele == 2 && string(record->d.allele[1]) == cfg.ref_symbolic_allele;
+}
 
 // Helper class for keeping track of the per-allele depth of coverage info in
 // a bcf1_t record. There are a couple different cases to handle, depending on
@@ -30,8 +34,7 @@ class AlleleDepthHelper {
 public:
     // TODO refactor to avoid heap allocation...
     static Status Open(const genotyper_config& cfg, const string& dataset,
-                       const shared_ptr<const bcf_hdr_t>& dataset_header,
-                       const shared_ptr<bcf1_t>& record,
+                       const bcf_hdr_t* dataset_header, bcf1_t* record,
                        unique_ptr<AlleleDepthHelper>& ans) {
         if (cfg.required_dp) {
             int32_t *v = nullptr;
@@ -39,35 +42,27 @@ public:
             bool is_g = false;
 
             // is this a gVCF reference confidence record?
-            if (record->n_allele == 2 && string(record->d.allele[1]) == cfg.ref_symbolic_allele) {
+            if (is_gvcf_ref_record(cfg, record)) {
                 is_g = true;
                 // if so, look for the MIN_DP FORMAT field (or equivalent)
-                int nv = bcf_get_format_int32(dataset_header.get(), record.get(),
-                                              cfg.ref_dp_format.c_str(), &v, &vsz);
+                int nv = bcf_get_format_int32(dataset_header, record, cfg.ref_dp_format.c_str(),
+                                              &v, &vsz);
 
                 if (nv != record->n_sample) {
-                    if (v) {
-                        free(v);
-                    }
+                    if (v) free(v);
                     ostringstream errmsg;
-                    errmsg << dataset
-                           << " <" << record->rid << ">:" << record->pos
-                           << " (" << cfg.ref_dp_format << ")";
+                    errmsg << dataset << " <" << record->rid << ">:" << record->pos << " (" << cfg.ref_dp_format << ")";
                     return Status::Invalid("genotyper: gVCF reference depth FORMAT field is either missing or has the wrong type", errmsg.str());
                 }
             } else {
                 // this is a regular VCF record, so look for the AD FORMAT field (or equivalent)
-                int nv = bcf_get_format_int32(dataset_header.get(), record.get(),
-                                              cfg.allele_dp_format.c_str(), &v, &vsz);
+                int nv = bcf_get_format_int32(dataset_header, record, cfg.allele_dp_format.c_str(),
+                                              &v, &vsz);
 
                 if (nv != record->n_sample * record->n_allele) {
-                    if (v) {
-                        free(v);
-                    }
+                    if (v) free(v);
                     ostringstream errmsg;
-                    errmsg << dataset
-                           << " <" << record->rid << ">:" << record->pos
-                           << " (" << cfg.allele_dp_format << ")";
+                    errmsg << dataset << " <" << record->rid << ">:" << record->pos << " (" << cfg.allele_dp_format << ")";
                     return Status::Invalid("genotyper: VCF allele depth FORMAT field is either missing or has the wrong type", errmsg.str());
                 }
             }
@@ -105,10 +100,8 @@ public:
 // vector, based on a mapping from the bcf1_t sample indices into indices of
 // the genotype vector.
 Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
-                           const string& dataset,
-                           const shared_ptr<const bcf_hdr_t>& dataset_header,
-                           const shared_ptr<bcf1_t>& record,
-                           const map<int,int>& sample_mapping,
+                           const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int,int>& sample_mapping,
                            vector<int32_t>& genotypes, vector<bool>& genotyped) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
@@ -122,7 +115,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     S(range_of_bcf(dataset_header, record, rng));
     allele_mapping.push_back(rng.contains(site.pos) ? 0 : -1);
 
-    // map alt alleles according to unification
+    // map the bcf1_t alt alleles according to unification
     for (int i = 1; i < record->n_allele; i++) {
         auto p = site.unification.find(make_pair(rng.beg, string(record->d.allele[i])));
         allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
@@ -130,9 +123,9 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
 
     // get the genotype calls
     int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(dataset_header.get(), record.get(), &gt, &gtsz);
-    assert(nGT == 2*bcf_hdr_nsamples(dataset_header.get()));
-    assert(record->n_sample == bcf_hdr_nsamples(dataset_header.get()));
+    int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
+    assert(nGT == 2*bcf_hdr_nsamples(dataset_header));
+    assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
     // and the depth of coverage info
     unique_ptr<AlleleDepthHelper> depth;
@@ -180,9 +173,12 @@ Status genotype_site(const genotyper_config& cfg, const DataCache& data, const u
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans) {
 	Status s;
 	
-    // initialize a vector for the unified genotype calls (starting with everything missing)
-    // TODO: ploidy
+    // Initialize a vector for the unified genotype calls for each sample,
+    // starting with everything missing. We'll then loop through BCF records
+    // overlapping this site and fill in the genotypes as we encounter them.
     vector<int32_t> genotypes(2*samples.size(), bcf_gt_missing);
+    // Also remember which samples we've already seen a genotype call for, in
+    // case we encounter multiple BCF records from the sample
     vector<bool> genotyped(samples.size(), false);
 
     // for each pertinent dataset
@@ -210,7 +206,7 @@ Status genotype_site(const genotyper_config& cfg, const DataCache& data, const u
 
         // for each source BCF record
         for (const auto& record : records) {
-            S(translate_genotypes(cfg, site, dataset, dataset_header, record,
+            S(translate_genotypes(cfg, site, dataset, dataset_header.get(), record.get(),
                                   sample_mapping, genotypes, genotyped));
         }
     }
