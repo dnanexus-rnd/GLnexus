@@ -141,7 +141,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     return Status::OK();
 }
 
-Status Service::genotype_sites(const string& sampleset, const vector<unified_site>& sites, const string& filename) {
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
     Status s;
     shared_ptr<const set<string>> samples, datasets;
     S(data_->sampleset_samples(sampleset, samples));
@@ -183,7 +183,7 @@ Status Service::genotype_sites(const string& sampleset, const vector<unified_sit
     for (const auto& site : sites) {
         // compute genotypes
         shared_ptr<bcf1_t> site_bcf;
-        S(genotype_site(*data_, site, *samples, *datasets, hdr.get(), site_bcf));
+        S(genotype_site(cfg, *data_, site, *samples, *datasets, hdr.get(), site_bcf));
 
         // write out a BCF record
         if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {

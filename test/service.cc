@@ -482,7 +482,7 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(string("discover_alleles_trio1"), sites, tfn);
+        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio1"), sites, tfn);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -591,7 +591,7 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(string("<ALL>"), sites, tfn);
+        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -734,7 +734,7 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(string("discover_alleles_trio2"), sites, tfn);
+        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio2"), sites, tfn);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -834,5 +834,234 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_is_missing(gt[5]));
 
         free(gt);
+    }
+}
+
+TEST_CASE("gVCF genotyper") {
+    unique_ptr<VCFData> data;
+    Status s = VCFData::Open({"NA12878D_HiSeqX.21.10009462-10009469.gvcf"}, data);
+    REQUIRE(s.ok());
+    unique_ptr<Service> svc;
+    s = Service::Start(data.get(), svc);
+    REQUIRE(s.ok());
+
+    discovered_alleles als;
+
+    const string tfn("/tmp/GLnexus_unit_tests.bcf");
+
+    SECTION("no depth requirement") {
+        vector<unified_site> sites;
+
+        unified_site us(range(0,10009461,10009462));
+        us.alleles.push_back("T");
+        us.alleles.push_back("A");
+        us.unification[make_pair(10009461,"T")] = 0;
+        us.unification[make_pair(10009461,"A")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+
+        us.pos = range(0,10009462,10009463);
+        us.alleles.clear();
+        us.alleles.push_back("C");
+        us.alleles.push_back("G");
+        us.unification.clear();
+        us.unification[make_pair(10009462,"C")] = 0;
+        us.unification[make_pair(10009462,"G")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+
+        // this site spans two gVCF records and will not be called by the current algorithm.
+        us.pos = range(0,10009465,10009467);
+        us.alleles.clear();
+        us.alleles.push_back("AA");
+        us.alleles.push_back("GT");
+        us.unification.clear();
+        us.unification[make_pair(10009465,"AA")] = 0;
+        us.unification[make_pair(10009465,"GT")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+        
+        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+        REQUIRE(s.ok());
+
+        unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
+        REQUIRE(bool(vcf));
+        shared_ptr<bcf_hdr_t> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+        REQUIRE(bool(hdr));
+
+        int nsamples = bcf_hdr_nsamples(hdr);
+        REQUIRE(nsamples == 1);
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 0)) == "NA12878");
+
+        unique_ptr<bcf1_t,void(*)(bcf1_t*)> record(bcf_init(), &bcf_destroy);
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "T");
+        REQUIRE(string(record->d.allele[1]) == "A");
+
+        // With no depth requirement, we should just get the hard-called genotypes back.
+
+        int *gt = nullptr, gtsz = 0;
+        int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 0));
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "G");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_allele(gt[0]) == 0);
+        REQUIRE(bcf_gt_allele(gt[1]) == 0);
+
+        // this site spans two gVCF records and will not be called by the current algorithm.
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "AA");
+        REQUIRE(string(record->d.allele[1]) == "GT");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_is_missing(gt[0]));
+        REQUIRE(bcf_gt_is_missing(gt[1]));
+    }
+
+    SECTION("require depth > 12") {
+        vector<unified_site> sites;
+
+        unified_site us(range(0,10009463,10009465));
+        us.alleles.push_back("TA");
+        us.alleles.push_back("T");
+        us.unification[make_pair(10009463,"TA")] = 0;
+        us.unification[make_pair(10009463,"T")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+
+        us.pos = range(0,10009465,10009466);
+        us.alleles.clear();
+        us.alleles.push_back("A");
+        us.alleles.push_back("G");
+        us.unification.clear();
+        us.unification[make_pair(10009465,"A")] = 0;
+        us.unification[make_pair(10009465,"G")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+
+        us.pos = range(0,10009466,10009467);
+        us.alleles.clear();
+        us.alleles.push_back("A");
+        us.alleles.push_back("C");
+        us.unification.clear();
+        us.unification[make_pair(10009466,"A")] = 0;
+        us.unification[make_pair(10009466,"C")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+        
+        genotyper_config cfg;
+        cfg.required_dp = 13;
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+        REQUIRE(s.ok());
+
+        unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
+        REQUIRE(bool(vcf));
+        shared_ptr<bcf_hdr_t> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+        REQUIRE(bool(hdr));
+
+        int nsamples = bcf_hdr_nsamples(hdr);
+        REQUIRE(nsamples == 1);
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 0)) == "NA12878");
+
+        // Some calls will be missing due to the depth requirement.
+        unique_ptr<bcf1_t,void(*)(bcf1_t*)> record(bcf_init(), &bcf_destroy);
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "TA");
+        REQUIRE(string(record->d.allele[1]) == "T");
+
+        int *gt = nullptr, gtsz = 0;
+        int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_is_missing(gt[0]));
+        REQUIRE(bcf_gt_is_missing(gt[1]));
+
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "A");
+        REQUIRE(string(record->d.allele[1]) == "G");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_allele(gt[0]) == 0);
+        REQUIRE(bcf_gt_allele(gt[1]) == 0);
+
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "A");
+        REQUIRE(string(record->d.allele[1]) == "C");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_is_missing(gt[0]));
+        REQUIRE(bcf_gt_is_missing(gt[1]));
+    }
+
+
+    SECTION("require depth > 9") {
+        vector<unified_site> sites;
+
+        unified_site us(range(0,10009463,10009465));
+        us.alleles.push_back("TA");
+        us.alleles.push_back("T");
+        us.unification[make_pair(10009463,"TA")] = 0;
+        us.unification[make_pair(10009463,"T")] = 1;
+        us.observation_count = { 1, 1 };
+        sites.push_back(us);
+
+        genotyper_config cfg;
+        cfg.required_dp = 9;
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+        REQUIRE(s.ok());
+
+        unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
+        REQUIRE(bool(vcf));
+        shared_ptr<bcf_hdr_t> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+        REQUIRE(bool(hdr));
+
+        int nsamples = bcf_hdr_nsamples(hdr);
+        REQUIRE(nsamples == 1);
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 0)) == "NA12878");
+
+        // One of the allele calls will be missing due to the depth requirement.
+        unique_ptr<bcf1_t,void(*)(bcf1_t*)> record(bcf_init(), &bcf_destroy);
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "TA");
+        REQUIRE(string(record->d.allele[1]) == "T");
+
+        int *gt = nullptr, gtsz = 0;
+        int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 2);
+        REQUIRE(bcf_gt_allele(gt[0]) == 0);
+        REQUIRE(bcf_gt_is_missing(gt[1]));
+        // TODO consider normalizing half-calls so that the missing allele is always first (or second)
     }
 }
