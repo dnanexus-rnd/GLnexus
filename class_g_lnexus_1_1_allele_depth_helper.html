@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.7"/>
-<title>GLnexus: Class Members - Variables</title>
+<title>GLnexus: GLnexus::AlleleDepthHelper Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -63,17 +63,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
       <li><a href="annotated.html"><span>Class&#160;List</span></a></li>
       <li><a href="classes.html"><span>Class&#160;Index</span></a></li>
       <li><a href="hierarchy.html"><span>Class&#160;Hierarchy</span></a></li>
-      <li class="current"><a href="functions.html"><span>Class&#160;Members</span></a></li>
+      <li><a href="functions.html"><span>Class&#160;Members</span></a></li>
     </ul>
   </div>
-  <div id="navrow3" class="tabs2">
-    <ul class="tablist">
-      <li><a href="functions.html"><span>All</span></a></li>
-      <li><a href="functions_func.html"><span>Functions</span></a></li>
-      <li class="current"><a href="functions_vars.html"><span>Variables</span></a></li>
-    </ul>
-  </div>
-</div><!-- top -->
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -88,26 +80,35 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </iframe>
 </div>
 
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1_allele_depth_helper.html">AlleleDepthHelper</a></li>  </ul>
+</div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="class_g_lnexus_1_1_allele_depth_helper-members.html">List of all members</a>  </div>
+  <div class="headertitle">
+<div class="title">GLnexus::AlleleDepthHelper Class Reference</div>  </div>
+</div><!--header-->
 <div class="contents">
-&#160;<ul>
-<li>allele_dp_format
-: <a class="el" href="struct_g_lnexus_1_1genotyper__config.html#a01446a8db9ee429978d55ca14dbc6346">GLnexus::genotyper_config</a>
-</li>
-<li>alleles
-: <a class="el" href="struct_g_lnexus_1_1unified__site.html#a3373044af07a0fb304380d5c6ad289af">GLnexus::unified_site</a>
-</li>
-<li>ref_dp_format
-: <a class="el" href="struct_g_lnexus_1_1genotyper__config.html#a71cc0d0a145034fdd893a28e9cae240a">GLnexus::genotyper_config</a>
-</li>
-<li>ref_symbolic_allele
-: <a class="el" href="struct_g_lnexus_1_1genotyper__config.html#ae5105c6c4c3e1417f8f1b41324931560">GLnexus::genotyper_config</a>
-</li>
-<li>required_dp
-: <a class="el" href="struct_g_lnexus_1_1genotyper__config.html#a99811beeefbe17ed9b9f93b1ba727188">GLnexus::genotyper_config</a>
-</li>
-<li>unification
-: <a class="el" href="struct_g_lnexus_1_1unified__site.html#a908530106988ede1f2bf28eabba40420">GLnexus::unified_site</a>
-</li>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:a6a930c85861fd6f2c712448eacf11e63"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6a930c85861fd6f2c712448eacf11e63"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>sufficient</b> (size_t sample, size_t <a class="el" href="struct_g_lnexus_1_1allele.html">allele</a>)</td></tr>
+<tr class="separator:a6a930c85861fd6f2c712448eacf11e63"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a62e7c9f5c54a5d70df961915bd243fee"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a62e7c9f5c54a5d70df961915bd243fee"></a>
+static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Open</b> (const <a class="el" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a> &amp;cfg, const string &amp;dataset, const bcf_hdr_t *dataset_header, bcf1_t *record, unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_allele_depth_helper.html">AlleleDepthHelper</a> &gt; &amp;ans)</td></tr>
+<tr class="separator:a62e7c9f5c54a5d70df961915bd243fee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<hr/>The documentation for this class was generated from the following file:<ul>
+<li>src/genotyper.cc</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

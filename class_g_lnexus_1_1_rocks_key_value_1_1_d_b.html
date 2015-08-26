@@ -123,11 +123,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a96028d0d811b7dd9af213dc7a7126183"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a96028d0d811b7dd9af213dc7a7126183"></a>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>begin_writes</b> (std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_write_batch.html">KeyValue::WriteBatch</a> &gt; &amp;writes) override</td></tr>
 <tr class="separator:a96028d0d811b7dd9af213dc7a7126183"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7eab13f04315c0e89e41518edda251a2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_rocks_key_value_1_1_d_b.html#a7eab13f04315c0e89e41518edda251a2">get</a> (KeyValue::CollectionHandle _coll, const std::string &amp;key, std::string &amp;value) const override</td></tr>
-<tr class="separator:a7eab13f04315c0e89e41518edda251a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aae1cb554c50d0ebd4dcf9d6ecbf072f5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aae1cb554c50d0ebd4dcf9d6ecbf072f5"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>put</b> (KeyValue::CollectionHandle _coll, const std::string &amp;key, const std::string &amp;value) override</td></tr>
-<tr class="separator:aae1cb554c50d0ebd4dcf9d6ecbf072f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">GLnexus::KeyValue::DB</a></td></tr>
 <tr class="memitem:afd40ddfadb74b2992ce1067decfa7dbe inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="afd40ddfadb74b2992ce1067decfa7dbe"></a>
 virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html#afd40ddfadb74b2992ce1067decfa7dbe">current</a> (std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html">Reader</a> &gt; &amp;snapshot) const =0</td></tr>
@@ -145,51 +140,10 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 <tr class="separator:a0c9224f785f58ac0b5d7d4f7eb0dde36 inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa8d8fa5ed907cdb0301440b7aa84f32b inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html#aa8d8fa5ed907cdb0301440b7aa84f32b">iterator</a> (CollectionHandle coll, const std::string &amp;key, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">Iterator</a> &gt; &amp;it) const override</td></tr>
 <tr class="separator:aa8d8fa5ed907cdb0301440b7aa84f32b inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5831e3c89ee2ab13633787567426951e inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5831e3c89ee2ab13633787567426951e"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>put</b> (CollectionHandle coll, const std::string &amp;key, const std::string &amp;value)</td></tr>
+<tr class="separator:a5831e3c89ee2ab13633787567426951e inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="a7eab13f04315c0e89e41518edda251a2"></a>
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::RocksKeyValue::DB::get </td>
-          <td>(</td>
-          <td class="paramtype">KeyValue::CollectionHandle&#160;</td>
-          <td class="paramname"><em>coll</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const std::string &amp;&#160;</td>
-          <td class="paramname"><em>key</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::string &amp;&#160;</td>
-          <td class="paramname"><em>value</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td> const</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Get the value corresponding to the key and return OK. Return NotFound if no corresponding record exists in the collection, or any error code </p>
-
-<p>Implements <a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html#a13222c19e866cb47286422c6bbe4786a">GLnexus::KeyValue::Reader</a>.</p>
-
-</div>
-</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>src/RocksKeyValue.cc</li>
 </ul>

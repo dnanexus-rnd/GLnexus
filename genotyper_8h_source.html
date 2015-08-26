@@ -92,16 +92,17 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &quot;data.h&quot;</span></div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#include &lt;memory&gt;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;</div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;Status genotype_site(<span class="keyword">const</span> DataCache&amp; data, <span class="keyword">const</span> unified_site&amp; site,</div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;                     <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; samples, <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; datasets,</div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;                     <span class="keyword">const</span> bcf_hdr_t* hdr, std::shared_ptr&lt;bcf1_t&gt;&amp; ans);</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;}</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;</div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#include &quot;genotyper_config.h&quot;</span></div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;</div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;Status genotype_site(<span class="keyword">const</span> genotyper_config&amp; cfg, <span class="keyword">const</span> DataCache&amp; data, <span class="keyword">const</span> unified_site&amp; site,</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;                     <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; samples, <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; datasets,</div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;                     <span class="keyword">const</span> bcf_hdr_t* hdr, std::shared_ptr&lt;bcf1_t&gt;&amp; ans);</div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;}</div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;</div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#endif</span></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
