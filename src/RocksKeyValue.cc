@@ -128,7 +128,7 @@ public:
         const rocksdb::ReadOptions r_options; // what should this be set to?
         std::string v_tmp;
         rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
-        value = v_tmp;
+        value = std::move(v_tmp);
         return convertStatus(s);
     }
 

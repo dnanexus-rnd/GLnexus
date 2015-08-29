@@ -174,7 +174,11 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
     return Status::OK();
 }
 
-Status BCFKeyValueData::dataset_bcf(const string& dataset, const bcf_hdr_t* hdr, const range& pos,
+// Note: if the bucket(s) does not exist, return NotFound.
+// If the bucket(s) exists, but no records were found, return an empty list
+Status BCFKeyValueData::dataset_bcf(const string& dataset,
+                                    const bcf_hdr_t* hdr,
+                                    const range& pos,
                                     vector<shared_ptr<bcf1_t> >& records) const {
     Status s;
 
