@@ -123,7 +123,7 @@ struct range {
         } else {
             os << '<' << rid << '>';
         }
-        os << ':' << (beg+1) << '-' << (end+1);
+        os << ':' << (beg+1) << '-' << end;
         return os.str();
     }
     std::string str() const {
