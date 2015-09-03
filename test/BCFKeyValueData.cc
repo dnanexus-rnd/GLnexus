@@ -249,6 +249,17 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
         REQUIRE(s == StatusCode::INVALID);
     }
+
+    SECTION("detect bogus END field") {
+        db.wipe();
+        contigs = { make_pair<string,uint64_t>("21", 1000000) };
+        Status s = T::InitializeDB(&db, contigs);
+        REQUIRE(s.ok());
+
+        REQUIRE(DataCache::Start(data.get(), cache).ok());
+        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/bogus_END.gvcf");
+        REQUIRE(s == StatusCode::INVALID);
+    }
 }
 
 TEST_CASE("BCFKeyValueData BCF retrieval") {

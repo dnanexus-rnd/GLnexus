@@ -158,9 +158,7 @@ public:
         }
         records.clear();
         for (const auto& bcf : p->second.records) {
-            range rng;
-            S(range_of_bcf(hdr, bcf, rng));
-            if (rng.overlaps(pos)) {
+            if (range(bcf).overlaps(pos)) {
                 records.push_back(bcf);
             }
         }

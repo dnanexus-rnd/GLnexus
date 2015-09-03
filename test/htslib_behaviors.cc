@@ -234,6 +234,7 @@ TEST_CASE("htslib gVCF representation") {
     REQUIRE(info->type == BCF_BT_INT32);
     REQUIRE(info->len == 1);
     REQUIRE(info->v1.i == 10009463); // nb END stays 1-based!
+    REQUIRE(records[0]->rlen == 2); // htslib got this from END! it is not strlen(records[0]->d.allele[0])!
 
     REQUIRE(records[1]->pos == 10009463);
     REQUIRE(records[1]->n_allele == 3);
@@ -241,12 +242,14 @@ TEST_CASE("htslib gVCF representation") {
     REQUIRE(string(records[1]->d.allele[1]) == "T");
     REQUIRE(string(records[1]->d.allele[2]) == "<NON_REF>");
     REQUIRE(bcf_get_info(hdr, records[1].get(), "END") == NULL);
+    REQUIRE(records[1]->rlen == 2); // END is absent so this time it is strlen(records[1]->d.allele[0])
 
     REQUIRE(records[4]->pos == 10009468);
     REQUIRE(records[4]->n_allele == 2);
     REQUIRE(string(records[4]->d.allele[0]) == "A");
     REQUIRE(string(records[4]->d.allele[1]) == "<NON_REF>");
     REQUIRE(bcf_get_info(hdr, records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
+    REQUIRE(records[4]->rlen == 3);
 }
 
 

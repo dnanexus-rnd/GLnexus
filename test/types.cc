@@ -58,23 +58,19 @@ TEST_CASE("range_of_bcf") {
 
     REQUIRE(records.size() == 5);
 
-    range rng;
-    Status s = range_of_bcf(hdr, records[0], rng);
-    REQUIRE(s.ok());
+    range rng(records[0]);
     REQUIRE(rng.rid == 0);
     REQUIRE(rng.beg == 10009461);
     REQUIRE(rng.end == 10009463);
     REQUIRE(rng.size() == 2);
 
-    s = range_of_bcf(hdr, records[1], rng);
-    REQUIRE(s.ok());
+    rng = range(records[1]);
     REQUIRE(rng.rid == 0);
     REQUIRE(rng.beg == 10009463);
     REQUIRE(rng.end == 10009465);
     REQUIRE(rng.size() == 2);
 
-    s = range_of_bcf(hdr, records[2], rng);
-    REQUIRE(s.ok());
+    rng = range(records[2]);
     REQUIRE(rng.rid == 0);
     REQUIRE(rng.beg == 10009465);
     REQUIRE(rng.end == 10009466);
