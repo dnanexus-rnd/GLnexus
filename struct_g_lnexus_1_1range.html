@@ -105,6 +105,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab5e4677d86e7a8c34d2b26fa9a77349a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab5e4677d86e7a8c34d2b26fa9a77349a"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>range</b> (int rid_, int beg_, int end_) noexcept</td></tr>
 <tr class="separator:ab5e4677d86e7a8c34d2b26fa9a77349a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeb8e939494ae3abf0de39d5630697467"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">range</a> (const bcf1_t *bcf) noexcept</td></tr>
+<tr class="separator:aeb8e939494ae3abf0de39d5630697467"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a721a12d4ca8fabf573ba48b9c08646fd"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a721a12d4ca8fabf573ba48b9c08646fd"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>range</b> (const std::shared_ptr&lt; const bcf1_t &gt; &amp;bcf) noexcept</td></tr>
+<tr class="separator:a721a12d4ca8fabf573ba48b9c08646fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d318bde11f9ea216ee134ba4682deac"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1d318bde11f9ea216ee134ba4682deac"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>size</b> () const noexcept</td></tr>
 <tr class="separator:a1d318bde11f9ea216ee134ba4682deac"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -153,7 +158,33 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>end</b> =-1</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Genomic range (chromosome id, begin coordinate, end coordinate) </p>
-</div><hr/>The documentation for this struct was generated from the following file:<ul>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a class="anchor" id="aeb8e939494ae3abf0de39d5630697467"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">GLnexus::range::range </td>
+          <td>(</td>
+          <td class="paramtype">const bcf1_t *&#160;</td>
+          <td class="paramname"><em>bcf</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">noexcept</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Get the genomic range covered by a bcf1_t record. The end position is determined by the END INFO field if present (for structural variants and gVCF reference coverage records), or from the length of the reference allele otherwise. </p>
+
+</div>
+</div>
+<hr/>The documentation for this struct was generated from the following file:<ul>
 <li>include/<a class="el" href="types_8h_source.html">types.h</a></li>
 </ul>
 </div><!-- contents -->
