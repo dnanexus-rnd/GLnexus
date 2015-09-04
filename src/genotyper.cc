@@ -51,7 +51,7 @@ public:
                 if (nv != record->n_sample) {
                     if (v) free(v);
                     ostringstream errmsg;
-                    errmsg << dataset << " <" << record->rid << ">:" << record->pos << " (" << cfg.ref_dp_format << ")";
+                    errmsg << dataset << " " << range(record).str() << " (" << cfg.ref_dp_format << ")";
                     return Status::Invalid("genotyper: gVCF reference depth FORMAT field is either missing or has the wrong type", errmsg.str());
                 }
             } else {
@@ -62,7 +62,7 @@ public:
                 if (nv != record->n_sample * record->n_allele) {
                     if (v) free(v);
                     ostringstream errmsg;
-                    errmsg << dataset << " <" << record->rid << ">:" << record->pos << " (" << cfg.allele_dp_format << ")";
+                    errmsg << dataset << " " << range(record).str() << " (" << cfg.allele_dp_format << ")";
                     return Status::Invalid("genotyper: VCF allele depth FORMAT field is either missing or has the wrong type", errmsg.str());
                 }
             }
@@ -111,8 +111,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     vector<int> allele_mapping;
 
     // reference allele maps if it contains the unified site
-    range rng;
-    S(range_of_bcf(dataset_header, record, rng));
+    range rng(record);
     allele_mapping.push_back(rng.contains(site.pos) ? 0 : -1);
 
     // map the bcf1_t alt alleles according to unification

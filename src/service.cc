@@ -53,8 +53,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
         // for each BCF record
         discovered_alleles dsals;
         for (const auto& record : records) {
-            range rng;
-            S(range_of_bcf(dataset_header, record, rng));
+            range rng(record);
             vector<float> obs_counts(record->n_allele, 0.0);
 
             // count hard-called allele observations

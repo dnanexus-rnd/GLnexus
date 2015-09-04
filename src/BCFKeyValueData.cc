@@ -204,8 +204,7 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset,
     shared_ptr<bcf1_t> vt;
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
-        range vt_rng;
-        S(range_of_bcf(hdr, vt, vt_rng));
+        range vt_rng(vt);
         if (pos.overlaps(vt_rng)) {
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
                 return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", dataset + "@" + pos.str());
@@ -237,6 +236,33 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
     }
 
     return true;
+}
+
+// Sanity-check an individual bcf1_t record before ingestion.
+static Status validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
+    // Check that bcf->rlen is calculated correctly based on POS,END if
+    // available or POS,strlen(REF) otherwise
+    bcf_info_t *info = bcf_get_info(hdr, bcf, "END");
+    if (info) {
+        if (info->type != BCF_BT_INT8 && info->type != BCF_BT_INT16 && info->type != BCF_BT_INT32) {
+            return Status::Invalid("gVCF record's END field has unexpected type", range(bcf).str());
+        }
+        if (info->len != 1) {
+            return Status::Invalid("gVCF record has multiple END fields", range(bcf).str());
+        }
+        if (info->v1.i < bcf->pos) {
+            return Status::Invalid("gVCF record has END < POS", range(bcf).str());
+        }
+        if (info->v1.i - bcf->pos != bcf->rlen) {
+            return Status::Invalid("gVCF record END-POS doesn't match rlen", range(bcf).str());
+        }
+    } else {
+        if (bcf->rlen != strlen(bcf->d.allele[0])) {
+            return Status::Invalid("gVCF rlen doesn't match strlen(REF) (and no END field)", range(bcf).str());
+        }
+    }
+
+    return Status::OK();
 }
 
 // Add a <key,value> pair to the database.
@@ -299,6 +325,7 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
         c == 0;
         c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
+        S(validate_bcf(hdr.get(), vt.get()));
         // Moved to the next chromosome, write this key.
         if ( vt->rid != chrom_id &&
              writer->get_num_entries() > 0) {
