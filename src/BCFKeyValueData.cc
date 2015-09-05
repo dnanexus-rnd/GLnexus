@@ -163,7 +163,10 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
         S(db->put(config, "param", yaml.c_str()));
     }
 
-    return Status::OK();
+    // create * sample set
+    KeyValue::CollectionHandle sampleset;
+    S(db->collection("sampleset", sampleset));
+    return db->put(sampleset, "*", string());
 }
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
@@ -277,6 +280,7 @@ Status BCFKeyValueData::sampleset_samples(const string& sampleset,
     // next_sampleset
     // next_sampleset\0sample_1
     // ...
+    // the corresponding values are empty.
 
     string key, value;
     s = it->next(key, value);
@@ -474,9 +478,10 @@ Status BCFKeyValueData::validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
     return Status::OK();
 }
 
-Status BCFKeyValueData::import_gvcf(const DataCache* cache,
+Status BCFKeyValueData::import_gvcf(DataCache* cache,
                                     const string& dataset,
-                                    const string& filename) {
+                                    const string& filename,
+                                    set<string>& samples_out) {
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(filename.c_str(), "r"),
                                                [](vcfFile* f) { bcf_close(f); });
     if (!vcf) return Status::IOError("opening gVCF file", filename);
@@ -492,6 +497,11 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     for (unsigned i = 0; i < n; i++) {
         samples.push_back(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, i)));
     }
+    samples_out.clear();
+    samples_out.insert(samples.begin(), samples.end());
+    if (samples.size() != samples_out.size()) {
+        return Status::Invalid("gVCF sample names are not unique", dataset + " (" + filename + ")");
+    }
 
     // check uniqueness of data set and samples
     // TODO: design a thread-safe scheme for this
@@ -499,13 +509,13 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     std::shared_ptr<const bcf_hdr_t> ignored_hdr;
     s = cache->dataset_bcf_header(dataset, ignored_hdr);
     if (s != StatusCode::NOT_FOUND) {
-        return Status::Exists("data set already exists", dataset);
+        return Status::Exists("data set already exists", dataset + " (" + filename + ")");
     }
     for (const auto& sample : samples) {
         string ignored_dataset;
         s = cache->sample_dataset(sample, ignored_dataset);
         if (s != StatusCode::NOT_FOUND) {
-            return Status::Exists("sample already exists", sample);
+            return Status::Exists("sample already exists", sample + " " + dataset + " (" + filename + ")");
         }
     }
 
@@ -560,6 +570,9 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     S(wb->put(coll_header, dataset, hdr_data));
     for (const auto& sample : samples) {
         S(wb->put(coll_sample_dataset, sample, dataset));
+        string key = "*" + string(1,'\0') + sample;
+        assert(key.size() == sample.size()+2);
+        S(wb->put(coll_sampleset, key, string()));
     }
     // TODO: cache invalidation
     return wb->commit();
