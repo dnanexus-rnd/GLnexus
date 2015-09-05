@@ -45,7 +45,9 @@ public:
     Status dataset_bcf(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
                        std::vector<std::shared_ptr<bcf1_t> >& records) const override;
 
-    /// Import a new dataset
+    /// Import a new data set (a gVCF file, possibly containing multiple samples).
+    /// The data set name must be unique.
+    /// The sample names in the data set (gVCF column names) must be unique.
     Status import_gvcf(const DataCache* cache, const std::string& dataset, const std::string& filename);
 };
 

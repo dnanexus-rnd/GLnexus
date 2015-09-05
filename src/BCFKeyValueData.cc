@@ -492,11 +492,24 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     for (unsigned i = 0; i < n; i++) {
         samples.push_back(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, i)));
     }
-    // TODO check uniqueness of samples and dataset
 
+    // check uniqueness of data set and samples
+    // TODO: design a thread-safe scheme for this
+    Status s;
+    std::shared_ptr<const bcf_hdr_t> ignored_hdr;
+    s = cache->dataset_bcf_header(dataset, ignored_hdr);
+    if (s != StatusCode::NOT_FOUND) {
+        return Status::Exists("data set already exists", dataset);
+    }
+    for (const auto& sample : samples) {
+        string ignored_dataset;
+        s = cache->sample_dataset(sample, ignored_dataset);
+        if (s != StatusCode::NOT_FOUND) {
+            return Status::Exists("sample already exists", sample);
+        }
+    }
 
     // This code assumes that the VCF is sorted by chromosome, and position.
-    Status s;
     unique_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
 
@@ -538,15 +551,17 @@ Status BCFKeyValueData::import_gvcf(const DataCache* cache,
     string hdr_data = BCFWriter::write_header(hdr.get());
 
     // Store header and metadata
-    KeyValue::CollectionHandle coll_header, coll_sample_dataset;
+    KeyValue::CollectionHandle coll_header, coll_sample_dataset, coll_sampleset;
     S(body_->db->collection("header", coll_header));
     S(body_->db->collection("sample_dataset", coll_sample_dataset));
+    S(body_->db->collection("sampleset", coll_sampleset));
     unique_ptr<KeyValue::WriteBatch> wb;
     S(body_->db->begin_writes(wb));
     S(wb->put(coll_header, dataset, hdr_data));
     for (const auto& sample : samples) {
         S(wb->put(coll_sample_dataset, sample, dataset));
     }
+    // TODO: cache invalidation
     return wb->commit();
 }
 

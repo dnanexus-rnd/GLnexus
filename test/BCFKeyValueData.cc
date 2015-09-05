@@ -260,6 +260,22 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = data->import_gvcf(cache.get(), "NA12878D", "test/data/bogus_END.gvcf");
         REQUIRE(s == StatusCode::INVALID);
     }
+
+    SECTION("reject duplicate data set") {
+        Status s = data->import_gvcf(cache.get(), "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        REQUIRE(s.ok());
+
+        s = data->import_gvcf(cache.get(), "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        REQUIRE(s == StatusCode::EXISTS);
+    }
+
+    SECTION("reject duplicate sample") {
+        Status s = data->import_gvcf(cache.get(), "y", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        REQUIRE(s.ok());
+
+        s = data->import_gvcf(cache.get(), "z", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        REQUIRE(s == StatusCode::EXISTS);
+    }
 }
 
 TEST_CASE("BCFKeyValueData BCF retrieval") {
