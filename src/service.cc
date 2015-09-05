@@ -16,21 +16,6 @@ Status Service::Start(Data *data, unique_ptr<Service>& svc) {
     return DataCache::Start(data, svc->data_);
 }
 
-Status Service::sampleset_datasets(const string& sampleset, shared_ptr<const set<string>>& ans) {
-    // TODO cache this stuff
-    shared_ptr<const set<string> > samples;
-    auto datasets = make_shared<set<string>>();
-    Status s;
-    S(data_->sampleset_samples(sampleset, samples));
-    for (const auto& it : *samples) {
-        string dataset;
-        S(data_->sample_dataset(it, dataset));
-        datasets->insert(dataset);
-    }
-    ans = datasets;
-    return Status::OK();
-}
-
 bool is_dna(const string& str) {
     return all_of(str.begin(), str.end(),
                   [](char ch) { return ch == 'A' || ch == 'C' || ch == 'G' || ch == 'T'; });
@@ -38,9 +23,9 @@ bool is_dna(const string& str) {
 
 Status Service::discover_alleles(const string& sampleset, const range& pos, discovered_alleles& ans) {
     // Find the data sets containing the samples in the sample set.
-    shared_ptr<const set<string>> datasets;
+    shared_ptr<const set<string>> samples, datasets;
     Status s;
-    S(sampleset_datasets(sampleset, datasets));
+    S(data_->sampleset_datasets(sampleset, samples, datasets));
 
     // extract alleles from each dataset
     ans.clear();
@@ -143,8 +128,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
     Status s;
     shared_ptr<const set<string>> samples, datasets;
-    S(data_->sampleset_samples(sampleset, samples));
-    S(data_->sampleset_datasets(sampleset, datasets));
+    S(data_->sampleset_datasets(sampleset, samples, datasets));
 
     // get a BCF header for this sample set
     // TODO: memoize

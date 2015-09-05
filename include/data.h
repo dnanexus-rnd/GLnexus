@@ -94,7 +94,9 @@ public:
                        std::vector<std::shared_ptr<bcf1_t> >& records) const;
 
     const std::vector<std::pair<std::string,size_t> >& contigs() const;
-    Status sampleset_datasets(const std::string& sampleset, std::shared_ptr<const std::set<std::string>>& ans) const;
+    Status sampleset_datasets(const std::string& sampleset,
+                              std::shared_ptr<const std::set<std::string> >& samples,
+                              std::shared_ptr<const std::set<std::string>>& datasets) const;
 };
 
 }

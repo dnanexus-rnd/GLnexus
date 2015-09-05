@@ -18,8 +18,6 @@ class Service {
 
     Service() {}
 
-    Status sampleset_datasets(const std::string& sampleset, std::shared_ptr<const std::set<std::string>>& ans);
-
 public:
     static Status Start(Data* data, std::unique_ptr<Service>& svc);
 

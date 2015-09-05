@@ -54,18 +54,19 @@ const vector<pair<string,size_t> >& DataCache::contigs() const {
     return body_->contigs;
 }
 
-Status DataCache::sampleset_datasets(const string& sampleset, shared_ptr<const set<string>>& ans) const {
+Status DataCache::sampleset_datasets(const string& sampleset,
+                                     shared_ptr<const set<string>>& samples,
+                                     shared_ptr<const set<string>>& datasets_out) const {
     // TODO cache
-    shared_ptr<const set<string> > samples;
-    auto datasets = make_shared<set<string>>();
     Status s;
+    auto datasets = make_shared<set<string>>();
     S(sampleset_samples(sampleset, samples));
     for (const auto& it : *samples) {
         string dataset;
         S(sample_dataset(it, dataset));
         datasets->insert(dataset);
     }
-    ans = datasets;
+    datasets_out = datasets;
     return Status::OK();
 }
 
