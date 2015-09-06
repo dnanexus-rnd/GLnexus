@@ -42,23 +42,39 @@ static const std::string createRandomDBFileName()
     return out.str();
 }
 
-TEST_CASE("RocksDB construction on improperly initialized database") {
-    vector<string> collections = {"header","bcf"};
+TEST_CASE("RocksDB open/initialize states") {
+    // attempt to open a non-existent database
+    string dbpath = createRandomDBFileName();
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open(collections, createRandomDBFileName(), db);
+    Status s = RocksKeyValue::Open(dbpath, db);
+    REQUIRE(s.bad());
+
+    // create the database
+    s = RocksKeyValue::Initialize(dbpath, db);
     REQUIRE(s.ok());
+    REQUIRE((bool)db);
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data) == StatusCode::INVALID);
+    db.reset();
+
+    // attempt to initialize an already-existing database
+    s = RocksKeyValue::Initialize(dbpath, db);
+    REQUIRE(s.bad());
 }
 
-
 TEST_CASE("RocksDB initialization") {
+    std::string dbpath = createRandomDBFileName();
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
+    Status s = RocksKeyValue::Initialize(dbpath, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000001)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
+    db.reset();
+
+    s = RocksKeyValue::Open(dbpath, db);
+    REQUIRE(s.ok());
+
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data).ok());
 
@@ -127,7 +143,7 @@ TEST_CASE("RocksDB initialization") {
 
 TEST_CASE("RocksDB::import_gvcf") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
+    Status s = RocksKeyValue::Initialize(createRandomDBFileName(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
@@ -150,7 +166,7 @@ TEST_CASE("RocksDB::import_gvcf") {
 
 TEST_CASE("RocksDB::import_gvcf incompatible") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
+    Status s = RocksKeyValue::Initialize(createRandomDBFileName(), db);
     REQUIRE(s.ok());
 
     auto contigs = { make_pair<string,uint64_t>("21", 1000000),
@@ -169,7 +185,7 @@ TEST_CASE("RocksDB::import_gvcf incompatible") {
 
 TEST_CASE("RocksDB BCF retrieval") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open({}, createRandomDBFileName(), db);
+    Status s = RocksKeyValue::Initialize(createRandomDBFileName(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};

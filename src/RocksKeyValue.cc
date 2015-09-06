@@ -32,9 +32,9 @@ static Status convertStatus(const rocksdb::Status &s)
     case rocksdb::Status::kNotSupported:
         return Status::NotImplemented();
     case rocksdb::Status::kInvalidArgument:
-        return Status::Invalid();
+        return Status::Invalid("RocksDB kInvalidArgument", s.ToString());
     case rocksdb::Status::kIOError:
-        return Status::IOError();
+        return Status::IOError("RocksDB kIOError", s.ToString());
     case rocksdb::Status::kMergeInProgress:
         return Status::Failure("merge in progress");
     case rocksdb::Status::kIncomplete:
@@ -47,8 +47,14 @@ static Status convertStatus(const rocksdb::Status &s)
         return Status::Failure("aborted");
 
         // catch all for unlisted cases, all errors
-    default: return Status::Failure("other reason");
+    default: return Status::Failure("other reason", s.ToString());
     }
+}
+
+rocksdb::ColumnFamilyOptions GLnexusColumnFamilyOptions() {
+    rocksdb::ColumnFamilyOptions opts;
+    opts.OptimizeUniversalStyleCompaction();
+    return opts;
 }
 
 class Iterator : public KeyValue::Iterator {
@@ -198,35 +204,88 @@ private:
     DB(const DB&);
     void operator=(const DB&);
 
+    DB(rocksdb::DB *db, std::map<const std::string, rocksdb::ColumnFamilyHandle*>& coll2handle)
+        : db_(db), coll2handle_(std::move(coll2handle))
+        {}
+
 public:
-    DB(const std::vector<std::string>& collections,
-       const std::string fileName) {
-        // Default optimization choices, could use a deeper look.
+    static Status Initialize(const std::string& dbPath,
+                       std::unique_ptr<KeyValue::DB> &db) {
+        rocksdb::Options options;
+        options.IncreaseParallelism();
+        options.OptimizeUniversalStyleCompaction();
+        options.create_if_missing = true;
+        options.error_if_exists = true;
+
+        rocksdb::DB *rawdb = nullptr;
+        rocksdb::Status s = rocksdb::DB::Open(options, dbPath, &rawdb);
+        if (!s.ok()) {
+            return convertStatus(s);
+        }
+        assert(rawdb != nullptr);
+
+        std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle;
+        db.reset(new DB(rawdb, coll2handle));
+        if (!db) {
+            delete rawdb;
+            return Status::Failure();
+        }
+        return Status::OK();
+    }
+
+    static Status Open(const std::string& dbPath,
+                       std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
         options.IncreaseParallelism();
         options.OptimizeLevelStyleCompaction();
-        options.create_if_missing = true;
+        options.create_if_missing = false;
 
-        // open DB
-        rocksdb::Status s = rocksdb::DB::Open(options, fileName, &db_);
-        assert(s.ok());
-
-        //std::cerr << "Construct RocksDB at "<< fileName << "\n";
-        //std::cerr.flush();
-
-        // create initial collections
-        for (const auto &colName : collections) {
-            rocksdb::ColumnFamilyOptions options; // defaults for now
-            rocksdb::ColumnFamilyHandle *handle;
-            rocksdb::Status s = db_->CreateColumnFamily(options, colName, &handle);
-            assert(s.ok());
-
-            // success, add a mapping from the column family name to the handle.
-            coll2handle_[colName] = handle;
+        // detect the database's column families
+        std::vector<std::string> column_family_names;
+        rocksdb::Status s = rocksdb::DB::ListColumnFamilies(options, dbPath, &column_family_names);
+        if (!s.ok()) {
+            return convertStatus(s);
         }
+        std::vector<rocksdb::ColumnFamilyDescriptor> column_families;
+        for (const auto& nm : column_family_names) {
+            rocksdb::ColumnFamilyDescriptor cfd;
+            cfd.name = nm;
+            cfd.options = GLnexusColumnFamilyOptions();
+            column_families.push_back(std::move(cfd));
+        }
+
+        // open the database (all column families)
+        rocksdb::DB *rawdb = nullptr;
+        std::vector<rocksdb::ColumnFamilyHandle*> column_family_handles;
+        s = rocksdb::DB::Open(options, dbPath, column_families,
+                              &column_family_handles, &rawdb);
+        if (!s.ok()) {
+            return convertStatus(s);
+        }
+        assert(rawdb != nullptr);
+
+        // create the database object with coll2handle_ pre-filled
+        std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle;
+        for (size_t i = 0; i < column_families.size(); i++) {
+            coll2handle[column_family_names[i]] = column_family_handles[i];
+        }
+        db.reset(new DB(rawdb, coll2handle));
+        if (!db) {
+            for (auto h : column_family_handles) {
+                delete h;
+            }
+            delete rawdb;
+            return Status::Failure();
+        }
+        return Status::OK();
     }
 
     ~DB() override {
+        // free RocksDB column family handles
+        for (const auto& p : coll2handle_) {
+            delete p.second;
+        }
+        // delete database
         delete db_;
     }
 
@@ -246,11 +305,12 @@ public:
         }
 
         // create new column family in rocksdb
-        rocksdb::ColumnFamilyOptions options; // defaults for now
         rocksdb::ColumnFamilyHandle *handle;
-        rocksdb::Status s = db_->CreateColumnFamily(options, name, &handle);
-        if (!s.ok())
+        rocksdb::Status s = db_->CreateColumnFamily(GLnexusColumnFamilyOptions(), name, &handle);
+        if (!s.ok()) {
             return convertStatus(s);
+        }
+        assert(handle != nullptr);
 
         // success, add a mapping from the column family name to the handle.
         coll2handle_[name] = handle;
@@ -288,22 +348,20 @@ public:
     }
 };
 
-Status Open(const std::vector<std::string>& collections,
-            const std::string dbPath,
-            std::unique_ptr<KeyValue::DB> &db)
+Status Initialize(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db)
 {
-    auto db_uq = std::make_unique<RocksKeyValue::DB>(collections, dbPath);
-    db = std::move(db_uq);
-    if (db.get() != NULL)
-        return Status::OK();
-    return Status::Failure();
+    return DB::Initialize(dbPath, db);
 }
 
-void destroy(const std::string dbPath)
+Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db)
+{
+    return DB::Open(dbPath, db);
+}
+
+Status destroy(const std::string dbPath)
 {
     rocksdb::Options options;
-    rocksdb::Status s = rocksdb::DestroyDB(dbPath, options);
-    assert(s.ok());
+    return convertStatus(rocksdb::DestroyDB(dbPath, options));
 }
 
 

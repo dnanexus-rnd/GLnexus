@@ -8,11 +8,15 @@
 namespace GLnexus {
 namespace RocksKeyValue {
 
-Status Open(const std::vector<std::string>& collections,
-            const std::string dbPath,
-            std::unique_ptr<KeyValue::DB> &db);
+/// Initialize a new database. The parent directory must exist. Fails if the
+/// path already exists.
+Status Initialize(const std::string& dbpath, std::unique_ptr<KeyValue::DB>& db);
 
-void destroy(const std::string dbPath); 
+/// Open an existing database.
+Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db);
+
+// Delete an existing database.
+Status destroy(const std::string dbPath); 
 }}
 
 #endif
