@@ -494,8 +494,15 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
 
     vector<string> samples;
     unsigned n = bcf_hdr_nsamples(hdr);
+    if (n == 0) {
+        return Status::Invalid("gVCF contains no samples", dataset + " (" + filename + ")");
+    }
     for (unsigned i = 0; i < n; i++) {
-        samples.push_back(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, i)));
+        string sample(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, i));
+        if (sample.size() == 0) {
+            return Status::Invalid("gVCF contains empty sample name", dataset + " (" + filename + ")");
+        }
+        samples.push_back(move(sample));
     }
     samples_out.clear();
     samples_out.insert(samples.begin(), samples.end());
