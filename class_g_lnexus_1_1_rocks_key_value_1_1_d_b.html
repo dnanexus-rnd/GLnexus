@@ -88,6 +88,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="class_g_lnexus_1_1_rocks_key_value_1_1_d_b-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">GLnexus::RocksKeyValue::DB Class Reference</div>  </div>
@@ -106,9 +107,6 @@ Inheritance diagram for GLnexus::RocksKeyValue::DB:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a4bbe22502850346bb429c23dfa4b250c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a4bbe22502850346bb429c23dfa4b250c"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>DB</b> (const std::vector&lt; std::string &gt; &amp;collections, const std::string fileName)</td></tr>
-<tr class="separator:a4bbe22502850346bb429c23dfa4b250c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a59c67806cb08c26f4fbae98c82a1c972"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a59c67806cb08c26f4fbae98c82a1c972"></a>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_rocks_key_value_1_1_d_b.html#a59c67806cb08c26f4fbae98c82a1c972">collection</a> (const std::string &amp;name, KeyValue::CollectionHandle &amp;coll) const override</td></tr>
 <tr class="memdesc:a59c67806cb08c26f4fbae98c82a1c972"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the handle to a collection, or return NotFound. <br /></td></tr>
@@ -145,6 +143,15 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 <tr class="separator:a0c9224f785f58ac0b5d7d4f7eb0dde36 inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa8d8fa5ed907cdb0301440b7aa84f32b inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html#aa8d8fa5ed907cdb0301440b7aa84f32b">iterator</a> (CollectionHandle coll, const std::string &amp;key, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">Iterator</a> &gt; &amp;it) const override</td></tr>
 <tr class="separator:aa8d8fa5ed907cdb0301440b7aa84f32b inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_d_b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:aa43bb2d94881bf104d0321231d1481ab"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa43bb2d94881bf104d0321231d1481ab"></a>
+static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Initialize</b> (const std::string &amp;dbPath, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">KeyValue::DB</a> &gt; &amp;db)</td></tr>
+<tr class="separator:aa43bb2d94881bf104d0321231d1481ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aabe1f24931c505d26f08ea613ac2df93"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aabe1f24931c505d26f08ea613ac2df93"></a>
+static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Open</b> (const std::string &amp;dbPath, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">KeyValue::DB</a> &gt; &amp;db)</td></tr>
+<tr class="separator:aabe1f24931c505d26f08ea613ac2df93"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a class="anchor" id="a7eab13f04315c0e89e41518edda251a2"></a>
