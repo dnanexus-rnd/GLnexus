@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
 #include <vcf.h>
 
 #define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;
@@ -184,6 +185,62 @@ struct unified_site {
     //std::vector<float> genotype_prior;
 
     unified_site(const range& pos_) noexcept : pos(pos_) {}
+};
+
+struct loss_stats {
+
+    /// Number of calls in original input and in output
+    std::set<range> orig_calls;
+    std::set<range> joint_calls;
+
+    /// Number of bp cover in original input and in output
+    int orig_bp=0, joint_bp=0;
+
+    std::string sample_name;
+
+    loss_stats(const std::string sample_name_) noexcept : sample_name(sample_name_) {}
+
+    int bpsLost() const noexcept { return orig_bp - joint_bp; }
+    float PropBpLost() const noexcept { return bpsLost() / (float)orig_bp; }
+
+    int callsLost() const noexcept {
+        int n_calls_lost = 0;
+        for (auto& orig_call : orig_calls) {
+            bool joint_called = false;
+            for (auto& joint_call : joint_calls) {
+                if (orig_call.overlaps(joint_call)){
+                    joint_called = true;
+                    break;
+                }
+            } // close  joint_calls loop
+            if (!joint_called)
+                n_calls_lost++;
+        } // close orig_calls loop
+
+        return n_calls_lost;
+    }
+
+    std::string str() const {
+        int n_calls_lost = callsLost();
+        float prop_calls_lost = n_calls_lost / (float)orig_calls.size();
+
+        std::ostringstream ans;
+        
+        ans << sample_name << ": ";
+
+        ans << n_calls_lost << " of " << orig_calls.size() << " original calls (" << std::setprecision(3) << prop_calls_lost << ") are lost; ";
+        ans << bpsLost() << " of " << orig_bp << "bps covered (" << std::setprecision(3) << PropBpLost() << ") are lost.";
+
+        ans << "\nOrignal calls:\n";
+        for (auto& orig_call : orig_calls) 
+            ans << orig_call.str() << "\n";
+
+        ans << "\nJoint calls:\n";
+        for (auto& joint_call : joint_calls)
+            ans << joint_call.str() << "\n";
+
+        return ans.str();
+    }
 };
 
 } //namespace GLnexus

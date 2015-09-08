@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "genotyper.h"
+#include <iostream>
 
 using namespace std;
 
@@ -154,6 +155,8 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
             // sample based on a previous BCF record. We now need
             // to set it back to missing, because we can't
             // accurately render the situation.
+
+            int lost_index = 2*ij.second;
             genotypes[2*ij.second]
                 = genotypes[2*ij.second+1]
                 = bcf_gt_missing;
@@ -167,9 +170,72 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     return Status::OK();
 }
 
+Status update_orig_loss(const bcf_hdr_t* dataset_header, bcf1_t* record, map<int,int>& sample_mapping, vector<loss_stats>& losses) {
+    range rng(record);
+    Status s;
+
+    int *gt = nullptr, gtsz = 0;
+    int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
+    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
+    assert(nGT == 2*n_bcf_samples);
+    assert(record->n_sample == n_bcf_samples);
+
+    for (int i = 0; i < n_bcf_samples; i++) {
+        int sample_ind = sample_mapping[i];
+        auto& loss = losses[sample_ind];
+
+        // No calls on this sample, move to next sample 
+        if(bcf_gt_is_missing(gt[i*2]) && bcf_gt_is_missing(gt[i*2 + 1]))
+            continue;
+
+        // Check if the call range already exists in the list of calls recorded
+        // TODO: handling of overlapping calls
+        if (loss.orig_calls.find(rng) == loss.orig_calls.end())
+            loss.orig_calls.insert(rng);
+        else
+            continue;
+
+        if (!bcf_gt_is_missing(gt[i*2])){
+            // cout << "Adding to " << loss.sample_name << " disp 0; range " << rng.str() << " " << rng.size() << endl;
+            loss.orig_bp += rng.size();
+        }
+        if (!bcf_gt_is_missing(gt[i*2 + 1])){
+            // cout << "Adding to " << loss.sample_name << " disp 1; range " << rng.str() << " " << rng.size()  << endl;
+            loss.orig_bp += rng.size();
+        }
+    }
+
+    return Status::OK();
+}
+
+Status update_called_loss(const bcf_hdr_t* hdr, bcf1_t* record, vector<loss_stats>& losses) {
+    range rng(record);
+    Status s;
+
+    int *gt = nullptr, gtsz = 0;
+    int nGT = bcf_get_genotypes(hdr, record, &gt, &gtsz);
+    int n_bcf_samples = record->n_sample;
+    assert(n_bcf_samples == losses.size());
+
+    for (int i = 0; i < n_bcf_samples; i++) {
+        auto& loss = losses[i];
+        
+        // Assumes no overlapping calls/ calls in the same range in the output joint calls
+        if(!bcf_gt_is_missing(gt[i*2]) || !bcf_gt_is_missing(gt[i*2 + 1]))
+            loss.joint_calls.insert(rng);
+
+        if (!bcf_gt_is_missing(gt[i*2]))
+            loss.joint_bp += rng.size();
+        if (!bcf_gt_is_missing(gt[i*2 + 1]))
+            loss.joint_bp += rng.size();
+    }
+
+    return Status::OK();
+}   
+
 Status genotype_site(const genotyper_config& cfg, const DataCache& data, const unified_site& site,
                      const set<string>& samples, const set<string>& datasets,
-                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans) {
+                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, vector<loss_stats>& losses) {
 	Status s;
 	
     // Initialize a vector for the unified genotype calls for each sample,
@@ -207,6 +273,8 @@ Status genotype_site(const genotyper_config& cfg, const DataCache& data, const u
         for (const auto& record : records) {
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), record.get(),
                                   sample_mapping, genotypes, genotyped));
+
+            S(update_orig_loss(dataset_header.get(), record.get(), sample_mapping, losses));
         }
     }
 
@@ -228,6 +296,8 @@ Status genotype_site(const genotyper_config& cfg, const DataCache& data, const u
     if (bcf_update_genotypes(hdr, ans.get(), genotypes.data(), genotypes.size()) != 0) {
         return Status::Failure("bcf_update_genotypes");
     }
+
+    S(update_called_loss(hdr, ans.get(), losses));
 
     return Status::OK();
 }

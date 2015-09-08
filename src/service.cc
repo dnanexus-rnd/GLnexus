@@ -3,6 +3,7 @@
 #include "alleles.h"
 #include "genotyper.h"
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <assert.h>
 #include <sstream>
@@ -130,6 +131,11 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     shared_ptr<const set<string>> samples, datasets;
     S(data_->sampleset_datasets(sampleset, samples, datasets));
 
+    vector<loss_stats> losses;
+    for (auto& sample : *samples) {
+        losses.push_back(loss_stats(sample));
+    }
+
     // get a BCF header for this sample set
     // TODO: memoize
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
@@ -166,7 +172,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     for (const auto& site : sites) {
         // compute genotypes
         shared_ptr<bcf1_t> site_bcf;
-        S(genotype_site(cfg, *data_, site, *samples, *datasets, hdr.get(), site_bcf));
+        S(genotype_site(cfg, *data_, site, *samples, *datasets, hdr.get(), site_bcf, losses));
 
         // write out a BCF record
         if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {
@@ -176,6 +182,15 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     if (bcf_close(outfile.release()) != 0) {
         return Status::IOError("bcf_close", filename);
+    }
+
+    cout << "\nReporting loss for genotype sites. Samples processed: ";
+    for (auto& sample : *samples)
+        cout << sample << " ";
+    cout << endl;
+    cout << "===========" << endl;
+    for (auto& loss : losses) {
+        cout << loss.str() << endl;
     }
 
     return Status::OK();
