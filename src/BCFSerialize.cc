@@ -125,7 +125,6 @@ BCFWriter::~BCFWriter() {
 }
 
 Status BCFWriter::write(bcf1_t* x) {
-    num_entries_ += 1;
     int reclen = bcf_raw_calc_packed_len(x);
 
     // Note: allocation on the stack for small memory
@@ -174,7 +173,7 @@ std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
     hlen++; // include the \0 byte
 
     char *buf = (char*) malloc(5 + 4 + hlen);
-    assert(buf != NULL);
+    assert(buf != nullptr);
     int loc = 0;
     memcpy(&buf[loc], "BCF\2\2", 5);
     loc += 5;
@@ -205,7 +204,7 @@ Status BCFReader::Open(const char* buf,
 }
 
 BCFReader::~BCFReader() {
-    buf_ = NULL;
+    buf_ = nullptr;
     bufsz_ = 0;
     current_ = 0;
 }
