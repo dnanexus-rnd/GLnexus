@@ -154,7 +154,8 @@ TEST_CASE("RocksDB::import_gvcf") {
     REQUIRE(DataCache::Start(data.get(), cache).ok());
 
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
-        Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        set<string> samples_imported;
+        Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
         string dataset;
@@ -178,7 +179,8 @@ TEST_CASE("RocksDB::import_gvcf incompatible") {
     REQUIRE(DataCache::Start(data.get(), cache).ok());
 
     SECTION("incompatible contigs") {
-        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        set<string> samples_imported;
+        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
     }
 }
@@ -194,8 +196,9 @@ TEST_CASE("RocksDB BCF retrieval") {
     REQUIRE(T::Open(db.get(), data).ok());
     unique_ptr<DataCache> cache;
     REQUIRE(DataCache::Start(data.get(), cache).ok());
+    set<string> samples_imported;
 
-    s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+    s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
     REQUIRE(s.ok());
 
     SECTION("dataset_bcf_header") {

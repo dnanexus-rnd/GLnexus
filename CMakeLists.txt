@@ -86,7 +86,7 @@ add_library(libyaml-cpp STATIC IMPORTED)
 set(LIBYAML_CPP_A ${binary_dir}/libyaml-cpp.a)
 set_property(TARGET libyaml-cpp PROPERTY IMPORTED_LOCATION ${LIBYAML_CPP_A})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror=return-type -std=c++14")
 
 ################################
 # Normal Libraries & Executables
@@ -114,6 +114,10 @@ add_library(libglnexus ALIAS glnexus)
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
+
+add_executable(glnexus_cli cli/glnexus_cli.cc)
+add_dependencies(glnexus_cli libglnexus)
+target_link_libraries(glnexus_cli -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp snappy bz2 lz4 rt)
 
 install(TARGETS playground DESTINATION bin)
 

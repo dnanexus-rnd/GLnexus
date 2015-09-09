@@ -24,7 +24,8 @@ private:
                         const std::string& dataset,
                         const range& rng);
 public:
-    /// Initialize a brand-new database, which SHOULD be empty.
+    /// Initialize a brand-new database, which SHOULD be empty to begin with.
+    /// Contigs are stored and an empty sample set "*" is created.
     static Status InitializeDB(KeyValue::DB* db,
                                const std::vector<std::pair<std::string,size_t> >& contigs,
                                int interval_len = 30000);
@@ -45,8 +46,12 @@ public:
     Status dataset_bcf(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
                        std::vector<std::shared_ptr<bcf1_t> >& records) const override;
 
-    /// Import a new dataset
-    Status import_gvcf(const DataCache* cache, const std::string& dataset, const std::string& filename);
+    /// Import a new data set (a gVCF file, possibly containing multiple samples).
+    /// The data set name must be unique.
+    /// The sample names in the data set (gVCF column names) must be unique.
+    /// All samples are immediately added to the sample set "*"
+    Status import_gvcf(DataCache* cache, const std::string& dataset, const std::string& filename,
+                       std::set<std::string>& samples);
 };
 
 }

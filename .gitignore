@@ -28,6 +28,7 @@
 *.app
 playground
 unit_tests
+glnexus_cli
 
 # Documnentation folder
 html/

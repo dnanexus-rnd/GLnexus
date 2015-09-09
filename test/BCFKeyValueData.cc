@@ -229,14 +229,28 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     REQUIRE(T::Open(&db, data).ok());
     unique_ptr<DataCache> cache;
     REQUIRE(DataCache::Start(data.get(), cache).ok());
+    set<string> samples_imported;
+
+    SECTION("* sample set") {
+        shared_ptr<const set<string>> all;
+        Status s = cache->sampleset_samples("*", all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 0);
+    }
 
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
-        Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
         string dataset;
         REQUIRE(data->sample_dataset("NA12878", dataset).ok());
         REQUIRE(dataset == "NA12878D");
+
+        shared_ptr<const set<string>> all;
+        s = cache->sampleset_samples("*", all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 1);
+        REQUIRE(*(all->begin()) == "NA12878");
     }
 
     SECTION("incompatible contigs") {
@@ -246,7 +260,7 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(s.ok());
 
         REQUIRE(DataCache::Start(data.get(), cache).ok());
-        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
     }
 
@@ -257,8 +271,24 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(s.ok());
 
         REQUIRE(DataCache::Start(data.get(), cache).ok());
-        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/bogus_END.gvcf");
+        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/bogus_END.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
+    }
+
+    SECTION("reject duplicate data set") {
+        Status s = data->import_gvcf(cache.get(), "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        s = data->import_gvcf(cache.get(), "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        REQUIRE(s == StatusCode::EXISTS);
+    }
+
+    SECTION("reject duplicate sample") {
+        Status s = data->import_gvcf(cache.get(), "y", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        s = data->import_gvcf(cache.get(), "z", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        REQUIRE(s == StatusCode::EXISTS);
     }
 }
 
@@ -270,8 +300,9 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
     REQUIRE(T::Open(&db, data).ok());
     unique_ptr<DataCache> cache;
     REQUIRE(DataCache::Start(data.get(), cache).ok());
+    set<string> samples_imported;
 
-    Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf");
+    Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
     REQUIRE(s.ok());
 
     SECTION("dataset_bcf_header") {
@@ -371,8 +402,9 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
         REQUIRE(T::Open(&db, data).ok());
         unique_ptr<DataCache> cache;
         REQUIRE(DataCache::Start(data.get(), cache).ok());
+        set<string> samples_imported;
 
-        Status s = data->import_gvcf(cache.get(), "synth_A", "test/data/synthetic_A.21.gvcf");
+        Status s = data->import_gvcf(cache.get(), "synth_A", "test/data/synthetic_A.21.gvcf", samples_imported);
         REQUIRE(s.ok());
         shared_ptr<const bcf_hdr_t> hdr;
         s = data->dataset_bcf_header("synth_A", hdr);
