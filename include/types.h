@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <assert.h>
 #include <vcf.h>
 
 #define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;
@@ -146,7 +147,7 @@ struct range {
 struct allele {
     range pos;
     std::string dna;
-    
+
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
         // TODO: validate allele matches [ACTGN]+
@@ -184,63 +185,115 @@ struct unified_site {
     std::vector<float> observation_count;
     //std::vector<float> genotype_prior;
 
+    bool operator==(const unified_site& rhs) const noexcept{ return pos == rhs.pos && alleles == alleles && observation_count == observation_count; }
+    bool operator<(const unified_site& rhs) const noexcept{ return pos < rhs.pos; }
+    bool operator<=(const unified_site& rhs) const noexcept{ return pos <= rhs.pos; }
+
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 };
 
-struct loss_stats {
+class loss_stats {
 
-    /// Number of calls in original input and in output
-    std::set<range> orig_calls;
-    std::set<range> joint_calls;
+public:
 
-    /// Number of bp cover in original input and in output
-    int orig_bp=0, joint_bp=0;
-
-    std::string sample_name;
-
+    // Constructor takes a sample name; loss_stats should be
+    // uniquely associated with each sample
     loss_stats(const std::string sample_name_) noexcept : sample_name(sample_name_) {}
 
-    int bpsLost() const noexcept { return orig_bp - joint_bp; }
-    float PropBpLost() const noexcept { return bpsLost() / (float)orig_bp; }
+    // Prepares the map with the given unified_site, requires that this method
+    // is not called again when an entry for the site exists
+    Status initializeSite(const unified_site site) noexcept {
+        if (orig_calls_for_sites.find(site) != orig_calls_for_sites.end())
+            return Status::Failure("loss_stats: initializeSite called for existing site");
 
-    int callsLost() const noexcept {
-        int n_calls_lost = 0;
-        for (auto& orig_call : orig_calls) {
-            bool joint_called = false;
-            for (auto& joint_call : joint_calls) {
-                if (orig_call.overlaps(joint_call)){
-                    joint_called = true;
-                    break;
-                }
-            } // close  joint_calls loop
-            if (!joint_called)
-                n_calls_lost++;
-        } // close orig_calls loop
-
-        return n_calls_lost;
+        orig_calls_for_sites.insert(std::make_pair(site, std::map<range, int>() ));
+        return Status::OK();
     }
 
-    std::string str() const {
-        int n_calls_lost = callsLost();
-        float prop_calls_lost = n_calls_lost / (float)orig_calls.size();
+    // Called for each bcf record that is associated with the unified_site
+    // examined to update "denominator" of total calls/bp covered in orig
+    // dataset
+    Status addCallForSite(const unified_site site, const range call, int n_calls) noexcept {
+        if (orig_calls_for_sites.find(site) == orig_calls_for_sites.end())
+            return Status::Failure("loss_stats: addCallForSite called before initializeSite or after finalizeLossForSite.");
 
+        auto& orig_calls_for_site = orig_calls_for_sites[site];
+
+        auto call_within_site_p = call.intersect(site.pos);
+
+        if (call_within_site_p) {
+            range call_within_site = *call_within_site_p;
+            orig_calls_for_site[call_within_site] += n_calls;
+            n_calls_total += n_calls;
+            n_bp_total += n_calls * (call_within_site.size());
+        }
+        return Status::OK();
+    }
+
+    // Called after joint genotyping for a unified_site to update the loss
+    // associated with that site.
+    Status finalizeLossForSite(const unified_site site, int n_no_calls) noexcept {
+        if (orig_calls_for_sites.find(site) == orig_calls_for_sites.end())
+            return Status::Failure("loss_stats: finalizeLossForSite called before initializeSite or after finalizeLossForSite.");
+
+        if (n_no_calls) {
+            n_no_calls_total += n_no_calls;
+
+            auto& calls_for_site = orig_calls_for_sites[site];
+            for (auto& kv : calls_for_site) {
+                // calls_lost will be 0 if n_orig_calls and n_no_calls are both 1 (which is interpreted as no loss of calls)
+                int n_calls_lost_for_site = (kv.second * n_no_calls) / 2;
+                n_calls_lost += n_calls_lost_for_site;
+
+                // assumes that range in calls_for_site has already been
+                // restricted to intersection with site
+                n_bp_lost += kv.first.size();
+            }
+        }
+        orig_calls_for_sites.erase(site);
+
+        return Status::OK();
+    }
+
+    // String representation of the loss observed for the sample
+    std::string str() const noexcept {
         std::ostringstream ans;
-        
+
         ans << sample_name << ": ";
+        ans << n_no_calls_total << " no call(s).\n";
 
-        ans << n_calls_lost << " of " << orig_calls.size() << " original calls (" << std::setprecision(3) << prop_calls_lost << ") are lost; ";
-        ans << bpsLost() << " of " << orig_bp << "bps covered (" << std::setprecision(3) << PropBpLost() << ") are lost.";
+        // stop here if no no calls
+        if (!n_no_calls_total)
+            return ans.str();
 
-        ans << "\nOrignal calls:\n";
-        for (auto& orig_call : orig_calls) 
-            ans << orig_call.str() << "\n";
-
-        ans << "\nJoint calls:\n";
-        for (auto& joint_call : joint_calls)
-            ans << joint_call.str() << "\n";
+        ans << "This is made up of a loss of " << n_calls_lost << " original call(s) which cover " << n_bp_lost << " bp.\n";
+        ans << "The loss is " <<  std::setprecision(3) << propCallsLost() << "% of " << n_calls_total << " calls; or " << propBpLost() << "% of " << n_bp_total << " bp processed from the original dataset(s).\n";
 
         return ans.str();
     }
+
+private:
+    std::string sample_name;
+
+    // Map of unified sites to a vector of original calls that is associated
+    // with that unified site. The calls associated with a site will exist
+    // for the duration between initializeSite and and finalizeLossForSite
+    std::map<unified_site, std::map<range, int>> orig_calls_for_sites;
+
+    int n_calls_total=0, n_bp_total=0;
+    int n_calls_lost=0, n_bp_lost=0;
+    int n_no_calls_total = 0;
+
+    // Returns proportion of calls lost as a percentage
+    float propCallsLost() const noexcept {
+        return n_calls_lost / (float) n_calls_total * 100;
+    }
+
+    // Returns proportion of bp coverage lost as a percentage
+    float propBpLost() const noexcept {
+        return n_bp_lost / (float) n_bp_total * 100;
+    }
+
 };
 
 } //namespace GLnexus

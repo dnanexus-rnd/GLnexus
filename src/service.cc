@@ -184,14 +184,18 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         return Status::IOError("bcf_close", filename);
     }
 
-    cout << "\nReporting loss for genotype sites. Samples processed: ";
-    for (auto& sample : *samples)
-        cout << sample << " ";
-    cout << endl;
-    cout << "===========" << endl;
-    for (auto& loss : losses) {
-        cout << loss.str() << endl;
-    }
+    #define printLossInfo()                                             \
+        cout << "\nReporting loss for " << sites.size()                 \
+             << " site(s) genotyped for sample(s): ";                   \
+        for (auto& sample : *samples)                                   \
+            cout << sample << " ";                                      \
+        cout << endl;                                                   \
+        cout << "===========" << endl;                                  \
+        for (auto& loss : losses) {                                     \
+            cout << loss.str() << endl;                                 \
+        }                                                               \
+
+    printLossInfo()
 
     return Status::OK();
 }
