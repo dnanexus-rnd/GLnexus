@@ -53,7 +53,7 @@ set(LIBHTS_A ${binary_dir}/libhts.a)
 set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/rocksdb-3.10.2.zip
+    URL https://github.com/facebook/rocksdb/archive/rocksdb-3.13.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
