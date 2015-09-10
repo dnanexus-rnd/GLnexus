@@ -51,10 +51,9 @@ static Status convertStatus(const rocksdb::Status &s)
     }
 }
 
-rocksdb::ColumnFamilyOptions GLnexusColumnFamilyOptions() {
-    rocksdb::ColumnFamilyOptions opts;
+void GLnexusColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
     opts.OptimizeUniversalStyleCompaction();
-    return opts;
+    opts.compression = rocksdb::kLZ4Compression;
 }
 
 class Iterator : public KeyValue::Iterator {
@@ -212,8 +211,8 @@ public:
     static Status Initialize(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
+        GLnexusColumnFamilyOptions(options);
         options.IncreaseParallelism();
-        options.OptimizeUniversalStyleCompaction();
         options.create_if_missing = true;
         options.error_if_exists = true;
 
@@ -236,8 +235,8 @@ public:
     static Status Open(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
+        GLnexusColumnFamilyOptions(options);
         options.IncreaseParallelism();
-        options.OptimizeLevelStyleCompaction();
         options.create_if_missing = false;
 
         // detect the database's column families
@@ -248,9 +247,11 @@ public:
         }
         std::vector<rocksdb::ColumnFamilyDescriptor> column_families;
         for (const auto& nm : column_family_names) {
+            rocksdb::ColumnFamilyOptions colopts;
+            GLnexusColumnFamilyOptions(colopts);
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
-            cfd.options = GLnexusColumnFamilyOptions();
+            cfd.options = colopts;
             column_families.push_back(std::move(cfd));
         }
 
@@ -305,8 +306,10 @@ public:
         }
 
         // create new column family in rocksdb
+        rocksdb::ColumnFamilyOptions colopts;
+        GLnexusColumnFamilyOptions(colopts);
         rocksdb::ColumnFamilyHandle *handle;
-        rocksdb::Status s = db_->CreateColumnFamily(GLnexusColumnFamilyOptions(), name, &handle);
+        rocksdb::Status s = db_->CreateColumnFamily(colopts, name, &handle);
         if (!s.ok()) {
             return convertStatus(s);
         }
