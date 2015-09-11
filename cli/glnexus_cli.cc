@@ -5,6 +5,7 @@
 #include <iostream>
 #include <getopt.h>
 #include "vcf.h"
+#include "hfile.h"
 #include "service.h"
 #include "alleles.h"
 #include "BCFKeyValueData.h"
@@ -199,6 +200,114 @@ int main_load(int argc, char *argv[]) {
     return 0;
 }
 
+void help_dump(const char* prog) {
+    cerr << "usage: " << prog << " dump [options] /db/path chrom 1234 2345" << endl
+         << "Dump all gVCF records in the database overlapping the given range. The positions"
+         << "are one-based, inclusive."
+         << endl;
+}
+
+int main_dump(int argc, char *argv[]) {
+    if (argc == 2) {
+        help_dump(argv[0]);
+        return 1;
+    }
+
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int c;
+    optind = 2; // force optind past command positional argument
+    while (-1 != (c = getopt_long(argc, argv, "h",
+                                  long_options, nullptr))) {
+        switch (c) {
+            case 'h':
+            case '?':
+                help_dump(argv[0]);
+                exit(1);
+                break;
+
+            default:
+                abort ();
+        }
+    }
+
+    if (optind != argc-4) {
+        help_dump(argv[0]);
+        return 1;
+    }
+    string dbpath(argv[optind]);
+    string rname(argv[optind+1]);
+    string beg_txt(argv[optind+2]);
+    string end_txt(argv[optind+3]);
+
+    // open the database
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db));
+
+    {
+        unique_ptr<GLnexus::BCFKeyValueData> data;
+        H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+
+        {
+            unique_ptr<GLnexus::DataCache> cache;
+            H("instantiate data cache", GLnexus::DataCache::Start(data.get(), cache));
+
+            // resolve the user-supplied contig name to rid
+            const auto& contigs = cache->contigs();
+            int rid = 0;
+            for(; rid<contigs.size(); rid++) {
+                if (contigs[rid].first == rname) {
+                    break;
+                }
+            }
+            if (rid == contigs.size()) {
+                cerr << "Unknown contig " << rname << endl
+                     << "Known contigs:";
+                for (const auto& p : contigs) {
+                    cerr << " " << p.first;
+                }
+                cerr << endl;
+                return 1;
+            }
+            // parse positions
+            GLnexus::range query(rid, strtol(beg_txt.c_str(), nullptr, 10)-1,
+                                      strtol(end_txt.c_str(), nullptr, 10));
+            if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
+                cerr << "Invalid query range" << endl;
+                return 1;
+            }
+
+            // query and output records
+            vcfFile *vcfout = vcf_open("-", "w");
+            shared_ptr<const set<string>> samples, datasets;
+            H("sampleset_datasets", cache->sampleset_datasets(string("*"), samples, datasets));
+            for (const auto& dataset : *datasets) {
+                shared_ptr<const bcf_hdr_t> hdr;
+                vector<shared_ptr<bcf1_t>> records;
+                H("dataset_bcf", cache->dataset_bcf(dataset, query, hdr, records));
+
+                int bcf_nsamples = bcf_hdr_nsamples(hdr.get());
+                for (const auto& record : records) {
+                    cout << dataset << "\t";
+                    for (int i = 0; i < bcf_nsamples; i++) {
+                        if (i) cout << ",";
+                        cout << bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, i);
+                    }
+                    cout << "\t" << flush;
+                    vcf_write(vcfout, hdr.get(), record.get());
+                    hflush(vcfout->fp.hfile);
+                }
+            }
+            // intentionally leaking vcfout because closing it closes stdout
+        }
+    }
+
+    return 0;
+}
+
 void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are"
@@ -322,6 +431,8 @@ int main(int argc, char *argv[]) {
         return main_init(argc, argv);
     } else if (command == "load") {
         return main_load(argc, argv);
+    } else if (command == "dump") {
+        return main_dump(argc, argv);
     } else if (command == "genotype") {
         return main_genotype(argc, argv);
     } else {
