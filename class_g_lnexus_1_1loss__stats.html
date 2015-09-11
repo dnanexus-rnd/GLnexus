@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.7"/>
-<title>GLnexus: include/genotyper.h Source File</title>
+<title>GLnexus: GLnexus::loss_stats Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -38,8 +38,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="navrow1" class="tabs">
     <ul class="tablist">
       <li><a href="index.html"><span>Main&#160;Page</span></a></li>
-      <li><a href="annotated.html"><span>Classes</span></a></li>
-      <li class="current"><a href="files.html"><span>Files</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Classes</span></a></li>
+      <li><a href="files.html"><span>Files</span></a></li>
       <li>
         <div id="MSearchBox" class="MSearchBoxInactive">
         <span class="left">
@@ -60,7 +60,10 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   </div>
   <div id="navrow2" class="tabs2">
     <ul class="tablist">
-      <li><a href="files.html"><span>File&#160;List</span></a></li>
+      <li><a href="annotated.html"><span>Class&#160;List</span></a></li>
+      <li><a href="classes.html"><span>Class&#160;Index</span></a></li>
+      <li><a href="hierarchy.html"><span>Class&#160;Hierarchy</span></a></li>
+      <li><a href="functions.html"><span>Class&#160;Members</span></a></li>
     </ul>
   </div>
 <!-- window showing the filter options -->
@@ -79,31 +82,40 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_d44c64559bbebec7f509842c48db8b23.html">include</a></li>  </ul>
+<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1loss__stats.html">loss_stats</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
+  <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="class_g_lnexus_1_1loss__stats-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">genotyper.h</div>  </div>
+<div class="title">GLnexus::loss_stats Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="preprocessor">#ifndef GLNEXUS_GENOTYPER_H</span></div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="preprocessor">#define GLNEXUS_GENOTYPER_H</span></div>
-<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;</div>
-<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &quot;data.h&quot;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#include &lt;memory&gt;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#include &quot;genotyper_config.h&quot;</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;</div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;Status genotype_site(<span class="keyword">const</span> genotyper_config&amp; cfg, <span class="keyword">const</span> DataCache&amp; data, <span class="keyword">const</span> unified_site&amp; site,</div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;                     <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; samples, <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; datasets,</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;                     <span class="keyword">const</span> bcf_hdr_t* hdr, std::shared_ptr&lt;bcf1_t&gt;&amp; ans, std::vector&lt;loss_stats&gt;&amp; losses);</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;}</div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;</div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#endif</span></div>
-</div><!-- fragment --></div><!-- contents -->
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:a08f039619035c3f750aa1382bb3def53"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a08f039619035c3f750aa1382bb3def53"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>loss_stats</b> (const std::string sample_name_) noexcept</td></tr>
+<tr class="separator:a08f039619035c3f750aa1382bb3def53"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad9cef38217cb521da1fa500db653f0d1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad9cef38217cb521da1fa500db653f0d1"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>initializeSite</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site) noexcept</td></tr>
+<tr class="separator:ad9cef38217cb521da1fa500db653f0d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adedbbca3baa2dccbf491bb6e297c00a5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="adedbbca3baa2dccbf491bb6e297c00a5"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>addCallForSite</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> call, int n_calls) noexcept</td></tr>
+<tr class="separator:adedbbca3baa2dccbf491bb6e297c00a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afb82cc70bfa485c0449095a19bc28d8e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="afb82cc70bfa485c0449095a19bc28d8e"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>finalizeLossForSite</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site, int n_no_calls) noexcept</td></tr>
+<tr class="separator:afb82cc70bfa485c0449095a19bc28d8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a65cb3f3ca0f07f8c9ffb353bf901feaa"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a65cb3f3ca0f07f8c9ffb353bf901feaa"></a>
+std::string&#160;</td><td class="memItemRight" valign="bottom"><b>str</b> () const noexcept</td></tr>
+<tr class="separator:a65cb3f3ca0f07f8c9ffb353bf901feaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<hr/>The documentation for this class was generated from the following file:<ul>
+<li>include/<a class="el" href="types_8h_source.html">types.h</a></li>
+</ul>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">
