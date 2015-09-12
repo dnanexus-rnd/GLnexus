@@ -36,7 +36,7 @@ html/
 # CMake stuff
 CMakeCache.txt
 CMakeFiles/
-Makefile
+/Makefile
 cmake_install.cmake
 external/
 
