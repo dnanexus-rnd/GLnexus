@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['range',['range',['../struct_g_lnexus_1_1range.html',1,'GLnexus']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_rocks_key_value_1_1_reader.html',1,'GLnexus::RocksKeyValue']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_key_value_1_1_reader.html',1,'GLnexus::KeyValue']]]
+  ['service',['Service',['../class_g_lnexus_1_1_service.html',1,'GLnexus']]],
+  ['status',['Status',['../class_g_lnexus_1_1_status.html',1,'GLnexus']]]
 ];

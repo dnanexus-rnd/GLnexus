@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['unified_5fsite',['unified_site',['../struct_g_lnexus_1_1unified__site.html',1,'GLnexus']]]
+  ['writebatch',['WriteBatch',['../class_g_lnexus_1_1_key_value_1_1_write_batch.html',1,'GLnexus::KeyValue']]],
+  ['writebatch',['WriteBatch',['../class_g_lnexus_1_1_rocks_key_value_1_1_write_batch.html',1,'GLnexus::RocksKeyValue']]]
 ];

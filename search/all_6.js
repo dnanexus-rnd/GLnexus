@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['loss_5fstats',['loss_stats',['../class_g_lnexus_1_1loss__stats.html',1,'GLnexus']]]
+  ['next',['next',['../class_g_lnexus_1_1_rocks_key_value_1_1_iterator.html#a5509216ff05c71145785937d5ed87814',1,'GLnexus::RocksKeyValue::Iterator::next()'],['../class_g_lnexus_1_1_key_value_1_1_iterator.html#a57d9b060931523f9ef5eb1083c336d68',1,'GLnexus::KeyValue::Iterator::next()']]]
 ];
