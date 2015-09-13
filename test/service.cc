@@ -11,7 +11,7 @@ using namespace GLnexus;
 // serves data from VCF files in the test/data directory
 // x.vcf is loaded as data set "x" with one sample set "x"
 // additionally, the sample set "<ALL>" designates all samples across the VCFs.
-class VCFData : public Data {
+class VCFData : public Metadata, public BCFData {
     struct vcf_data_t {
         shared_ptr<bcf_hdr_t> header;
         shared_ptr<const vector<string> > samples;
@@ -141,7 +141,7 @@ public:
         return Status::OK();
     }
 
-    Status dataset_bcf_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) const override {
+    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) const override {
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
             return Status::NotFound("unknown data set", dataset);
@@ -150,7 +150,7 @@ public:
         return Status::OK();
     }
 
-    Status dataset_bcf(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) const override {
+    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) const override {
         Status s;
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
@@ -171,7 +171,7 @@ TEST_CASE("service::discover_alleles") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(data.get(), svc);
+    s = Service::Start(*data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -261,7 +261,7 @@ TEST_CASE("service::discover_alleles gVCF") {
     cout << s.str() << endl;
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(data.get(), svc);
+    s = Service::Start(*data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -299,7 +299,7 @@ TEST_CASE("unified_sites placeholder") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(data.get(), svc);
+    s = Service::Start(*data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -465,7 +465,7 @@ TEST_CASE("genotyper placeholder") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(data.get(), svc);
+    s = Service::Start(*data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -840,7 +840,7 @@ TEST_CASE("gVCF genotyper") {
     Status s = VCFData::Open({"NA12878D_HiSeqX.21.10009462-10009469.gvcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(data.get(), svc);
+    s = Service::Start(*data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;

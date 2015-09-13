@@ -167,7 +167,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     return Status::OK();
 }
 
-Status genotype_site(const genotyper_config& cfg, const DataCache& data, const unified_site& site,
+Status genotype_site(const genotyper_config& cfg, const BCFData& data, const unified_site& site,
                      const set<string>& samples, const set<string>& datasets,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans) {
 	Status s;
@@ -185,7 +185,7 @@ Status genotype_site(const genotyper_config& cfg, const DataCache& data, const u
         // load BCF records overlapping the site
         shared_ptr<const bcf_hdr_t> dataset_header;
         vector<shared_ptr<bcf1_t>> records;
-        S(data.dataset_bcf(dataset, site.pos, dataset_header, records));
+        S(data.dataset_range_and_header(dataset, site.pos, dataset_header, records));
 
         // index the samples shared between the sample set and the BCFs
         // TODO: better algorithm, with caching (LRU given sampleset-dataset cross)

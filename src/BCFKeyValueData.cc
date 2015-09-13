@@ -316,8 +316,10 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
     return body_->db->get(coll, sample, ans);
 }
 
-Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
-                                           shared_ptr<const bcf_hdr_t>& hdr) const {
+Status BCFKeyValueData::dataset_header(const string& dataset,
+                                       shared_ptr<const bcf_hdr_t>& hdr) const {
+    // TODO: cache headers
+    
     // Retrieve the header
     Status s;
     KeyValue::CollectionHandle coll;
@@ -393,10 +395,10 @@ static Status scan_bucket(
 // range. This list may be empty, if no overlapping records were
 // found. If an invalid rid is requested, the return value will be an
 // empty list.
-Status BCFKeyValueData::dataset_bcf(const string& dataset,
-                                    const bcf_hdr_t* hdr,
-                                    const range& query,
-                                    vector<shared_ptr<bcf1_t> >& records) const {
+Status BCFKeyValueData::dataset_range(const string& dataset,
+                                      const bcf_hdr_t* hdr,
+                                      const range& query,
+                                      vector<shared_ptr<bcf1_t> >& records) const {
     Status s;
     records.clear();
 
@@ -425,9 +427,9 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset,
 }
 
 // test whether a gVCF file is compatible for deposition into the database
-bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
+bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr) {
     Status s;
-    auto& contigs = cache->contigs();
+    const auto& contigs = metadata.contigs();
 
     // verify contigs match exactly. even the order matters
 
@@ -478,7 +480,7 @@ Status BCFKeyValueData::validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
     return Status::OK();
 }
 
-Status BCFKeyValueData::import_gvcf(DataCache* cache,
+Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
                                     const string& dataset,
                                     const string& filename,
                                     set<string>& samples_out) {
@@ -488,7 +490,7 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
 
     unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
     if (!hdr) return Status::IOError("reading gVCF header", filename);
-    if (!gvcf_compatible(cache, hdr.get())) {
+    if (!gvcf_compatible(metadata, hdr.get())) {
         return Status::Invalid("Incompatible gVCF. The reference contigs must match the database configuration exactly.", filename);
     }
 
@@ -514,13 +516,13 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
     // TODO: design a thread-safe scheme for this
     Status s;
     std::shared_ptr<const bcf_hdr_t> ignored_hdr;
-    s = cache->dataset_bcf_header(dataset, ignored_hdr);
+    s = dataset_header(dataset, ignored_hdr);
     if (s != StatusCode::NOT_FOUND) {
         return Status::Exists("data set already exists", dataset + " (" + filename + ")");
     }
     for (const auto& sample : samples) {
         string ignored_dataset;
-        s = cache->sample_dataset(sample, ignored_dataset);
+        s = metadata.sample_dataset(sample, ignored_dataset);
         if (s != StatusCode::NOT_FOUND) {
             return Status::Exists("sample already exists", sample + " " + dataset + " (" + filename + ")");
         }
@@ -581,7 +583,7 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
         assert(key.size() == sample.size()+2);
         S(wb->put(coll_sampleset, key, string()));
     }
-    // TODO: cache invalidation
+    // TODO: invalidate metadata cache for "*"
     return wb->commit();
 }
 

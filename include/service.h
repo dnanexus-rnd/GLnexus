@@ -13,13 +13,14 @@
 namespace GLnexus {
 
 class Service {
-    std::unique_ptr<DataCache> data_;
-    std::vector<std::pair<std::string,size_t> > contigs_;
+    std::unique_ptr<MetadataCache> metadata_;
+    BCFData& data_;
 
-    Service() {}
+    Service(BCFData& data) : data_(data) {}
+    Service(const Service&) = delete;
 
 public:
-    static Status Start(Data* data, std::unique_ptr<Service>& svc);
+    static Status Start(Metadata& metadata, BCFData& data, std::unique_ptr<Service>& svc);
 
 
     /// Discover all the alleles overlapping the given range for a sample set.

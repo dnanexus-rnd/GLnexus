@@ -227,8 +227,8 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
-    unique_ptr<DataCache> cache;
-    REQUIRE(DataCache::Start(data.get(), cache).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
 
     SECTION("* sample set") {
@@ -239,7 +239,7 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     }
 
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
-        Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
         string dataset;
@@ -259,8 +259,8 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         Status s = T::InitializeDB(&db, contigs);
         REQUIRE(s.ok());
 
-        REQUIRE(DataCache::Start(data.get(), cache).ok());
-        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+        s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
     }
 
@@ -270,24 +270,24 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         Status s = T::InitializeDB(&db, contigs);
         REQUIRE(s.ok());
 
-        REQUIRE(DataCache::Start(data.get(), cache).ok());
-        s = data->import_gvcf(cache.get(), "NA12878D", "test/data/bogus_END.gvcf", samples_imported);
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+        s = data->import_gvcf(*cache, "NA12878D", "test/data/bogus_END.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
     }
 
     SECTION("reject duplicate data set") {
-        Status s = data->import_gvcf(cache.get(), "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        Status s = data->import_gvcf(*cache, "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
-        s = data->import_gvcf(cache.get(), "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        s = data->import_gvcf(*cache, "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::EXISTS);
     }
 
     SECTION("reject duplicate sample") {
-        Status s = data->import_gvcf(cache.get(), "y", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        Status s = data->import_gvcf(*cache, "y", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
-        s = data->import_gvcf(cache.get(), "z", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+        s = data->import_gvcf(*cache, "z", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::EXISTS);
     }
 }
@@ -298,16 +298,16 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
-    unique_ptr<DataCache> cache;
-    REQUIRE(DataCache::Start(data.get(), cache).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
 
-    Status s = data->import_gvcf(cache.get(), "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+    Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
     REQUIRE(s.ok());
 
-    SECTION("dataset_bcf_header") {
+    SECTION("dataset_header") {
         shared_ptr<const bcf_hdr_t> hdr;
-        s = data->dataset_bcf_header("NA12878D", hdr);
+        s = data->dataset_header("NA12878D", hdr);
         REQUIRE(s.ok());
 
         vector<string> samples;
@@ -319,13 +319,13 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(samples[0] == "NA12878");
     }
 
-    SECTION("dataset_bcf") {
+    SECTION("dataset_range") {
         // get all records
         shared_ptr<const bcf_hdr_t> hdr;
-        s = data->dataset_bcf_header("NA12878D", hdr);
+        s = data->dataset_header("NA12878D", hdr);
         REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
-        s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);
@@ -353,7 +353,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(bcf_get_info(hdr.get(), records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
 
         // subset of records
-        s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 2);
@@ -370,15 +370,15 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
 
         // empty results
-        s = data->dataset_bcf("NA12878D", hdr.get(), range(0, 0, 1000), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), records);
         REQUIRE((records.size() == 0));
 
-        s = data->dataset_bcf("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE((records.size() == 0));
 
         // bogus dataset
-        s = data->dataset_bcf("bogus", hdr.get(), range(1, 10009463, 10009466), records);
+        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE((records.size() == 0));
     }
@@ -400,14 +400,14 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
         REQUIRE(T::InitializeDB(&db, contigs, ilen).ok());
         unique_ptr<T> data;
         REQUIRE(T::Open(&db, data).ok());
-        unique_ptr<DataCache> cache;
-        REQUIRE(DataCache::Start(data.get(), cache).ok());
+        unique_ptr<MetadataCache> cache;
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
         set<string> samples_imported;
 
-        Status s = data->import_gvcf(cache.get(), "synth_A", "test/data/synthetic_A.21.gvcf", samples_imported);
+        Status s = data->import_gvcf(*cache, "synth_A", "test/data/synthetic_A.21.gvcf", samples_imported);
         REQUIRE(s.ok());
         shared_ptr<const bcf_hdr_t> hdr;
-        s = data->dataset_bcf_header("synth_A", hdr);
+        s = data->dataset_header("synth_A", hdr);
         REQUIRE(s.ok());
 
         vector<shared_ptr<bcf1_t>> records;
@@ -416,7 +416,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
            |<-A1->)       |<-A2->)
            Expected result: empty set
         */
-        s = data->dataset_bcf("synth_A", hdr.get(), range(0, 1005, 1010), records);
+        s = data->dataset_range("synth_A", hdr.get(), range(0, 1005, 1010), records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 0);
 
@@ -426,7 +426,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
            |<-A2->)  |<-A4->)
            Expected result: {A1, A2, A3}
         */
-        s = data->dataset_bcf("synth_A", hdr.get(), range(0, 2003, 2006), records);
+        s = data->dataset_range("synth_A", hdr.get(), range(0, 2003, 2006), records);
         REQUIRE(s.ok());
 //        for (auto r : records) {
 //            cout << "r= " << r->rid << "," << r->pos << "," << r->rlen << "," << r->shared.s  << endl;
@@ -441,7 +441,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
           |<-A3->)
           Expected result: {A1, A2, A3}
         */
-        s = data->dataset_bcf("synth_A", hdr.get(), range(0, 3004, 3006), records);
+        s = data->dataset_range("synth_A", hdr.get(), range(0, 3004, 3006), records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 3);
     }

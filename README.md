@@ -28,7 +28,8 @@ Evolving developer documentation can be found on the [project github page](http:
 
 * C++14 - take advantage of [the goodies](http://shop.oreilly.com/product/0636920033707.do)
 * Use smart pointers to avoid passing resources needing manual deallocation across function/class boundaries
+* Prefer references over pointers when they shouldn't be null nor change ever.
 * Avoid exceptions; prefer returning a `Status`, defined early in [types.h](https://github.com/dnanexus-rnd/GLnexus/blob/master/include/types.h)
  * nb the frequently-used convenience macro `S()` defined just below `Status`
+* Avoid public constructors with nontrivial bodies; prefer static initializer function returning `Status`
 * Avoid elaborate templated class hierarchies
-* Prefer static initializer function returning `Status` over public constructor for any nontrivial body
