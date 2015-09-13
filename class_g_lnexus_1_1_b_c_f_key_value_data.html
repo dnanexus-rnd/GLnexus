@@ -103,7 +103,8 @@ Inheritance diagram for GLnexus::BCFKeyValueData:</div>
  <div class="center">
   <img src="class_g_lnexus_1_1_b_c_f_key_value_data.png" usemap="#GLnexus::BCFKeyValueData_map" alt=""/>
   <map id="GLnexus::BCFKeyValueData_map" name="GLnexus::BCFKeyValueData_map">
-<area href="class_g_lnexus_1_1_data.html" title="Abstract interface to sample sets, data sets, and alelle/genotype/likelihood data. " alt="GLnexus::Data" shape="rect" coords="0,0,173,24"/>
+<area href="class_g_lnexus_1_1_metadata.html" alt="GLnexus::Metadata" shape="rect" coords="0,0,173,24"/>
+<area href="class_g_lnexus_1_1_b_c_f_data.html" alt="GLnexus::BCFData" shape="rect" coords="183,0,356,24"/>
 </map>
  </div></div>
 <table class="memberdecls">
@@ -115,23 +116,22 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ab26d7886280a409015a1a46beaa7610a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#ab26d7886280a409015a1a46beaa7610a">contigs</a> (std::vector&lt; std::pair&lt; std::string, size_t &gt; &gt; &amp;ans) const override</td></tr>
-<tr class="memdesc:ab26d7886280a409015a1a46beaa7610a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the reference contigs.  <a href="#ab26d7886280a409015a1a46beaa7610a">More...</a><br /></td></tr>
 <tr class="separator:ab26d7886280a409015a1a46beaa7610a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a31f058179be1f19bc410c7a9dfa2833f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a31f058179be1f19bc410c7a9dfa2833f">sampleset_samples</a> (const std::string &amp;sampleset, std::shared_ptr&lt; const std::set&lt; std::string &gt; &gt; &amp;ans) const override</td></tr>
-<tr class="memdesc:a31f058179be1f19bc410c7a9dfa2833f"><td class="mdescLeft">&#160;</td><td class="mdescRight">List the samples in a sample set.  <a href="#a31f058179be1f19bc410c7a9dfa2833f">More...</a><br /></td></tr>
 <tr class="separator:a31f058179be1f19bc410c7a9dfa2833f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af0eebb65fd9c969f2c4746506643f022"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#af0eebb65fd9c969f2c4746506643f022">sample_dataset</a> (const std::string &amp;sample, std::string &amp;ans) const override</td></tr>
-<tr class="memdesc:af0eebb65fd9c969f2c4746506643f022"><td class="mdescLeft">&#160;</td><td class="mdescRight">Find the data set containing the sample.  <a href="#af0eebb65fd9c969f2c4746506643f022">More...</a><br /></td></tr>
 <tr class="separator:af0eebb65fd9c969f2c4746506643f022"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a88aabfb7f89cc681f2cb7df345412612"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a88aabfb7f89cc681f2cb7df345412612"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a88aabfb7f89cc681f2cb7df345412612">dataset_bcf_header</a> (const std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr) const override</td></tr>
-<tr class="memdesc:a88aabfb7f89cc681f2cb7df345412612"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the BCF header for a data set. <br /></td></tr>
-<tr class="separator:a88aabfb7f89cc681f2cb7df345412612"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac4e4b179b5d20f9b74710e56711b89b9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#ac4e4b179b5d20f9b74710e56711b89b9">dataset_bcf</a> (const std::string &amp;dataset, const bcf_hdr_t *hdr, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const override</td></tr>
-<tr class="memdesc:ac4e4b179b5d20f9b74710e56711b89b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve all BCF records in the data set overlapping a range.  <a href="#ac4e4b179b5d20f9b74710e56711b89b9">More...</a><br /></td></tr>
-<tr class="separator:ac4e4b179b5d20f9b74710e56711b89b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa81d5e303bd9f85ff72ead85874c9054"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#aa81d5e303bd9f85ff72ead85874c9054">import_gvcf</a> (<a class="el" href="class_g_lnexus_1_1_data_cache.html">DataCache</a> *cache, const std::string &amp;dataset, const std::string &amp;filename, std::set&lt; std::string &gt; &amp;samples)</td></tr>
-<tr class="separator:aa81d5e303bd9f85ff72ead85874c9054"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e15218d1d078bf6edf2af065e55573d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0e15218d1d078bf6edf2af065e55573d"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a0e15218d1d078bf6edf2af065e55573d">dataset_header</a> (const std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr) const override</td></tr>
+<tr class="memdesc:a0e15218d1d078bf6edf2af065e55573d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the BCF header for a data set. <br /></td></tr>
+<tr class="separator:a0e15218d1d078bf6edf2af065e55573d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa645df4f9a2b63023c8586775c13a6b7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#aa645df4f9a2b63023c8586775c13a6b7">dataset_range</a> (const std::string &amp;dataset, const bcf_hdr_t *hdr, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const override</td></tr>
+<tr class="separator:aa645df4f9a2b63023c8586775c13a6b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4f072351eaea7f2bdf19b467d1233225"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a4f072351eaea7f2bdf19b467d1233225">import_gvcf</a> (<a class="el" href="class_g_lnexus_1_1_metadata_cache.html">MetadataCache</a> &amp;metadata, const std::string &amp;dataset, const std::string &amp;filename, std::set&lt; std::string &gt; &amp;samples)</td></tr>
+<tr class="separator:a4f072351eaea7f2bdf19b467d1233225"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_methods_class_g_lnexus_1_1_b_c_f_data"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_g_lnexus_1_1_b_c_f_data')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">GLnexus::BCFData</a></td></tr>
+<tr class="memitem:a0e4bf380734b1886c17dd1db08fa3c2a inherit pub_methods_class_g_lnexus_1_1_b_c_f_data"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a0e4bf380734b1886c17dd1db08fa3c2a">dataset_range_and_header</a> (const std::string &amp;dataset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const </td></tr>
+<tr class="separator:a0e4bf380734b1886c17dd1db08fa3c2a inherit pub_methods_class_g_lnexus_1_1_b_c_f_data"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -143,7 +143,7 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
 <tr class="separator:abe73465838cbc46a4a13561bb8210c28"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>An implementation of the <a class="el" href="class_g_lnexus_1_1_data.html" title="Abstract interface to sample sets, data sets, and alelle/genotype/likelihood data. ">Data</a> interface that stores sample sets and BCF records in a given key-value database. One imported gVCF file (potentially with multiple samples) becomes a data set. The key schema permits efficient retrieval by genomic range across the datasets. </p>
+<div class="textblock"><p>Implements the <a class="el" href="class_g_lnexus_1_1_metadata.html">Metadata</a> and <a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">BCFData</a> interfaces with everything stored in a given key-value database. One imported gVCF file (potentially with multiple samples) becomes a data set. The key schema permits efficient retrieval by genomic range across the datasets. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a class="anchor" id="ab26d7886280a409015a1a46beaa7610a"></a>
 <div class="memitem">
@@ -166,15 +166,14 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
   </tr>
 </table>
 </div><div class="memdoc">
-
-<p>Get the reference contigs. </p>
+<p>Get the reference contigs.</p>
 <p>The indices of the vector are the "rid" used in range() </p>
 
-<p>Implements <a class="el" href="class_g_lnexus_1_1_data.html#abd106ad78bbbd6d4abf1c729aa579f10">GLnexus::Data</a>.</p>
+<p>Implements <a class="el" href="class_g_lnexus_1_1_metadata.html#a94fbd2642941ba8242c28df735bf44a3">GLnexus::Metadata</a>.</p>
 
 </div>
 </div>
-<a class="anchor" id="ac4e4b179b5d20f9b74710e56711b89b9"></a>
+<a class="anchor" id="aa645df4f9a2b63023c8586775c13a6b7"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -182,7 +181,7 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::BCFKeyValueData::dataset_bcf </td>
+          <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::BCFKeyValueData::dataset_range </td>
           <td>(</td>
           <td class="paramtype">const std::string &amp;&#160;</td>
           <td class="paramname"><em>dataset</em>, </td>
@@ -217,24 +216,23 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
   </tr>
 </table>
 </div><div class="memdoc">
-
-<p>Retrieve all BCF records in the data set overlapping a range. </p>
+<p>Retrieve all BCF records in the data set overlapping a range.</p>
 <p>Each record x will already have been "unpacked" with bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not be mutated. (They aren't declared const because some vcf.h accessor functions don't take const bcf1_t*)</p>
 <p>The provided header must match the data set, otherwise the behavior is undefined! </p>
 
-<p>Implements <a class="el" href="class_g_lnexus_1_1_data.html#a90e5d9afc91d55962a73c2d843c9f264">GLnexus::Data</a>.</p>
+<p>Implements <a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a13ebb72e7eb651521ec909bc99359771">GLnexus::BCFData</a>.</p>
 
 </div>
 </div>
-<a class="anchor" id="aa81d5e303bd9f85ff72ead85874c9054"></a>
+<a class="anchor" id="a4f072351eaea7f2bdf19b467d1233225"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::BCFKeyValueData::import_gvcf </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="class_g_lnexus_1_1_data_cache.html">DataCache</a> *&#160;</td>
-          <td class="paramname"><em>cache</em>, </td>
+          <td class="paramtype"><a class="el" href="class_g_lnexus_1_1_metadata_cache.html">MetadataCache</a> &amp;&#160;</td>
+          <td class="paramname"><em>metadata</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -337,12 +335,11 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
   </tr>
 </table>
 </div><div class="memdoc">
-
-<p>Find the data set containing the sample. </p>
+<p>Find the data set containing the sample.</p>
 <p>The data set may contain other samples.</p>
 <p>The resulting data structure may be shared, so the strings must not be mutated. They aren't declared const because...C++ <a href="http://stackoverflow.com/a/21365478">http://stackoverflow.com/a/21365478</a> </p>
 
-<p>Implements <a class="el" href="class_g_lnexus_1_1_data.html#a673c57af05898e4d7e1126bbc791bf8c">GLnexus::Data</a>.</p>
+<p>Implements <a class="el" href="class_g_lnexus_1_1_metadata.html#a4e02401b7c72fac69a63992fbb888ac7">GLnexus::Metadata</a>.</p>
 
 </div>
 </div>
@@ -377,11 +374,10 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
   </tr>
 </table>
 </div><div class="memdoc">
-
-<p>List the samples in a sample set. </p>
+<p>List the samples in a sample set.</p>
 <p>The resulting data structure may be shared, so the strings must not be mutated. They aren't declared const because...C++ <a href="http://stackoverflow.com/a/21365478">http://stackoverflow.com/a/21365478</a> </p>
 
-<p>Implements <a class="el" href="class_g_lnexus_1_1_data.html#a65ce7c6b557266e1a834b17e9e0dba32">GLnexus::Data</a>.</p>
+<p>Implements <a class="el" href="class_g_lnexus_1_1_metadata.html#a1ae700d4d003c3b26a8bc5c1dce558f2">GLnexus::Metadata</a>.</p>
 
 </div>
 </div>

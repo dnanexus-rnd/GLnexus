@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.7"/>
-<title>GLnexus: include/genotyper.h Source File</title>
+<title>GLnexus: GLnexus::MetadataCache::body Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -38,8 +38,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="navrow1" class="tabs">
     <ul class="tablist">
       <li><a href="index.html"><span>Main&#160;Page</span></a></li>
-      <li><a href="annotated.html"><span>Classes</span></a></li>
-      <li class="current"><a href="files.html"><span>Files</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Classes</span></a></li>
+      <li><a href="files.html"><span>Files</span></a></li>
       <li>
         <div id="MSearchBox" class="MSearchBoxInactive">
         <span class="left">
@@ -60,7 +60,10 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   </div>
   <div id="navrow2" class="tabs2">
     <ul class="tablist">
-      <li><a href="files.html"><span>File&#160;List</span></a></li>
+      <li><a href="annotated.html"><span>Class&#160;List</span></a></li>
+      <li><a href="classes.html"><span>Class&#160;Index</span></a></li>
+      <li><a href="hierarchy.html"><span>Class&#160;Hierarchy</span></a></li>
+      <li><a href="functions.html"><span>Class&#160;Members</span></a></li>
     </ul>
   </div>
 <!-- window showing the filter options -->
@@ -79,31 +82,31 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_d44c64559bbebec7f509842c48db8b23.html">include</a></li>  </ul>
+<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1_metadata_cache.html">MetadataCache</a></li><li class="navelem"><a class="el" href="struct_g_lnexus_1_1_metadata_cache_1_1body.html">body</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="struct_g_lnexus_1_1_metadata_cache_1_1body-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">genotyper.h</div>  </div>
+<div class="title">GLnexus::MetadataCache::body Struct Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="preprocessor">#ifndef GLNEXUS_GENOTYPER_H</span></div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="preprocessor">#define GLNEXUS_GENOTYPER_H</span></div>
-<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;</div>
-<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &quot;data.h&quot;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#include &lt;memory&gt;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#include &quot;genotyper_config.h&quot;</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;</div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;Status genotype_site(<span class="keyword">const</span> genotyper_config&amp; cfg, <span class="keyword">const</span> BCFData&amp; data, <span class="keyword">const</span> unified_site&amp; site,</div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;                     <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; samples, <span class="keyword">const</span> std::set&lt;std::string&gt;&amp; datasets,</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;                     <span class="keyword">const</span> bcf_hdr_t* hdr, std::shared_ptr&lt;bcf1_t&gt;&amp; ans);</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;}</div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;</div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#endif</span></div>
-</div><!-- fragment --></div><!-- contents -->
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a8153ee37c0791422675a32af944e65cc"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8153ee37c0791422675a32af944e65cc"></a>
+<a class="el" href="class_g_lnexus_1_1_metadata.html">Metadata</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>inner</b></td></tr>
+<tr class="separator:a8153ee37c0791422675a32af944e65cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3117c3e97a594bbb7481044e0ff05819"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a3117c3e97a594bbb7481044e0ff05819"></a>
+vector&lt; pair&lt; string, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>contigs</b></td></tr>
+<tr class="separator:a3117c3e97a594bbb7481044e0ff05819"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<hr/>The documentation for this struct was generated from the following file:<ul>
+<li>src/data.cc</li>
+</ul>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

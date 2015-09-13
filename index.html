@@ -96,14 +96,15 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <ul>
 <li>C++14 - take advantage of <a href="http://shop.oreilly.com/product/0636920033707.do">the goodies</a></li>
 <li>Use smart pointers to avoid passing resources needing manual deallocation across function/class boundaries</li>
+<li>Prefer references over pointers when they shouldn't be null nor change ever.</li>
 <li>Avoid exceptions; prefer returning a <code>Status</code>, defined early in <a href="https://github.com/dnanexus-rnd/GLnexus/blob/master/include/types.h">types.h</a><ul>
 <li>nb the frequently-used convenience macro <code>S()</code> defined just below <code>Status</code></li>
 </ul>
 </li>
+<li>Avoid public constructors with nontrivial bodies; prefer static initializer function returning <code>Status</code></li>
 <li>Avoid elaborate templated class hierarchies</li>
-<li>Prefer static initializer function returning <code>Status</code> over public constructor for any nontrivial body</li>
 </ul>
-<p>Documentation Last Updated:Sat Sep 12 06:30:28 UTC 2015 </p>
+<p>Documentation Last Updated:Sun Sep 13 04:43:09 UTC 2015 </p>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
