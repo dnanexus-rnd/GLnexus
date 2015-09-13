@@ -19,12 +19,6 @@ private:
     BCFKeyValueData();
     BCFKeyValueData(const BCFKeyValueData&) = delete;
 
-    // TODO: hide these
-    Status validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf);
-    Status write_bucket(KeyValue::DB* db,
-                        BCFWriter *writer,
-                        const std::string& dataset,
-                        const range& rng);
 public:
     /// Initialize a brand-new database, which SHOULD be empty to begin with.
     /// Contigs are stored and an empty sample set "*" is created.
