@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['range',['range',['../struct_g_lnexus_1_1range.html',1,'GLnexus']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_rocks_key_value_1_1_reader.html',1,'GLnexus::RocksKeyValue']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_key_value_1_1_reader.html',1,'GLnexus::KeyValue']]]
+  ['metadata',['Metadata',['../class_g_lnexus_1_1_metadata.html',1,'GLnexus']]],
+  ['metadatacache',['MetadataCache',['../class_g_lnexus_1_1_metadata_cache.html',1,'GLnexus']]]
 ];
