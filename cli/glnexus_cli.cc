@@ -174,12 +174,12 @@ int main_load(int argc, char *argv[]) {
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
 
         {
-            unique_ptr<GLnexus::DataCache> cache;
-            H("instantiate data cache", GLnexus::DataCache::Start(data.get(), cache));
+            unique_ptr<GLnexus::MetadataCache> metadata;
+            H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
 
             // load the gVCF
             set<string> samples;
-            s = data->import_gvcf(cache.get(), dataset, gvcf, samples);
+            s = data->import_gvcf(*metadata, dataset, gvcf, samples);
             if (s.bad()) {
                 cerr << "Failed to load gVCF " << gvcf << endl
                      << s.str() << endl;
@@ -252,11 +252,11 @@ int main_dump(int argc, char *argv[]) {
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
 
         {
-            unique_ptr<GLnexus::DataCache> cache;
-            H("instantiate data cache", GLnexus::DataCache::Start(data.get(), cache));
+            unique_ptr<GLnexus::MetadataCache> metadata;
+            H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
 
             // resolve the user-supplied contig name to rid
-            const auto& contigs = cache->contigs();
+            const auto& contigs = metadata->contigs();
             int rid = 0;
             for(; rid<contigs.size(); rid++) {
                 if (contigs[rid].first == rname) {
@@ -283,11 +283,11 @@ int main_dump(int argc, char *argv[]) {
             // query and output records
             vcfFile *vcfout = vcf_open("-", "w");
             shared_ptr<const set<string>> samples, datasets;
-            H("sampleset_datasets", cache->sampleset_datasets(string("*"), samples, datasets));
+            H("sampleset_datasets", metadata->sampleset_datasets(string("*"), samples, datasets));
             for (const auto& dataset : *datasets) {
                 shared_ptr<const bcf_hdr_t> hdr;
                 vector<shared_ptr<bcf1_t>> records;
-                H("dataset_bcf", cache->dataset_bcf(dataset, query, hdr, records));
+                H("dataset_range", data->dataset_range_and_header(dataset, query, hdr, records));
 
                 int bcf_nsamples = bcf_hdr_nsamples(hdr.get());
                 for (const auto& record : records) {
@@ -359,50 +359,46 @@ int main_genotype(int argc, char *argv[]) {
         unique_ptr<GLnexus::BCFKeyValueData> data;
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
 
+        // resolve the user-supplied contig name to rid
+        std::vector<std::pair<std::string,size_t> > contigs;
+        H("read contig metadata", data->contigs(contigs));
+        int rid = 0;
+        for(; rid<contigs.size(); rid++) {
+            if (contigs[rid].first == rname) {
+                break;
+            }
+        }
+        if (rid == contigs.size()) {
+            cerr << "Unknown contig " << rname << endl
+                 << "Known contigs:";
+            for (const auto& p : contigs) {
+                cerr << " " << p.first;
+            }
+            cerr << endl;
+            return 1;
+        }
+        // parse positions
+        GLnexus::range query(rid, strtol(beg_txt.c_str(), nullptr, 10)-1,
+                                  strtol(end_txt.c_str(), nullptr, 10));
+        if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
+            cerr << "Invalid query range" << endl;
+            return 1;
+        }
+
         {
-            unique_ptr<GLnexus::DataCache> cache;
-            H("instantiate data cache", GLnexus::DataCache::Start(data.get(), cache));
+            // start service, discover alleles, unify sites, genotype sites
+            unique_ptr<GLnexus::Service> svc;
+            H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
 
-            // resolve the user-supplied contig name to rid
-            const auto& contigs = cache->contigs();
-            int rid = 0;
-            for(; rid<contigs.size(); rid++) {
-                if (contigs[rid].first == rname) {
-                    break;
-                }
-            }
-            if (rid == contigs.size()) {
-                cerr << "Unknown contig " << rname << endl
-                     << "Known contigs:";
-                for (const auto& p : contigs) {
-                    cerr << " " << p.first;
-                }
-                cerr << endl;
-                return 1;
-            }
-            // parse positions
-            GLnexus::range query(rid, strtol(beg_txt.c_str(), nullptr, 10)-1,
-                                      strtol(end_txt.c_str(), nullptr, 10));
-            if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
-                cerr << "Invalid query range" << endl;
-                return 1;
-            }
+            const string sampleset("*");
+            GLnexus::discovered_alleles alleles;
+            H("discover alleles", svc->discover_alleles(sampleset, query, alleles));
 
-            {
-                // start service, discover alleles, unify sites, genotype sites
-                unique_ptr<GLnexus::Service> svc;
-                H("start GLnexus service", GLnexus::Service::Start(cache.get(), svc));
+            vector<GLnexus::unified_site> sites;
+            H("unify sites", GLnexus::unified_sites(alleles, sites));
 
-                const string sampleset("*");
-                GLnexus::discovered_alleles alleles;
-                H("discover alleles", svc->discover_alleles(sampleset, query, alleles));
-
-                vector<GLnexus::unified_site> sites;
-                H("unify sites", GLnexus::unified_sites(alleles, sites));
-
-                H("genotype sites",
-                  svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-")));
-            }
+            H("genotype sites",
+              svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-")));
         }
     }
 
