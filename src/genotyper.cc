@@ -168,58 +168,11 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     return Status::OK();
 }
 
-// Update the loss_stats data structure with call information for
-// original calls associated with a unified site
-Status update_orig_calls_for_loss(const unified_site& site, const bcf_hdr_t* dataset_header, bcf1_t* record, map<int,int>& sample_mapping, vector<loss_stats>& losses) {
-    range rng(record);
-    Status s;
-
-    int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
-    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
-    assert(nGT == 2*n_bcf_samples);
-    assert(record->n_sample == n_bcf_samples);
-
-    for (int i = 0; i < n_bcf_samples; i++) {
-        int sample_ind = sample_mapping[i];
-        auto& loss = losses[sample_ind];
-
-        int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
-        loss.addCallForSite(site, rng, n_calls);
-    }
-
-    return Status::OK();
-}
-
-// Update the loss_stats data sturcture with the joint call for
-// the unified site and finalize the loss measures
-Status update_joint_call_loss(const unified_site& site, const bcf_hdr_t* hdr, bcf1_t* record, vector<loss_stats>& losses) {
-    range rng(record);
-    Status s;
-
-    int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(hdr, record, &gt, &gtsz);
-    int n_bcf_samples = record->n_sample;
-    int n_samples = losses.size();
-    assert(n_bcf_samples == n_samples);
-    assert(nGT == 2 * n_samples);
-
-    for (int i = 0; i < n_bcf_samples; i++) {
-        auto& loss = losses[i];
-
-        int n_gt_missing = (bcf_gt_is_missing(gt[i*2])) + bcf_gt_is_missing(gt[i*2 + 1]);
-        // Lock down the loss associated with this unified_site
-        loss.finalizeLossForSite(site, n_gt_missing);
-    }
-
-    return Status::OK();
-}
-
-Status genotype_site(const genotyper_config& cfg, const DataCache& data, const unified_site& site,
+Status genotype_site(const genotyper_config& cfg, const BCFData& data, const unified_site& site,
                      const set<string>& samples, const set<string>& datasets,
-                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, vector<loss_stats>& losses) {
+                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans) {
 	Status s;
-
+	
     // Initialize a vector for the unified genotype calls for each sample,
     // starting with everything missing. We'll then loop through BCF records
     // overlapping this site and fill in the genotypes as we encounter them.
@@ -238,7 +191,7 @@ Status genotype_site(const genotyper_config& cfg, const DataCache& data, const u
         // load BCF records overlapping the site
         shared_ptr<const bcf_hdr_t> dataset_header;
         vector<shared_ptr<bcf1_t>> records;
-        S(data.dataset_bcf(dataset, site.pos, dataset_header, records));
+        S(data.dataset_range_and_header(dataset, site.pos, dataset_header, records));
 
         // index the samples shared between the sample set and the BCFs
         // TODO: better algorithm, with caching (LRU given sampleset-dataset cross)

@@ -12,6 +12,7 @@
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
 #include "rocksdb/write_batch.h"
+#include "rocksdb/table.h"
 
 namespace GLnexus {
 namespace RocksKeyValue {
@@ -51,9 +52,13 @@ static Status convertStatus(const rocksdb::Status &s)
     }
 }
 
-void GLnexusColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
+void ApplyColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
     opts.OptimizeUniversalStyleCompaction();
     opts.compression = rocksdb::kLZ4Compression;
+    rocksdb::BlockBasedTableOptions bbto;
+    bbto.block_size = 64 * 1024;
+    bbto.format_version = 2;
+    opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 }
 
 class Iterator : public KeyValue::Iterator {
@@ -211,7 +216,7 @@ public:
     static Status Initialize(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
-        GLnexusColumnFamilyOptions(options);
+        ApplyColumnFamilyOptions(options);
         options.IncreaseParallelism();
         options.create_if_missing = true;
         options.error_if_exists = true;
@@ -235,7 +240,7 @@ public:
     static Status Open(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
-        GLnexusColumnFamilyOptions(options);
+        ApplyColumnFamilyOptions(options);
         options.IncreaseParallelism();
         options.create_if_missing = false;
 
@@ -248,7 +253,7 @@ public:
         std::vector<rocksdb::ColumnFamilyDescriptor> column_families;
         for (const auto& nm : column_family_names) {
             rocksdb::ColumnFamilyOptions colopts;
-            GLnexusColumnFamilyOptions(colopts);
+            ApplyColumnFamilyOptions(colopts);
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
             cfd.options = colopts;
@@ -282,8 +287,10 @@ public:
     }
 
     ~DB() override {
-        // free RocksDB column family handles
+        // Flush and free RocksDB column family handles
+        db_->SyncWAL();
         for (const auto& p : coll2handle_) {
+            db_->Flush(rocksdb::FlushOptions(), p.second);
             delete p.second;
         }
         // delete database
@@ -307,7 +314,7 @@ public:
 
         // create new column family in rocksdb
         rocksdb::ColumnFamilyOptions colopts;
-        GLnexusColumnFamilyOptions(colopts);
+        ApplyColumnFamilyOptions(colopts);
         rocksdb::ColumnFamilyHandle *handle;
         rocksdb::Status s = db_->CreateColumnFamily(colopts, name, &handle);
         if (!s.ok()) {
@@ -334,7 +341,7 @@ public:
                const std::string& key,
                std::string& value) const override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        const rocksdb::ReadOptions r_options; // what should this be set to?
+        static const rocksdb::ReadOptions r_options; // what should this be set to?
         std::string v_tmp;
         rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
         value = std::move(v_tmp);
@@ -345,7 +352,7 @@ public:
                const std::string& key,
                const std::string& value) override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        const rocksdb::WriteOptions options;
+        static const rocksdb::WriteOptions options;
         rocksdb::Status s = db_->Put(options, coll, key, value);
         return convertStatus(s);
     }

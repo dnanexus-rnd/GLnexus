@@ -316,8 +316,10 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
     return body_->db->get(coll, sample, ans);
 }
 
-Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
-                                           shared_ptr<const bcf_hdr_t>& hdr) const {
+Status BCFKeyValueData::dataset_header(const string& dataset,
+                                       shared_ptr<const bcf_hdr_t>& hdr) const {
+    // TODO: cache headers
+
     // Retrieve the header
     Status s;
     KeyValue::CollectionHandle coll;
@@ -335,17 +337,16 @@ Status BCFKeyValueData::dataset_bcf_header(const string& dataset,
 
 // Add a <key,value> pair to the database.
 // The key is a concatenation of the dataset name and the chromosome and genomic range.
-Status BCFKeyValueData::write_bucket(KeyValue::DB* db,
-                                     BCFWriter *writer,
-                                     const string& dataset,
-                                     const range& rng) {
+Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
+                    BCFWriter *writer, const string& dataset,
+                    const range& rng) {
     // extract the data
     string data;
     Status s;
     S(writer->contents(data));
 
     // Generate the key
-    string key = body_->rangeHelper->gen_key(dataset, rng);
+    string key = rangeHelper.gen_key(dataset, rng);
 
     // write to the database
     KeyValue::CollectionHandle coll_bcf;
@@ -393,10 +394,10 @@ static Status scan_bucket(
 // range. This list may be empty, if no overlapping records were
 // found. If an invalid rid is requested, the return value will be an
 // empty list.
-Status BCFKeyValueData::dataset_bcf(const string& dataset,
-                                    const bcf_hdr_t* hdr,
-                                    const range& query,
-                                    vector<shared_ptr<bcf1_t> >& records) const {
+Status BCFKeyValueData::dataset_range(const string& dataset,
+                                      const bcf_hdr_t* hdr,
+                                      const range& query,
+                                      vector<shared_ptr<bcf1_t> >& records) const {
     Status s;
     records.clear();
 
@@ -425,9 +426,9 @@ Status BCFKeyValueData::dataset_bcf(const string& dataset,
 }
 
 // test whether a gVCF file is compatible for deposition into the database
-bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
+bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr) {
     Status s;
-    auto& contigs = cache->contigs();
+    const auto& contigs = metadata.contigs();
 
     // verify contigs match exactly. even the order matters
 
@@ -447,7 +448,7 @@ bool gvcf_compatible(const DataCache *cache, const bcf_hdr_t *hdr) {
 }
 
 // Sanity-check an individual bcf1_t record before ingestion.
-Status BCFKeyValueData::validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
+Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr, bcf1_t *bcf) {
     // Check that bcf->rlen is calculated correctly based on POS,END if
     // available or POS,strlen(REF) otherwise
     bcf_info_t *info = bcf_get_info(hdr, bcf, "END");
@@ -470,15 +471,15 @@ Status BCFKeyValueData::validate_bcf(const bcf_hdr_t *hdr, bcf1_t *bcf) {
         }
     }
 
-    if (bcf->rlen > body_->rangeHelper->interval_len) {
+    if (bcf->rlen > rangeHelper.interval_len) {
         return Status::Invalid("gVCF has record that is longer than ",
-                               std::to_string(body_->rangeHelper->interval_len));
+                               std::to_string(rangeHelper.interval_len));
     }
 
     return Status::OK();
 }
 
-Status BCFKeyValueData::import_gvcf(DataCache* cache,
+Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
                                     const string& dataset,
                                     const string& filename,
                                     set<string>& samples_out) {
@@ -488,7 +489,7 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
 
     unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
     if (!hdr) return Status::IOError("reading gVCF header", filename);
-    if (!gvcf_compatible(cache, hdr.get())) {
+    if (!gvcf_compatible(metadata, hdr.get())) {
         return Status::Invalid("Incompatible gVCF. The reference contigs must match the database configuration exactly.", filename);
     }
 
@@ -514,13 +515,13 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
     // TODO: design a thread-safe scheme for this
     Status s;
     std::shared_ptr<const bcf_hdr_t> ignored_hdr;
-    s = cache->dataset_bcf_header(dataset, ignored_hdr);
+    s = dataset_header(dataset, ignored_hdr);
     if (s != StatusCode::NOT_FOUND) {
         return Status::Exists("data set already exists", dataset + " (" + filename + ")");
     }
     for (const auto& sample : samples) {
         string ignored_dataset;
-        s = cache->sample_dataset(sample, ignored_dataset);
+        s = metadata.sample_dataset(sample, ignored_dataset);
         if (s != StatusCode::NOT_FOUND) {
             return Status::Exists("sample already exists", sample + " " + dataset + " (" + filename + ")");
         }
@@ -538,13 +539,13 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
         // Make sure a record is not longer than [BCFBucketRange::interval_len].
         // If this is not true, then we need to compensate in the search
         // routine.
-        S(validate_bcf(hdr.get(), vt.get()));
+        S(validate_bcf(*body_->rangeHelper, hdr.get(), vt.get()));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket to DB
             if (writer != nullptr && writer->get_num_entries() > 0)
-                S(write_bucket(body_->db, writer.get(), dataset, bucket));
+                S(write_bucket(*body_->rangeHelper, body_->db, writer.get(), dataset, bucket));
 
             // start a new in-memory chunk
             writer = nullptr;
@@ -560,7 +561,7 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
 
     // close last bucket
     if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(body_->db, writer.get(), dataset, bucket));
+        S(write_bucket(*body_->rangeHelper, body_->db, writer.get(), dataset, bucket));
     }
     writer = nullptr;  // clear the memory state
 
@@ -581,7 +582,7 @@ Status BCFKeyValueData::import_gvcf(DataCache* cache,
         assert(key.size() == sample.size()+2);
         S(wb->put(coll_sampleset, key, string()));
     }
-    // TODO: cache invalidation
+    // TODO: invalidate metadata cache for "*"
     return wb->commit();
 }
 

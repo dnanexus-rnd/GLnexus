@@ -1,0 +1,54 @@
+{
+  "name": "GLnexus",
+  "title": "GLnexus",
+  "summary": "GLnexus",
+  "dxapi": "1.0.0",
+  "version": "0.0.1",
+  "inputSpec": [
+    {
+      "name": "gvcf",
+      "class": "array:file",
+      "patterns": ["*.gvcf.gz", "*.g.vcf.gz", "*.gvcf", "*.g.vcf"]
+    },
+    {
+      "name": "ranges_to_genotype",
+      "class": "array:string"
+    },
+    {
+      "name": "output_name",
+      "class": "string",
+      "default": "GLnexus"
+    },
+    {
+      "name": "sleep",
+      "class": "int",
+      "default": 0
+    }
+  ],
+  "outputSpec": [
+    {
+      "name": "vcf",
+      "class": "file",
+      "patterns": ["*.vcf.gz"]
+    },
+    {
+      "name": "db",
+      "class": "file",
+      "type": "GLnexus_db"
+    }
+  ],
+  "runSpec": {
+    "interpreter": "bash",
+    "file": "src/code.sh",
+    "execDepends": [],
+    "systemRequirements": {
+      "main": {
+        "instanceType": "mem1_ssd1_x2"
+      }
+    }
+  },
+  "access": {
+    "network": ["*"]
+  },
+  "authorizedUsers": []
+}

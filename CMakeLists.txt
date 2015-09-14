@@ -86,7 +86,7 @@ add_library(libyaml-cpp STATIC IMPORTED)
 set(LIBYAML_CPP_A ${binary_dir}/libyaml-cpp.a)
 set_property(TARGET libyaml-cpp PROPERTY IMPORTED_LOCATION ${LIBYAML_CPP_A})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror=return-type -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror=return-type -std=c++14 -fdiagnostics-color=auto")
 
 ################################
 # Normal Libraries & Executables
