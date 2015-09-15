@@ -1,11 +1,8 @@
 var searchData=
 [
-  ['range',['range',['../struct_g_lnexus_1_1range.html',1,'GLnexus']]],
-  ['range',['range',['../struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467',1,'GLnexus::range']]],
-  ['read_5fheader',['read_header',['../class_g_lnexus_1_1_b_c_f_reader.html#a9d42d179c44b3277eaa8bc85b83e6f29',1,'GLnexus::BCFReader']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_key_value_1_1_reader.html',1,'GLnexus::KeyValue']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_rocks_key_value_1_1_reader.html',1,'GLnexus::RocksKeyValue']]],
-  ['ref_5fdp_5fformat',['ref_dp_format',['../struct_g_lnexus_1_1genotyper__config.html#a71cc0d0a145034fdd893a28e9cae240a',1,'GLnexus::genotyper_config']]],
-  ['ref_5fsymbolic_5fallele',['ref_symbolic_allele',['../struct_g_lnexus_1_1genotyper__config.html#ae5105c6c4c3e1417f8f1b41324931560',1,'GLnexus::genotyper_config']]],
-  ['required_5fdp',['required_dp',['../struct_g_lnexus_1_1genotyper__config.html#a99811beeefbe17ed9b9f93b1ba727188',1,'GLnexus::genotyper_config']]]
+  ['sample_5fdataset',['sample_dataset',['../class_g_lnexus_1_1_b_c_f_key_value_data.html#af0eebb65fd9c969f2c4746506643f022',1,'GLnexus::BCFKeyValueData::sample_dataset()'],['../class_g_lnexus_1_1_metadata.html#a4e02401b7c72fac69a63992fbb888ac7',1,'GLnexus::Metadata::sample_dataset()'],['../class_g_lnexus_1_1_metadata_cache.html#a8b1c9724ff7401469410766435e5cf09',1,'GLnexus::MetadataCache::sample_dataset()']]],
+  ['sampleset_5fsamples',['sampleset_samples',['../class_g_lnexus_1_1_b_c_f_key_value_data.html#a31f058179be1f19bc410c7a9dfa2833f',1,'GLnexus::BCFKeyValueData::sampleset_samples()'],['../class_g_lnexus_1_1_metadata.html#a1ae700d4d003c3b26a8bc5c1dce558f2',1,'GLnexus::Metadata::sampleset_samples()'],['../class_g_lnexus_1_1_metadata_cache.html#af2e4e69e17c7287a18b5f78a5037ced4',1,'GLnexus::MetadataCache::sampleset_samples()']]],
+  ['service',['Service',['../class_g_lnexus_1_1_service.html',1,'GLnexus']]],
+  ['status',['Status',['../class_g_lnexus_1_1_status.html',1,'GLnexus']]],
+  ['status',['Status',['../class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71',1,'GLnexus::Status::Status(StatusCode code=StatusCode::OK, const char *msg=nullptr) noexcept'],['../class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e',1,'GLnexus::Status::Status(StatusCode code, const char *msg, const std::string &amp;noun)']]]
 ];
