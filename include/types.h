@@ -11,6 +11,7 @@
 #include <vcf.h>
 
 #define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;
+template<typename T> inline void ignore_retval(T) {}
 
 namespace GLnexus {
 

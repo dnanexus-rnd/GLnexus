@@ -18,7 +18,7 @@ static std::string COLL_NAME = "rocky2";
 
 TEST_CASE("Basic operations on RocksDB") {
   // Remove the files under the DB path
-  system(("rm -rf " + kDBPath).c_str());
+  REQUIRE(system(("rm -rf " + kDBPath).c_str()) == 0);
 
   DB* db;
   Options options;
@@ -102,5 +102,5 @@ TEST_CASE("Basic operations on RocksDB") {
 
   // destroy is not sufficient, we also need to remove the files 
   // under the path
-  system(("rm -rf " + kDBPath).c_str());
+  REQUIRE(system(("rm -rf " + kDBPath).c_str()) == 0);
 }

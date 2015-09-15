@@ -298,7 +298,7 @@ int main_dump(int argc, char *argv[]) {
                     }
                     cout << "\t" << flush;
                     vcf_write(vcfout, hdr.get(), record.get());
-                    hflush(vcfout->fp.hfile);
+                    ignore_retval(hflush(vcfout->fp.hfile));
                 }
             }
             // intentionally leaking vcfout because closing it closes stdout
