@@ -8,6 +8,8 @@
 #include <iostream>
 #include <assert.h>
 #include <math.h>
+#include <thread>
+#include <mutex>
 using namespace std;
 
 namespace GLnexus {
@@ -109,10 +111,31 @@ public:
 };
 
 
+// Metadata that is being added to the DB
+struct ActiveMetadata {
+    set<string> datasets;
+    set<string> samples;
+
+    void erase(const string dataset_, set<string> samples_) {
+        datasets.erase(dataset_);
+        for (const auto& sample : samples_)
+            samples.erase(sample);
+    }
+
+    void add(const string dataset_, set<string> samples_) {
+        datasets.insert(dataset_);
+        for (const auto& sample : samples_)
+            samples.insert(sample);
+
+    }
+};
+
 // pImpl idiom
-struct BCFKeyValueData::body {
+struct BCFKeyValueData_body {
     KeyValue::DB* db;
     std::unique_ptr<BCFBucketRange> rangeHelper;
+    std::mutex mutex;
+    ActiveMetadata amd;
 };
 
 auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
@@ -181,7 +204,7 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
     }
 
     ans.reset(new BCFKeyValueData());
-    ans->body_.reset(new body);
+    ans->body_.reset(new BCFKeyValueData_body);
     ans->body_->db = db;
 
     // Read the parameters from the DB
@@ -426,7 +449,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
 }
 
 // test whether a gVCF file is compatible for deposition into the database
-bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr) {
+static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr) {
     Status s;
     const auto& contigs = metadata.contigs();
 
@@ -448,7 +471,9 @@ bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr) {
 }
 
 // Sanity-check an individual bcf1_t record before ingestion.
-Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr, bcf1_t *bcf) {
+static Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr,
+                           bcf1_t *bcf,
+                           int prev_rid, int prev_pos) {
     // Check that bcf->rlen is calculated correctly based on POS,END if
     // available or POS,strlen(REF) otherwise
     bcf_info_t *info = bcf_get_info(hdr, bcf, "END");
@@ -466,7 +491,7 @@ Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr, bcf1_t *b
             return Status::Invalid("gVCF record END-POS doesn't match rlen", range(bcf).str());
         }
     } else {
-        if (bcf->rlen != strlen(bcf->d.allele[0])) {
+        if (bcf->rlen != (int) strlen(bcf->d.allele[0])) {
             return Status::Invalid("gVCF rlen doesn't match strlen(REF) (and no END field)", range(bcf).str());
         }
     }
@@ -476,20 +501,28 @@ Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr, bcf1_t *b
                                std::to_string(rangeHelper.interval_len));
     }
 
+    // verify record ordering is monotonically increasing within a contig
+    if (prev_rid == bcf->rid &&
+        prev_pos >= bcf->pos) {
+        return Status::Invalid("gVCF record ordering is wrong ",
+                               std::to_string(prev_pos) + " >= " + range(bcf).str());
+    }
+
     return Status::OK();
 }
 
-Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
-                                    const string& dataset,
-                                    const string& filename,
-                                    set<string>& samples_out) {
-    unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(filename.c_str(), "r"),
-                                               [](vcfFile* f) { bcf_close(f); });
-    if (!vcf) return Status::IOError("opening gVCF file", filename);
 
-    unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+// Verify that a VCF file is well formed.
+// AND, fill in the [samples_out]
+static Status vcf_validate_basic_facts(MetadataCache& metadata,
+                                       const string& dataset,
+                                       const string& filename,
+                                       bcf_hdr_t *hdr,
+                                       vcfFile *vcf,
+                                       set<string>& samples_out)
+{
     if (!hdr) return Status::IOError("reading gVCF header", filename);
-    if (!gvcf_compatible(metadata, hdr.get())) {
+    if (!gvcf_compatible(metadata, hdr)) {
         return Status::Invalid("Incompatible gVCF. The reference contigs must match the database configuration exactly.", filename);
     }
 
@@ -499,7 +532,7 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
         return Status::Invalid("gVCF contains no samples", dataset + " (" + filename + ")");
     }
     for (unsigned i = 0; i < n; i++) {
-        string sample(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, i));
+        string sample(bcf_hdr_int2id(hdr, BCF_DT_SAMPLE, i));
         if (sample.size() == 0) {
             return Status::Invalid("gVCF contains empty sample name", dataset + " (" + filename + ")");
         }
@@ -511,14 +544,26 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
         return Status::Invalid("gVCF sample names are not unique", dataset + " (" + filename + ")");
     }
 
-    // check uniqueness of data set and samples
-    // TODO: design a thread-safe scheme for this
+    return Status::OK();
+}
+
+// Make sure that we the database doesn't already include these datasets and samples.
+static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
+                                         MetadataCache& metadata,
+                                         const string& dataset,
+                                         const string& filename,
+                                         const set<string>& samples) {
     Status s;
-    std::shared_ptr<const bcf_hdr_t> ignored_hdr;
-    s = dataset_header(dataset, ignored_hdr);
+
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("header",coll));
+    string data;
+    s = body_->db->get(coll, dataset, data);
     if (s != StatusCode::NOT_FOUND) {
-        return Status::Exists("data set already exists", dataset + " (" + filename + ")");
+        return Status::Exists("data set already exists",
+                              dataset + " (" + filename + ")");
     }
+
     for (const auto& sample : samples) {
         string ignored_dataset;
         s = metadata.sample_dataset(sample, ignored_dataset);
@@ -526,26 +571,36 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
             return Status::Exists("sample already exists", sample + " " + dataset + " (" + filename + ")");
         }
     }
+    return Status::OK();
+}
 
-    // This code assumes that the VCF is sorted by chromosome, and position.
+static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
+                                          KeyValue::DB* db,
+                                          const string& dataset,
+                                          const string& filename,
+                                          const bcf_hdr_t *hdr,
+                                          vcfFile *vcf) {
+    Status s;
     unique_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
+    int prev_pos = -1;
+    int prev_rid = -1;
 
-    range bucket(-1, 0, body_->rangeHelper->interval_len);
+    range bucket(-1, 0, rangeHelper.interval_len);
     int c;
-    for(c = bcf_read(vcf.get(), hdr.get(), vt.get());
+    for(c = bcf_read(vcf, hdr, vt.get());
         c == 0;
-        c = bcf_read(vcf.get(), hdr.get(), vt.get())) {
+        c = bcf_read(vcf, hdr, vt.get())) {
         // Make sure a record is not longer than [BCFBucketRange::interval_len].
         // If this is not true, then we need to compensate in the search
         // routine.
-        S(validate_bcf(*body_->rangeHelper, hdr.get(), vt.get()));
+        S(validate_bcf(rangeHelper, hdr, vt.get(), prev_rid, prev_pos));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket to DB
             if (writer != nullptr && writer->get_num_entries() > 0)
-                S(write_bucket(*body_->rangeHelper, body_->db, writer.get(), dataset, bucket));
+                S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket));
 
             // start a new in-memory chunk
             writer = nullptr;
@@ -553,37 +608,125 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
 
             // Move to a new genomic range. Round down the start address to
             // a natural multiple of the interval length.
-            bucket = body_->rangeHelper->bucket(dataset, vt.get());
+            bucket = rangeHelper.bucket(dataset, vt.get());
         }
         S(writer->write(vt.get()));
+        prev_rid = vt->rid;
+        prev_pos = vt->pos;
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
     // close last bucket
     if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(*body_->rangeHelper, body_->db, writer.get(), dataset, bucket));
+        S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket));
     }
     writer = nullptr;  // clear the memory state
-
-    // Serialize header into a string
-    string hdr_data = BCFWriter::write_header(hdr.get());
-
-    // Store header and metadata
-    KeyValue::CollectionHandle coll_header, coll_sample_dataset, coll_sampleset;
-    S(body_->db->collection("header", coll_header));
-    S(body_->db->collection("sample_dataset", coll_sample_dataset));
-    S(body_->db->collection("sampleset", coll_sampleset));
-    unique_ptr<KeyValue::WriteBatch> wb;
-    S(body_->db->begin_writes(wb));
-    S(wb->put(coll_header, dataset, hdr_data));
-    for (const auto& sample : samples) {
-        S(wb->put(coll_sample_dataset, sample, dataset));
-        string key = "*" + string(1,'\0') + sample;
-        assert(key.size() == sample.size()+2);
-        S(wb->put(coll_sampleset, key, string()));
-    }
-    // TODO: invalidate metadata cache for "*"
-    return wb->commit();
+    return Status::OK();
 }
+
+
+// Temporary notes on DB schema, to be moved over to wiki.
+//
+//  dataset -> header
+//       for each dataset, there is a header stored
+//  sample -> dataset
+//       mapping from sample to dataset, each dataset can store multiple samples.
+//
+static Status import_gvcf_inner(BCFKeyValueData_body *body_,
+                                MetadataCache& metadata,
+                                const string& dataset,
+                                const string& filename,
+                                set<string>& samples_out) {
+    Status s;
+    unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(filename.c_str(), "r"),
+                                               [](vcfFile* f) { bcf_close(f); });
+    if (!vcf) return Status::IOError("opening gVCF file", filename);
+    unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+
+    S(vcf_validate_basic_facts(metadata, dataset, filename, hdr.get(), vcf.get(),
+                               samples_out));
+
+    // Atomically verify metadata and prepare
+    {
+        std::lock_guard<std::mutex> lock(body_->mutex);
+
+        // verify uniqueness of data set and samples
+        S(verify_dataset_and_samples(body_, metadata, dataset, filename, samples_out));
+
+        // Make sure dataset and samples are not being added by another thread/user
+        if (body_->amd.datasets.count(dataset) > 0)
+            return Status::Exists("data set is currently being added",
+                                  dataset + " (" + filename + ")");
+
+        for (const auto& sample : samples_out)
+            if (body_->amd.samples.count(sample) > 0)
+                return Status::Exists("sample is currently being added",
+                                      sample + " (" + filename + ")");
+
+        // Add to active MD
+        body_->amd.add(dataset, samples_out);
+    }
+
+    // bulk insert, non atomic
+    //
+    // Note: we are not dealing at all with mid-flight failures
+    S(bulk_insert_gvcf_key_values(*body_->rangeHelper, body_->db,
+                                  dataset, filename,
+                                  hdr.get(), vcf.get()));
+
+    // Update metadata atomically, now it will point to all the data
+    Status retval = Status::Invalid();
+    {
+        std::lock_guard<std::mutex> lock(body_->mutex);
+
+        // Serialize header into a string
+        string hdr_data = BCFWriter::write_header(hdr.get());
+
+        // Store header and metadata
+        KeyValue::CollectionHandle coll_header, coll_sample_dataset, coll_sampleset;
+        S(body_->db->collection("header", coll_header));
+        S(body_->db->collection("sample_dataset", coll_sample_dataset));
+        S(body_->db->collection("sampleset", coll_sampleset));
+        unique_ptr<KeyValue::WriteBatch> wb;
+        S(body_->db->begin_writes(wb));
+        S(wb->put(coll_header, dataset, hdr_data));
+        for (const auto& sample : samples_out) {
+            S(wb->put(coll_sample_dataset, sample, dataset));
+            string key = "*" + string(1,'\0') + sample;
+            assert(key.size() == sample.size()+2);
+            S(wb->put(coll_sampleset, key, string()));
+        }
+
+        // Remove from active metadata
+        body_->amd.erase(dataset, samples_out);
+
+        retval = wb->commit();
+        // TODO: invalidate metadata cache for "*"
+    }
+
+    // good path
+    return retval;
+}
+
+Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
+                                    const string& dataset,
+                                    const string& filename,
+                                    set<string>& samples_out) {
+    samples_out.clear(); // hygiene
+    Status s = import_gvcf_inner(body_.get(),
+                                 metadata,
+                                 dataset,
+                                 filename,
+                                 samples_out);
+
+    if (!s.ok()) {
+        // We had a failure, remove from the active metadata
+        std::lock_guard<std::mutex> lock(mutex);
+        body_->amd.erase(dataset, samples_out);
+    }
+
+    return s;
+}
+
 
 } // namespace GLnexus

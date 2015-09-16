@@ -405,6 +405,9 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
         set<string> samples_imported;
 
         Status s = data->import_gvcf(*cache, "synth_A", "test/data/synthetic_A.21.gvcf", samples_imported);
+        if (s.bad()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
         shared_ptr<const bcf_hdr_t> hdr;
         s = data->dataset_header("synth_A", hdr);
@@ -447,6 +450,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
     }
 }
 
+// --------------------------------------------------------------------
 // This is a design for a test that will be useful with query primitives
 // that work on multiple datasets.
 //
@@ -470,3 +474,4 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 //          |<-A1       ->|  |<- A2 ->|
 // |<-B1->|   |< -B2   ->|
 // Expected result: {A1, B2}
+// --------------------------------------------------------------------
