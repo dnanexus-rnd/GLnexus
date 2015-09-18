@@ -6,6 +6,7 @@
 #include <map>
 #include <assert.h>
 #include <sstream>
+#include "ctpl_stl.h"
 
 using namespace std;
 
@@ -13,14 +14,16 @@ namespace GLnexus{
 
 // pImpl idiom
 struct Service::body {
-    std::unique_ptr<MetadataCache> metadata_;
     BCFData& data_;
+    std::unique_ptr<MetadataCache> metadata_;
+    ctpl::thread_pool threadpool_;
 
     body(BCFData& data) : data_(data) {}
 };
 
 Service::Service(BCFData& data) {
     body_ = make_unique<Service::body>(data);
+    body_->threadpool_.resize(thread::hardware_concurrency());
 }
 
 Service::~Service() = default;
@@ -177,25 +180,65 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         return Status::IOError("bcf_hdr_write", filename);
     }
 
-    // for each site
-    for (const auto& site : sites) {
-        // compute genotypes
-        shared_ptr<bcf1_t> site_bcf;
-        S(genotype_site(cfg, body_->data_, site, *samples, *datasets, hdr.get(), site_bcf));
+    // Enqueue processing of each site as a task on the thread pool.
+    vector<future<Status>> statuses;
+    vector<shared_ptr<bcf1_t>> results(sites.size());
+    // ^^^ results to be filled by side-effect in the individual tasks below.
+    // We assume that by virtue of preallocating, no mutex is necessary to
+    // use it as follows because writes and reads of individual elements are
+    // serialized by the futures.
+    atomic<bool> abort(false);
+    for (size_t i = 0; i < sites.size(); i++) {
+        auto fut = body_->threadpool_.push([&, i](int tid){
+            if (abort) {
+                return Status::Invalid();
+            }
+            shared_ptr<bcf1_t> bcf;
+            Status ls = genotype_site(cfg, body_->data_, sites[i], *samples, *datasets, hdr.get(), bcf);
+            if (ls.bad()) {
+                return ls;
+            }
+            results[i] = move(bcf);
+            return ls;
+        });
+        statuses.push_back(move(fut));
+    }
+    assert(statuses.size() == sites.size());
 
-        // write out a BCF record
-        if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {
-            return Status::IOError("bcf_write", filename);
+    // Retrieve the resulting BCF records, and write them to the output file,
+    // in the given order. Record the first error that occurs, if any, but
+    // always wait for all tasks to finish.
+    s = Status::OK();
+    for (size_t i = 0; i < sites.size(); i++) {
+        // wait for task i to complete and find out its status
+        Status s_i(statuses[i].get());
+        // always retrieve the result BCF record, if any, to ensure we'll free
+        // the memory it takes ASAP
+        shared_ptr<bcf1_t> bcf_i;
+        bcf_i = move(results[i]);
+        assert(!results[i]);
+
+        if (s.ok() && s_i.ok()) {
+            // if everything's OK, proceed to write the record
+            assert(bcf_i);
+            if (bcf_write(outfile.get(), hdr.get(), bcf_i.get()) != 0) {
+                s = Status::IOError("bcf_write", filename);
+            }
+        } else if (s.ok() && s_i.bad()) {
+            // record the first error, and tell remaining tasks to abort
+            s = move(s_i);
+            abort = true;
         }
+    }
+    if (s.bad()) {
+        return s;
     }
     // TODO: for very large sample sets, bucket cache-friendliness might be
     // improved by genotyping in grid squares of N>1 sites and M>1 samples
 
-    if (bcf_close(outfile.release()) != 0) {
-        return Status::IOError("bcf_close", filename);
-    }
-
-    return Status::OK();
+    // close the output file
+    return bcf_close(outfile.release()) == 0
+                ? Status::OK() : Status::IOError("bcf_close", filename);
 }
 
 }

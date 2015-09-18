@@ -86,6 +86,19 @@ add_library(libyaml-cpp STATIC IMPORTED)
 set(LIBYAML_CPP_A ${binary_dir}/libyaml-cpp.a)
 set_property(TARGET libyaml-cpp PROPERTY IMPORTED_LOCATION ${LIBYAML_CPP_A})
 
+ExternalProject_Add(CTPL
+    URL https://github.com/vit-vit/CTPL/archive/v.0.0.2.zip
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
+    CONFIGURE_COMMAND ""
+    BUILD_IN_SOURCE 1
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    LOG_DOWNLOAD ON
+  )
+ExternalProject_Get_Property(CTPL source_dir)
+set(CTPL_INCLUDE_DIR ${source_dir})
+include_directories(${CTPL_INCLUDE_DIR})
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto")
 
 ################################
@@ -109,6 +122,7 @@ add_library(glnexus
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
 add_dependencies(glnexus yaml-cpp)
+add_dependencies(glnexus CTPL)
 add_library(libglnexus ALIAS glnexus)
 
 add_executable(playground src/playground.cc)
