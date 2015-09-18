@@ -21,6 +21,10 @@ script:
   - gcc --version
   # Build and run unit tests
   - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Coverage . && make && ./unit_tests
+  # Build again in Release mode. This is not redundant because some warnings
+  # we've set to errors are detected only when the compiler is optimizing.
+  # http://stackoverflow.com/q/11061970
+  - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release && make
 
 # Encrypted Github credential (using yifei's account)
 env:
