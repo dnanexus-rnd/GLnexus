@@ -38,11 +38,14 @@ public:
                              std::shared_ptr<const std::set<std::string> >& ans) const override;
     Status sample_dataset(const std::string& sample, std::string& ans) const override;
 
+    // statistics
+    std::shared_ptr<StatsRangeQuery> getRangeStats();
+
     // BCFData
     Status dataset_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
     Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
-                         std::vector<std::shared_ptr<bcf1_t> >& records) const override;
+                         std::vector<std::shared_ptr<bcf1_t> >& records) override;
 
     /// Import a new data set (a gVCF file, possibly containing multiple samples).
     /// The data set name must be unique.

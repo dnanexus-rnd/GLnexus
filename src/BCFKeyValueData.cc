@@ -136,6 +136,8 @@ struct BCFKeyValueData_body {
     std::unique_ptr<BCFBucketRange> rangeHelper;
     std::mutex mutex;
     ActiveMetadata amd;
+    std::mutex statsMutex;
+    StatsRangeQuery statsRq; // statistics for range queries
 };
 
 auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
@@ -339,6 +341,13 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
     return body_->db->get(coll, sample, ans);
 }
 
+shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
+    // return a copy of the current statistics
+    std::lock_guard<std::mutex> lock(body_->statsMutex);
+    auto statsCopy = make_shared<StatsRangeQuery>(body_->statsRq);
+    return statsCopy;
+}
+
 Status BCFKeyValueData::dataset_header(const string& dataset,
                                        shared_ptr<const bcf_hdr_t>& hdr) const {
     // TODO: cache headers
@@ -386,15 +395,18 @@ static Status scan_bucket(
     const string &data,
     const bcf_hdr_t* hdr,
     const range& query,
+    StatsRangeQuery &srq,
     vector<shared_ptr<bcf1_t> >& records)
 {
     Status s;
     unique_ptr<BCFReader> reader;
     S(BCFReader::Open(data.c_str(), data.size(), reader));
 
+    // statistics counter for BCF records
     shared_ptr<bcf1_t> vt;
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
+        srq.nBCFRecordsRead++;
         range vt_rng(vt);
         if (query.overlaps(vt_rng)) {
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
@@ -405,6 +417,8 @@ static Status scan_bucket(
         }
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
+    srq.nBCFRecordsInRange += records.size();
+
     return Status::OK();
 }
 
@@ -420,7 +434,7 @@ static Status scan_bucket(
 Status BCFKeyValueData::dataset_range(const string& dataset,
                                       const bcf_hdr_t* hdr,
                                       const range& query,
-                                      vector<shared_ptr<bcf1_t> >& records) const {
+                                      vector<shared_ptr<bcf1_t> >& records) {
     Status s;
     records.clear();
 
@@ -435,14 +449,21 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
     // iterate through the buckets in range
     shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan(dataset, query);
 
+    StatsRangeQuery accu;
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
         //cout << "scanning bucket " << r.str() << endl;
         string key = body_->rangeHelper->gen_key(dataset, r);
         string data;
         s = body_->db->get(coll, key, data);
         if (s != StatusCode::NOT_FOUND) {
-            scan_bucket(dataset, key, data, hdr, query, records);
+            scan_bucket(dataset, key, data, hdr, query, accu, records);
         }
+    }
+
+    // update database statistics
+    {
+        std::lock_guard<mutex> lock(body_->statsMutex);
+        body_->statsRq += accu;
     }
 
     return Status::OK();

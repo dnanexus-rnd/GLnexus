@@ -447,6 +447,9 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
         s = data->dataset_range("synth_A", hdr.get(), range(0, 3004, 3006), records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 3);
+
+        std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
+        cout << statsRq->str() << endl;
     }
 }
 

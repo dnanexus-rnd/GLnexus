@@ -265,8 +265,11 @@ TEST_CASE("RocksDB BCF retrieval") {
         // subset of records
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
         REQUIRE(s.ok());
-
         REQUIRE(records.size() == 2);
+        std::shared_ptr<StatsRangeQuery> srq = data->getRangeStats();
+        //cout << srq->str() << endl;
+        REQUIRE(srq->nBCFRecordsRead == 10);
+        REQUIRE(srq->nBCFRecordsInRange == 7);
 
         REQUIRE(records[0]->pos == 10009463);
         REQUIRE(records[0]->n_allele == 3);
@@ -291,6 +294,7 @@ TEST_CASE("RocksDB BCF retrieval") {
         s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE(records.size() == 0);
+
     }
 
     RocksKeyValue::destroy(dbPath);

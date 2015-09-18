@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <vcf.h>
+#include <mutex>
 
 #define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;
 template<typename T> inline void ignore_retval(T) {}
@@ -114,7 +115,7 @@ struct range {
 
     bool operator==(const range& r) const noexcept { return rid == r.rid && beg == r.beg && end == r.end; }
     bool operator!=(const range& r) const noexcept { return !(*this == r); }
-    bool operator<(const range& r) const noexcept { 
+    bool operator<(const range& r) const noexcept {
         return rid < r.rid || (rid == r.rid && (beg < r.beg || (beg == r.beg && end < r.end)));
     }
     bool operator<=(const range& r) const noexcept { return *this < r || *this == r; }
@@ -146,7 +147,7 @@ struct range {
 struct allele {
     range pos;
     std::string dna;
-    
+
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
         // TODO: validate allele matches [ACTGN]+
@@ -186,6 +187,40 @@ struct unified_site {
 
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 };
+
+// Statistics collected during range queries
+struct StatsRangeQuery {
+    int64_t nBCFRecordsRead;    // how many BCF records were read from the DB
+    int64_t nBCFRecordsInRange; // how many were in the requested range
+
+    // constructor
+    StatsRangeQuery() {
+        nBCFRecordsRead = 0;
+        nBCFRecordsInRange = 0;
+    }
+
+    // copy constructor
+    StatsRangeQuery(const StatsRangeQuery &srq) {
+        nBCFRecordsRead = srq.nBCFRecordsRead;
+        nBCFRecordsInRange = srq.nBCFRecordsInRange;
+    }
+
+    // Addition
+    StatsRangeQuery& operator+=(const StatsRangeQuery& srq) {
+        nBCFRecordsRead += srq.nBCFRecordsRead;
+        nBCFRecordsInRange += srq.nBCFRecordsInRange;
+        return *this;
+    }
+
+    // return a human readable string
+    std::string str() {
+        std::ostringstream os;
+        os << "Num BCF records read " << std::to_string(nBCFRecordsRead)
+           << "  query hits " << std::to_string(nBCFRecordsInRange);
+        return os.str();
+    }
+};
+
 
 } //namespace GLnexus
 
