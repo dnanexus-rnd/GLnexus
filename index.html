@@ -82,7 +82,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <p>This is an early-stage R&amp;D project we're developing openly. The code doesn't yet do anything useful! There's a <a href="https://github.com/dnanexus-rnd/GLnexus/wiki">wiki project roadmap</a>, which should be read in the spirit of "plans are worthless, but planning is insdispensable."</p>
 <h3>Build &amp; run tests</h3>
 <p><a href="https://travis-ci.org/dnanexus-rnd/GLnexus"></a> <a href="https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master">![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&amp;service=github)</a></p>
-<p>First <a href="http://askubuntu.com/a/581497">install gcc 4.9</a>, <code>cmake</code>, <code>libjemalloc-dev</code>, <code>libboost-dev</code>, <code>libzip-dev</code>, <code>libsnappy-dev</code>, <code>liblz4-dev</code>, <code>libbz2-dev</code>. Then:</p>
+<p>First <a href="http://askubuntu.com/a/581497">install gcc 4.9</a>, <code>libjemalloc-dev</code>, <code>libboost-dev</code>. Then:</p>
 <p>``` cmake -Dtest=ON . &amp;&amp; make &amp;&amp; ./unit_tests ```</p>
 <p>Other dependencies (should be set up automatically by CMake):</p><ul>
 <li><a href="https://github.com/samtools/htslib">htslib</a></li>
@@ -104,7 +104,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <li>Avoid public constructors with nontrivial bodies; prefer static initializer function returning <code>Status</code></li>
 <li>Avoid elaborate templated class hierarchies</li>
 </ul>
-<p>Documentation Last Updated:Fri Sep 18 18:35:48 UTC 2015 </p>
+<p>Documentation Last Updated:Fri Sep 18 22:28:57 UTC 2015 </p>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.7"/>
-<title>GLnexus: Member List</title>
+<title>GLnexus: GLnexus::StatsRangeQuery Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -82,21 +82,41 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">BCFData</a></li>  </ul>
+<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
+  <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="struct_g_lnexus_1_1_stats_range_query-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">GLnexus::BCFData Member List</div>  </div>
+<div class="title">GLnexus::StatsRangeQuery Struct Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-
-<p>This is the complete list of members for <a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">GLnexus::BCFData</a>, including all inherited members.</p>
-<table class="directory">
-  <tr class="even"><td class="entry"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a5eabf92aa1b3948d95fc0f01ceb445f0">dataset_header</a>(const std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr) const =0</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">GLnexus::BCFData</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
-  <tr><td class="entry"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a0879d81ed86d2fa5173e30a95c5c58a4">dataset_range</a>(const std::string &amp;dataset, const bcf_hdr_t *hdr, const range &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records)=0</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">GLnexus::BCFData</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a5976e3fe73b51c5f5a5194b36966e47f">dataset_range_and_header</a>(const std::string &amp;dataset, const range &amp;pos, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records)</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">GLnexus::BCFData</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
-</table></div><!-- contents -->
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:a4012ecf8b1ba37f9ea31ed270389f72b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a4012ecf8b1ba37f9ea31ed270389f72b"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>StatsRangeQuery</b> (<a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;srq)</td></tr>
+<tr class="separator:a4012ecf8b1ba37f9ea31ed270389f72b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9a28d3c3de31bc37293785d35e462362"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a9a28d3c3de31bc37293785d35e462362"></a>
+std::string&#160;</td><td class="memItemRight" valign="bottom"><b>str</b> ()</td></tr>
+<tr class="separator:a9a28d3c3de31bc37293785d35e462362"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a57732d38c7e4f085fecf02b23e1677a1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a57732d38c7e4f085fecf02b23e1677a1"></a>
+int64_t&#160;</td><td class="memItemRight" valign="bottom"><b>nBCFRecordsRead</b></td></tr>
+<tr class="separator:a57732d38c7e4f085fecf02b23e1677a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a20eac4fac7ea14a195b7bb3176129b78"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a20eac4fac7ea14a195b7bb3176129b78"></a>
+int64_t&#160;</td><td class="memItemRight" valign="bottom"><b>nBCFRecordsInRange</b></td></tr>
+<tr class="separator:a20eac4fac7ea14a195b7bb3176129b78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<hr/>The documentation for this struct was generated from the following file:<ul>
+<li>include/<a class="el" href="types_8h_source.html">types.h</a></li>
+</ul>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">
