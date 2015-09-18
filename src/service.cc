@@ -42,6 +42,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
             vector<float> obs_counts(record->n_allele, 0.0);
 
             // count hard-called allele observations
+            // TODO: only count samples in the sample set
             // TODO: could use GLs for soft estimate
             // TODO: "max ref extension" distance for each allele
             int *gt = nullptr, gtsz = 0;

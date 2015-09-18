@@ -40,10 +40,6 @@ public:
     /// Find the data set containing the sample.
     ///
     /// The data set may contain other samples.
-    /// 
-    /// The resulting data structure may be shared, so the strings must not be
-    /// mutated. They aren't declared const because...C++
-    /// http://stackoverflow.com/a/21365478
     virtual Status sample_dataset(const std::string& sample, std::string& ans) const = 0;
 };
 
