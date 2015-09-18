@@ -111,15 +111,15 @@ Public Member Functions</h2></td></tr>
 virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a5eabf92aa1b3948d95fc0f01ceb445f0">dataset_header</a> (const std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr) const =0</td></tr>
 <tr class="memdesc:a5eabf92aa1b3948d95fc0f01ceb445f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the BCF header for a data set. <br /></td></tr>
 <tr class="separator:a5eabf92aa1b3948d95fc0f01ceb445f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0879d81ed86d2fa5173e30a95c5c58a4"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a0879d81ed86d2fa5173e30a95c5c58a4">dataset_range</a> (const std::string &amp;dataset, const bcf_hdr_t *hdr, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records)=0</td></tr>
-<tr class="separator:a0879d81ed86d2fa5173e30a95c5c58a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5976e3fe73b51c5f5a5194b36966e47f"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a5976e3fe73b51c5f5a5194b36966e47f">dataset_range_and_header</a> (const std::string &amp;dataset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records)</td></tr>
-<tr class="separator:a5976e3fe73b51c5f5a5194b36966e47f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a13ebb72e7eb651521ec909bc99359771"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a13ebb72e7eb651521ec909bc99359771">dataset_range</a> (const std::string &amp;dataset, const bcf_hdr_t *hdr, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const =0</td></tr>
+<tr class="separator:a13ebb72e7eb651521ec909bc99359771"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e4bf380734b1886c17dd1db08fa3c2a"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a0e4bf380734b1886c17dd1db08fa3c2a">dataset_range_and_header</a> (const std::string &amp;dataset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records) const </td></tr>
+<tr class="separator:a0e4bf380734b1886c17dd1db08fa3c2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstract interface to stored BCF data sets. The implementation is responsible for any suitable caching. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="a0879d81ed86d2fa5173e30a95c5c58a4"></a>
+<a class="anchor" id="a13ebb72e7eb651521ec909bc99359771"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -153,7 +153,7 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>
@@ -166,11 +166,11 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 <p>Each record x will already have been "unpacked" with bcf_unpack(x,BCF_UN_ALL). The records may be shared, so they must not be mutated. (They aren't declared const because some vcf.h accessor functions don't take const bcf1_t*)</p>
 <p>The provided header must match the data set, otherwise the behavior is undefined! </p>
 
-<p>Implemented in <a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a83a8f793b1b9ce07412ff90c1a63debc">GLnexus::BCFKeyValueData</a>.</p>
+<p>Implemented in <a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#aa645df4f9a2b63023c8586775c13a6b7">GLnexus::BCFKeyValueData</a>.</p>
 
 </div>
 </div>
-<a class="anchor" id="a5976e3fe73b51c5f5a5194b36966e47f"></a>
+<a class="anchor" id="a0e4bf380734b1886c17dd1db08fa3c2a"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -204,7 +204,7 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>
