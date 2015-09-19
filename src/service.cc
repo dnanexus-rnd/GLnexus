@@ -38,81 +38,78 @@ bool is_dna(const string& str) {
                   [](char ch) { return ch == 'A' || ch == 'C' || ch == 'G' || ch == 'T'; });
 }
 
-Status Service::discover_alleles(const string& sampleset, const range& pos, discovered_alleles& ans) {
-    // Find the data sets containing the samples in the sample set.
-    shared_ptr<const set<string>> samples, datasets;
+// discover_alleles in one dataset -- used on the thread pool below
+static Status discover_alleles_in_dataset(BCFData& data, const string& dataset, const range& pos,
+                                          discovered_alleles& dsals) {
     Status s;
-    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
 
-    // extract alleles from each dataset
-    ans.clear();
-    for (const auto& dataset : *datasets) {
-        // get dataset BCF records
-        shared_ptr<const bcf_hdr_t> dataset_header;
-        vector<shared_ptr<bcf1_t>> records;
-        S(body_->data_.dataset_range_and_header(dataset, pos, dataset_header, records));
+    // get dataset BCF records
+    shared_ptr<const bcf_hdr_t> dataset_header;
+    vector<shared_ptr<bcf1_t>> records;
+    S(data.dataset_range_and_header(dataset, pos, dataset_header, records));
 
-        // for each BCF record
-        discovered_alleles dsals;
-        for (const auto& record : records) {
-            range rng(record);
-            vector<float> obs_counts(record->n_allele, 0.0);
+    // for each BCF record
+    dsals.clear();
+    for (const auto& record : records) {
+        range rng(record);
+        vector<float> obs_counts(record->n_allele, 0.0);
 
-            // count hard-called allele observations
-            // TODO: only count samples in the sample set
-            // TODO: could use GLs for soft estimate
-            // TODO: "max ref extension" distance for each allele
-            int *gt = nullptr, gtsz = 0;
-            int ngt = bcf_get_genotypes(dataset_header.get(), record.get(), &gt, &gtsz);
-            for (int i = 0; i < ngt; i++) {
-                if (gt[i] != bcf_int32_vector_end) {
-                    int al_i = bcf_gt_allele(gt[i]);
-                    if (al_i >= 0 && al_i < record->n_allele) {
-                        obs_counts[al_i] += 1.0;
-                    }
+        // count hard-called allele observations
+        // TODO: only count samples in the sample set
+        // TODO: could use GLs for soft estimate
+        // TODO: "max ref extension" distance for each allele
+        int *gt = nullptr, gtsz = 0;
+        int ngt = bcf_get_genotypes(dataset_header.get(), record.get(), &gt, &gtsz);
+        for (int i = 0; i < ngt; i++) {
+            if (gt[i] != bcf_int32_vector_end) {
+                int al_i = bcf_gt_allele(gt[i]);
+                if (al_i >= 0 && al_i < record->n_allele) {
+                    obs_counts[al_i] += 1.0;
                 }
             }
-            if (gt) {
-                free(gt);
-            }
+        }
+        if (gt) {
+            free(gt);
+        }
 
-            // create a discovered_alleles entry for each alt allele matching [ACGT]+
-            // In particular this excludes gVCF <NON_REF> symbolic alleles
-            bool any_alt = false;
-            for (int i = 1; i < record->n_allele; i++) {
-                string aldna(record->d.allele[i]);
-                transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-                if (aldna.size() > 0 && is_dna(aldna)) {
-                    discovered_allele_info ai = { false, obs_counts[i] };
-                    dsals.insert(make_pair(allele(rng, aldna), ai));
-                    any_alt = true;
-                }
-            }
-
-            // create an entry for the ref allele, if we discovered at least one alt allele.
-            string refdna(record->d.allele[0]);
-            transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
-            if (refdna.size() > 0 && is_dna(refdna)) {
-                if (any_alt) {
-                    discovered_allele_info ai = { true, obs_counts[0] };
-                    dsals.insert(make_pair(allele(rng, refdna), ai));
-                }
-            } else {
-                ostringstream errmsg;
-                errmsg << dataset << " " << refdna << "@" << pos.str();
-                return Status::Invalid("invalid reference allele", errmsg.str());
+        // create a discovered_alleles entry for each alt allele matching [ACGT]+
+        // In particular this excludes gVCF <NON_REF> symbolic alleles
+        bool any_alt = false;
+        for (int i = 1; i < record->n_allele; i++) {
+            string aldna(record->d.allele[i]);
+            transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
+            if (aldna.size() > 0 && is_dna(aldna)) {
+                discovered_allele_info ai = { false, obs_counts[i] };
+                dsals.insert(make_pair(allele(rng, aldna), ai));
+                any_alt = true;
             }
         }
 
-        // merge in this dataset's alleles
-        S(merge_discovered_alleles(dsals, ans));
+        // create an entry for the ref allele, if we discovered at least one alt allele.
+        string refdna(record->d.allele[0]);
+        transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
+        if (refdna.size() > 0 && is_dna(refdna)) {
+            if (any_alt) {
+                discovered_allele_info ai = { true, obs_counts[0] };
+                dsals.insert(make_pair(allele(rng, refdna), ai));
+            }
+        } else {
+            ostringstream errmsg;
+            errmsg << dataset << " " << refdna << "@" << pos.str();
+            return Status::Invalid("invalid reference allele", errmsg.str());
+        }
     }
 
-    // ex post facto check: exactly one reference allele at any given range
-    // TODO: should be factored out because the distributed service will also need to check this
+    return Status::OK();
+}
+
+// verify that the discovered_alleles encodes the same reference allele at
+// each distinct range
+static Status discovered_alleles_refcheck(const discovered_alleles& als,
+                                          const vector<pair<string,size_t>>& contigs) {
     set<range> ranges;
     multimap<range,pair<string,bool> > refcheck;
-    for (const auto& it : ans) {
+    for (const auto& it : als) {
         UNPAIR(it,allele,ai)
         refcheck.insert(make_pair(allele.pos, make_pair(allele.dna, ai.is_ref)));
         ranges.insert(allele.pos);
@@ -130,17 +127,74 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
         }
         if (refs.size() > 1) {
             ostringstream errmsg;
-            errmsg << rng.str(body_->metadata_->contigs());
+            errmsg << rng.str(contigs);
             for (const auto& r : refs) {
                 errmsg << ' ' << r;
             }
             return Status::Invalid("data sets contain inconsistent reference alleles", errmsg.str());
         } else if (refs.size() == 0) {
-            return Status::Invalid("data sets contain no reference allele", rng.str(body_->metadata_->contigs()));
+            return Status::Invalid("data sets contain no reference allele", rng.str(contigs));
         }
     }
 
     return Status::OK();
+}
+
+Status Service::discover_alleles(const string& sampleset, const range& pos, discovered_alleles& ans) {
+    // Find the data sets containing the samples in the sample set.
+    shared_ptr<const set<string>> samples, datasets;
+    Status s;
+    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
+
+    // Enqueue processing of each dataset on the thread pool.
+    // TODO: improve cache-friendliness for long ranges
+    atomic<bool> abort(false);
+    vector<future<Status>> statuses;
+    vector<discovered_alleles> results(datasets->size());
+    // ^^^ results to be filled by side-effect in the individual tasks below.
+    // We assume that by virtue of preallocating, no mutex is necessary to
+    // use it as follows because writes and reads of individual elements are
+    // serialized by the futures.
+    size_t i = 0;
+    for (const auto& dataset : *datasets) {
+        auto fut = body_->threadpool_.push([&, i, dataset](int tid){
+            if (abort) {
+                return Status::Invalid();
+            }
+
+            discovered_alleles dsals;
+            Status ls = discover_alleles_in_dataset(body_->data_, dataset, pos, dsals);
+            results[i] = move(dsals);
+            return ls;
+        });
+
+        statuses.push_back(move(fut));
+        i++;
+    }
+    assert(statuses.size() == datasets->size());
+
+    // Retrieve the results and merge them into ans. Record the first error
+    // that occurs, if any, but always wait for all tasks to finish.
+    ans.clear();
+    s = Status::OK();
+    for (size_t i = 0; i < datasets->size(); i++) {
+        // wait for task i to complete and find out its status
+        Status s_i(statuses[i].get());
+        discovered_alleles dsals = move(results[i]);
+
+        if (s.ok() && s_i.ok()) {
+            s = merge_discovered_alleles(dsals, ans);
+        } else if (s.ok() && s_i.bad()) {
+            // record the first error, and tell remaining tasks to abort
+            s = move(s_i);
+            abort = true;
+        }
+    }
+    if (s.bad()) {
+        return s;
+    }
+
+    return discovered_alleles_refcheck(ans, body_->metadata_->contigs());
 }
 
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
