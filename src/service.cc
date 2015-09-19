@@ -11,9 +11,23 @@ using namespace std;
 
 namespace GLnexus{
 
+// pImpl idiom
+struct Service::body {
+    std::unique_ptr<MetadataCache> metadata_;
+    BCFData& data_;
+
+    body(BCFData& data) : data_(data) {}
+};
+
+Service::Service(BCFData& data) {
+    body_ = make_unique<Service::body>(data);
+}
+
+Service::~Service() = default;
+
 Status Service::Start(Metadata& metadata, BCFData& data, unique_ptr<Service>& svc) {
     svc.reset(new Service(data));
-    return MetadataCache::Start(metadata, svc->metadata_);
+    return MetadataCache::Start(metadata, svc->body_->metadata_);
 }
 
 bool is_dna(const string& str) {
@@ -25,7 +39,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     // Find the data sets containing the samples in the sample set.
     shared_ptr<const set<string>> samples, datasets;
     Status s;
-    S(metadata_->sampleset_datasets(sampleset, samples, datasets));
+    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
 
     // extract alleles from each dataset
     ans.clear();
@@ -33,7 +47,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
         // get dataset BCF records
         shared_ptr<const bcf_hdr_t> dataset_header;
         vector<shared_ptr<bcf1_t>> records;
-        S(data_.dataset_range_and_header(dataset, pos, dataset_header, records));
+        S(body_->data_.dataset_range_and_header(dataset, pos, dataset_header, records));
 
         // for each BCF record
         discovered_alleles dsals;
@@ -113,13 +127,13 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
         }
         if (refs.size() > 1) {
             ostringstream errmsg;
-            errmsg << rng.str(metadata_->contigs());
+            errmsg << rng.str(body_->metadata_->contigs());
             for (const auto& r : refs) {
                 errmsg << ' ' << r;
             }
             return Status::Invalid("data sets contain inconsistent reference alleles", errmsg.str());
         } else if (refs.size() == 0) {
-            return Status::Invalid("data sets contain no reference allele", rng.str(metadata_->contigs()));
+            return Status::Invalid("data sets contain no reference allele", rng.str(body_->metadata_->contigs()));
         }
     }
 
@@ -129,7 +143,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
     Status s;
     shared_ptr<const set<string>> samples, datasets;
-    S(metadata_->sampleset_datasets(sampleset, samples, datasets));
+    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
 
     // create a BCF header for this sample set
     // TODO: memoize
@@ -138,7 +152,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     if (bcf_hdr_append(hdr.get(), hdrGT) != 0) {
         return Status::Failure("bcf_hdr_append", hdrGT);
     }
-    for (const auto& ctg : metadata_->contigs()) {
+    for (const auto& ctg : body_->metadata_->contigs()) {
         ostringstream stm;
         stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
         if (bcf_hdr_append(hdr.get(), stm.str().c_str()) != 0) {
@@ -167,7 +181,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     for (const auto& site : sites) {
         // compute genotypes
         shared_ptr<bcf1_t> site_bcf;
-        S(genotype_site(cfg, data_, site, *samples, *datasets, hdr.get(), site_bcf));
+        S(genotype_site(cfg, body_->data_, site, *samples, *datasets, hdr.get(), site_bcf));
 
         // write out a BCF record
         if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {
