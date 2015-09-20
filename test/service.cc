@@ -9,8 +9,9 @@ using namespace std;
 using namespace GLnexus;
 
 // serves data from VCF files in the test/data directory
-// x.vcf is loaded as data set "x" with one sample set "x"
-// additionally, the sample set "<ALL>" designates all samples across the VCFs.
+// x.vcf is loaded as data set "x" with a sample set "x", and a sample set for
+// each sample containing just that sample. additionally, the sample set
+// "<ALL>" designates all samples across the VCFs.
 class VCFData : public Metadata, public BCFData {
     struct vcf_data_t {
         shared_ptr<bcf_hdr_t> header;
@@ -121,7 +122,15 @@ public:
         if (p != datasets_.end()) {
             ans = make_shared<set<string>>(p->second.samples->begin(), p->second.samples->end());
             return Status::OK();
-        } else if (sampleset == "<ALL>") {
+        }
+        auto p2 = sample_datasets_.find(sampleset);
+        if (p2 != sample_datasets_.end()) {
+            auto sample = make_shared<set<string>>();
+            sample->insert(sampleset);
+            ans = move(sample);
+            return Status::OK();
+        }
+        if (sampleset == "<ALL>") {
             auto s = make_shared<set<string>>();
             for (const auto& ds : datasets_) {
                 s->insert(ds.second.samples->begin(), ds.second.samples->end());
@@ -251,6 +260,25 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(s == StatusCode::INVALID);
         REQUIRE(s.str().find("no reference allele") != string::npos);
         */
+    }
+
+    SECTION("only return alleles observed in desired samples") {
+        // looking at all three samples in the dataset, we should receive all
+        // three alleles at this position
+        s = svc->discover_alleles("discover_alleles_trio1", range(0, 1001, 1002), als);
+        REQUIRE(s.ok());
+        REQUIRE(als.size() == 3);
+
+        // looking only at one homozygous ref individual, we should get
+        // nothing
+        s = svc->discover_alleles("trio1.fa", range(0, 1001, 1002), als);
+        REQUIRE(s.ok());
+        REQUIRE(als.size() == 0);
+
+        // throw in a previous position as positive control
+        s = svc->discover_alleles("trio1.fa", range(0, 1000, 1002), als);
+        REQUIRE(s.ok());
+        REQUIRE(als.size() == 2);
     }
 }
 

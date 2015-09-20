@@ -39,7 +39,9 @@ bool is_dna(const string& str) {
 }
 
 // discover_alleles in one dataset -- used on the thread pool below
-static Status discover_alleles_in_dataset(BCFData& data, const string& dataset, const range& pos,
+static Status discover_alleles_in_dataset(BCFData& data,
+                                          const set<string>& samples,
+                                          const string& dataset, const range& pos,
                                           discovered_alleles& dsals) {
     Status s;
 
@@ -48,22 +50,31 @@ static Status discover_alleles_in_dataset(BCFData& data, const string& dataset, 
     vector<shared_ptr<bcf1_t>> records;
     S(data.dataset_range_and_header(dataset, pos, dataset_header, records));
 
+    // determine which of the dataset's samples are in the desired sample set
+    int dataset_nsamples = bcf_hdr_nsamples(dataset_header.get());
+    vector<bool> dataset_sample_relevant;
+    for (size_t i = 0; i < dataset_nsamples; i++) {
+        string sample_i(bcf_hdr_int2id(dataset_header.get(), BCF_DT_SAMPLE, i));
+        dataset_sample_relevant.push_back(samples.find(sample_i) != samples.end());
+    }
+
     // for each BCF record
     dsals.clear();
     for (const auto& record : records) {
         range rng(record);
         vector<float> obs_counts(record->n_allele, 0.0);
 
-        // count hard-called allele observations
-        // TODO: only count samples in the sample set
+        // count hard-called alt allele observations for desired samples
         // TODO: could use GLs for soft estimate
         // TODO: "max ref extension" distance for each allele
         int *gt = nullptr, gtsz = 0;
         int ngt = bcf_get_genotypes(dataset_header.get(), record.get(), &gt, &gtsz);
+        assert(ngt == 2*dataset_nsamples);
         for (int i = 0; i < ngt; i++) {
             if (gt[i] != bcf_int32_vector_end) {
                 int al_i = bcf_gt_allele(gt[i]);
-                if (al_i >= 0 && al_i < record->n_allele) {
+                if (al_i >= 0 && al_i < record->n_allele
+                    && dataset_sample_relevant.at(i/2)) {
                     obs_counts[al_i] += 1.0;
                 }
             }
@@ -76,12 +87,14 @@ static Status discover_alleles_in_dataset(BCFData& data, const string& dataset, 
         // In particular this excludes gVCF <NON_REF> symbolic alleles
         bool any_alt = false;
         for (int i = 1; i < record->n_allele; i++) {
-            string aldna(record->d.allele[i]);
-            transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-            if (aldna.size() > 0 && is_dna(aldna)) {
-                discovered_allele_info ai = { false, obs_counts[i] };
-                dsals.insert(make_pair(allele(rng, aldna), ai));
-                any_alt = true;
+            if (obs_counts[i] > 0.0) { // TODO: threshold for soft estimates
+                string aldna(record->d.allele[i]);
+                transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
+                if (aldna.size() > 0 && is_dna(aldna)) {
+                    discovered_allele_info ai = { false, obs_counts[i] };
+                    dsals.insert(make_pair(allele(rng, aldna), ai));
+                    any_alt = true;
+                }
             }
         }
 
@@ -163,7 +176,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
             }
 
             discovered_alleles dsals;
-            Status ls = discover_alleles_in_dataset(body_->data_, dataset, pos, dsals);
+            Status ls = discover_alleles_in_dataset(body_->data_, *samples, dataset, pos, dsals);
             results[i] = move(dsals);
             return ls;
         });
