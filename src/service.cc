@@ -126,15 +126,10 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     return Status::OK();
 }
 
-Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples, datasets;
     S(metadata_->sampleset_datasets(sampleset, samples, datasets));
-
-    vector<loss_stats> losses;
-    for (auto& sample : *samples) {
-        losses.push_back(loss_stats(sample));
-    }
 
     // get a BCF header for this sample set
     // TODO: memoize
@@ -150,11 +145,9 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             return Status::Failure("bcf_hdr_append", stm.str());
         }
     }
-    for (const auto& sample : *samples) {
-        if (bcf_hdr_add_sample(hdr.get(), sample.c_str()) != 0) {
-            return Status::Failure("bcf_hdr_add_sample", sample);
-        }
-    }
+
+    dlosses.clear();
+
     if (bcf_hdr_sync(hdr.get()) != 0) {
         return Status::Failure("bcf_hdr_sync");
     }
@@ -172,32 +165,27 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     for (const auto& site : sites) {
         // compute genotypes
         shared_ptr<bcf1_t> site_bcf;
-        S(genotype_site(cfg, data_, site, *samples, *datasets, hdr.get(), site_bcf, losses));
+
+        consolidated_loss losses_for_site;
+        for (auto& sample : *samples) {
+            losses_for_site.insert(make_pair(sample, loss_stats(site)));
+        }
+
+        S(genotype_site(cfg, data_, site, *samples, *datasets, hdr.get(), site_bcf, losses_for_site));
 
         // write out a BCF record
         if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {
             return Status::IOError("bcf_write", filename);
         }
+
+        merge_loss_stats(losses_for_site, dlosses);
     }
 
     if (bcf_close(outfile.release()) != 0) {
         return Status::IOError("bcf_close", filename);
     }
 
-    #define printLossInfo()                                             \
-        cout << "\nReporting loss for " << sites.size()                 \
-             << " site(s) genotyped for sample(s): ";                   \
-        for (auto& sample : *samples)                                   \
-            cout << sample << " ";                                      \
-        cout << endl;                                                   \
-        cout << "===========" << endl;                                  \
-        for (auto& loss : losses) {                                     \
-            cout << loss.str() << endl;                                 \
-        }                                                               \
-
-    printLossInfo()
 
     return Status::OK();
 }
-
 }

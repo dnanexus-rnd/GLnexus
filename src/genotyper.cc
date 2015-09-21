@@ -97,13 +97,63 @@ public:
     }
 };
 
+
+// Update the loss_stats data structure with call information for
+// original calls associated with a unified site
+Status update_orig_calls_for_loss(bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, consolidated_loss& losses_for_site, const vector<string>& sample_names) {
+    range rng(record);
+    Status s;
+
+    for (int i = 0; i < n_bcf_samples; i++) {
+        int sample_ind = sample_mapping.at(i);
+        auto& sample_name = sample_names[sample_ind];
+        auto loss = losses_for_site.find(sample_name);
+
+        if (loss == losses_for_site.end()) {
+            return Status::Failure("In update_orig_calls_for_loss: could not find loss_stats corresponding to sample name.");
+        }
+
+        int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
+        cout << "Updating " << sample_name << " for original call: " << loss->second.str();
+        loss->second.add_call_for_site(rng, n_calls);
+        cout << "..... Finished!" << endl;
+    }
+
+    return Status::OK();
+}
+
+// Update the loss_stats data sturcture with the joint call for
+// the unified site and finalize the loss measures
+Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt, consolidated_loss& losses_for_site, const vector<string>& sample_names) {
+
+    if(n_bcf_samples != losses_for_site.size()) {
+        return Status::Failure("update_joint_call_loss: number of samples and bcf does not match");
+    }
+    range rng(record);
+    Status s;
+
+    for (int i = 0; i < n_bcf_samples; i++) {
+        auto& sample_name = sample_names[i];
+        auto loss = losses_for_site.find(sample_name);
+
+        if (loss == losses_for_site.end()) {
+            return Status::Failure("Could not find loss_stats corresponding to sample name.");
+        }
+
+        int n_gt_missing = (bcf_gt_is_missing(gt[i*2]) + bcf_gt_is_missing(gt[i*2 + 1]));
+        cout << "Updating joint call: " << loss->second.str() << endl;
+        // Lock down the loss associated with this unified_site
+        loss->second.finalize_loss_for_site(n_gt_missing);
+    }
+
+    return Status::OK();
+}
+
 // Translate the hard-called genotypes from the bcf1_t into our genotype
 // vector, based on a mapping from the bcf1_t sample indices into indices of
-// the genotype vector.
-Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
-                           const string& dataset, const bcf_hdr_t* dataset_header,
-                           bcf1_t* record, const map<int,int>& sample_mapping,
-                           vector<int32_t>& genotypes, vector<bool>& genotyped) {
+// the genotype vector. Calls on update_orig_calls_for_loss to register
+// original calls in the bcf1_t for loss calculations
+Status translate_genotypes(const genotyper_config& cfg, const unified_site& site, const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record, const map<int,int>& sample_mapping, vector<int32_t>& genotypes, vector<bool>& genotyped, consolidated_loss& losses_for_site, vector<string> sample_names) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
     Status s;
@@ -124,9 +174,12 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     // get the genotype calls
     int *gt = nullptr, gtsz = 0;
     int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
-    assert(nGT == 2*bcf_hdr_nsamples(dataset_header));
+    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
+    assert(nGT == 2*n_bcf_samples);
     assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
+    // update loss statistics for this bcf record
+    update_orig_calls_for_loss(record, n_bcf_samples, gt, sample_mapping, losses_for_site, sample_names);
     // and the depth of coverage info
     unique_ptr<AlleleDepthHelper> depth;
     S(AlleleDepthHelper::Open(cfg, dataset, dataset_header, record, depth));
@@ -168,56 +221,9 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     return Status::OK();
 }
 
-// Update the loss_stats data structure with call information for
-// original calls associated with a unified site
-Status update_orig_calls_for_loss(const unified_site& site, const bcf_hdr_t* dataset_header, bcf1_t* record, map<int,int>& sample_mapping, vector<loss_stats>& losses) {
-    range rng(record);
-    Status s;
-
-    int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
-    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
-    assert(nGT == 2*n_bcf_samples);
-    assert(record->n_sample == n_bcf_samples);
-
-    for (int i = 0; i < n_bcf_samples; i++) {
-        int sample_ind = sample_mapping[i];
-        auto& loss = losses[sample_ind];
-
-        int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
-        loss.addCallForSite(site, rng, n_calls);
-    }
-
-    return Status::OK();
-}
-
-// Update the loss_stats data sturcture with the joint call for
-// the unified site and finalize the loss measures
-Status update_joint_call_loss(const unified_site& site, const bcf_hdr_t* hdr, bcf1_t* record, vector<loss_stats>& losses) {
-    range rng(record);
-    Status s;
-
-    int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(hdr, record, &gt, &gtsz);
-    int n_bcf_samples = record->n_sample;
-    int n_samples = losses.size();
-    assert(n_bcf_samples == n_samples);
-    assert(nGT == 2 * n_samples);
-
-    for (int i = 0; i < n_bcf_samples; i++) {
-        auto& loss = losses[i];
-
-        int n_gt_missing = (bcf_gt_is_missing(gt[i*2])) + bcf_gt_is_missing(gt[i*2 + 1]);
-        // Lock down the loss associated with this unified_site
-        loss.finalizeLossForSite(site, n_gt_missing);
-    }
-
-    return Status::OK();
-}
-
 Status genotype_site(const genotyper_config& cfg, const BCFData& data, const unified_site& site,
                      const set<string>& samples, const set<string>& datasets,
-                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, vector<loss_stats>& losses) {
+                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site) {
 	Status s;
 
     // Initialize a vector for the unified genotype calls for each sample,
@@ -228,10 +234,8 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
     // case we encounter multiple BCF records from the sample
     vector<bool> genotyped(samples.size(), false);
 
-    // Initialize site for loss statistics
-    for (auto& loss : losses) {
-        loss.initializeSite(site);
-    }
+    // Construct a vector of sample names for loss calculations
+    vector<string> sample_names(samples.begin(), samples.end());
 
     // for each pertinent dataset
     for (const auto& dataset : datasets) {
@@ -259,12 +263,11 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
         // for each source BCF record
         for (const auto& record : records) {
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), record.get(),
-                                  sample_mapping, genotypes, genotyped));
-
-            S(update_orig_calls_for_loss(site, dataset_header.get(), record.get(), sample_mapping, losses));
+                                  sample_mapping, genotypes, genotyped, losses_for_site, sample_names));
         }
     }
 
+    cout << "Finished translate genotypes~" << endl;
     // Create the destination BCF record for this site
     vector<const char*> c_alleles;
     for (const auto& allele : site.alleles) {
@@ -280,11 +283,17 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
     if (bcf_update_alleles(hdr, ans.get(), c_alleles.data(), c_alleles.size()) != 0) {
         return Status::Failure("bcf_update_alleles");
     }
+
+    cout << "Finished bcf_update_alleles" << endl;
+    for (auto i : genotypes) {
+        cout << i << endl;
+    }
     if (bcf_update_genotypes(hdr, ans.get(), genotypes.data(), genotypes.size()) != 0) {
         return Status::Failure("bcf_update_genotypes");
     }
 
-    S(update_joint_call_loss(site, hdr, ans.get(), losses));
+    // cout << "Entering joint-call_loss~" << endl;
+    // S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, losses_for_site, sample_names));
 
     return Status::OK();
 }

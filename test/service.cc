@@ -480,7 +480,8 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio1"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio1"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -589,7 +590,8 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -732,7 +734,8 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio2"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio2"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -878,8 +881,9 @@ TEST_CASE("gVCF genotyper") {
         us.unification[make_pair(10009465,"GT")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
-        
-        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -963,10 +967,12 @@ TEST_CASE("gVCF genotyper") {
         us.unification[make_pair(10009466,"C")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
-        
+
         genotyper_config cfg;
         cfg.required_dp = 13;
-        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+
+        consolidated_loss losses;
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -1034,7 +1040,8 @@ TEST_CASE("gVCF genotyper") {
 
         genotyper_config cfg;
         cfg.required_dp = 9;
-        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });

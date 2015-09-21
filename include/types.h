@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 #include <assert.h>
 #include <vcf.h>
 
@@ -192,32 +193,40 @@ struct unified_site {
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 };
 
+// Simple wrapper struct to store information about an original call
+// for a unified site, used by loss_stats
+struct orig_call {
+    range pos;
+    bool is_gvcf;
+
+    bool operator==(const orig_call& rhs) const noexcept { return pos == rhs.pos && is_gvcf == rhs.is_gvcf; }
+
+    bool operator<(const orig_call& rhs) const noexcept { return pos < rhs.pos; }
+    bool operator<=(const orig_call& rhs) const noexcept { return pos <= rhs.pos; }
+};
+
 class loss_stats {
 
 public:
 
     // Constructor takes a sample name; loss_stats should be
     // uniquely associated with each sample
-    loss_stats(const std::string sample_name_) noexcept : sample_name(sample_name_) {}
+    loss_stats(const unified_site site_) noexcept : site(site_) {orig_calls_for_site = std::map<range, int>(); }
 
-    // Prepares the map with the given unified_site, requires that this method
-    // is not called again when an entry for the site exists
-    Status initializeSite(const unified_site site) noexcept {
-        if (orig_calls_for_sites.find(site) != orig_calls_for_sites.end())
-            return Status::Failure("loss_stats: initializeSite called for existing site");
 
-        orig_calls_for_sites.insert(std::make_pair(site, std::map<range, int>() ));
-        return Status::OK();
-    }
+    // Getter operations
+    int get_n_calls_total() const noexcept { return n_calls_total; }
+    int get_n_bp_total() const noexcept { return n_bp_total; }
+    int get_n_calls_lost() const noexcept { return n_calls_lost; }
+    int get_n_bp_lost() const noexcept {return n_bp_lost; }
+    int get_n_no_calls_total() const noexcept {return n_no_calls_total; }
 
     // Called for each bcf record that is associated with the unified_site
     // examined to update "denominator" of total calls/bp covered in orig
     // dataset
-    Status addCallForSite(const unified_site site, const range call, int n_calls) noexcept {
-        if (orig_calls_for_sites.find(site) == orig_calls_for_sites.end())
-            return Status::Failure("loss_stats: addCallForSite called before initializeSite or after finalizeLossForSite.");
-
-        auto& orig_calls_for_site = orig_calls_for_sites[site];
+    Status add_call_for_site(const range call, int n_calls) noexcept {
+        if (is_finalized)
+            return Status::Invalid("calling add_call_for_site for a finalized loss_stats");
 
         auto call_within_site_p = call.intersect(site.pos);
 
@@ -232,34 +241,53 @@ public:
 
     // Called after joint genotyping for a unified_site to update the loss
     // associated with that site.
-    Status finalizeLossForSite(const unified_site site, int n_no_calls) noexcept {
-        if (orig_calls_for_sites.find(site) == orig_calls_for_sites.end())
-            return Status::Failure("loss_stats: finalizeLossForSite called before initializeSite or after finalizeLossForSite.");
+    Status finalize_loss_for_site(int n_no_calls) noexcept {
+        if (is_finalized)
+            return Status::Invalid("calling finalize_loss_for_site when loss_stats is already finalized.");
 
         if (n_no_calls) {
             n_no_calls_total += n_no_calls;
 
-            auto& calls_for_site = orig_calls_for_sites[site];
-            for (auto& kv : calls_for_site) {
+            for (auto& kv : orig_calls_for_site) {
                 // calls_lost will be 0 if n_orig_calls and n_no_calls are both 1 (which is interpreted as no loss of calls)
                 int n_calls_lost_for_site = (kv.second * n_no_calls) / 2;
                 n_calls_lost += n_calls_lost_for_site;
 
                 // assumes that range in calls_for_site has already been
                 // restricted to intersection with site
-                n_bp_lost += kv.first.size();
+                n_bp_lost += kv.first.size() * n_calls_lost_for_site;
             }
         }
-        orig_calls_for_sites.erase(site);
+
+        // Clear map
+        orig_calls_for_site.clear();
+        is_finalized = true;
 
         return Status::OK();
     }
 
-    // String representation of the loss observed for the sample
+    // Merges another loss_stats and increment the count
+    // variables accordingly
+    Status merge_loss(const loss_stats& loss) {
+        if (!is_finalized || !loss.is_finalized) {
+            return Status::Failure("loss_summary: trying to add a loss stats which has not been finalized.");
+        }
+
+        // Update summary loss stats
+        n_calls_total += loss.get_n_calls_total();
+        n_bp_total += loss.get_n_bp_total();
+
+        n_calls_lost += loss.get_n_calls_lost();
+        n_bp_lost += loss.get_n_bp_lost();
+
+        n_no_calls_total += loss.get_n_no_calls_total();
+
+        return Status::OK();
+    }
+
     std::string str() const noexcept {
         std::ostringstream ans;
 
-        ans << sample_name << ": ";
         ans << n_no_calls_total << " no call(s).\n";
 
         // stop here if no no calls
@@ -267,34 +295,111 @@ public:
             return ans.str();
 
         ans << "This is made up of a loss of " << n_calls_lost << " original call(s) which cover " << n_bp_lost << " bp.\n";
-        ans << "The loss is " <<  std::setprecision(3) << propCallsLost() << "% of " << n_calls_total << " calls; or " << propBpLost() << "% of " << n_bp_total << " bp processed from the original dataset(s).\n";
+        ans << "The loss is " <<  std::setprecision(3) << prop_calls_lost() << "% of " << n_calls_total << " calls; or " << prop_bp_lost() << "% of " << n_bp_total << " bp processed from the original dataset(s).\n";
 
         return ans.str();
     }
 
-private:
-    std::string sample_name;
+    bool is_finalized = false;
 
-    // Map of unified sites to a vector of original calls that is associated
-    // with that unified site. The calls associated with a site will exist
-    // for the duration between initializeSite and and finalizeLossForSite
-    std::map<unified_site, std::map<range, int>> orig_calls_for_sites;
+private:
+
+    unified_site site;
+
+    // Original calls (identified by effective range within site) and
+    // count of calls. Calls which are different in the bcf record but
+    // share the same effective range within the site will be collapsed
+    // into the same key.
+    std::map<range, int> orig_calls_for_site;
 
     int n_calls_total=0, n_bp_total=0;
     int n_calls_lost=0, n_bp_lost=0;
     int n_no_calls_total = 0;
 
     // Returns proportion of calls lost as a percentage
-    float propCallsLost() const noexcept {
+    float prop_calls_lost() const noexcept {
         return n_calls_lost / (float) n_calls_total * 100;
     }
 
     // Returns proportion of bp coverage lost as a percentage
-    float propBpLost() const noexcept {
+    float prop_bp_lost() const noexcept {
         return n_bp_lost / (float) n_bp_total * 100;
     }
-
 };
+
+using consolidated_loss = std::map<std::string, loss_stats>;
+
+Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest);
+
+// class loss_summary {
+
+// public:
+//     loss_summary(const std::string sample_name_) noexcept : sample_name(sample_name_) {}
+
+//     std::string sample_name;
+
+//     int get_n_calls_total() const noexcept { return n_calls_total; }
+//     int get_n_bp_total() const noexcept { return n_bp_total; }
+//     int get_n_calls_lost() const noexcept { return n_calls_lost; }
+//     int get_n_bp_lost() const noexcept {return n_bp_lost; }
+//     int get_n_no_calls_total() const noexcept {return n_no_calls_total; }
+
+//     // Add a loss stats object to the total loss summary statistics
+//     Status add_loss_stats(const loss_stats& loss) noexcept {
+//         // Ensure that sample_name match
+//         if (loss.sample_name != sample_name) {
+//             return Status::Failure("loss_summary: trying to add a loss stats with sample_name differing from loss_summary.");
+//         }
+//         if (!loss.is_finalized) {
+//             return Status::Failure("loss_summary: trying to add a loss stats which has not been finalized.");
+//         }
+
+//         // Update summary loss stats
+//         n_calls_total += loss.n_calls_total;
+//         n_bp_total += loss.n_bp_total;
+
+//         n_calls_lost += loss.n_calls_lost;
+//         n_bp_lost += loss.n_bp_lost;
+
+//         n_no_calls_total += loss.n_no_calls_total;
+
+
+//         return Status::OK();
+//     }
+
+//     // String representation of the loss observed for the sample
+//     std::string str() const noexcept {
+//         std::ostringstream ans;
+
+//         ans << sample_name << ": ";
+//         ans << n_no_calls_total << " no call(s).\n";
+
+//         // stop here if no no calls
+//         if (!n_no_calls_total)
+//             return ans.str();
+
+//         ans << "This is made up of a loss of " << n_calls_lost << " original call(s) which cover " << n_bp_lost << " bp.\n";
+//         ans << "The loss is " <<  std::setprecision(3) << prop_calls_lost() << "% of " << n_calls_total << " calls; or " << prop_bp_lost() << "% of " << n_bp_total << " bp processed from the original dataset(s).\n";
+
+//         return ans.str();
+//     }
+
+
+// private:
+//     int n_calls_total=0, n_bp_total=0;
+//     int n_calls_lost=0, n_bp_lost=0;
+//     int n_no_calls_total = 0;
+
+//     // Returns proportion of calls lost as a percentage
+//     float prop_calls_lost() const noexcept {
+//         return n_calls_lost / (float) n_calls_total * 100;
+//     }
+
+//     // Returns proportion of bp coverage lost as a percentage
+//     float prop_bp_lost() const noexcept {
+//         return n_bp_lost / (float) n_bp_total * 100;
+//     }
+// };
 
 } //namespace GLnexus
 
