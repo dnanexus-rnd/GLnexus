@@ -43,6 +43,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
             vector<float> obs_counts(record->n_allele, 0.0);
 
             // count hard-called allele observations
+            // TODO: only count samples in the sample set
             // TODO: could use GLs for soft estimate
             // TODO: "max ref extension" distance for each allele
             int *gt = nullptr, gtsz = 0;
@@ -131,7 +132,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     shared_ptr<const set<string>> samples, datasets;
     S(metadata_->sampleset_datasets(sampleset, samples, datasets));
 
-    // get a BCF header for this sample set
+    // create a BCF header for this sample set
     // TODO: memoize
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
     const char* hdrGT = "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">";
@@ -180,6 +181,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
         merge_loss_stats(losses_for_site, dlosses);
     }
+    // TODO: for very large sample sets, bucket cache-friendliness might be
+    // improved by genotyping in grid squares of N>1 sites and M>1 samples
 
     if (bcf_close(outfile.release()) != 0) {
         return Status::IOError("bcf_close", filename);

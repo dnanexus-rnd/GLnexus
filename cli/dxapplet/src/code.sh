@@ -3,6 +3,9 @@
 main() {
     set -ex -o pipefail
 
+    # log detailed utilization
+    dstat -cmdn 10 &
+
     # install dependencies
     sudo rm -f /etc/apt/apt.conf.d/99dnanexus
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -41,7 +44,8 @@ main() {
         # generate merged VCF
         mkdir -p out/vcf
         if [ "${#ranges_to_genotype[@]}" -gt "1" ]; then
-            bcftools merge bcf/*.bcf | bgzip -c > "out/vcf/${output_name}.vcf.gz"
+            find bcf/ -type f -name "*.bcf" | xargs -n 1 -t bcftools index
+            bcftools concat bcf/*.bcf | bgzip -c > "out/vcf/${output_name}.vcf.gz"
         else
             bcftools view bcf/*.bcf | bgzip -c > "out/vcf/${output_name}.vcf.gz"
         fi

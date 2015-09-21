@@ -4,7 +4,7 @@ using namespace std;
 
 namespace GLnexus {
 
-// Add src alleles to dest alleles. Identical alleles alleles ale merged,
+// Add src alleles to dest alleles. Identical alleles alleles are merged,
 // using the sum of their observation_counts
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest) {
     for (auto& dsal : src) {
