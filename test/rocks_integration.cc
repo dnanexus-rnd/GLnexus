@@ -2,6 +2,9 @@
 #include <map>
 #include <iostream>
 #include <map>
+#include <thread>
+#include <unistd.h>
+
 #include "KeyValue.h"
 #include "BCFKeyValueData.h"
 #include "RocksKeyValue.h"
@@ -44,13 +47,13 @@ static const std::string createRandomDBFileName()
 
 TEST_CASE("RocksDB open/initialize states") {
     // attempt to open a non-existent database
-    string dbpath = createRandomDBFileName();
+    string dbPath = createRandomDBFileName();
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open(dbpath, db);
+    Status s = RocksKeyValue::Open(dbPath, db);
     REQUIRE(s.bad());
 
     // create the database
-    s = RocksKeyValue::Initialize(dbpath, db);
+    s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
     REQUIRE((bool)db);
     unique_ptr<T> data;
@@ -58,21 +61,23 @@ TEST_CASE("RocksDB open/initialize states") {
     db.reset();
 
     // attempt to initialize an already-existing database
-    s = RocksKeyValue::Initialize(dbpath, db);
+    s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.bad());
+
+    RocksKeyValue::destroy(dbPath);
 }
 
 TEST_CASE("RocksDB initialization") {
-    std::string dbpath = createRandomDBFileName();
+    std::string dbPath = createRandomDBFileName();
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Initialize(dbpath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000001)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     db.reset();
 
-    s = RocksKeyValue::Open(dbpath, db);
+    s = RocksKeyValue::Open(dbPath, db);
     REQUIRE(s.ok());
 
     unique_ptr<T> data;
@@ -139,11 +144,14 @@ TEST_CASE("RocksDB initialization") {
         REQUIRE(dataset == "trio2");
         REQUIRE(data->sample_dataset("bogus", dataset) == StatusCode::NOT_FOUND);
     }
+
+    RocksKeyValue::destroy(dbPath);
 }
 
 TEST_CASE("RocksDB::import_gvcf") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Initialize(createRandomDBFileName(), db);
+    std::string dbPath = createRandomDBFileName();
+    Status s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
@@ -162,12 +170,15 @@ TEST_CASE("RocksDB::import_gvcf") {
         REQUIRE(data->sample_dataset("NA12878", dataset).ok());
         REQUIRE(dataset == "NA12878D");
     }
+
+    RocksKeyValue::destroy(dbPath);
 }
 
 
 TEST_CASE("RocksDB::import_gvcf incompatible") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Initialize(createRandomDBFileName(), db);
+    std::string dbPath = createRandomDBFileName();
+    Status s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
 
     auto contigs = { make_pair<string,uint64_t>("21", 1000000),
@@ -183,11 +194,14 @@ TEST_CASE("RocksDB::import_gvcf incompatible") {
         s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
     }
+
+    RocksKeyValue::destroy(dbPath);
 }
 
 TEST_CASE("RocksDB BCF retrieval") {
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Initialize(createRandomDBFileName(), db);
+    std::string dbPath = createRandomDBFileName();
+    Status s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
@@ -278,4 +292,230 @@ TEST_CASE("RocksDB BCF retrieval") {
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE(records.size() == 0);
     }
+
+    RocksKeyValue::destroy(dbPath);
+}
+
+static std::string getBasename(const std::string &_fname) {
+    std::string filename = _fname;
+
+    // remove directory path
+    const size_t last_slash_idx = filename.find_last_of("\\/");
+    if (std::string::npos != last_slash_idx) {
+        filename.erase(0, last_slash_idx + 1);
+    }
+
+// Remove extension if present.
+    const size_t period_idx = filename.rfind('.');
+    if (std::string::npos != period_idx) {
+        filename.erase(period_idx);
+    }
+    return filename;
+}
+
+static void importGVCF(T *data,
+                       MetadataCache *cache,
+                       const std::string &filename,
+                       bool flag) {
+    set<string> samples_imported;
+    std::string dataset = getBasename(filename);
+    Status s = data->import_gvcf(*cache, dataset, filename, samples_imported);
+    if (flag)
+        assert(s.ok());
+    else
+        assert(s.bad());
+    cout << "imported " << filename << endl;;
+}
+
+// Query a named dataset. This should work once the data is in the DB;
+// it will never be removed.
+static void queryDataset(T *data, const std::string &dataset) {
+    shared_ptr<const bcf_hdr_t> hdr;
+    Status s = data->dataset_header(dataset, hdr);
+
+    vector<shared_ptr<bcf1_t>> records;
+    s = data->dataset_range(dataset, hdr.get(), range(0, 1005, 1010),
+                            records);
+    assert(s.ok());
+    assert(records.size() == 0);
+
+    s = data->dataset_range(dataset, hdr.get(), range(0, 2003, 2006),
+                            records);
+    assert(s.ok());
+    assert(records.size() == 3);
+}
+
+// Query the '*' sampleset.
+static void querySampleset(T *data, int num_iter) {
+    Status s;
+    const string allSS = std::string("*");
+
+    for (int i=0; i < num_iter; i++) {
+        if ((i % 10) == 0)
+            cout << "querySampleset " << std::to_string(i) << endl;
+
+        // map global sampleset to samples
+        shared_ptr<const set<string> > samples;
+        s = data->sampleset_samples(allSS, samples);
+        assert(s.ok());
+
+        // map samples to datasets
+        vector<string> datasets;
+        for (auto sample : *samples) {
+            string ds;
+            s = data->sample_dataset(sample, ds);
+            assert(s.ok());
+            datasets.push_back(ds);
+        }
+
+        // query the datasets
+        for (auto dataset : datasets)
+            queryDataset(data, dataset);
+
+        usleep(3 * 1000); // sleep for a few milliseconds
+    }
+}
+
+// print the samples
+static void printDBSamples(T *data) {
+    std::shared_ptr<const std::set<std::string> > samples;
+    Status s = data->sampleset_samples("*", samples);
+    assert(s.ok());
+    assert(samples->size() == 4);
+
+    const char* const delim = ", ";
+    std::ostringstream imploded;
+    std::copy(samples->begin(), samples->end(),
+              std::ostream_iterator<std::string>(imploded, delim));
+    cout << "samples = [" << imploded.str() << "]" << endl;
+}
+
+
+// Test concurrent upload, and then concurrent queries.
+// Do not test upload failures, and query during upload.
+TEST_CASE("Multi-threading") {
+    std::unique_ptr<KeyValue::DB> db;
+    std::string dbPath = createRandomDBFileName();
+    Status s = RocksKeyValue::Initialize(dbPath, db);
+    REQUIRE(s.ok());
+
+    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(db.get(), data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+
+    std::vector<shared_ptr<std::thread> > threads;
+    std::vector<std::string> files = { "test/data/mt/synthetic_A.21.gvcf",
+                                       "test/data/mt/synthetic_B.21.gvcf",
+                                       "test/data/mt/synthetic_C.21.gvcf",
+                                       "test/data/mt/synthetic_D.21.gvcf" };
+
+    // Spawn a thread for each file to import. All these calls should succeed.
+    for (auto filename : files) {
+        shared_ptr<thread> thr = make_shared<thread>(importGVCF,
+                                                     data.get(), cache.get(), filename,
+                                                     true);
+        threads.push_back(thr);
+    }
+
+    // wait for all import threads to complete
+    for (auto thr : threads)
+        thr->join();
+    threads.clear();
+    std::cout << "All import threads completed\n";
+
+    // sanity check the resulting database
+    printDBSamples(data.get());
+
+    // Spawn a thread for each file to import. All these calls should fail, because
+    // the data is already in the database.
+    cout << "Trying to add the same data ..." << endl;
+    for (auto filename : files) {
+        shared_ptr<thread> thr = make_shared<thread>(importGVCF,
+                                                     data.get(), cache.get(), filename,
+                                                     false);
+        threads.push_back(thr);
+    }
+
+    // wait for all import threads to complete
+    for (auto thr : threads)
+        thr->join();
+    cout << "Success" << endl;
+    threads.clear();
+
+    // sanity checks
+    printDBSamples(data.get());
+
+    cout << "Running queries serially" << endl;
+    {
+        // Now run some queries
+        for (auto filename : files) {
+            queryDataset(data.get(), getBasename(filename));
+        }
+    }
+
+    cout << "Running queries in parallel" << endl;
+    {
+        for (auto filename : files) {
+            shared_ptr<thread> thr = make_shared<thread>(queryDataset,
+                                                         data.get(),
+                                                         getBasename(filename));
+            threads.push_back(thr);
+        }
+
+        for (auto thr : threads)
+            thr->join();
+        threads.clear();
+    }
+    cout << "Success" << endl;
+
+    RocksKeyValue::destroy(dbPath);
+}
+
+//
+// N threads that import gVCFs
+// M threads that perform queries
+//
+TEST_CASE("Concurrent import/query") {
+    // setup
+    std::unique_ptr<KeyValue::DB> db;
+    std::string dbPath = createRandomDBFileName();
+    Status s = RocksKeyValue::Initialize(dbPath, db);
+    REQUIRE(s.ok());
+
+    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(db.get(), data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+
+    std::vector<shared_ptr<std::thread> > threads;
+    std::vector<std::string> files = { "test/data/mt/synthetic_A.21.gvcf",
+                                       "test/data/mt/synthetic_B.21.gvcf",
+                                       "test/data/mt/synthetic_C.21.gvcf",
+                                       "test/data/mt/synthetic_D.21.gvcf" };
+
+
+    // Spawn a thread for each file to import. All these calls should succeed.
+    for (auto filename : files) {
+        shared_ptr<thread> thr = make_shared<thread>(importGVCF,
+                                                     data.get(), cache.get(), filename,
+                                                     true);
+        threads.push_back(thr);
+    }
+
+    // Add a thread that does queries
+    shared_ptr<thread> qThr = make_shared<thread>(querySampleset, data.get(), 40);
+
+    // wait for all import threads to complete
+    for (auto thr : threads) {
+        thr->join();
+    }
+    qThr->join();
+
+    // cleanup
+    RocksKeyValue::destroy(dbPath);
 }

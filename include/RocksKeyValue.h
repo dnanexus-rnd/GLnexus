@@ -16,7 +16,7 @@ Status Initialize(const std::string& dbpath, std::unique_ptr<KeyValue::DB>& db);
 Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db);
 
 // Delete an existing database.
-Status destroy(const std::string dbPath); 
+Status destroy(const std::string dbPath);
 }}
 
 #endif

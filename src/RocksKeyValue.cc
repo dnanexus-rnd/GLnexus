@@ -371,9 +371,9 @@ Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db)
 Status destroy(const std::string dbPath)
 {
     rocksdb::Options options;
-    return convertStatus(rocksdb::DestroyDB(dbPath, options));
+    Status s = convertStatus(rocksdb::DestroyDB(dbPath, options));
+    int rc = system(("rm -rf " + dbPath).c_str());
+    return s;
 }
-
-
 
 }}

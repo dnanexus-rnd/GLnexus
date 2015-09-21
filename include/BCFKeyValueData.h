@@ -6,6 +6,8 @@
 
 namespace GLnexus {
 
+struct BCFKeyValueData_body;
+
 /// Implements the Metadata and BCFData interfaces with everything stored in a
 /// given key-value database. One imported gVCF file (potentially with
 /// multiple samples) becomes a data set. The key schema permits efficient
@@ -13,8 +15,7 @@ namespace GLnexus {
 class BCFKeyValueData : public Metadata, public BCFData {
 private:
     // pImpl idiom
-    struct body;
-    std::unique_ptr<body> body_;
+    std::unique_ptr<BCFKeyValueData_body> body_;
 
     BCFKeyValueData();
     BCFKeyValueData(const BCFKeyValueData&) = delete;
@@ -47,7 +48,8 @@ public:
     /// The data set name must be unique.
     /// The sample names in the data set (gVCF column names) must be unique.
     /// All samples are immediately added to the sample set "*"
-    Status import_gvcf(MetadataCache& metadata, const std::string& dataset, const std::string& filename,
+    Status import_gvcf(MetadataCache& metadata, const std::string& dataset,
+                       const std::string& filename,
                        std::set<std::string>& samples);
 };
 
