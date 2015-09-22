@@ -417,7 +417,6 @@ static Status scan_bucket(
         }
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
-    srq.nBCFRecordsInRange += records.size();
 
     return Status::OK();
 }
@@ -459,6 +458,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
             scan_bucket(dataset, key, data, hdr, query, accu, records);
         }
     }
+    accu.nBCFRecordsInRange += records.size();
 
     // update database statistics
     {
