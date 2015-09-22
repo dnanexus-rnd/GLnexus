@@ -1,11 +1,7 @@
 var searchData=
 [
-  ['range',['range',['../struct_g_lnexus_1_1range.html',1,'GLnexus']]],
-  ['range',['range',['../struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467',1,'GLnexus::range']]],
-  ['read_5fheader',['read_header',['../class_g_lnexus_1_1_b_c_f_reader.html#a9d42d179c44b3277eaa8bc85b83e6f29',1,'GLnexus::BCFReader']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_rocks_key_value_1_1_reader.html',1,'GLnexus::RocksKeyValue']]],
-  ['reader',['Reader',['../class_g_lnexus_1_1_key_value_1_1_reader.html',1,'GLnexus::KeyValue']]],
-  ['ref_5fdp_5fformat',['ref_dp_format',['../struct_g_lnexus_1_1genotyper__config.html#a71cc0d0a145034fdd893a28e9cae240a',1,'GLnexus::genotyper_config']]],
-  ['ref_5fsymbolic_5fallele',['ref_symbolic_allele',['../struct_g_lnexus_1_1genotyper__config.html#ae5105c6c4c3e1417f8f1b41324931560',1,'GLnexus::genotyper_config']]],
-  ['required_5fdp',['required_dp',['../struct_g_lnexus_1_1genotyper__config.html#a99811beeefbe17ed9b9f93b1ba727188',1,'GLnexus::genotyper_config']]]
+  ['open',['Open',['../class_g_lnexus_1_1_b_c_f_key_value_data.html#abe73465838cbc46a4a13561bb8210c28',1,'GLnexus::BCFKeyValueData::Open()'],['../class_g_lnexus_1_1_b_c_f_writer.html#a469a2a295b0746770eeb5f03b8430c5b',1,'GLnexus::BCFWriter::Open()'],['../class_g_lnexus_1_1_b_c_f_reader.html#adbed3af9e67f0498b098899c0be6295b',1,'GLnexus::BCFReader::Open()']]],
+  ['operator_3c',['operator&lt;',['../struct_g_lnexus_1_1allele.html#ae1e92b090fc3aa8a6b60465875340ef1',1,'GLnexus::allele']]],
+  ['operator_3d_3d',['operator==',['../struct_g_lnexus_1_1allele.html#a13bd87c795881dc10e76c26bc667476d',1,'GLnexus::allele']]],
+  ['orig_5fcall',['orig_call',['../struct_g_lnexus_1_1orig__call.html',1,'GLnexus']]]
 ];

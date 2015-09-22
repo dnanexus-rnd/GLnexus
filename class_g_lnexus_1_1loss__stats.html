@@ -88,6 +88,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="class_g_lnexus_1_1loss__stats-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">GLnexus::loss_stats Class Reference</div>  </div>
@@ -96,21 +97,42 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a08f039619035c3f750aa1382bb3def53"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a08f039619035c3f750aa1382bb3def53"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>loss_stats</b> (const std::string sample_name_) noexcept</td></tr>
-<tr class="separator:a08f039619035c3f750aa1382bb3def53"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad9cef38217cb521da1fa500db653f0d1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad9cef38217cb521da1fa500db653f0d1"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>initializeSite</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site) noexcept</td></tr>
-<tr class="separator:ad9cef38217cb521da1fa500db653f0d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adedbbca3baa2dccbf491bb6e297c00a5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="adedbbca3baa2dccbf491bb6e297c00a5"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>addCallForSite</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> call, int n_calls) noexcept</td></tr>
-<tr class="separator:adedbbca3baa2dccbf491bb6e297c00a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb82cc70bfa485c0449095a19bc28d8e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="afb82cc70bfa485c0449095a19bc28d8e"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>finalizeLossForSite</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site, int n_no_calls) noexcept</td></tr>
-<tr class="separator:afb82cc70bfa485c0449095a19bc28d8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a49bc49ac69d49eef9c80cd85cd235458"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a49bc49ac69d49eef9c80cd85cd235458"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>loss_stats</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> site_) noexcept</td></tr>
+<tr class="separator:a49bc49ac69d49eef9c80cd85cd235458"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19ee1ccae2eab1bcfe7b748975b04135"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a19ee1ccae2eab1bcfe7b748975b04135"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>get_n_calls_total</b> () const noexcept</td></tr>
+<tr class="separator:a19ee1ccae2eab1bcfe7b748975b04135"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a90de240b335b6a12322a6580cf069dfd"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a90de240b335b6a12322a6580cf069dfd"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>get_n_bp_total</b> () const noexcept</td></tr>
+<tr class="separator:a90de240b335b6a12322a6580cf069dfd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6906bf6c77b06962a80fa97b7afe6fb8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6906bf6c77b06962a80fa97b7afe6fb8"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>get_n_calls_lost</b> () const noexcept</td></tr>
+<tr class="separator:a6906bf6c77b06962a80fa97b7afe6fb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a20c69b5eb9f967bdbff08de2deb5378c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a20c69b5eb9f967bdbff08de2deb5378c"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>get_n_bp_lost</b> () const noexcept</td></tr>
+<tr class="separator:a20c69b5eb9f967bdbff08de2deb5378c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add13e1e6d0b3ff12b972301150f64b7a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="add13e1e6d0b3ff12b972301150f64b7a"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>get_n_no_calls_total</b> () const noexcept</td></tr>
+<tr class="separator:add13e1e6d0b3ff12b972301150f64b7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a131b0d1a444d9a5b8e6b7aa5a40a7472"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a131b0d1a444d9a5b8e6b7aa5a40a7472"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>add_call_for_site</b> (const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> call, int n_calls) noexcept</td></tr>
+<tr class="separator:a131b0d1a444d9a5b8e6b7aa5a40a7472"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a48716b00a646dd772e256baee8a912ad"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a48716b00a646dd772e256baee8a912ad"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>finalize_loss_for_site</b> (int n_no_calls) noexcept</td></tr>
+<tr class="separator:a48716b00a646dd772e256baee8a912ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a96cdd9200dd4a6943b4a20d676db07c7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a96cdd9200dd4a6943b4a20d676db07c7"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>merge_loss</b> (const <a class="el" href="class_g_lnexus_1_1loss__stats.html">loss_stats</a> &amp;loss)</td></tr>
+<tr class="separator:a96cdd9200dd4a6943b4a20d676db07c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a65cb3f3ca0f07f8c9ffb353bf901feaa"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a65cb3f3ca0f07f8c9ffb353bf901feaa"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>str</b> () const noexcept</td></tr>
 <tr class="separator:a65cb3f3ca0f07f8c9ffb353bf901feaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:aa43985b22038efa7e9eada434a289f1e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa43985b22038efa7e9eada434a289f1e"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>is_finalized</b> = false</td></tr>
+<tr class="separator:aa43985b22038efa7e9eada434a289f1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>include/<a class="el" href="types_8h_source.html">types.h</a></li>
