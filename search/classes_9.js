@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['service',['Service',['../class_g_lnexus_1_1_service.html',1,'GLnexus']]],
-  ['status',['Status',['../class_g_lnexus_1_1_status.html',1,'GLnexus']]]
+  ['writebatch',['WriteBatch',['../class_g_lnexus_1_1_key_value_1_1_write_batch.html',1,'GLnexus::KeyValue']]],
+  ['writebatch',['WriteBatch',['../class_g_lnexus_1_1_rocks_key_value_1_1_write_batch.html',1,'GLnexus::RocksKeyValue']]]
 ];
