@@ -4,7 +4,7 @@ main() {
     set -ex -o pipefail
 
     # log detailed utilization
-    dstat -cmdn 10 &
+    dstat -cmdn 5 &
 
     # install dependencies
     sudo rm -f /etc/apt/apt.conf.d/99dnanexus
@@ -25,7 +25,7 @@ main() {
     # initialize and load database
     glnexus_cli init GLnexus.db $(find in/gvcf -type f | head -n 1)
     date
-    find in/gvcf -type f | xargs -n 1 -t time glnexus_cli load GLnexus.db
+    find in/gvcf -type f | xargs -n 1000000 -t time glnexus_cli load GLnexus.db
     ls -lh GLnexus.db
     date
 

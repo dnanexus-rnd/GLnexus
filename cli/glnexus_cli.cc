@@ -10,6 +10,7 @@
 #include "alleles.h"
 #include "BCFKeyValueData.h"
 #include "RocksKeyValue.h"
+#include "ctpl_stl.h"
 
 using namespace std;
 
@@ -104,9 +105,9 @@ int main_init(int argc, char *argv[]) {
 }
 
 void help_load(const char* prog) {
-    cerr << "usage: " << prog << " load [options] /db/path sample.gvcf[.gz]" << endl
-         << "Loads a gVCF file into an existing database. The data set name will be derived from" << endl
-         << "the gVCF filename unless overridden."
+    cerr << "usage: " << prog << " load [options] /db/path sample.gvcf[.gz] [sample2.gvcf[.gz] ...]" << endl
+         << "Loads gVCF file(s) into an existing database. The data set name will be derived from" << endl
+         << "the gVCF filename. It can be overridden with --dataset if loading only one gVCF."
          << endl;
 }
 
@@ -148,21 +149,20 @@ int main_load(int argc, char *argv[]) {
         }
     }
 
-    if (optind != argc-2) {
+    if (argc-optind < 2) {
         help_load(argv[0]);
         return 1;
     }
     string dbpath(argv[optind]);
-    string gvcf(argv[optind+1]);
+    vector<string> gvcfs;
 
-    // default dataset name (the gVCF filename)
-    if (dataset.size() == 0) {
-        size_t p = gvcf.find_last_of('/');
-        if (p != string::npos && p < gvcf.size()-1) {
-            dataset = gvcf.substr(p+1);
-        } else {
-            dataset = gvcf;
-        }
+    for (size_t i = optind+1; i < argc; i++) {
+        gvcfs.push_back(string(argv[i]));
+    }
+
+    if (!dataset.empty() && gvcfs.size() > 1) {
+        cerr << "--dataset applicable only when loading exactly one gVCF" << endl;
+        return 1;
     }
 
     // open the database
@@ -177,23 +177,67 @@ int main_load(int argc, char *argv[]) {
             unique_ptr<GLnexus::MetadataCache> metadata;
             H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
 
-            // load the gVCF
-            set<string> samples;
-            s = data->import_gvcf(*metadata, dataset, gvcf, samples);
-            if (s.bad()) {
-                cerr << "Failed to load gVCF " << gvcf << endl
-                     << s.str() << endl;
-                return 1;
+            ctpl::thread_pool threadpool(thread::hardware_concurrency());
+            vector<future<GLnexus::Status>> statuses;
+            set<string> datasets_loaded;
+            set<string> samples_loaded;
+            mutex mu;
+
+            // load the gVCFs on the thread pool
+            for (const auto& gvcf : gvcfs) {
+                // default dataset name (the gVCF filename)
+                if (dataset.empty()) {
+                    size_t p = gvcf.find_last_of('/');
+                    if (p != string::npos && p < gvcf.size()-1) {
+                        dataset = gvcf.substr(p+1);
+                    } else {
+                        dataset = gvcf;
+                    }
+                }
+
+                auto fut = threadpool.push([&, gvcf, dataset](int tid){
+                    set<string> samples;
+                    GLnexus::Status ls = data->import_gvcf(*metadata, dataset, gvcf, samples);
+                    if (ls.ok()) {
+                        lock_guard<mutex> lock(mu);
+                        samples_loaded.insert(samples.begin(), samples.end());
+                        datasets_loaded.insert(dataset);
+                    }
+                    return ls;
+                });
+                statuses.push_back(move(fut));
+                dataset.clear();
             }
 
-            // report success
-            cout << "Loaded gVCF " << gvcf << " into database " << dbpath << endl
-                 << "dataset: " << dataset << endl
-                 << "sample(s):";
-            for (const auto& sample : samples) {
+            // collect results
+            vector<pair<string,GLnexus::Status>> failures;
+            for (size_t i = 0; i < gvcfs.size(); i++) {
+                GLnexus::Status s_i(move(statuses[i].get()));
+                if (!s_i.ok()) {
+                    failures.push_back(make_pair(gvcfs[i],move(s_i)));
+                }
+            }
+
+            // report results
+            cout << "Loaded datasets:";
+            for (const auto& ds : datasets_loaded) {
+                cout << " " << ds;
+            }
+            cout << endl;
+
+            cout << "Loaded samples:";
+            for (const auto& sample : samples_loaded) {
                 cout << " " << sample;
             }
             cout << endl;
+
+            if (failures.size()) {
+                cout << "FAILED to load one or more datasets:" << endl;
+                for (const auto& p : failures) {
+                    cout << p.first << "\t" << p.second.str() << endl;
+                }
+                return datasets_loaded.size() ? 2 : 1;
+            }
         }
     }
 
@@ -405,7 +449,7 @@ int main_genotype(int argc, char *argv[]) {
         }
 
         std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
-        cout << statsRq->str() << endl;
+        cerr << statsRq->str() << endl;
     }
 
     return 0;

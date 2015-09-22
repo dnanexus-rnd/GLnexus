@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream> // for ostringstream
 #include <string>
+#include <thread>
 #include "KeyValue.h"
 #include "RocksKeyValue.h"
 #include "rocksdb/db.h"
@@ -52,13 +53,31 @@ static Status convertStatus(const rocksdb::Status &s)
     }
 }
 
+// Reference for RocksDB tuning: https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
+
 void ApplyColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
-    opts.OptimizeUniversalStyleCompaction();
+    // level compaction, 1GiB memtable budget
+    opts.OptimizeLevelStyleCompaction(1024 * 1024 * 1024);
+
+    // compress all files in 64KiB blocks with LZ4
+    opts.compression_per_level.clear();
     opts.compression = rocksdb::kLZ4Compression;
     rocksdb::BlockBasedTableOptions bbto;
     bbto.block_size = 64 * 1024;
     bbto.format_version = 2;
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
+}
+
+void ApplyDBOptions(rocksdb::Options& opts) {
+    ApplyColumnFamilyOptions(static_cast<rocksdb::ColumnFamilyOptions&>(opts));
+
+    opts.max_open_files = -1;
+
+    // reserve capacity to absorb parallelized bulk loads
+    opts.max_background_compactions = std::min(std::thread::hardware_concurrency(), 8U);
+    opts.max_background_flushes = std::min(std::thread::hardware_concurrency(), 4U);
+    opts.env->SetBackgroundThreads(opts.max_background_compactions, rocksdb::Env::LOW);
+    opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
 }
 
 class Iterator : public KeyValue::Iterator {
@@ -216,8 +235,7 @@ public:
     static Status Initialize(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
-        ApplyColumnFamilyOptions(options);
-        options.IncreaseParallelism();
+        ApplyDBOptions(options);
         options.create_if_missing = true;
         options.error_if_exists = true;
 
@@ -240,8 +258,7 @@ public:
     static Status Open(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
-        ApplyColumnFamilyOptions(options);
-        options.IncreaseParallelism();
+        ApplyDBOptions(options);
         options.create_if_missing = false;
 
         // detect the database's column families
@@ -372,7 +389,7 @@ Status destroy(const std::string dbPath)
 {
     rocksdb::Options options;
     Status s = convertStatus(rocksdb::DestroyDB(dbPath, options));
-    int rc = system(("rm -rf " + dbPath).c_str());
+    ignore_retval(system(("rm -rf " + dbPath).c_str()));
     return s;
 }
 
