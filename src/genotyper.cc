@@ -1,6 +1,5 @@
 #include <assert.h>
 #include "genotyper.h"
-#include <iostream>
 
 using namespace std;
 
@@ -150,7 +149,11 @@ Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt
 // vector, based on a mapping from the bcf1_t sample indices into indices of
 // the genotype vector. Calls on update_orig_calls_for_loss to register
 // original calls in the bcf1_t for loss calculations
-Status translate_genotypes(const genotyper_config& cfg, const unified_site& site, const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record, const map<int,int>& sample_mapping, vector<int32_t>& genotypes, vector<bool>& genotyped, consolidated_loss& losses_for_site, vector<string> sample_names) {
+Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
+                           const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int,int>& sample_mapping,
+                           vector<int32_t>& genotypes, vector<bool>& genotyped,
+                           consolidated_loss& losses_for_site, vector<string> sample_names) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
     Status s;

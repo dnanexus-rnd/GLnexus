@@ -405,7 +405,7 @@ int main_genotype(int argc, char *argv[]) {
 
             cerr << "============" << endl;
             for (auto& loss : losses) {
-                cerr << "Sample:" << loss.first;
+                cerr << "Sample " << loss.first << ": ";
                 cerr << loss.second.str() << endl;
             }
         }
