@@ -67,8 +67,8 @@ private:
     bool atStart_ = false;
 
     // No copying allowed
-    Iterator(const Iterator&);
-    void operator=(const Iterator&);
+    Iterator(const Iterator&) = delete;
+    void operator=(const Iterator&) = delete;
 
 public:
     // Note: the NewIterator call allocates heap-memory
@@ -119,8 +119,8 @@ private:
     rocksdb::DB* db_ = nullptr;
 
     // No copying allowed
-    Reader(const Reader&);
-    void operator=(const Reader&);
+    Reader(const Reader&) = delete;
+    void operator=(const Reader&) = delete;
 
 public:
     Reader() {}

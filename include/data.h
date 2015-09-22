@@ -71,7 +71,7 @@ public:
 /// Abstract interface to stored BCF data sets. The implementation is
 /// responsible for any suitable caching.
 class BCFData {
-public: 
+public:
     /// Retrieve the BCF header for a data set.
     virtual Status dataset_header(const std::string& dataset,
                                   std::shared_ptr<const bcf_hdr_t>& hdr) const = 0;
@@ -85,13 +85,13 @@ public:
     ///
     /// The provided header must match the data set, otherwise the behavior is undefined!
     virtual Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
-                                 std::vector<std::shared_ptr<bcf1_t> >& records) const = 0;
+                                 std::vector<std::shared_ptr<bcf1_t> >& records) = 0;
 
     /// Wrapper for dataset_range which first fetches the appropriate header
     /// (useful if the caller doesn't already have the header in hand)
     virtual Status dataset_range_and_header(const std::string& dataset, const range& pos,
                                             std::shared_ptr<const bcf_hdr_t>& hdr,
-                                            std::vector<std::shared_ptr<bcf1_t> >& records) const;
+                                            std::vector<std::shared_ptr<bcf1_t> >& records);
 
 };
 
