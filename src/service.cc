@@ -147,10 +147,18 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         }
     }
 
-    dlosses.clear();
-
+    for (const auto& sample : *samples) {
+        if (bcf_hdr_add_sample(hdr.get(), sample.c_str()) != 0) {
+            return Status::Failure("bcf_hdr_add_sample", sample);
+        }
+    }
     if (bcf_hdr_sync(hdr.get()) != 0) {
         return Status::Failure("bcf_hdr_sync");
+    }
+
+    // safeguard against update_genotypes failure from improper header
+    if(bcf_hdr_nsamples(hdr) != samples->size()){
+        return Status::Failure("Mismatch found in number of samples in output bcf header");
     }
 
     // open output BCF file

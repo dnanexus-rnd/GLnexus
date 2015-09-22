@@ -114,9 +114,7 @@ Status update_orig_calls_for_loss(bcf1_t* record, int n_bcf_samples, int* gt, co
         }
 
         int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
-        cout << "Updating " << sample_name << " for original call: " << loss->second.str();
         loss->second.add_call_for_site(rng, n_calls);
-        cout << "..... Finished!" << endl;
     }
 
     return Status::OK();
@@ -141,7 +139,6 @@ Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt
         }
 
         int n_gt_missing = (bcf_gt_is_missing(gt[i*2]) + bcf_gt_is_missing(gt[i*2 + 1]));
-        cout << "Updating joint call: " << loss->second.str() << endl;
         // Lock down the loss associated with this unified_site
         loss->second.finalize_loss_for_site(n_gt_missing);
     }
@@ -267,7 +264,6 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
         }
     }
 
-    cout << "Finished translate genotypes~" << endl;
     // Create the destination BCF record for this site
     vector<const char*> c_alleles;
     for (const auto& allele : site.alleles) {
@@ -284,16 +280,11 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
         return Status::Failure("bcf_update_alleles");
     }
 
-    cout << "Finished bcf_update_alleles" << endl;
-    for (auto i : genotypes) {
-        cout << i << endl;
-    }
     if (bcf_update_genotypes(hdr, ans.get(), genotypes.data(), genotypes.size()) != 0) {
         return Status::Failure("bcf_update_genotypes");
     }
 
-    // cout << "Entering joint-call_loss~" << endl;
-    // S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, losses_for_site, sample_names));
+    S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, losses_for_site, sample_names));
 
     return Status::OK();
 }
