@@ -76,3 +76,118 @@ TEST_CASE("range_of_bcf") {
     REQUIRE(rng.end == 10009466);
     REQUIRE(rng.size() == 1);
 }
+
+TEST_CASE("loss_stats_full_overlap") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site);
+
+    loss.add_call_for_site(range(0, 10, 15), 2);
+    REQUIRE(loss.get_n_calls_total() == 2);
+    REQUIRE(loss.get_n_bp_total() == 10);
+
+    loss.add_call_for_site(range(0, 20, 25), 1);
+    REQUIRE(loss.get_n_calls_total() == 3);
+    REQUIRE(loss.get_n_bp_total() == 15);
+
+    loss.add_call_for_site(range(0, 30, 35), 0);
+    REQUIRE(loss.get_n_calls_total() == 3);
+    REQUIRE(loss.get_n_bp_total() == 15);
+}
+
+TEST_CASE("loss_stats_partial_overlap") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site);
+
+    loss.add_call_for_site(range(0, 995, 1005), 2);
+    REQUIRE(loss.get_n_calls_total() == 2);
+    REQUIRE(loss.get_n_bp_total() == 10);
+}
+
+TEST_CASE("loss_stats_no_missing_calls") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site);
+
+    loss.add_call_for_site(range(0, 995, 1005), 2);
+    loss.finalize_loss_for_site(0);
+
+    REQUIRE(loss.get_n_no_calls_total() == 0);
+    REQUIRE(loss.get_n_bp_lost() == 0);
+    REQUIRE(loss.get_n_calls_lost() == 0);
+}
+
+TEST_CASE("loss_stats_1_missing_call") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site);
+
+    loss.add_call_for_site(range(0, 995, 1005), 2);
+    loss.finalize_loss_for_site(1);
+
+    REQUIRE(loss.get_n_no_calls_total() == 1);
+    REQUIRE(loss.get_n_bp_lost() == 5);
+    REQUIRE(loss.get_n_calls_lost() == 1);
+}
+
+TEST_CASE("loss_stats_2_missing_call") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site);
+
+    loss.add_call_for_site(range(0, 995, 1005), 2);
+    loss.finalize_loss_for_site(2);
+
+    REQUIRE(loss.get_n_no_calls_total() == 2);
+    REQUIRE(loss.get_n_bp_lost() == 10);
+    REQUIRE(loss.get_n_calls_lost() == 2);
+}
+
+TEST_CASE("loss_stats_1_missing_call_on_1_orig_call") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats( site);
+
+    loss.add_call_for_site(range(0, 995, 1005), 1);
+    loss.finalize_loss_for_site(1);
+
+    REQUIRE(loss.get_n_no_calls_total() == 1);
+    REQUIRE(loss.get_n_bp_lost() == 0);
+    REQUIRE(loss.get_n_calls_lost() == 0);
+}
+
+TEST_CASE("loss_stats_2_missing_call_on_1_orig_call") {
+    unified_site site = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site);
+
+    loss.add_call_for_site(range(0, 995, 1005), 1);
+    loss.finalize_loss_for_site(2);
+
+    REQUIRE(loss.get_n_no_calls_total() == 2);
+    REQUIRE(loss.get_n_bp_lost() == 5);
+    REQUIRE(loss.get_n_calls_lost() == 1);
+}
+
+TEST_CASE("loss_summary_add_stats") {
+    consolidated_loss summary;
+
+    unified_site site1 = unified_site(range(0, 1, 1000));
+    loss_stats loss = loss_stats(site1);
+    loss.add_call_for_site(range(0, 995, 1005), 2);
+    loss.finalize_loss_for_site(2);
+
+    summary.insert(make_pair("sample_1", loss));
+
+    unified_site site2 = unified_site(range(0, 500, 1500));
+    loss_stats loss2 = loss_stats(site2);
+    loss2.add_call_for_site(range(0, 900, 910), 2);
+    loss2.finalize_loss_for_site(1);
+
+    consolidated_loss summary2;
+    summary2.insert(make_pair("sample_1", loss2));
+
+    Status s =merge_loss_stats(summary2, summary);
+    REQUIRE(s.ok());
+
+    loss_stats updated_loss = summary.find("sample_1")->second;
+    REQUIRE(updated_loss.get_n_calls_total() == 4);
+    REQUIRE(updated_loss.get_n_calls_lost() == 3);
+    REQUIRE(updated_loss.get_n_no_calls_total() == 3);
+    REQUIRE(updated_loss.get_n_bp_lost() == 20);
+    REQUIRE(updated_loss.get_n_bp_total() == 30);
+}
