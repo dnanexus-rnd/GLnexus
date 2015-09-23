@@ -96,10 +96,104 @@ public:
     }
 };
 
+class LossTracker {
+
+public:
+    // Simple wrapper struct to store information about an original call
+    // for a unified site, used by loss_stats
+    // ML: currently unused?
+    struct orig_call {
+        range pos;
+        bool is_gvcf;
+
+        bool operator==(const orig_call& rhs) const noexcept { return pos == rhs.pos && is_gvcf == rhs.is_gvcf; }
+
+        bool operator<(const orig_call& rhs) const noexcept { return pos < rhs.pos; }
+        bool operator<=(const orig_call& rhs) const noexcept { return pos <= rhs.pos; }
+    };
+
+
+    // Constructor takes a sample name; loss_stats should be
+    // uniquely associated with each sample
+    // ML: orig_calls_for_site initialization unnecessary?
+    LossTracker(const unified_site site_) noexcept : site(site_) {orig_calls_for_site = std::map<range, int>(); }
+
+    // Called for each bcf record that is associated with the unified_site
+    // examined to update "denominator" of total calls/bp covered in orig
+    // dataset
+    Status add_call_for_site(const range call, int n_calls) noexcept {
+        if (is_finalized)
+            return Status::Invalid("calling add_call_for_site for a finalized loss_stats");
+
+        auto call_within_site_p = call.intersect(site.pos);
+
+        if (call_within_site_p) {
+            range call_within_site = *call_within_site_p;
+            orig_calls_for_site[call_within_site] += n_calls;
+            n_calls_total += n_calls;
+            n_bp_total += n_calls * (call_within_site.size());
+        }
+        return Status::OK();
+    }
+
+    // Called after joint genotyping for a unified_site to update the loss
+    // associated with that site.
+    Status finalize_loss_for_site(int n_no_calls) noexcept {
+        if (is_finalized)
+            return Status::Invalid("calling finalize_loss_for_site when loss_stats is already finalized.");
+
+        if (n_no_calls) {
+            n_no_calls_total += n_no_calls;
+
+            for (auto& kv : orig_calls_for_site) {
+                // calls_lost will be 0 if n_orig_calls and n_no_calls are both 1 (which is interpreted as no loss of calls)
+                int n_calls_lost_for_site = (kv.second * n_no_calls) / 2;
+                n_calls_lost += n_calls_lost_for_site;
+
+                // assumes that range in calls_for_site has already been
+                // restricted to intersection with site
+                n_bp_lost += kv.first.size() * n_calls_lost_for_site;
+            }
+        }
+
+        // Clear map
+        orig_calls_for_site.clear();
+        is_finalized = true;
+
+        return Status::OK();
+    }
+
+    loss_stats get() {
+        loss_stats ans;
+        ans.n_calls_total = n_calls_total;
+        ans.n_bp_total = n_bp_total;
+        ans.n_calls_lost = n_calls_lost;
+        ans.n_no_calls_total = n_no_calls_total;
+        return ans;
+    }
+
+private:
+    // ML: only site.pos is used?
+    unified_site site;
+
+    // Original calls (identified by effective range within site) and
+    // count of calls. Calls which are different in the bcf record but
+    // share the same effective range within the site will be collapsed
+    // into the same key.
+    std::map<range, int> orig_calls_for_site;
+
+    int n_calls_total=0, n_bp_total=0;
+    int n_calls_lost=0, n_bp_lost=0;
+    int n_no_calls_total = 0;
+
+    bool is_finalized = false;
+};
+using LossTrackers = map<string,LossTracker>;
+
 
 // Update the loss_stats data structure with call information for
 // original calls associated with a unified site
-Status update_orig_calls_for_loss(bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, consolidated_loss& losses_for_site, const vector<string>& sample_names) {
+Status update_orig_calls_for_loss(bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, LossTrackers& losses_for_site, const vector<string>& sample_names) {
     range rng(record);
     Status s;
 
@@ -121,7 +215,7 @@ Status update_orig_calls_for_loss(bcf1_t* record, int n_bcf_samples, int* gt, co
 
 // Update the loss_stats data sturcture with the joint call for
 // the unified site and finalize the loss measures
-Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt, consolidated_loss& losses_for_site, const vector<string>& sample_names) {
+Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt, LossTrackers& losses_for_site, const vector<string>& sample_names) {
 
     if(n_bcf_samples != losses_for_site.size()) {
         return Status::Failure("update_joint_call_loss: number of samples and bcf does not match");
@@ -153,7 +247,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
                            const string& dataset, const bcf_hdr_t* dataset_header,
                            bcf1_t* record, const map<int,int>& sample_mapping,
                            vector<int32_t>& genotypes, vector<bool>& genotyped,
-                           consolidated_loss& losses_for_site, vector<string> sample_names) {
+                           LossTrackers& losses_for_site, vector<string> sample_names) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
     Status s;
@@ -237,6 +331,11 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
     // Construct a vector of sample names for loss calculations
     vector<string> sample_names(samples.begin(), samples.end());
 
+    LossTrackers loss_trackers;
+    for (const auto& sample : samples) {
+        loss_trackers.insert(make_pair(sample, LossTracker(site)));
+    }
+
     // for each pertinent dataset
     for (const auto& dataset : datasets) {
         // load BCF records overlapping the site
@@ -263,7 +362,7 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
         // for each source BCF record
         for (const auto& record : records) {
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), record.get(),
-                                  sample_mapping, genotypes, genotyped, losses_for_site, sample_names));
+                                  sample_mapping, genotypes, genotyped, loss_trackers, sample_names));
         }
     }
 
@@ -287,7 +386,12 @@ Status genotype_site(const genotyper_config& cfg, const BCFData& data, const uni
         return Status::Failure("bcf_update_genotypes");
     }
 
-    S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, losses_for_site, sample_names));
+    S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, loss_trackers, sample_names));
+    consolidated_loss losses;
+    for (auto& kv : loss_trackers) {
+        losses.insert(make_pair(kv.first,kv.second.get()));
+    }
+    merge_loss_stats(losses, losses_for_site);
 
     return Status::OK();
 }

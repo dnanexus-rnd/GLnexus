@@ -34,7 +34,7 @@ Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest) {
             // sample not found in destination
             dest.insert(make_pair(sample, src_stats));
         } else {
-            S(target->second.merge_loss(src_stats));
+            target->second += src_stats;
         }
     }
     return Status::OK();
