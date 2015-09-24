@@ -189,10 +189,6 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         shared_ptr<bcf1_t> site_bcf;
 
         consolidated_loss losses_for_site;
-        for (auto& sample : *samples) {
-            losses_for_site.insert(make_pair(sample, loss_stats()));
-        }
-
         S(genotype_site(cfg, body_->data_, site, *samples, *datasets, hdr.get(), site_bcf, losses_for_site));
 
         // write out a BCF record

@@ -583,20 +583,20 @@ TEST_CASE("genotyper placeholder") {
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
         loss_stats loss_ch = loss1->second;
-        REQUIRE(loss_ch.get_n_no_calls_total() == 0);
-        REQUIRE(loss_ch.get_n_bp_lost() == 0);
+        REQUIRE(loss_ch.n_no_calls_total == 0);
+        REQUIRE(loss_ch.n_bp_lost == 0);
 
         auto loss2 = losses.find("trio1.fa");
         REQUIRE(loss2 != losses.end());
         loss_stats loss_fa = loss2->second;
-        REQUIRE(loss_fa.get_n_no_calls_total() == 0);
-        REQUIRE(loss_fa.get_n_bp_lost() == 0);
+        REQUIRE(loss_fa.n_no_calls_total == 0);
+        REQUIRE(loss_fa.n_bp_lost == 0);
 
         auto loss3 = losses.find("trio1.mo");
         REQUIRE(loss3 != losses.end());
         loss_stats loss_mo = loss3->second;
-        REQUIRE(loss_mo.get_n_no_calls_total() == 0);
-        REQUIRE(loss_mo.get_n_bp_lost() == 0);
+        REQUIRE(loss_mo.n_no_calls_total == 0);
+        REQUIRE(loss_mo.n_bp_lost == 0);
 
         free(gt);
     }
@@ -746,40 +746,40 @@ TEST_CASE("genotyper placeholder") {
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
         loss_stats loss_ch = loss1->second;
-        REQUIRE(loss_ch.get_n_no_calls_total() == 0);
-        REQUIRE(loss_ch.get_n_bp_lost() == 0);
+        REQUIRE(loss_ch.n_no_calls_total == 0);
+        REQUIRE(loss_ch.n_bp_lost == 0);
 
         auto loss2 = losses.find("trio1.fa");
         REQUIRE(loss2 != losses.end());
         loss_stats loss_fa = loss2->second;
-        REQUIRE(loss_fa.get_n_no_calls_total() == 0);
-        REQUIRE(loss_fa.get_n_bp_lost() == 0);
+        REQUIRE(loss_fa.n_no_calls_total == 0);
+        REQUIRE(loss_fa.n_bp_lost == 0);
 
         auto loss3 = losses.find("trio1.mo");
         REQUIRE(loss3 != losses.end());
         loss_stats loss_mo = loss3->second;
-        REQUIRE(loss_mo.get_n_no_calls_total() == 0);
-        REQUIRE(loss_mo.get_n_bp_lost() == 0);
+        REQUIRE(loss_mo.n_no_calls_total == 0);
+        REQUIRE(loss_mo.n_bp_lost == 0);
 
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
         loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.get_n_no_calls_total() == 0);
-        REQUIRE(loss_ch2.get_n_bp_lost() == 0);
+        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_bp_lost == 0);
 
         int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
 
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.get_n_no_calls_total() == 3);
-        REQUIRE(loss_fa2.get_n_bp_lost() == expected_loss_bp);
+        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.get_n_no_calls_total() == 3);
-        REQUIRE(loss_mo2.get_n_bp_lost() == expected_loss_bp);
+        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
     }
@@ -895,22 +895,22 @@ TEST_CASE("genotyper placeholder") {
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
         loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.get_n_no_calls_total() == 0);
-        REQUIRE(loss_ch2.get_n_bp_lost() == 0);
+        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_bp_lost == 0);
 
         int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
 
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.get_n_no_calls_total() == 3);
-        REQUIRE(loss_fa2.get_n_bp_lost() == expected_loss_bp);
+        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.get_n_no_calls_total() == 3);
-        REQUIRE(loss_mo2.get_n_bp_lost() == expected_loss_bp);
+        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
     }
@@ -929,6 +929,7 @@ TEST_CASE("gVCF genotyper") {
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
 
     SECTION("no depth requirement") {
+        cout << "======================\n" << endl;
         vector<unified_site> sites;
 
         unified_site us(range(0,10009461,10009462));
@@ -1017,8 +1018,8 @@ TEST_CASE("gVCF genotyper") {
         auto loss = losses.find("NA12878");
         REQUIRE(loss != losses.end());
         loss_stats loss_na = loss->second;
-        REQUIRE(loss_na.get_n_no_calls_total() == 2);
-        REQUIRE(loss_na.get_n_bp_lost() == 4);
+        REQUIRE(loss_na.n_no_calls_total == 2);
+        REQUIRE(loss_na.n_bp_lost == 4);
     }
 
     SECTION("require depth > 12") {
@@ -1112,8 +1113,8 @@ TEST_CASE("gVCF genotyper") {
         auto loss = losses.find("NA12878");
         REQUIRE(loss != losses.end());
         loss_stats loss_d12 = loss->second;
-        REQUIRE(loss_d12.get_n_no_calls_total() == 4);
-        REQUIRE(loss_d12.get_n_bp_lost() == 6);
+        REQUIRE(loss_d12.n_no_calls_total == 4);
+        REQUIRE(loss_d12.n_bp_lost == 6);
     }
 
 
@@ -1162,7 +1163,7 @@ TEST_CASE("gVCF genotyper") {
         auto loss = losses.find("NA12878");
         REQUIRE(loss != losses.end());
         loss_stats loss_na = loss->second;
-        REQUIRE(loss_na.get_n_no_calls_total() == 1);
-        REQUIRE(loss_na.get_n_bp_lost() == 2);
+        REQUIRE(loss_na.n_no_calls_total == 1);
+        REQUIRE(loss_na.n_bp_lost == 2);
     }
 }

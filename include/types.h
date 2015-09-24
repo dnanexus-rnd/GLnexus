@@ -228,11 +228,13 @@ struct loss_stats {
 
         // Returns proportion of calls lost as a percentage
     float prop_calls_lost() const noexcept {
+        if (!n_calls_total) return 0;
         return n_calls_lost / (float) n_calls_total * 100;
     }
 
     // Returns proportion of bp coverage lost as a percentage
     float prop_bp_lost() const noexcept {
+        if (!n_bp_total) return 0;
         return n_bp_lost / (float) n_bp_total * 100;
     }
 };
