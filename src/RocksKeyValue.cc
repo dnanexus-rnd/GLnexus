@@ -14,6 +14,7 @@
 #include "rocksdb/options.h"
 #include "rocksdb/write_batch.h"
 #include "rocksdb/table.h"
+#include "rocksdb/memtablerep.h"
 
 namespace GLnexus {
 namespace RocksKeyValue {
@@ -74,7 +75,7 @@ void ApplyDBOptions(rocksdb::Options& opts) {
     opts.max_open_files = -1;
 
     // reserve capacity to absorb parallelized bulk loads
-    opts.max_background_compactions = std::min(std::thread::hardware_concurrency(), 8U);
+    opts.max_background_compactions = std::min(std::thread::hardware_concurrency(), 16U);
     opts.max_background_flushes = std::min(std::thread::hardware_concurrency(), 4U);
     opts.env->SetBackgroundThreads(opts.max_background_compactions, rocksdb::Env::LOW);
     opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
@@ -184,6 +185,7 @@ class WriteBatch : public KeyValue::WriteBatch {
 private:
     rocksdb::WriteBatch *wb_;
     rocksdb::DB* db_;
+    const rocksdb::WriteOptions& batch_write_options_;
     friend class DB;
 
     // No copying allowed
@@ -191,7 +193,8 @@ private:
     void operator=(const WriteBatch&);
 
 public:
-    WriteBatch(rocksdb::DB* db) : db_(db) {
+    WriteBatch(rocksdb::DB* db, const rocksdb::WriteOptions& batch_write_options)
+        : db_(db), batch_write_options_(batch_write_options) {
         wb_ = new rocksdb::WriteBatch();
     }
 
@@ -210,26 +213,34 @@ public:
     }
 
     Status commit() override {
-        rocksdb::WriteOptions options;
-        options.sync = true;
-        rocksdb::Status s = db_->Write(options, wb_);
+        rocksdb::Status s = db_->Write(batch_write_options_, wb_);
         return convertStatus(s);
     }
 };
-
 
 class DB : public KeyValue::DB {
 private:
     rocksdb::DB* db_;
     std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle_;
+    OpenMode mode_;
+    rocksdb::WriteOptions write_options_, batch_write_options_;
 
     // No copying allowed
     DB(const DB&);
     void operator=(const DB&);
 
-    DB(rocksdb::DB *db, std::map<const std::string, rocksdb::ColumnFamilyHandle*>& coll2handle)
-        : db_(db), coll2handle_(std::move(coll2handle))
-        {}
+    DB(rocksdb::DB *db, std::map<const std::string, rocksdb::ColumnFamilyHandle*>& coll2handle,
+       OpenMode mode)
+        : db_(db), coll2handle_(std::move(coll2handle)),
+          mode_(mode) {
+            // prepare write options
+            if (mode_ == OpenMode::BULK_LOAD) {
+                write_options_.disableWAL = true;
+                batch_write_options_.disableWAL = true;
+            } else {
+                batch_write_options_.sync = true;
+            }
+        }
 
 public:
     static Status Initialize(const std::string& dbPath,
@@ -247,7 +258,7 @@ public:
         assert(rawdb != nullptr);
 
         std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle;
-        db.reset(new DB(rawdb, coll2handle));
+        db.reset(new DB(rawdb, coll2handle, OpenMode::NORMAL));
         if (!db) {
             delete rawdb;
             return Status::Failure();
@@ -256,7 +267,9 @@ public:
     }
 
     static Status Open(const std::string& dbPath,
-                       std::unique_ptr<KeyValue::DB> &db) {
+                       std::unique_ptr<KeyValue::DB> &db,
+                       OpenMode mode) {
+        // prepare options
         rocksdb::Options options;
         ApplyDBOptions(options);
         options.create_if_missing = false;
@@ -271,6 +284,9 @@ public:
         for (const auto& nm : column_family_names) {
             rocksdb::ColumnFamilyOptions colopts;
             ApplyColumnFamilyOptions(colopts);
+            if (mode == OpenMode::BULK_LOAD) {
+                colopts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
+            }
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
             cfd.options = colopts;
@@ -280,8 +296,14 @@ public:
         // open the database (all column families)
         rocksdb::DB *rawdb = nullptr;
         std::vector<rocksdb::ColumnFamilyHandle*> column_family_handles;
-        s = rocksdb::DB::Open(options, dbPath, column_families,
-                              &column_family_handles, &rawdb);
+
+        if (mode == OpenMode::READ_ONLY) {
+            s = rocksdb::DB::OpenForReadOnly(options, dbPath, column_families,
+                                             &column_family_handles, &rawdb);
+        } else {
+            s = rocksdb::DB::Open(options, dbPath, column_families,
+                                  &column_family_handles, &rawdb);
+        }
         if (!s.ok()) {
             return convertStatus(s);
         }
@@ -292,7 +314,7 @@ public:
         for (size_t i = 0; i < column_families.size(); i++) {
             coll2handle[column_family_names[i]] = column_family_handles[i];
         }
-        db.reset(new DB(rawdb, coll2handle));
+        db.reset(new DB(rawdb, coll2handle, mode));
         if (!db) {
             for (auto h : column_family_handles) {
                 delete h;
@@ -300,14 +322,20 @@ public:
             delete rawdb;
             return Status::Failure();
         }
+
         return Status::OK();
     }
 
     ~DB() override {
-        // Flush and free RocksDB column family handles
-        db_->SyncWAL();
+        if (mode_ != OpenMode::READ_ONLY) {
+            // Flush
+            db_->SyncWAL();
+            for (const auto& p : coll2handle_) {
+                db_->Flush(rocksdb::FlushOptions(), p.second);
+            }
+        }
+        // Free column handles
         for (const auto& p : coll2handle_) {
-            db_->Flush(rocksdb::FlushOptions(), p.second);
             delete p.second;
         }
         // delete database
@@ -350,7 +378,7 @@ public:
     }
 
     Status begin_writes(std::unique_ptr<KeyValue::WriteBatch>& writes) override {
-        writes = std::make_unique<RocksKeyValue::WriteBatch>(db_);
+        writes = std::make_unique<RocksKeyValue::WriteBatch>(db_, batch_write_options_);
         return Status::OK();
     }
 
@@ -369,8 +397,7 @@ public:
                const std::string& key,
                const std::string& value) override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        static const rocksdb::WriteOptions options;
-        rocksdb::Status s = db_->Put(options, coll, key, value);
+        rocksdb::Status s = db_->Put(write_options_, coll, key, value);
         return convertStatus(s);
     }
 };
@@ -380,9 +407,9 @@ Status Initialize(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db)
     return DB::Initialize(dbPath, db);
 }
 
-Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db)
+Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db, OpenMode mode)
 {
-    return DB::Open(dbPath, db);
+    return DB::Open(dbPath, db, mode);
 }
 
 Status destroy(const std::string dbPath)

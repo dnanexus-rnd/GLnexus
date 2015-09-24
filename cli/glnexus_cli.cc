@@ -167,7 +167,7 @@ int main_load(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -289,7 +289,7 @@ int main_dump(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -400,7 +400,7 @@ int main_genotype(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;

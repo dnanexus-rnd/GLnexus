@@ -58,11 +58,43 @@ TEST_CASE("RocksDB open/initialize states") {
     REQUIRE((bool)db);
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data) == StatusCode::INVALID);
+
+    // write something into it
+    REQUIRE(db->create_collection("test").ok());
+    KeyValue::CollectionHandle coll;
+    REQUIRE(db->collection("test",coll).ok());
+    REQUIRE(db->put(coll, "foo", "bar").ok());
+    std::string v;
+    REQUIRE(db->get(coll, "foo", v).ok());
+    REQUIRE(v == "bar");
+
     db.reset();
 
     // attempt to initialize an already-existing database
     s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.bad());
+
+    // open read-only
+    s = RocksKeyValue::Open(dbPath, db, RocksKeyValue::OpenMode::READ_ONLY);
+    REQUIRE(s.ok());
+    REQUIRE(db->collection("test",coll).ok());
+    v.clear();
+    REQUIRE(db->get(coll, "foo", v).ok());
+    REQUIRE(v == "bar");
+    REQUIRE(db->put(coll, "foo", "bar").bad());
+    REQUIRE(db->put(coll, "bar", "baz").bad());
+    db.reset();
+
+    // open in "bulk load" mode
+    s = RocksKeyValue::Open(dbPath, db, RocksKeyValue::OpenMode::BULK_LOAD);
+    REQUIRE(s.ok());
+    REQUIRE(db->collection("test",coll).ok());
+    v.clear();
+    REQUIRE(db->get(coll, "foo", v).ok());
+    REQUIRE(v == "bar");
+    REQUIRE(db->put(coll, "foo", "bar").ok());
+    REQUIRE(db->put(coll, "bar", "baz").ok());
+    db.reset();
 
     RocksKeyValue::destroy(dbPath);
 }
