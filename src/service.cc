@@ -183,13 +183,16 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         return Status::IOError("bcf_hdr_write", filename);
     }
 
+    // Make vector of sample_names for genotype_site and loss accounting
+    vector<string> sample_names((*samples).begin(), (*samples).end());
+
     // for each site
     for (const auto& site : sites) {
         // compute genotypes
         shared_ptr<bcf1_t> site_bcf;
 
         consolidated_loss losses_for_site;
-        S(genotype_site(cfg, body_->data_, site, *samples, *datasets, hdr.get(), site_bcf, losses_for_site));
+        S(genotype_site(cfg, body_->data_, site, sample_names, *datasets, hdr.get(), site_bcf, losses_for_site));
 
         // write out a BCF record
         if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {

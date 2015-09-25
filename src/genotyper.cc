@@ -320,7 +320,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
 }
 
 Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_site& site,
-                     const set<string>& samples, const set<string>& datasets,
+                     const vector<string>& samples, const set<string>& datasets,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site) {
 	Status s;
 
@@ -331,9 +331,6 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
     // Also remember which samples we've already seen a genotype call for, in
     // case we encounter multiple BCF records from the sample
     vector<bool> genotyped(samples.size(), false);
-
-    // Construct a vector of sample names for loss calculations
-    vector<string> sample_names(samples.begin(), samples.end());
 
     LossTrackers loss_trackers;
     for (const auto& sample : samples) {
@@ -366,7 +363,7 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
         // for each source BCF record
         for (const auto& record : records) {
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), record.get(),
-                                  sample_mapping, genotypes, genotyped, loss_trackers, sample_names));
+                                  sample_mapping, genotypes, genotyped, loss_trackers, samples));
         }
     }
 
@@ -390,7 +387,7 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
         return Status::Failure("bcf_update_genotypes");
     }
 
-    S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, loss_trackers, sample_names));
+    S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, loss_trackers, samples));
 
     // Package consolidated_loss for this site and merge into losses_for_site
     // to be returned to parent caller
