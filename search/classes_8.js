@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['unified_5fsite',['unified_site',['../struct_g_lnexus_1_1unified__site.html',1,'GLnexus']]]
+  ['range',['range',['../struct_g_lnexus_1_1range.html',1,'GLnexus']]],
+  ['reader',['Reader',['../class_g_lnexus_1_1_key_value_1_1_reader.html',1,'GLnexus::KeyValue']]],
+  ['reader',['Reader',['../class_g_lnexus_1_1_rocks_key_value_1_1_reader.html',1,'GLnexus::RocksKeyValue']]]
 ];
