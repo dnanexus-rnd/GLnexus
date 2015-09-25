@@ -51,13 +51,13 @@ class VCFData : public Metadata, public BCFData {
                 return Status::IOError("bcf_read", path);
             } else if (bcf_unpack(record.get(),BCF_UN_ALL) != 0) {
                 return Status::IOError("bcf_unpack", path);
-            }    
+            }
             records.push_back(move(record));
         }
 
         ans.header = hdr;
         ans.samples = move(samples);
-        ans.records = move(records); 
+        ans.records = move(records);
 
         return Status::OK();
     }
@@ -112,7 +112,7 @@ public:
             ans.push_back(make_pair(string(contignames[i]),sz));
         }
         free(contignames);
-        
+
         return Status::OK();
     }
 
@@ -150,7 +150,7 @@ public:
         return Status::OK();
     }
 
-    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) const override {
+    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) override {
         Status s;
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
@@ -225,7 +225,7 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(s.ok());
 
         REQUIRE(als.size() == 4);
-     
+
         REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.observation_count == 3);
         // tentative: by default alleles that extend outside of the range of interest get unified to no-call
     }
@@ -245,7 +245,7 @@ TEST_CASE("service::discover_alleles") {
 
         als[allele(range(2, 1010, 1011), "A")] = make_pair(false, 1);
         als[allele(range(2, 1010, 1011), "A")] = make_pair(false, 1);
-        
+
         s = svc->discover_alleles("2trios", range(2, 1010, 1014), als);
         REQUIRE_FALSE(s.ok());
         REQUIRE(s == StatusCode::INVALID);
@@ -929,7 +929,6 @@ TEST_CASE("gVCF genotyper") {
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
 
     SECTION("no depth requirement") {
-        cout << "======================\n" << endl;
         vector<unified_site> sites;
 
         unified_site us(range(0,10009461,10009462));

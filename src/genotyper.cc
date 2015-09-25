@@ -319,7 +319,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     return Status::OK();
 }
 
-Status genotype_site(const genotyper_config& cfg, const BCFData& data, const unified_site& site,
+Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_site& site,
                      const set<string>& samples, const set<string>& datasets,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site) {
 	Status s;

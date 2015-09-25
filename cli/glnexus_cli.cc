@@ -303,6 +303,9 @@ int main_dump(int argc, char *argv[]) {
             }
             // intentionally leaking vcfout because closing it closes stdout
         }
+
+        std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
+        cout << statsRq->str() << endl;
     }
 
     return 0;
@@ -409,6 +412,9 @@ int main_genotype(int argc, char *argv[]) {
                 cerr << loss.second.str() << endl;
             }
         }
+
+        std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
+        cout << statsRq->str() << endl;
     }
 
     return 0;
@@ -417,7 +423,7 @@ int main_genotype(int argc, char *argv[]) {
 void help(const char* prog) {
     cerr << "usage: " << prog << " <command> [options]" << endl
              << endl
-             << "commands:" << endl 
+             << "commands:" << endl
              << "  init     initialize new database" << endl
              << "  load     load a gVCF file into an existing database" << endl
              << "  genotype genotype samples in the database" << endl
@@ -425,7 +431,7 @@ void help(const char* prog) {
 }
 
 int main(int argc, char *argv[]) {
-    
+
     if (argc == 1) {
         help(argv[0]);
         return 1;
