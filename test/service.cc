@@ -1020,6 +1020,9 @@ TEST_CASE("gVCF genotyper") {
         loss_stats loss_na = loss->second;
         REQUIRE(loss_na.n_no_calls_total == 2);
         REQUIRE(loss_na.n_bp_lost == 4);
+        REQUIRE(loss_na.n_calls_lost == 4);
+        REQUIRE(loss_na.n_gvcf_calls_lost == 4);
+        REQUIRE(loss_na.n_gvcf_bp_lost == 4);
     }
 
     SECTION("require depth > 12") {
@@ -1115,6 +1118,9 @@ TEST_CASE("gVCF genotyper") {
         loss_stats loss_d12 = loss->second;
         REQUIRE(loss_d12.n_no_calls_total == 4);
         REQUIRE(loss_d12.n_bp_lost == 6);
+        REQUIRE(loss_d12.n_calls_lost == 4);
+        REQUIRE(loss_d12.n_gvcf_bp_lost == 2);
+        REQUIRE(loss_d12.n_gvcf_calls_lost == 2);
     }
 
 
@@ -1162,8 +1168,11 @@ TEST_CASE("gVCF genotyper") {
 
         auto loss = losses.find("NA12878");
         REQUIRE(loss != losses.end());
-        loss_stats loss_na = loss->second;
-        REQUIRE(loss_na.n_no_calls_total == 1);
-        REQUIRE(loss_na.n_bp_lost == 2);
+        loss_stats loss_d9 = loss->second;
+        REQUIRE(loss_d9.n_no_calls_total == 1);
+        REQUIRE(loss_d9.n_bp_lost == 2);
+        REQUIRE(loss_d9.n_calls_lost == 1);
+        REQUIRE(loss_d9.n_gvcf_calls_lost == 0);
+        REQUIRE(loss_d9.n_gvcf_bp_lost == 0);
     }
 }

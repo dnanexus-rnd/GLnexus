@@ -51,7 +51,9 @@ private:
     std::map<orig_call, int> orig_calls_for_site;
 
     int n_calls_total=0, n_bp_total=0;
+    int n_gvcf_calls_total=0, n_gvcf_bp_total=0;
     int n_calls_lost=0, n_bp_lost=0;
+    int n_gvcf_calls_lost=0, n_gvcf_bp_lost=0;
     int n_no_calls_total = 0;
 
     bool is_finalized = false;

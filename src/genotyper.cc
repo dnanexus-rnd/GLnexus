@@ -130,6 +130,11 @@ Status LossTracker::finalize_loss_for_site(int n_no_calls) noexcept {
         n_calls_total += n_orig_calls;
         n_bp_total += n_orig_calls * call_within_site_len;
 
+        if (kv.first.is_gvcf) {
+            n_gvcf_calls_total += n_orig_calls;
+            n_gvcf_bp_total += n_orig_calls * call_within_site_len;
+        }
+
         // Joint call has at least 1 missing call.
         if (n_no_calls) {
             // The expected behavior for computing n_calls_lost_for_site:
@@ -153,6 +158,12 @@ Status LossTracker::finalize_loss_for_site(int n_no_calls) noexcept {
             // (of original calls) lost is given by this length multipled
             // by n_calls_lost_for_site computed above
             n_bp_lost += call_within_site_len * n_calls_lost_for_site;
+
+            // gvcf loss accounting
+            if (kv.first.is_gvcf) {
+                n_gvcf_calls_lost += n_calls_lost_for_site;
+                n_gvcf_bp_lost += call_within_site_len * n_calls_lost_for_site;
+            }
         }
     }
 
@@ -173,6 +184,10 @@ Status LossTracker::get(loss_stats& ans) const noexcept {
     ans.n_calls_lost = n_calls_lost;
     ans.n_no_calls_total = n_no_calls_total;
     ans.n_bp_lost = n_bp_lost;
+    ans.n_gvcf_bp_lost = n_gvcf_bp_lost;
+    ans.n_gvcf_calls_lost = n_gvcf_calls_lost;
+    ans.n_gvcf_bp_total = n_gvcf_bp_total;
+    ans.n_gvcf_calls_total = n_gvcf_calls_total;
 
     return Status::OK();
 }
