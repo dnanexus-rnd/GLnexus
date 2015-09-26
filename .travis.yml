@@ -10,9 +10,9 @@ addons:
     packages:
       - libjemalloc-dev
       - libsnappy-dev
+      - libc6-dbg
 
 before_install:
-  - chmod u+x .travis/before_install.sh
   - .travis/before_install.sh
 
 script:
@@ -20,11 +20,14 @@ script:
   - cmake --version
   - gcc --version
   # Build and run unit tests
-  - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Coverage . && make && ./unit_tests
+  - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Coverage . && make -j $(nproc) && ./unit_tests
   # Build again in Release mode. This is not redundant because some warnings
   # we've set to errors are detected only when the compiler is optimizing.
   # http://stackoverflow.com/q/11061970
-  - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release && make
+  - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release && make -j $(nproc)
+  # Run tests under valgrind (errors don't fail the build for now)
+  - .travis/install_valgrind.sh
+  - valgrind --leak-check=full --error-exitcode=1 ./unit_tests || true
 
 # Encrypted Github credential (using yifei's account)
 env:

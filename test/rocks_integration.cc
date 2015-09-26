@@ -68,11 +68,13 @@ TEST_CASE("RocksDB open/initialize states") {
     REQUIRE(db->get(coll, "foo", v).ok());
     REQUIRE(v == "bar");
 
+    data.reset();
     db.reset();
 
     // attempt to initialize an already-existing database
     s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.bad());
+    db.reset();
 
     // open read-only
     s = RocksKeyValue::Open(dbPath, db, RocksKeyValue::OpenMode::READ_ONLY);

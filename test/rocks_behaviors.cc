@@ -94,6 +94,7 @@ TEST_CASE("Basic operations on RocksDB") {
       REQUIRE(value == "xyz");
   }
   
+  delete coll;
   delete db;
 
   // destroy the database, so we can reuse the path

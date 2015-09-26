@@ -14,6 +14,8 @@ using CollectionHandle = void*;
 /// In-order iterator over records in a collection
 class Iterator {
 public:
+    virtual ~Iterator() = default;
+
     /// Update key and value with the next record and return OK. Return
     /// NotFound if there are no remaining records, or any error code
     virtual Status next(std::string& key, std::string& value) = 0;
@@ -22,6 +24,8 @@ public:
 /// A DB snapshot providing consistent multiple reads if possible
 class Reader {
 public:
+    virtual ~Reader() = default;
+
     /// Get the value corresponding to the key and return OK. Return NotFound
     /// if no corresponding record exists in the collection, or any error code
     virtual Status get(CollectionHandle coll, const std::string& key, std::string& value) const = 0;
@@ -37,6 +41,8 @@ public:
 /// A batch of writes to apply atomically if possible
 class WriteBatch {
 public:
+    virtual ~WriteBatch() = default;
+
     virtual Status put(CollectionHandle coll, const std::string& key, const std::string& value) = 0;
     //virtual Status delete(Collection* coll, const std::string& key) = 0;
 
@@ -53,8 +59,7 @@ public:
 /// Reader or WriteBatch object is used.
 class DB : public Reader {
 public:
-    // virtual destructor, needed so we could customize the database close routine.
-    virtual ~DB() {};
+    virtual ~DB() = default;
 
     /// Get the handle to a collection, or return NotFound.
     virtual Status collection(const std::string& name, CollectionHandle& coll) const = 0;

@@ -223,7 +223,7 @@ TEST_CASE("BCFKeyValueData initialization") {
 
 TEST_CASE("BCFKeyValueData::import_gvcf") {
     KeyValueMem::DB db({});
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    vector<pair<string,uint64_t>> contigs = {make_pair<string,uint64_t>("21", 1000000)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());

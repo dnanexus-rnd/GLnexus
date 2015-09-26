@@ -24,6 +24,8 @@ namespace GLnexus {
 class Metadata {
 
 public:
+    virtual ~Metadata() = default;
+
     /// Get the reference contigs.
     ///
     /// The indices of the vector are the "rid" used in range()
@@ -72,6 +74,8 @@ public:
 /// responsible for any suitable caching.
 class BCFData {
 public:
+    virtual ~BCFData() = default;
+
     /// Retrieve the BCF header for a data set.
     virtual Status dataset_header(const std::string& dataset,
                                   std::shared_ptr<const bcf_hdr_t>& hdr) const = 0;
