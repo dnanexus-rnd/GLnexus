@@ -108,6 +108,7 @@ void help_load(const char* prog) {
     cerr << "usage: " << prog << " load [options] /db/path sample.gvcf[.gz] [sample2.gvcf[.gz] ...]" << endl
          << "Loads gVCF file(s) into an existing database. The data set name will be derived from" << endl
          << "the gVCF filename. It can be overridden with --dataset if loading only one gVCF."
+         << "If the final argument is - then gVCF filenames are read from standard input."
          << endl;
 }
 
@@ -165,6 +166,14 @@ int main_load(int argc, char *argv[]) {
         return 1;
     }
 
+    if (gvcfs[gvcfs.size()-1] == "-") {
+        // read list of filenames from stdin
+        gvcfs.erase(gvcfs.end()-1);
+        for (string fn; std::getline(cin, fn);) {
+            gvcfs.push_back(fn);
+        }
+    }
+
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
@@ -202,6 +211,11 @@ int main_load(int argc, char *argv[]) {
                         lock_guard<mutex> lock(mu);
                         samples_loaded.insert(samples.begin(), samples.end());
                         datasets_loaded.insert(dataset);
+                        size_t n = datasets_loaded.size();
+                        if (n % 100 == 0) {
+                            cout << n << "..." << endl;
+                            cout.flush();
+                        }
                     }
                     return ls;
                 });

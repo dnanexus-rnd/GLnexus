@@ -8,7 +8,14 @@
     {
       "name": "gvcf",
       "class": "array:file",
+      "optional": true,
       "patterns": ["*.gvcf.gz", "*.g.vcf.gz", "*.gvcf", "*.g.vcf"]
+    },
+    {
+      "name": "gvcf_tar",
+      "class": "file",
+      "optional": true,
+      "patterns": ["*.tar"]
     },
     {
       "name": "ranges_to_genotype",
@@ -35,6 +42,10 @@
       "name": "db",
       "class": "file",
       "type": "GLnexus_db"
+    },
+    {
+      "name": "db_load_log",
+      "class": "file"
     }
   ],
   "runSpec": {

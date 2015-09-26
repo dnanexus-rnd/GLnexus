@@ -15,6 +15,7 @@
 #include "rocksdb/write_batch.h"
 #include "rocksdb/table.h"
 #include "rocksdb/memtablerep.h"
+#include "rocksdb/cache.h"
 
 namespace GLnexus {
 namespace RocksKeyValue {
@@ -55,17 +56,35 @@ static Status convertStatus(const rocksdb::Status &s)
 }
 
 // Reference for RocksDB tuning: https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
+// TODO: instrument for grid search over:
+//       - memtable budget
+//       - file size multiplier
+//       - level/universal compaction
+//       - compression per level
+//       - block size
 
 void ApplyColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
     // level compaction, 1GiB memtable budget
     opts.OptimizeLevelStyleCompaction(1024 * 1024 * 1024);
-
+    // opts.level0_slowdown_writes_trigger = 16;
+    // opts.level0_stop_writes_trigger = 32;
+    // speeds ingestion but slows reads:
+    // opts.target_file_size_multiplier = 4;
+    //for (size_t i = 0; i < opts.compression_per_level.size(); i++) {
+    //    if (opts.compression_per_level[i] != rocksdb::kNoCompression) {
+    //        opts.compression_per_level[i] = rocksdb::kLZ4Compression;
+    //    }
+    //}
     // compress all files in 64KiB blocks with LZ4
     opts.compression_per_level.clear();
     opts.compression = rocksdb::kLZ4Compression;
+
     rocksdb::BlockBasedTableOptions bbto;
-    bbto.block_size = 64 * 1024;
     bbto.format_version = 2;
+    bbto.block_size = 64 * 1024;
+    // TODO: shrink RocksDB block cache when we have higher-level caching
+    bbto.block_cache = rocksdb::NewLRUCache(1024 * 1024 * 1024);
+
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 }
 
@@ -73,6 +92,7 @@ void ApplyDBOptions(rocksdb::Options& opts) {
     ApplyColumnFamilyOptions(static_cast<rocksdb::ColumnFamilyOptions&>(opts));
 
     opts.max_open_files = -1;
+    // opts.delayed_write_rate = 4 * 1024 * 1024;
 
     // reserve capacity to absorb parallelized bulk loads
     opts.max_background_compactions = std::min(std::thread::hardware_concurrency(), 16U);

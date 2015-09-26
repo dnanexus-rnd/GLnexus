@@ -4,7 +4,7 @@ main() {
     set -ex -o pipefail
 
     # log detailed utilization
-    dstat -cmdn 5 &
+    dstat -cmdn 10 &
 
     # install dependencies
     sudo rm -f /etc/apt/apt.conf.d/99dnanexus
@@ -20,14 +20,20 @@ main() {
     sudo ldconfig
 
     # download inputs
-    dx-download-all-inputs --parallel
+    dx-download-all-inputs --parallel --except gvcf_tar
+    if [ -n "$gvcf_tar" ]; then
+        mkdir -p in/gvcf
+        dx cat "$gvcf_tar" | tar x -C in/gvcf --strip-components=1
+    fi
+    find in/gvcf -type f > all_gvcfs.txt
+    wc -l all_gvcfs.txt
 
     # initialize and load database
     glnexus_cli init GLnexus.db $(find in/gvcf -type f | head -n 1)
-    date
-    find in/gvcf -type f | xargs -n 1000000 -t time glnexus_cli load GLnexus.db
+    cat all_gvcfs.txt | time glnexus_cli load GLnexus.db -
     ls -lh GLnexus.db
-    date
+    mkdir -p out/db_load_log
+    cp GLnexus.db/LOG "out/db_load_log/${output_name}.LOG"
 
     # genotype specified ranges
     if [ "${#ranges_to_genotype[@]}" -gt "0" ]; then
