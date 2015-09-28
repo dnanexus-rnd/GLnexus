@@ -37,7 +37,7 @@ public:
 
 
     /// Genotype a set of samples at the given sites, producing a BCF file.
-    Status genotype_sites(const genotyper_config& cfg, const std::string& sampleset, const std::vector<unified_site>& sites, const std::string& filename);
+    Status genotype_sites(const genotyper_config& cfg, const std::string& sampleset, const std::vector<unified_site>& sites, const std::string& filename, consolidated_loss& dlosses);
 };
 
 }

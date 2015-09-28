@@ -3,6 +3,7 @@
 #include "alleles.h"
 #include "genotyper.h"
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <assert.h>
 #include <sstream>
@@ -140,7 +141,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     return Status::OK();
 }
 
-Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples, datasets;
     S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
@@ -168,6 +169,9 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         return Status::Failure("bcf_hdr_sync");
     }
 
+    // safeguard against update_genotypes failure from improper header
+    assert(bcf_hdr_nsamples(hdr) == samples->size());
+
     // open output BCF file
     unique_ptr<vcfFile, void(*)(vcfFile*)> outfile(bcf_open(filename.c_str(), "wb"), [](vcfFile* f) { bcf_close(f); });
     if (!outfile) {
@@ -177,16 +181,23 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         return Status::IOError("bcf_hdr_write", filename);
     }
 
+    // Make vector of sample_names for genotype_site and loss accounting
+    vector<string> sample_names(samples->begin(), samples->end());
+
     // for each site
     for (const auto& site : sites) {
         // compute genotypes
         shared_ptr<bcf1_t> site_bcf;
-        S(genotype_site(cfg, body_->data_, site, *samples, *datasets, hdr.get(), site_bcf));
+
+        consolidated_loss losses_for_site;
+        S(genotype_site(cfg, body_->data_, site, sample_names, *datasets, hdr.get(), site_bcf, losses_for_site));
 
         // write out a BCF record
         if (bcf_write(outfile.get(), hdr.get(), site_bcf.get()) != 0) {
             return Status::IOError("bcf_write", filename);
         }
+
+        merge_loss_stats(losses_for_site, dlosses);
     }
     // TODO: for very large sample sets, bucket cache-friendliness might be
     // improved by genotyping in grid squares of N>1 sites and M>1 samples

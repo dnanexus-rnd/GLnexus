@@ -23,4 +23,20 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
     return Status::OK();
 }
 
+
+Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest) {
+
+    Status s;
+    for (auto& sample_stats : src) {
+        UNPAIR(sample_stats, sample, src_stats)
+        auto target = dest.find(sample);
+        if (target == dest.end()) {
+            // sample not found in destination
+            dest.insert(make_pair(sample, src_stats));
+        } else {
+            target->second += src_stats;
+        }
+    }
+    return Status::OK();
+}
 }
