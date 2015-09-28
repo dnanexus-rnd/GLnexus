@@ -8,6 +8,9 @@
 #include <memory>
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
+#include <iostream>
+#include <assert.h>
 #include <vcf.h>
 #include <mutex>
 
@@ -185,8 +188,89 @@ struct unified_site {
     std::vector<float> observation_count;
     //std::vector<float> genotype_prior;
 
+    bool operator==(const unified_site& rhs) const noexcept{ return pos == rhs.pos && alleles == alleles && observation_count == observation_count; }
+    bool operator<(const unified_site& rhs) const noexcept{ return pos < rhs.pos; }
+    bool operator<=(const unified_site& rhs) const noexcept{ return pos <= rhs.pos; }
+
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 };
+
+struct loss_stats {
+    int n_calls_total=0, n_bp_total=0;
+    int n_gvcf_calls_total=0, n_gvcf_bp_total=0;
+    int n_no_calls_total = 0;
+
+    // captures loss of both vcf entries and gvcf entries
+    int n_calls_lost=0, n_bp_lost=0;
+
+    // loss specific to gvcf entries
+    int n_gvcf_calls_lost=0, n_gvcf_bp_lost=0;
+
+    // Merges another loss_stats and increment the count
+    // variables accordingly
+    void operator+=(const loss_stats& loss) {
+        n_calls_total += loss.n_calls_total;
+        n_bp_total += loss.n_bp_total;
+
+        n_gvcf_calls_total += loss.n_gvcf_calls_total;
+        n_gvcf_bp_total += loss.n_gvcf_bp_total;
+
+        n_calls_lost += loss.n_calls_lost;
+        n_bp_lost += loss.n_bp_lost;
+
+        n_gvcf_calls_lost += loss.n_gvcf_calls_lost;
+        n_gvcf_bp_lost += loss.n_gvcf_bp_lost;
+
+        n_no_calls_total += loss.n_no_calls_total;
+    }
+
+    std::string str() const noexcept {
+        std::ostringstream ans;
+
+        ans << n_no_calls_total << " no call(s).\n";
+
+        // stop here if no no calls
+        if (!n_no_calls_total)
+            return ans.str();
+
+        ans << "This is made up of a loss of " << n_calls_lost << " original call(s) which cover " << n_bp_lost << " bp.\n";
+        ans << "The loss is " <<  std::setprecision(3) << prop_calls_lost() << "% of " << n_calls_total << " calls; or " << prop_bp_lost() << "% of " << n_bp_total << " bp processed from the original dataset(s).\n";
+
+        ans << "Looking at gvcf entries, there is a loss of " << n_gvcf_calls_lost << " call(s) which cover " << n_gvcf_bp_lost << " bp.\n";
+        ans << "The loss is " << prop_gvcf_calls_lost() << "% of " << n_gvcf_calls_total << " calls; or " << prop_gvcf_bp_lost() << "% of " << n_gvcf_bp_total << " bp of gvcf entries processed.\n";
+
+
+        return ans.str();
+    }
+
+    // Returns proportion of calls lost as a percentage
+    float prop_calls_lost() const noexcept {
+        if (!n_calls_total) return 0;
+        return n_calls_lost / (float) n_calls_total * 100;
+    }
+
+    // Returns proportion of bp coverage lost as a percentage
+    float prop_bp_lost() const noexcept {
+        if (!n_bp_total) return 0;
+        return n_bp_lost / (float) n_bp_total * 100;
+    }
+
+    // Returns proportion of gvcf bp coverage lost as a percentage
+    float prop_gvcf_bp_lost() const noexcept {
+        if (!n_gvcf_bp_total) return 0;
+        return n_gvcf_bp_lost / (float) n_gvcf_bp_total * 100;
+    }
+
+    // Returns proportion of gvcf calls lost as a percentage
+    float prop_gvcf_calls_lost() const noexcept {
+        if (!n_gvcf_calls_total) return 0;
+        return n_gvcf_calls_lost / (float) n_gvcf_calls_total * 100;
+    }
+};
+
+// per-sample loss_stats
+using consolidated_loss = std::map<std::string, loss_stats>;
+Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest);
 
 // Statistics collected during range queries
 struct StatsRangeQuery {
@@ -220,7 +304,6 @@ struct StatsRangeQuery {
         return os.str();
     }
 };
-
 
 } //namespace GLnexus
 

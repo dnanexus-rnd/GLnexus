@@ -161,6 +161,7 @@ if (test)
                  test/htslib_behaviors.cc
                  test/rocks_behaviors.cc
                  test/types.cc
+                 test/genotyper.cc
                  test/service.cc
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc)

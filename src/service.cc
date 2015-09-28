@@ -3,6 +3,7 @@
 #include "alleles.h"
 #include "genotyper.h"
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <assert.h>
 #include <sstream>
@@ -210,10 +211,11 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     return discovered_alleles_refcheck(ans, body_->metadata_->contigs());
 }
 
-Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename) {
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples, datasets;
     S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
+    vector<string> sample_names(samples->begin(), samples->end());
 
     // create a BCF header for this sample set
     // TODO: memoize
@@ -229,7 +231,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             return Status::Failure("bcf_hdr_append", stm.str());
         }
     }
-    for (const auto& sample : *samples) {
+    for (const auto& sample : sample_names) {
         if (bcf_hdr_add_sample(hdr.get(), sample.c_str()) != 0) {
             return Status::Failure("bcf_hdr_add_sample", sample);
         }
@@ -237,6 +239,9 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     if (bcf_hdr_sync(hdr.get()) != 0) {
         return Status::Failure("bcf_hdr_sync");
     }
+
+    // safeguard against update_genotypes failure from improper header
+    assert(bcf_hdr_nsamples(hdr) == samples->size());
 
     // open output BCF file
     unique_ptr<vcfFile, void(*)(vcfFile*)> outfile(bcf_open(filename.c_str(), "wb"), [](vcfFile* f) { bcf_close(f); });
@@ -249,7 +254,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;
-    vector<shared_ptr<bcf1_t>> results(sites.size());
+    vector<pair<shared_ptr<bcf1_t>,consolidated_loss>> results(sites.size());
     // ^^^ results to be filled by side-effect in the individual tasks below.
     // We assume that by virtue of preallocating, no mutex is necessary to
     // use it as follows because writes and reads of individual elements are
@@ -261,11 +266,12 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 return Status::Invalid();
             }
             shared_ptr<bcf1_t> bcf;
-            Status ls = genotype_site(cfg, body_->data_, sites[i], *samples, *datasets, hdr.get(), bcf);
+            consolidated_loss losses_for_site;
+            Status ls = genotype_site(cfg, body_->data_, sites[i], sample_names, *datasets, hdr.get(), bcf, losses_for_site);
             if (ls.bad()) {
                 return ls;
             }
-            results[i] = move(bcf);
+            results[i] = make_pair(move(bcf),losses_for_site);
             return ls;
         });
         statuses.push_back(move(fut));
@@ -281,9 +287,9 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         Status s_i(statuses[i].get());
         // always retrieve the result BCF record, if any, to ensure we'll free
         // the memory it takes ASAP
-        shared_ptr<bcf1_t> bcf_i;
-        bcf_i = move(results[i]);
-        assert(!results[i]);
+        shared_ptr<bcf1_t> bcf_i = move(results[i].first);
+        assert(!results[i].first);
+        consolidated_loss losses_for_site = results[i].second;
 
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
@@ -291,6 +297,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             if (bcf_write(outfile.get(), hdr.get(), bcf_i.get()) != 0) {
                 s = Status::IOError("bcf_write", filename);
             }
+            merge_loss_stats(losses_for_site, dlosses);
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort
             s = move(s_i);

@@ -508,7 +508,8 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio1"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio1"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -606,6 +607,25 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[4] == 0));
         REQUIRE(bcf_gt_allele(gt[5] == 1));
 
+        // validate loss information
+        auto loss1 = losses.find("trio1.ch");
+        REQUIRE(loss1 != losses.end());
+        loss_stats loss_ch = loss1->second;
+        REQUIRE(loss_ch.n_no_calls_total == 0);
+        REQUIRE(loss_ch.n_bp_lost == 0);
+
+        auto loss2 = losses.find("trio1.fa");
+        REQUIRE(loss2 != losses.end());
+        loss_stats loss_fa = loss2->second;
+        REQUIRE(loss_fa.n_no_calls_total == 0);
+        REQUIRE(loss_fa.n_bp_lost == 0);
+
+        auto loss3 = losses.find("trio1.mo");
+        REQUIRE(loss3 != losses.end());
+        loss_stats loss_mo = loss3->second;
+        REQUIRE(loss_mo.n_no_calls_total == 0);
+        REQUIRE(loss_mo.n_bp_lost == 0);
+
         free(gt);
     }
 
@@ -617,7 +637,8 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -749,6 +770,45 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[10]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[11]));
 
+        // validate loss information
+        auto loss1 = losses.find("trio1.ch");
+        REQUIRE(loss1 != losses.end());
+        loss_stats loss_ch = loss1->second;
+        REQUIRE(loss_ch.n_no_calls_total == 0);
+        REQUIRE(loss_ch.n_bp_lost == 0);
+
+        auto loss2 = losses.find("trio1.fa");
+        REQUIRE(loss2 != losses.end());
+        loss_stats loss_fa = loss2->second;
+        REQUIRE(loss_fa.n_no_calls_total == 0);
+        REQUIRE(loss_fa.n_bp_lost == 0);
+
+        auto loss3 = losses.find("trio1.mo");
+        REQUIRE(loss3 != losses.end());
+        loss_stats loss_mo = loss3->second;
+        REQUIRE(loss_mo.n_no_calls_total == 0);
+        REQUIRE(loss_mo.n_bp_lost == 0);
+
+        auto loss4 = losses.find("trio2.ch");
+        REQUIRE(loss4 != losses.end());
+        loss_stats loss_ch2 = loss4->second;
+        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_bp_lost == 0);
+
+        int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
+
+        auto loss5 = losses.find("trio2.fa");
+        REQUIRE(loss5 != losses.end());
+        loss_stats loss_fa2 = loss5->second;
+        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
+
+        auto loss6 = losses.find("trio2.mo");
+        REQUIRE(loss6 != losses.end());
+        loss_stats loss_mo2 = loss6->second;
+        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
+
         free(gt);
     }
 
@@ -760,7 +820,8 @@ TEST_CASE("genotyper placeholder") {
         s = unified_sites(als, sites);
         REQUIRE(s.ok());
 
-        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio2"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("discover_alleles_trio2"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -859,6 +920,26 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[4]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[5]));
 
+        auto loss4 = losses.find("trio2.ch");
+        REQUIRE(loss4 != losses.end());
+        loss_stats loss_ch2 = loss4->second;
+        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_bp_lost == 0);
+
+        int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
+
+        auto loss5 = losses.find("trio2.fa");
+        REQUIRE(loss5 != losses.end());
+        loss_stats loss_fa2 = loss5->second;
+        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
+
+        auto loss6 = losses.find("trio2.mo");
+        REQUIRE(loss6 != losses.end());
+        loss_stats loss_mo2 = loss6->second;
+        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
+
         free(gt);
     }
 }
@@ -907,7 +988,8 @@ TEST_CASE("gVCF genotyper") {
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
-        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -959,6 +1041,15 @@ TEST_CASE("gVCF genotyper") {
         REQUIRE(nGT == 2);
         REQUIRE(bcf_gt_is_missing(gt[0]));
         REQUIRE(bcf_gt_is_missing(gt[1]));
+
+        auto loss = losses.find("NA12878");
+        REQUIRE(loss != losses.end());
+        loss_stats loss_na = loss->second;
+        REQUIRE(loss_na.n_no_calls_total == 2);
+        REQUIRE(loss_na.n_bp_lost == 4);
+        REQUIRE(loss_na.n_calls_lost == 4);
+        REQUIRE(loss_na.n_gvcf_calls_lost == 4);
+        REQUIRE(loss_na.n_gvcf_bp_lost == 4);
     }
 
     SECTION("require depth > 12") {
@@ -994,7 +1085,9 @@ TEST_CASE("gVCF genotyper") {
 
         genotyper_config cfg;
         cfg.required_dp = 13;
-        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+
+        consolidated_loss losses;
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -1046,6 +1139,15 @@ TEST_CASE("gVCF genotyper") {
         REQUIRE(nGT == 2);
         REQUIRE(bcf_gt_is_missing(gt[0]));
         REQUIRE(bcf_gt_is_missing(gt[1]));
+
+        auto loss = losses.find("NA12878");
+        REQUIRE(loss != losses.end());
+        loss_stats loss_d12 = loss->second;
+        REQUIRE(loss_d12.n_no_calls_total == 4);
+        REQUIRE(loss_d12.n_bp_lost == 6);
+        REQUIRE(loss_d12.n_calls_lost == 4);
+        REQUIRE(loss_d12.n_gvcf_bp_lost == 2);
+        REQUIRE(loss_d12.n_gvcf_calls_lost == 2);
     }
 
 
@@ -1062,7 +1164,8 @@ TEST_CASE("gVCF genotyper") {
 
         genotyper_config cfg;
         cfg.required_dp = 9;
-        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
+        consolidated_loss losses;
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
         REQUIRE(s.ok());
 
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
@@ -1089,5 +1192,14 @@ TEST_CASE("gVCF genotyper") {
         REQUIRE(bcf_gt_allele(gt[0]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[1]));
         // TODO consider normalizing half-calls so that the missing allele is always first (or second)
+
+        auto loss = losses.find("NA12878");
+        REQUIRE(loss != losses.end());
+        loss_stats loss_d9 = loss->second;
+        REQUIRE(loss_d9.n_no_calls_total == 1);
+        REQUIRE(loss_d9.n_bp_lost == 2);
+        REQUIRE(loss_d9.n_calls_lost == 1);
+        REQUIRE(loss_d9.n_gvcf_calls_lost == 0);
+        REQUIRE(loss_d9.n_gvcf_bp_lost == 0);
     }
 }
