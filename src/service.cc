@@ -170,9 +170,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     }
 
     // safeguard against update_genotypes failure from improper header
-    if(bcf_hdr_nsamples(hdr) != samples->size()){
-        return Status::Failure("Mismatch found in number of samples in output bcf header");
-    }
+    assert(bcf_hdr_nsamples(hdr) == samples->size());
 
     // open output BCF file
     unique_ptr<vcfFile, void(*)(vcfFile*)> outfile(bcf_open(filename.c_str(), "wb"), [](vcfFile* f) { bcf_close(f); });
@@ -184,7 +182,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     }
 
     // Make vector of sample_names for genotype_site and loss accounting
-    vector<string> sample_names((*samples).begin(), (*samples).end());
+    vector<string> sample_names(samples->begin(), samples->end());
 
     // for each site
     for (const auto& site : sites) {

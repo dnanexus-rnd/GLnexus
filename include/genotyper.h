@@ -59,7 +59,7 @@ private:
     bool is_finalized = false;
 };
 
-using LossTrackers = std::map<std::string, LossTracker>;
+using LossTrackers = std::vector<LossTracker>;
 
 } // namespace GLnexus
 #endif
