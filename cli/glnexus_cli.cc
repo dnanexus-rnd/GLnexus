@@ -462,12 +462,14 @@ int main_genotype(int argc, char *argv[]) {
             H("genotype sites",
               svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-"), losses));
 
-            cerr << "\nReporting loss for " << sites.size() << " site(s) genotyped for "<< losses.size() << " sample(s)." << endl;
+            if (losses.size() < 100) {
+                cerr << "\nReporting loss for " << sites.size() << " site(s) genotyped for "<< losses.size() << " sample(s)." << endl;
 
-            cerr << "============" << endl;
-            for (auto& loss : losses) {
-                cerr << "Sample " << loss.first << ": ";
-                cerr << loss.second.str() << endl;
+                cerr << "============" << endl;
+                for (auto& loss : losses) {
+                    cerr << "Sample " << loss.first << ": ";
+                    cerr << loss.second.str() << endl;
+                }
             }
         }
 
