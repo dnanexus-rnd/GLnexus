@@ -294,6 +294,10 @@ public:
         ApplyDBOptions(options);
         options.create_if_missing = false;
 
+        if (mode == OpenMode::BULK_LOAD) {
+            options.disableDataSync = true;
+        }
+
         // detect the database's column families
         std::vector<std::string> column_family_names;
         rocksdb::Status s = rocksdb::DB::ListColumnFamilies(options, dbPath, &column_family_names);
@@ -305,6 +309,9 @@ public:
             rocksdb::ColumnFamilyOptions colopts;
             ApplyColumnFamilyOptions(colopts);
             if (mode == OpenMode::BULK_LOAD) {
+                // For bulk load, use RocksDB's vector memtable implementation
+                // instead of the default skiplist. The vector has faster
+                // insertion but much slower lookup.
                 colopts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
             }
             rocksdb::ColumnFamilyDescriptor cfd;
