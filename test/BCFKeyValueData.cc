@@ -231,9 +231,16 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
 
-    SECTION("* sample set") {
+    SECTION("empty all_samples_sampleset") {
         shared_ptr<const set<string>> all;
         Status s = cache->sampleset_samples("*", all);
+        REQUIRE(s == StatusCode::NOT_FOUND);
+
+        string sampleset;
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        s = cache->sampleset_samples(sampleset, all);
         REQUIRE(s.ok());
         REQUIRE(all->size() == 0);
     }
@@ -248,6 +255,13 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
         shared_ptr<const set<string>> all;
         s = cache->sampleset_samples("*", all);
+        REQUIRE(s == StatusCode::NOT_FOUND);
+
+        string sampleset;
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        s = cache->sampleset_samples(sampleset, all);
         REQUIRE(s.ok());
         REQUIRE(all->size() == 1);
         REQUIRE(*(all->begin()) == "NA12878");

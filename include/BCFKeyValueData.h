@@ -37,6 +37,7 @@ public:
     Status sampleset_samples(const std::string& sampleset,
                              std::shared_ptr<const std::set<std::string> >& ans) const override;
     Status sample_dataset(const std::string& sample, std::string& ans) const override;
+    Status all_samples_sampleset(std::string& ans) override;
 
     // statistics
     std::shared_ptr<StatsRangeQuery> getRangeStats();
