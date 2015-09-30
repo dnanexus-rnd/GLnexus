@@ -11,9 +11,6 @@
 #include <math.h>
 #include <thread>
 #include <mutex>
-#include <sys/time.h>
-#include "fcmm.hpp"
-#include "khash.h"
 using namespace std;
 
 namespace GLnexus {
@@ -134,21 +131,9 @@ struct ActiveMetadata {
     }
 };
 
-// std::hash<string> using the string hash function from htslib
-class KStringHash {
-public:
-    std::size_t operator()(string const& s) const  {
-        return (size_t) kh_str_hash_func(s.c_str());
-    }
-};
-using BCFHeaderCache = fcmm::Fcmm<string,shared_ptr<const bcf_hdr_t>,hash<string>,KStringHash>;
-// this is not a hard limit but the FCMM performance degrades if it's too low
-const size_t BCF_HEADER_CACHE_SIZE = 65536;
-
 // pImpl idiom
 struct BCFKeyValueData_body {
     KeyValue::DB* db;
-    unique_ptr<BCFHeaderCache> header_cache;
     std::unique_ptr<BCFBucketRange> rangeHelper;
     std::mutex mutex;
     ActiveMetadata amd;
@@ -264,7 +249,6 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
     }
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
-    ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
     S(BCFBucketCache::Open(db, ans->body_->bucketCache));
     return Status::OK();
 }
@@ -306,10 +290,8 @@ Status BCFKeyValueData::contigs(vector<pair<string,size_t> >& ans) const {
     return Status::OK();
 }
 
-// used by both sampleset_samples and all_samples_sampleset
-static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
-                                         const string& sampleset,
-                                         shared_ptr<const set<string> >& ans) {
+Status BCFKeyValueData::sampleset_samples(const string& sampleset,
+                                          shared_ptr<const set<string> >& ans) const {
     Status s;
     KeyValue::CollectionHandle coll;
     S(body_->db->collection("sampleset",coll));
@@ -352,18 +334,7 @@ static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
     ans = samples;
 
     return Status::OK();
-}
 
-Status BCFKeyValueData::sampleset_samples(const string& sampleset,
-                                          shared_ptr<const set<string> >& ans) const {
-    if (sampleset == "*") {
-        // * is a special reserved sample set representing all available
-        // samples in the database. It must be hidden from callers because
-        // it's mutable, while sample sets are supposed to be immutable.
-        return Status::NotFound();
-    }
-
-    return sampleset_samples_internal(body_.get(), sampleset, ans);
 }
 
 Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const {
@@ -371,63 +342,6 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
     KeyValue::CollectionHandle coll;
     S(body_->db->collection("sample_dataset",coll));
     return body_->db->get(coll, sample, ans);
-}
-
-Status BCFKeyValueData::all_samples_sampleset(string& ans) {
-    // TODO: reuse the last-created all-samples sample set if no samples have
-    // been added or removed since its creation
-    Status s;
-
-    // Create a new sample set from all the samples in the special "*" sample
-    // set. The name of the new sample set is based on the current time (since
-    // epoch in microseconds). We create this under an optimistic transaction
-    // loop ensuring uniqueness.
-    do {
-        // create timestamp-based sample set name
-        timeval tv;
-        if (gettimeofday(&tv, nullptr) != 0) {
-            return Status::Failure("BCFKeyValueData::all_samples_sampleset gettimeofday");
-        }
-        uint64_t usec = uint64_t(tv.tv_sec)*1000000 + tv.tv_usec;
-        ostringstream buf;
-        buf << "*@" << usec;
-        ans = buf.str();
-
-        // read all the sample names from the special * sample set
-        shared_ptr<const set<string>> samples;
-        S(sampleset_samples_internal(body_.get(), "*", samples));
-
-        // prepare a write batch for the new sample set
-        KeyValue::CollectionHandle coll;
-        S(body_->db->collection("sampleset",coll));
-        unique_ptr<KeyValue::WriteBatch> wb;
-        S(body_->db->begin_writes(wb));
-        S(wb->put(coll, ans, string()));
-        for (const auto& sample : *samples) {
-            string key = ans + string(1,'\0') + sample;
-            assert(key.size() == ans.size()+sample.size()+1);
-            S(wb->put(coll, key, string()));
-        }
-
-        {
-            // We now commit the write batch so long as a sample set with this
-            // name doesn't already exist. We perform this conditional put
-            // under the mutex to provide exclusion from any other thread also
-            // committing a sample set. We also have exclusion from the final
-            // commit of new samples although we don't really need that.
-            string ignore;
-            lock_guard<mutex>(body_->mutex);
-            if (body_->db->get(coll, ans, ignore) == StatusCode::NOT_FOUND) {
-                return wb->commit();
-            }
-        }
-
-        // Fall-through: there's already a sample set with the same timestamp-
-        // based name. Try again until success.
-        this_thread::yield();
-    } while(true);
-    assert(false);
-    return Status::Failure();
 }
 
 shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
@@ -439,13 +353,7 @@ shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
 
 Status BCFKeyValueData::dataset_header(const string& dataset,
                                        shared_ptr<const bcf_hdr_t>& hdr) const {
-    auto cached = body_->header_cache->end();
-    if ((cached = body_->header_cache->find(dataset)) != body_->header_cache->end()) {
-        // Return memoized header
-        hdr = cached->second;
-        assert(hdr);
-        return Status::OK();
-    }
+    // TODO: cache headers
 
     // Retrieve the header
     Status s;
@@ -459,9 +367,6 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     int consumed;
     S(BCFReader::read_header(data.c_str(), data.size(), consumed, ans));
     hdr = ans;
-
-    // Memoize it
-    body_->header_cache->insert(make_pair(dataset, hdr));;
     return Status::OK();
 }
 
@@ -487,8 +392,13 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
 
 
 // Parse the records and extract those overlapping the query range
+//
+// Note: a subset of the bucket records will match the query. We
+// make an in-memory copy of these records, because the returned type
+// is for mutable BCF records. The reason for this, is that downstream
+// processing uses htslib functions that take non-const BCF records.
 static Status scan_bucket(
-    std::shared_ptr<std::vector<std::shared_ptr<bcf1_t> > > bucket,
+    std::shared_ptr<const std::vector<std::shared_ptr<const bcf1_t> > > bucket,
     const range& query,
     StatsRangeQuery &srq,
     vector<shared_ptr<bcf1_t> >& records)
@@ -497,8 +407,10 @@ static Status scan_bucket(
         srq.nBCFRecordsRead++;
         range vt_rng(rec.get());
         if (query.overlaps(vt_rng)) {
-            records.push_back(rec);
+            bcf1_t *rec_dup = bcf_dup(rec.get());
+            records.push_back(make_shared<bcf1_t>rec_dup);
         }
+        vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
 
     return Status::OK();
@@ -536,7 +448,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         //cout << "scanning bucket " << r.str() << endl;
         string key = body_->rangeHelper->gen_key(dataset, r);
 
-        shared_ptr<vector<shared_ptr<bcf1_t> > > bucket;
+        std::shared_ptr<const std::vector<std::shared_ptr<const bcf1_t> > > bucket;
         s = body_->bucketCache->get_bucket(key, dataset, r, bucket);
         if (s != StatusCode::NOT_FOUND) {
             scan_bucket(bucket, query, accu, records);
