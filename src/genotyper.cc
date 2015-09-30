@@ -197,7 +197,7 @@ Status LossTracker::get(loss_stats& ans) const noexcept {
 // Update the loss_stats data structure with call information for
 // original calls associated with a unified site
 #define IS_CALLED(cfg,gt_i) (!bcf_gt_is_missing(gt_i) &&                 \
-                             (cfg.unrepr_symbolic_allele.empty() ||      \
+                             (cfg.loss_symbolic_allele.empty() ||      \
                               bcf_gt_allele(gt_i) < site.alleles.size()))
 static Status update_orig_calls_for_loss(const genotyper_config& cfg,
                                          const unified_site& site,
@@ -270,7 +270,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
         if (p != site.unification.end()) {
             // found a matching allele in the unified site
             a = p->second;
-        } else if (!cfg.unrepr_symbolic_allele.empty()) {
+        } else if (!cfg.loss_symbolic_allele.empty()) {
             // no matching allele in the unified site. if we actually observe
             // a call of this allele, we will (if so configured) emit a
             // symbolic ALT allele distinct from no-call. The symbolic allele
@@ -319,7 +319,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
             // accurately render the situation.
             genotypes[2*ij.second]
                 = genotypes[2*ij.second+1]
-                = (cfg.unrepr_symbolic_allele.empty()
+                = (cfg.loss_symbolic_allele.empty()
                         ? bcf_gt_missing
                         : bcf_gt_unphased(site.alleles.size()));
         }
@@ -386,9 +386,9 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
         c_alleles.push_back(allele.c_str());
     }
     string unrepr;
-    if (!cfg.unrepr_symbolic_allele.empty()) {
+    if (!cfg.loss_symbolic_allele.empty()) {
         // add an extra ALT entry for the "unrepresentable" symbolic allele
-        unrepr = "<" + cfg.unrepr_symbolic_allele + ">";
+        unrepr = "<" + cfg.loss_symbolic_allele + ">";
         c_alleles.push_back(unrepr.c_str());
     }
 

@@ -221,10 +221,10 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // TODO: memoize
     vector<string> hdr_lines;
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-    if (!cfg.unrepr_symbolic_allele.empty()) {
+    if (!cfg.loss_symbolic_allele.empty()) {
         // optional symbol to distinguish an "unrepresentable" allele from
         // other no-calls due to missing data
-        hdr_lines.push_back("##ALT=<ID=" + cfg.unrepr_symbolic_allele + ",Description=\"Unrepresentable allele from GLnexus\">");
+        hdr_lines.push_back("##ALT=<ID=" + cfg.loss_symbolic_allele + ",Description=\"Unrepresentable allele from GLnexus\">");
     }
     for (const auto& ctg : body_->metadata_->contigs()) {
         ostringstream stm;

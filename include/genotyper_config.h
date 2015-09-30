@@ -26,12 +26,12 @@ struct genotyper_config {
     /// By default, GLnexus emits no-calls (.) in such situations, which is
     /// the same thing that'd appear if the sample had no overlapping gVCF data
     /// at all. Sometimes it might be useful to distinguish these cases.
-    /// If unrepr_symbolic_allele is set to a symbolic allele such as "?" or
+    /// If loss_symbolic_allele is set to a symbolic allele such as "?" or
     /// "NON_REF", then GLnexus will add this symbolic allele to the ALT of
-    /// all output records, and calls of it indicate an unrepresentable allele
-    /// call as described above.
+    /// all output records, and calls of it indicate a "lost" allele call as
+    /// described above.
     /// The symbolic allele must not contain angle brackets or whitespace.
-    std::string unrepr_symbolic_allele;
+    std::string loss_symbolic_allele;
 
     genotyper_config() = default;
 };

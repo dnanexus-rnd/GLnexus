@@ -979,9 +979,9 @@ TEST_CASE("genotyper placeholder") {
     }
 
     // This is the 2trios test but with
-    // genotyper_config::unrepr_symbolic_allele turned on -- changes the
+    // genotyper_config::loss_symbolic_allele turned on -- changes the
     // representation of the pruned alleles
-    SECTION("unrepr_symbolic_allele") {
+    SECTION("loss_symbolic_allele") {
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
 
@@ -990,7 +990,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(s.ok());
 
         genotyper_config cfg;
-        cfg.unrepr_symbolic_allele = "?";
+        cfg.loss_symbolic_allele = "?";
         consolidated_loss losses;
         s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
         REQUIRE(s.ok());
