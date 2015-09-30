@@ -373,6 +373,9 @@ void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are"
          << "one-based, inclusive."
+         << "Options:"
+         << "--loss-symbolic-allele, -l: use a symbolic allele instead of no-call (.) to represent"
+         << "                            lost genotype calls"
          << endl;
 }
 
@@ -384,8 +387,11 @@ int main_genotype(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"loss-symbolic-allele", no_argument, 0, 'l'},
         {0, 0, 0, 0}
     };
+
+    bool loss_symbolic_allele = false;
 
     int c;
     optind = 2; // force optind past command positional argument
@@ -396,6 +402,10 @@ int main_genotype(int argc, char *argv[]) {
             case '?':
                 help_genotype(argv[0]);
                 exit(1);
+                break;
+
+            case 'l':
+                loss_symbolic_allele = true;
                 break;
 
             default:
@@ -458,9 +468,14 @@ int main_genotype(int argc, char *argv[]) {
             vector<GLnexus::unified_site> sites;
             H("unify sites", GLnexus::unified_sites(alleles, sites));
 
+            GLnexus::genotyper_config cfg;
+            if (loss_symbolic_allele) {
+                cfg.loss_symbolic_allele = "?";
+            }
+
             GLnexus::consolidated_loss losses;
             H("genotype sites",
-              svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-"), losses));
+              svc->genotype_sites(cfg, sampleset, sites, string("-"), losses));
 
             if (losses.size() < 100) {
                 cerr << "\nReporting loss for " << sites.size() << " site(s) genotyped for "<< losses.size() << " sample(s)." << endl;
