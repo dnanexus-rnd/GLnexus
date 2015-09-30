@@ -343,7 +343,7 @@ TEST_CASE("unified_sites placeholder") {
         vector<pair<string,size_t> > contigs;
         REQUIRE(data->contigs(contigs).ok());
 
-        REQUIRE(sites.size() == 5);
+        REQUIRE(sites.size() == 6);
 
         REQUIRE(sites[0].pos == range(0,1000,1001));
         REQUIRE(sites[0].alleles.size() == 2);
@@ -397,6 +397,16 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].observation_count.size() == 2);
         REQUIRE(sites[4].observation_count[0] == 3);
         REQUIRE(sites[4].observation_count[1] == 3);
+
+        REQUIRE(sites[5].pos == range(0,1200,1201));
+        REQUIRE(sites[5].alleles.size() == 2);
+        REQUIRE(sites[5].alleles[0] == "C");
+        REQUIRE(sites[5].alleles[1] == "A");
+        REQUIRE(sites[5].unification[make_pair(1200,string("C"))] == 0);
+        REQUIRE(sites[5].unification[make_pair(1200,string("A"))] == 1);
+        REQUIRE(sites[5].observation_count.size() == 2);
+        REQUIRE(sites[5].observation_count[0] == 3);
+        REQUIRE(sites[5].observation_count[1] == 3);
     }
 
     SECTION("2 trios") {
@@ -410,7 +420,7 @@ TEST_CASE("unified_sites placeholder") {
         vector<pair<string,size_t> > contigs;
         REQUIRE(data->contigs(contigs).ok());
 
-        REQUIRE(sites.size() == 5);
+        REQUIRE(sites.size() == 6);
 
         REQUIRE(sites[0].pos == range(0,1000,1001));
         REQUIRE(sites[0].alleles.size() == 2);
@@ -467,6 +477,16 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].observation_count.size() == 2);
         REQUIRE(sites[4].observation_count[0] == 3);
         REQUIRE(sites[4].observation_count[1] == 3);
+
+        REQUIRE(sites[5].pos == range(0,1200,1201));
+        REQUIRE(sites[5].alleles.size() == 2);
+        REQUIRE(sites[5].alleles[0] == "C");
+        REQUIRE(sites[5].alleles[1] == "A");
+        REQUIRE(sites[5].unification[make_pair(1200,string("C"))] == 0);
+        REQUIRE(sites[5].unification[make_pair(1200,string("A"))] == 1);
+        REQUIRE(sites[5].observation_count.size() == 2);
+        REQUIRE(sites[5].observation_count[0] == 3);
+        REQUIRE(sites[5].observation_count[1] == 3);
 
         // An allele from trio2 that would collapse sites[3] and sites[4] was
         // pruned.
@@ -770,6 +790,43 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[10]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[11]));
 
+        char* rnc = nullptr;
+        int rncsz = 0;
+        int nRNC = bcf_get_format_char(hdr.get(), record.get(), "RNC", &rnc, &rncsz);
+        REQUIRE(nRNC == 12);
+        REQUIRE(rncsz == 12);
+        REQUIRE(string(rnc,12) == ".........L.L");
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "A");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        REQUIRE(bcf_gt_is_missing(gt[6]));
+        REQUIRE(bcf_gt_is_missing(gt[7]));
+        REQUIRE(bcf_gt_is_missing(gt[8]));
+        REQUIRE(bcf_gt_is_missing(gt[9]));
+        REQUIRE(bcf_gt_is_missing(gt[10]));
+        REQUIRE(bcf_gt_is_missing(gt[11]));
+
+        nRNC = bcf_get_format_char(hdr.get(), record.get(), "RNC", &rnc, &rncsz);
+        REQUIRE(nRNC == 12);
+        REQUIRE(rncsz == 12);
+        REQUIRE(string(rnc,12) == "......MMMMMM");
+
+        free(gt);
+        free(rnc);
+
         // validate loss information
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
@@ -792,7 +849,7 @@ TEST_CASE("genotyper placeholder") {
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
         loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_no_calls_total == 2);
         REQUIRE(loss_ch2.n_bp_lost == 0);
 
         int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
@@ -800,18 +857,17 @@ TEST_CASE("genotyper placeholder") {
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_no_calls_total == 5);
         REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_no_calls_total == 5);
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
-
-        free(gt);
     }
 
+    // alleles discovered from all samples, genotyped only in trio2
     SECTION("trio2 with all alleles") {
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
@@ -923,7 +979,7 @@ TEST_CASE("genotyper placeholder") {
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
         loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_no_calls_total == 2);
         REQUIRE(loss_ch2.n_bp_lost == 0);
 
         int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
@@ -931,13 +987,13 @@ TEST_CASE("genotyper placeholder") {
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_no_calls_total == 5);
         REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_no_calls_total == 5);
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
