@@ -343,7 +343,7 @@ TEST_CASE("unified_sites placeholder") {
         vector<pair<string,size_t> > contigs;
         REQUIRE(data->contigs(contigs).ok());
 
-        REQUIRE(sites.size() == 5);
+        REQUIRE(sites.size() == 6);
 
         REQUIRE(sites[0].pos == range(0,1000,1001));
         REQUIRE(sites[0].alleles.size() == 2);
@@ -397,6 +397,16 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].observation_count.size() == 2);
         REQUIRE(sites[4].observation_count[0] == 3);
         REQUIRE(sites[4].observation_count[1] == 3);
+
+        REQUIRE(sites[5].pos == range(0,1200,1201));
+        REQUIRE(sites[5].alleles.size() == 2);
+        REQUIRE(sites[5].alleles[0] == "C");
+        REQUIRE(sites[5].alleles[1] == "A");
+        REQUIRE(sites[5].unification[make_pair(1200,string("C"))] == 0);
+        REQUIRE(sites[5].unification[make_pair(1200,string("A"))] == 1);
+        REQUIRE(sites[5].observation_count.size() == 2);
+        REQUIRE(sites[5].observation_count[0] == 3);
+        REQUIRE(sites[5].observation_count[1] == 3);
     }
 
     SECTION("2 trios") {
@@ -410,7 +420,7 @@ TEST_CASE("unified_sites placeholder") {
         vector<pair<string,size_t> > contigs;
         REQUIRE(data->contigs(contigs).ok());
 
-        REQUIRE(sites.size() == 5);
+        REQUIRE(sites.size() == 6);
 
         REQUIRE(sites[0].pos == range(0,1000,1001));
         REQUIRE(sites[0].alleles.size() == 2);
@@ -770,6 +780,30 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_gt_allele(gt[10]) == 0);
         REQUIRE(bcf_gt_is_missing(gt[11]));
 
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 2);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "A");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        // these are missing, not <?>, because there's no overlapping VCF
+        // record for trio2.
+        REQUIRE(bcf_gt_is_missing(gt[6]));
+        REQUIRE(bcf_gt_is_missing(gt[7]));
+        REQUIRE(bcf_gt_is_missing(gt[8]));
+        REQUIRE(bcf_gt_is_missing(gt[9]));
+        REQUIRE(bcf_gt_is_missing(gt[10]));
+        REQUIRE(bcf_gt_is_missing(gt[11]));
+
         // validate loss information
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
@@ -792,7 +826,7 @@ TEST_CASE("genotyper placeholder") {
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
         loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_no_calls_total == 2);
         REQUIRE(loss_ch2.n_bp_lost == 0);
 
         int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
@@ -800,18 +834,19 @@ TEST_CASE("genotyper placeholder") {
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_no_calls_total == 5);
         REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_no_calls_total == 5);
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
     }
 
+    // discovering alleles in all samples, genotyping only trio2
     SECTION("trio2 with all alleles") {
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
@@ -923,7 +958,7 @@ TEST_CASE("genotyper placeholder") {
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
         loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.n_no_calls_total == 0);
+        REQUIRE(loss_ch2.n_no_calls_total == 2);
         REQUIRE(loss_ch2.n_bp_lost == 0);
 
         int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
@@ -931,13 +966,229 @@ TEST_CASE("genotyper placeholder") {
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 3);
+        REQUIRE(loss_fa2.n_no_calls_total == 5);
         REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 3);
+        REQUIRE(loss_mo2.n_no_calls_total == 5);
+        REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
+
+        free(gt);
+    }
+
+    // This is the 2trios test but with
+    // genotyper_config::unrepr_symbolic_allele turned on -- changes the
+    // representation of the pruned alleles
+    SECTION("unrepr_symbolic_allele") {
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+        REQUIRE(s.ok());
+
+        vector<unified_site> sites;
+        s = unified_sites(als, sites);
+        REQUIRE(s.ok());
+
+        genotyper_config cfg;
+        cfg.unrepr_symbolic_allele = "?";
+        consolidated_loss losses;
+        s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
+        REQUIRE(s.ok());
+
+        unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
+        REQUIRE(bool(vcf));
+
+        shared_ptr<bcf_hdr_t> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+        REQUIRE(bool(hdr));
+
+        int nsamples = bcf_hdr_nsamples(hdr);
+        REQUIRE(nsamples == 6);
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 0)) == "trio1.ch");
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 1)) == "trio1.fa");
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 2)) == "trio1.mo");
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 3)) == "trio2.ch");
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 4)) == "trio2.fa");
+        REQUIRE(string(bcf_hdr_int2id(hdr.get(), BCF_DT_SAMPLE, 5)) == "trio2.mo");
+
+        unique_ptr<bcf1_t,void(*)(bcf1_t*)> record(bcf_init(), &bcf_destroy);
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "A");
+        REQUIRE(string(record->d.allele[1]) == "G");
+        REQUIRE(string(record->d.allele[2]) == "<?>");
+
+        int *gt = nullptr, gtsz = 0;
+        int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 1));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        REQUIRE(bcf_gt_allele(gt[6] == 0));
+        REQUIRE(bcf_gt_allele(gt[7] == 0));
+        REQUIRE(bcf_gt_allele(gt[8] == 0));
+        REQUIRE(bcf_gt_allele(gt[9] == 1));
+        REQUIRE(bcf_gt_allele(gt[10] == 0));
+        REQUIRE(bcf_gt_allele(gt[11] == 1));
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 5);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "A");
+        REQUIRE(string(record->d.allele[2]) == "G");
+        REQUIRE(string(record->d.allele[3]) == "T");
+        REQUIRE(string(record->d.allele[4]) == "<?>");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 3));
+        REQUIRE(bcf_gt_allele(gt[1] == 3));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 0));
+        REQUIRE(bcf_gt_allele(gt[4] == 2));
+        REQUIRE(bcf_gt_allele(gt[5] == 2));
+        REQUIRE(bcf_gt_allele(gt[6] == 1));
+        REQUIRE(bcf_gt_allele(gt[7] == 1));
+        REQUIRE(bcf_gt_allele(gt[8] == 1));
+        REQUIRE(bcf_gt_allele(gt[9] == 1));
+        REQUIRE(bcf_gt_allele(gt[10] == 1));
+        REQUIRE(bcf_gt_allele(gt[11] == 1));
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "CC");
+        REQUIRE(string(record->d.allele[1]) == "AG");
+        REQUIRE(string(record->d.allele[2]) == "<?>");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        REQUIRE(bcf_gt_allele(gt[6]) == 0);
+        REQUIRE(bcf_gt_allele(gt[7]) == 0);
+        REQUIRE(bcf_gt_allele(gt[8]) == 0);
+        REQUIRE(bcf_gt_allele(gt[9]) == 2); // <?>
+        REQUIRE(bcf_gt_allele(gt[10]) == 0);
+        REQUIRE(bcf_gt_allele(gt[11]) == 2); // <?>
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "A");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        REQUIRE(bcf_gt_allele(gt[6]) == 0);
+        REQUIRE(bcf_gt_allele(gt[7]) == 0);
+        REQUIRE(bcf_gt_allele(gt[8]) == 0);
+        REQUIRE(bcf_gt_allele(gt[9]) == 2); // <?>
+        REQUIRE(bcf_gt_allele(gt[10]) == 0);
+        REQUIRE(bcf_gt_allele(gt[11]) == 2); // <?>
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "G");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        REQUIRE(bcf_gt_allele(gt[6]) == 0);
+        REQUIRE(bcf_gt_allele(gt[7]) == 0);
+        REQUIRE(bcf_gt_allele(gt[8]) == 0);
+        REQUIRE(bcf_gt_allele(gt[9]) == 2); // <?>
+        REQUIRE(bcf_gt_allele(gt[10]) == 0);
+        REQUIRE(bcf_gt_allele(gt[11]) == 2); // <?>
+
+        REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
+        REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "C");
+        REQUIRE(string(record->d.allele[1]) == "A");
+        REQUIRE(string(record->d.allele[2]) == "<?>");
+
+        nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
+        REQUIRE(nGT == 12);
+        REQUIRE(bcf_gt_allele(gt[0] == 0));
+        REQUIRE(bcf_gt_allele(gt[1] == 1));
+        REQUIRE(bcf_gt_allele(gt[2] == 0));
+        REQUIRE(bcf_gt_allele(gt[3] == 1));
+        REQUIRE(bcf_gt_allele(gt[4] == 0));
+        REQUIRE(bcf_gt_allele(gt[5] == 1));
+        // these are missing, not <?>, because there's no overlapping VCF
+        // record for trio2.
+        REQUIRE(bcf_gt_is_missing(gt[6]));
+        REQUIRE(bcf_gt_is_missing(gt[7]));
+        REQUIRE(bcf_gt_is_missing(gt[8]));
+        REQUIRE(bcf_gt_is_missing(gt[9]));
+        REQUIRE(bcf_gt_is_missing(gt[10]));
+        REQUIRE(bcf_gt_is_missing(gt[11]));
+
+        // validate loss information
+        auto loss1 = losses.find("trio1.ch");
+        REQUIRE(loss1 != losses.end());
+        loss_stats loss_ch = loss1->second;
+        REQUIRE(loss_ch.n_no_calls_total == 0);
+        REQUIRE(loss_ch.n_bp_lost == 0);
+
+        auto loss2 = losses.find("trio1.fa");
+        REQUIRE(loss2 != losses.end());
+        loss_stats loss_fa = loss2->second;
+        REQUIRE(loss_fa.n_no_calls_total == 0);
+        REQUIRE(loss_fa.n_bp_lost == 0);
+
+        auto loss3 = losses.find("trio1.mo");
+        REQUIRE(loss3 != losses.end());
+        loss_stats loss_mo = loss3->second;
+        REQUIRE(loss_mo.n_no_calls_total == 0);
+        REQUIRE(loss_mo.n_bp_lost == 0);
+
+        auto loss4 = losses.find("trio2.ch");
+        REQUIRE(loss4 != losses.end());
+        loss_stats loss_ch2 = loss4->second;
+        REQUIRE(loss_ch2.n_no_calls_total == 2);
+        REQUIRE(loss_ch2.n_bp_lost == 0);
+
+        int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
+
+        auto loss5 = losses.find("trio2.fa");
+        REQUIRE(loss5 != losses.end());
+        loss_stats loss_fa2 = loss5->second;
+        REQUIRE(loss_fa2.n_no_calls_total == 5);
+        REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
+
+        auto loss6 = losses.find("trio2.mo");
+        REQUIRE(loss6 != losses.end());
+        loss_stats loss_mo2 = loss6->second;
+        REQUIRE(loss_mo2.n_no_calls_total == 5);
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
