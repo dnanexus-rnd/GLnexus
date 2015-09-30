@@ -106,13 +106,29 @@ std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" hre
 <tr class="separator:a01446a8db9ee429978d55ca14dbc6346"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae5105c6c4c3e1417f8f1b41324931560"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae5105c6c4c3e1417f8f1b41324931560"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_g_lnexus_1_1genotyper__config.html#ae5105c6c4c3e1417f8f1b41324931560">ref_symbolic_allele</a> = &quot;&lt;NON_REF&gt;&quot;</td></tr>
-<tr class="memdesc:ae5105c6c4c3e1417f8f1b41324931560"><td class="mdescLeft">&#160;</td><td class="mdescRight">The symbolic allele used in gVCF reference confidence models. <br /></td></tr>
+<tr class="memdesc:ae5105c6c4c3e1417f8f1b41324931560"><td class="mdescLeft">&#160;</td><td class="mdescRight">The symbolic allele used in INPUT gVCF reference confidence records. <br /></td></tr>
 <tr class="separator:ae5105c6c4c3e1417f8f1b41324931560"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a71cc0d0a145034fdd893a28e9cae240a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a71cc0d0a145034fdd893a28e9cae240a"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_g_lnexus_1_1genotyper__config.html#a71cc0d0a145034fdd893a28e9cae240a">ref_dp_format</a> = &quot;MIN_DP&quot;</td></tr>
 <tr class="memdesc:a71cc0d0a145034fdd893a28e9cae240a"><td class="mdescLeft">&#160;</td><td class="mdescRight">FORMAT field to consult for reference depth in gVCF reference records. <br /></td></tr>
 <tr class="separator:a71cc0d0a145034fdd893a28e9cae240a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a315265ef0e2063089a11acf06d885684"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_g_lnexus_1_1genotyper__config.html#a315265ef0e2063089a11acf06d885684">unrepr_symbolic_allele</a></td></tr>
+<tr class="separator:a315265ef0e2063089a11acf06d885684"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a class="anchor" id="a315265ef0e2063089a11acf06d885684"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string GLnexus::genotyper_config::unrepr_symbolic_allele</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Sometimes the input gVCF records contain specific allele calls that GLnexus is unable to render accurately in the output VCF file, e.g. rare alleles that are "pruned" during unification to ameliorate combinatorial explosion of the possible genotypes. By default, GLnexus emits no-calls (.) in such situations, which is the same thing that'd appear if the sample had no overlapping gVCF data at all. Sometimes it might be useful to distinguish these cases. If unrepr_symbolic_allele is set to a symbolic allele such as "?" or "NON_REF", then GLnexus will add this symbolic allele to the ALT of all output records, and calls of it indicate an unrepresentable allele call as described above. The symbolic allele must not contain angle brackets or whitespace. </p>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>include/<a class="el" href="genotyper__config_8h_source.html">genotyper_config.h</a></li>
 </ul>

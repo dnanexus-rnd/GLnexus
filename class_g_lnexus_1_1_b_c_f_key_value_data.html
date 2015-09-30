@@ -115,8 +115,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a31f058179be1f19bc410c7a9dfa2833f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af0eebb65fd9c969f2c4746506643f022"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#af0eebb65fd9c969f2c4746506643f022">sample_dataset</a> (const std::string &amp;sample, std::string &amp;ans) const override</td></tr>
 <tr class="separator:af0eebb65fd9c969f2c4746506643f022"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ac0047ee8a02f64994fb7a8e4f74874"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#a0ac0047ee8a02f64994fb7a8e4f74874">all_samples_sampleset</a> (std::string &amp;ans) override</td></tr>
-<tr class="separator:a0ac0047ee8a02f64994fb7a8e4f74874"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8048f572b08d81379f6e5ec10bfef40d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8048f572b08d81379f6e5ec10bfef40d"></a>
 std::shared_ptr&lt; <a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>getRangeStats</b> ()</td></tr>
 <tr class="separator:a8048f572b08d81379f6e5ec10bfef40d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -144,33 +142,6 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Implements the <a class="el" href="class_g_lnexus_1_1_metadata.html">Metadata</a> and <a class="el" href="class_g_lnexus_1_1_b_c_f_data.html">BCFData</a> interfaces with everything stored in a given key-value database. One imported gVCF file (potentially with multiple samples) becomes a data set. The key schema permits efficient retrieval by genomic range across the datasets. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="a0ac0047ee8a02f64994fb7a8e4f74874"></a>
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::BCFKeyValueData::all_samples_sampleset </td>
-          <td>(</td>
-          <td class="paramtype">std::string &amp;&#160;</td>
-          <td class="paramname"><em>ans</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Return the name of a sample set representing all samples currently available. This may either create a new sample set if needed, or return an existing one if available. As always, the sample set is immutable: it will not include samples added to the database later (but one could call all_samples_sampleset again to get a different sample set including them). </p>
-
-<p>Implements <a class="el" href="class_g_lnexus_1_1_metadata.html#ac9ff925ca4fca8cd94a7b3d664de3f19">GLnexus::Metadata</a>.</p>
-
-</div>
-</div>
 <a class="anchor" id="ab26d7886280a409015a1a46beaa7610a"></a>
 <div class="memitem">
 <div class="memproto">

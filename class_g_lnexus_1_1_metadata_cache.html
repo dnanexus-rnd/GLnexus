@@ -120,8 +120,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:af2e4e69e17c7287a18b5f78a5037ced4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b1c9724ff7401469410766435e5cf09"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_metadata_cache.html#a8b1c9724ff7401469410766435e5cf09">sample_dataset</a> (const std::string &amp;sample, std::string &amp;ans) const override</td></tr>
 <tr class="separator:a8b1c9724ff7401469410766435e5cf09"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae6f1eb996e8df999baa9687153655aba"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_metadata_cache.html#ae6f1eb996e8df999baa9687153655aba">all_samples_sampleset</a> (std::string &amp;ans) override</td></tr>
-<tr class="separator:ae6f1eb996e8df999baa9687153655aba"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad3e71fd921f3a059d7123159d5d83fe3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad3e71fd921f3a059d7123159d5d83fe3"></a>
 const std::vector&lt; std::pair<br class="typebreak" />
 &lt; std::string, size_t &gt; &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>contigs</b> () const </td></tr>
@@ -139,33 +137,6 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Wraps any <a class="el" href="class_g_lnexus_1_1_metadata.html">Metadata</a> implementation to provide in-memory caching/indexing of the immutable relationships </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="ae6f1eb996e8df999baa9687153655aba"></a>
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::MetadataCache::all_samples_sampleset </td>
-          <td>(</td>
-          <td class="paramtype">std::string &amp;&#160;</td>
-          <td class="paramname"><em>ans</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Return the name of a sample set representing all samples currently available. This may either create a new sample set if needed, or return an existing one if available. As always, the sample set is immutable: it will not include samples added to the database later (but one could call all_samples_sampleset again to get a different sample set including them). </p>
-
-<p>Implements <a class="el" href="class_g_lnexus_1_1_metadata.html#ac9ff925ca4fca8cd94a7b3d664de3f19">GLnexus::Metadata</a>.</p>
-
-</div>
-</div>
 <a class="anchor" id="aeaef1ef4ffee18d2ce5724d88ce8c12f"></a>
 <div class="memitem">
 <div class="memproto">
