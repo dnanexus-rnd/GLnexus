@@ -486,24 +486,6 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
 }
 
 
-// Parse the records and extract those overlapping the query range
-static Status scan_bucket(
-    std::shared_ptr<std::vector<std::shared_ptr<bcf1_t> > > bucket,
-    const range& query,
-    StatsRangeQuery &srq,
-    vector<shared_ptr<bcf1_t> >& records)
-{
-    for (auto rec : *bucket) {
-        srq.nBCFRecordsRead++;
-        range vt_rng(rec.get());
-        if (query.overlaps(vt_rng)) {
-            records.push_back(rec);
-        }
-    }
-
-    return Status::OK();
-}
-
 // Search all the buckets that may hold records within the query range. The tricky
 // corner case is the bucket immediately before the beginning of the query range.
 // It may hold records that start outside the range, but end inside it. We want
@@ -537,9 +519,14 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         string key = body_->rangeHelper->gen_key(dataset, r);
 
         shared_ptr<vector<shared_ptr<bcf1_t> > > bucket;
-        s = body_->bucketCache->get_bucket(key, dataset, r, bucket);
+        s = body_->bucketCache->get_bucket(key, dataset, r, accu, bucket);
         if (s != StatusCode::NOT_FOUND) {
-            scan_bucket(bucket, query, accu, records);
+            for (auto rec : *bucket) {
+                range vt_rng(rec.get());
+                if (query.overlaps(vt_rng)) {
+                    records.push_back(rec);
+                }
+            }
         }
     }
     accu.nBCFRecordsInRange += records.size();

@@ -274,24 +274,24 @@ Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest);
 
 // Statistics collected during range queries
 struct StatsRangeQuery {
-    int64_t nBCFRecordsRead;    // how many BCF records were read from the DB
+    int64_t nBCFRecordsReadFromDB;  // how many BCF records were read from the DB
     int64_t nBCFRecordsInRange; // how many were in the requested range
 
     // constructor
     StatsRangeQuery() {
-        nBCFRecordsRead = 0;
+        nBCFRecordsReadFromDB = 0;
         nBCFRecordsInRange = 0;
     }
 
     // copy constructor
     StatsRangeQuery(const StatsRangeQuery &srq) {
-        nBCFRecordsRead = srq.nBCFRecordsRead;
+        nBCFRecordsReadFromDB = srq.nBCFRecordsReadFromDB;
         nBCFRecordsInRange = srq.nBCFRecordsInRange;
     }
 
     // Addition
     StatsRangeQuery& operator+=(const StatsRangeQuery& srq) {
-        nBCFRecordsRead += srq.nBCFRecordsRead;
+        nBCFRecordsReadFromDB += srq.nBCFRecordsReadFromDB;
         nBCFRecordsInRange += srq.nBCFRecordsInRange;
         return *this;
     }
@@ -299,7 +299,7 @@ struct StatsRangeQuery {
     // return a human readable string
     std::string str() {
         std::ostringstream os;
-        os << "Num BCF records read " << std::to_string(nBCFRecordsRead)
+        os << "Num BCF records read from DB" << std::to_string(nBCFRecordsReadFromDB)
            << "  query hits " << std::to_string(nBCFRecordsInRange);
         return os.str();
     }
