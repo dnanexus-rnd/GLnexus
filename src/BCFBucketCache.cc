@@ -8,20 +8,11 @@ using namespace std;
 
 namespace GLnexus {
 
-// We measure capacity as the number of BCF records
-// that the cache can store. We assume all BCF records
-// take roughly the same amount of RAM.
-//
-// If each BCF records takes up 100 bytes in memory, then:
-//   records        RAM
-//   100,000   ->  10MB
-// 1,000,000   -> 100MB
-static int CAPACITY = 100000;
-
 // pImpl idiom
 struct BCFBucketCache_body {
     KeyValue::DB* db;
     KeyValue::CollectionHandle coll;
+    CacheMode mode;
     shared_ptr<rocksdb::Cache> cache;
 };
 
@@ -33,13 +24,16 @@ BCFBucketCache::~BCFBucketCache() = default;
 
 
 Status BCFBucketCache::Open(KeyValue::DB* db,
+                            CacheMode mode,
+                            int nBCFcapacity,
                             std::unique_ptr<BCFBucketCache>& ans) {
     assert(db != nullptr);
 
     ans.reset(new BCFBucketCache());
     ans->body_.reset(new BCFBucketCache_body);
     ans->body_->db = db;
-    ans->body_->cache = rocksdb::NewLRUCache(CAPACITY);
+    ans->body_->mode = mode;
+    ans->body_->cache = rocksdb::NewLRUCache(nBCFcapacity);
 
     // calculate once the BCF collection handle
     Status s;
@@ -53,6 +47,7 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
                                  const string& key,
                                  const string& dataset,
                                  const range& r,
+                                 StatsRangeQuery &accu,
                                  shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
     // Retrieve the pertinent DB entries
     string data;
@@ -74,11 +69,13 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
         ans->push_back(vt);
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
+    accu.nBCFRecordsReadFromDB += ans->size();
     return Status::OK();
 }
 
 // Release the memory held by a bucket
 static void bucket_mem_free(const rocksdb::Slice& key, void* val) {
+//    cout << "---  bucket_mem_free ---" << endl;
     BktT *bucketPtr = reinterpret_cast<BktT*>(val);
     bucketPtr->reset();
     free(bucketPtr);
@@ -89,6 +86,14 @@ Status BCFBucketCache::get_bucket(const string& key,
                                   const range& r,
                                   StatsRangeQuery &accu,
                                   shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
+    if (body_->mode == CacheMode::NONE ) {
+        // no real caching
+        if (ans == nullptr) {
+            ans =  make_shared<vector<shared_ptr<bcf1_t> > >();
+        }
+        return get_bucket_from_db(body_.get(), key, dataset, r, accu, ans);
+    }
+
     // Check if the bucket is in memory. If so, hand a shared
     // pointer to the caller.
     rocksdb::Cache::Handle *hndl = body_->cache->Lookup(key);
@@ -104,15 +109,17 @@ Status BCFBucketCache::get_bucket(const string& key,
     // the cache.
     BktT* bucketPtr = new BktT;
     bucketPtr->reset(new vector<shared_ptr<bcf1_t> > );
-    Status s = get_bucket_from_db(body_.get(), key, dataset, r, *bucketPtr);
-    accu.nBCFRecordsReadFromDB += (*bucketPtr)->size();
+    Status s = get_bucket_from_db(body_.get(), key, dataset, r, accu, *bucketPtr);
+    int nRecordsInBucket = (*bucketPtr)->size();
     if (s.bad()) {
         return s;
     }
     ans = *bucketPtr;
 
+//    cout << "Insert into cache capacity=" << nRecordsInBucket
+//         << "/" << body_->cache->GetUsage() << endl;
     body_->cache->Insert(key, reinterpret_cast<void*>(bucketPtr),
-                         (*bucketPtr)->size(), bucket_mem_free);
+                         nRecordsInBucket, bucket_mem_free);
 
     return Status::OK();
 }

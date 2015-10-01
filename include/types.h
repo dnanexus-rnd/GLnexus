@@ -299,7 +299,7 @@ struct StatsRangeQuery {
     // return a human readable string
     std::string str() {
         std::ostringstream os;
-        os << "Num BCF records read from DB" << std::to_string(nBCFRecordsReadFromDB)
+        os << "Num BCF records read from DB " << std::to_string(nBCFRecordsReadFromDB)
            << "  query hits " << std::to_string(nBCFRecordsInRange);
         return os.str();
     }

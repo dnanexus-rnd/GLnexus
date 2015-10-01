@@ -5,6 +5,11 @@
 
 namespace GLnexus {
 
+// The mode in which to open the cache
+// NONE: no caching, read from the database directly
+// READ_ONLY: caching of read-only BCF buckets
+enum class CacheMode {NONE, READ_ONLY};
+
 struct BCFBucketCache_body;
 
 /// Cache for BCF buckets. A bucket is stored in
@@ -20,7 +25,16 @@ class BCFBucketCache {
 public:
     virtual ~BCFBucketCache();
 
+    /// The [nBCFcapacity] parameter counts how many BCF
+    /// records the cache can hold.
+    ///
+    /// If each BCF records takes up 100 bytes in memory, then:
+    ///   records        RAM
+    ///   100,000   ->  10MB
+    /// 1,000,000   -> 100MB
     static Status Open(KeyValue::DB* db,
+                       CacheMode mode,
+                       int nBCFcapacity,
                        std::unique_ptr<BCFBucketCache>& ans);
 
     /// Get a shared read-only pointer to a bucket.
