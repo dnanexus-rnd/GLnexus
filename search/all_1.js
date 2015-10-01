@@ -1,7 +1,5 @@
 var searchData=
 [
-  ['bcfbucketcache',['BCFBucketCache',['../class_g_lnexus_1_1_b_c_f_bucket_cache.html',1,'GLnexus']]],
-  ['bcfbucketcache_5fbody',['BCFBucketCache_body',['../struct_g_lnexus_1_1_b_c_f_bucket_cache__body.html',1,'GLnexus']]],
   ['bcfbucketrange',['BCFBucketRange',['../class_g_lnexus_1_1_b_c_f_bucket_range.html',1,'GLnexus']]],
   ['bcfdata',['BCFData',['../class_g_lnexus_1_1_b_c_f_data.html',1,'GLnexus']]],
   ['bcfkeyvaluedata',['BCFKeyValueData',['../class_g_lnexus_1_1_b_c_f_key_value_data.html',1,'GLnexus']]],

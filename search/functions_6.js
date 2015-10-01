@@ -1,6 +1,4 @@
 var searchData=
 [
-  ['open',['Open',['../class_g_lnexus_1_1_b_c_f_bucket_cache.html#abb03d77412c2e522305b89f6402d4cbc',1,'GLnexus::BCFBucketCache::Open()'],['../class_g_lnexus_1_1_b_c_f_key_value_data.html#abe73465838cbc46a4a13561bb8210c28',1,'GLnexus::BCFKeyValueData::Open()'],['../class_g_lnexus_1_1_b_c_f_writer.html#a469a2a295b0746770eeb5f03b8430c5b',1,'GLnexus::BCFWriter::Open()'],['../class_g_lnexus_1_1_b_c_f_reader.html#adbed3af9e67f0498b098899c0be6295b',1,'GLnexus::BCFReader::Open()']]],
-  ['operator_3c',['operator&lt;',['../struct_g_lnexus_1_1allele.html#ae1e92b090fc3aa8a6b60465875340ef1',1,'GLnexus::allele']]],
-  ['operator_3d_3d',['operator==',['../struct_g_lnexus_1_1allele.html#a13bd87c795881dc10e76c26bc667476d',1,'GLnexus::allele']]]
+  ['next',['next',['../class_g_lnexus_1_1_rocks_key_value_1_1_iterator.html#a5509216ff05c71145785937d5ed87814',1,'GLnexus::RocksKeyValue::Iterator::next()'],['../class_g_lnexus_1_1_key_value_1_1_iterator.html#a57d9b060931523f9ef5eb1083c336d68',1,'GLnexus::KeyValue::Iterator::next()']]]
 ];
