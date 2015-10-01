@@ -33,3 +33,24 @@ Evolving developer documentation can be found on the [project github page](http:
  * nb the frequently-used convenience macro `S()` defined just below `Status`
 * Avoid public constructors with nontrivial bodies; prefer static initializer function returning `Status`
 * Avoid elaborate templated class hierarchies
+
+
+### How to do performance profiling
+
+In order to do performance profiling on the code, you need
+to compile it with special c++ flags. This can be done as follows:
+```
+cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Profile .
+```
+
+Running the glnexus_cli applet produces several outputs, one of which
+is a file called ```genotype.stacks```. It contains a list of common
+call stacks executed by the glnexus code, download it to your
+local machine. To manipulate this file, please install the FlameGraphs
+package. Here is an example for generating an SVG graph from the run results:
+
+```
+git clone https://github.com/brendangregg/FlameGraph
+grep glnexus genotype.stacks > X
+FlameGraph/flamegraph.pl --minwidth 0.5 X > genotype.svg
+```

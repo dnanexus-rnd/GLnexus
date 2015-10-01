@@ -3,14 +3,31 @@
 main() {
     set -ex -o pipefail
 
+    # parameters for performance recording
+    recordFreq=99
+
     # log detailed utilization
     dstat -cmdn 10 &
+
+    # install the perf utility
+    if [ "$enable_perf" == "1" ]; then
+        linux_version=`uname -r`
+        sudo apt-get -y install linux-tools-${linux_version}
+        sudo apt-get -y install linux-tools
+
+        # test that perf is working correctly
+        perf record -F $recordFreq -g /bin/ls
+        rm -f perf.data
+
+        # install flame-graph package
+        git clone https://github.com/brendangregg/FlameGraph
+    fi
 
     # install dependencies
     sudo rm -f /etc/apt/apt.conf.d/99dnanexus
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     sudo apt-get -qq update
-    sudo apt-get -qq install -y gcc-4.9 g++-4.9 
+    sudo apt-get -qq install -y gcc-4.9 g++-4.9
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 100 \
                              --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
     LZ4_REVISION="r131"
@@ -46,10 +63,24 @@ main() {
         mkdir bcf
         i=0
         for range in "${ranges_to_genotype[@]}"; do
+            if [ "$enable_perf" == "1" ]; then
+                mkdir -p out/perf
+                sudo perf record -F $recordFreq -a -g &
+            fi
+
             range_sp=$(echo "$range" | tr -d "," | tr ":-" " ")
             outfn=$(printf "bcf/%05d.bcf" "$i")
             time glnexus_cli genotype GLnexus.db $range_sp > "$outfn"
             i=$(expr $i + 1)
+
+            if [ "$enable_perf" == "1" ]; then
+                sudo killall perf
+                sudo chmod 644 perf.data
+                perf script > perf_genotype
+                FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
+                mv out/perf/genotype.stacks out/perf/genotype.stacks.${range}
+                /bin/rm -f perf.data
+            fi
         done
         ls -lh bcf
 

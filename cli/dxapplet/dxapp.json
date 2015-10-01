@@ -36,6 +36,12 @@
       "name": "sleep",
       "class": "int",
       "default": 0
+    },
+    {
+      "name": "enable_perf",
+      "class": "int",
+      "default": 0,
+      "optional": true
     }
   ],
   "outputSpec": [
@@ -52,6 +58,11 @@
     {
       "name": "db_load_log",
       "class": "file"
+    },
+    {
+      "name": "perf",
+      "class": "array:file",
+      "optional": true
     }
   ],
   "runSpec": {
