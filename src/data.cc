@@ -35,6 +35,10 @@ Status MetadataCache::sample_dataset(const string& sample, string& ans) const {
     return body_->inner->sample_dataset(sample, ans);
 }
 
+Status MetadataCache::all_samples_sampleset(string& ans) {
+    return body_->inner->all_samples_sampleset(ans);
+}
+
 const vector<pair<string,size_t> >& MetadataCache::contigs() const {
     return body_->contigs;
 }

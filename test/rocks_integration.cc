@@ -386,15 +386,17 @@ static void queryDataset(T *data, const std::string &dataset) {
 // Query the '*' sampleset.
 static void querySampleset(T *data, int num_iter) {
     Status s;
-    const string allSS = std::string("*");
 
     for (int i=0; i < num_iter; i++) {
         if ((i % 10) == 0)
             cout << "querySampleset " << std::to_string(i) << endl;
 
         // map global sampleset to samples
+        string sampleset;
+        s = data->all_samples_sampleset(sampleset);
+        assert(s.ok());
         shared_ptr<const set<string> > samples;
-        s = data->sampleset_samples(allSS, samples);
+        s = data->sampleset_samples(sampleset, samples);
         assert(s.ok());
 
         // map samples to datasets
@@ -416,8 +418,12 @@ static void querySampleset(T *data, int num_iter) {
 
 // print the samples
 static void printDBSamples(T *data) {
+    string sampleset;
+    Status s = data->all_samples_sampleset(sampleset);
+    assert(s.ok());
+
     std::shared_ptr<const std::set<std::string> > samples;
-    Status s = data->sampleset_samples("*", samples);
+    s = data->sampleset_samples(sampleset, samples);
     assert(s.ok());
     assert(samples->size() == 4);
 

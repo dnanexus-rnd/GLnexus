@@ -141,6 +141,10 @@ public:
         return Status::NotFound("unknown sample set", sampleset);
     }
 
+    Status all_samples_sampleset(string& ans) override {
+        return Status::NotImplemented();
+    }
+
     Status sample_dataset(const string& sample, string& ans) const override {
         auto p = sample_datasets_.find(sample);
         if (p == sample_datasets_.end()) {

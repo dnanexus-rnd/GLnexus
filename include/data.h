@@ -19,8 +19,7 @@ namespace GLnexus {
 /// A data set contains all the allele/genotype/likelihood data for one or more
 /// samples -- just like a [V/B]CF file.
 /// All the GL data for each sample resides in exactly one data set.
-/// Sample sets and data sets are immutable once created/sealed, except
-/// possibly for a special "*" sample set representing all available samples.
+/// Sample sets and data sets are immutable.
 class Metadata {
 
 public:
@@ -43,6 +42,14 @@ public:
     ///
     /// The data set may contain other samples.
     virtual Status sample_dataset(const std::string& sample, std::string& ans) const = 0;
+
+    /// Return the name of a sample set representing all samples currently
+    /// available. This may either create a new sample set if needed, or
+    /// return an existing one if available. As always, the sample set is
+    /// immutable: it will not include samples added to the database later
+    /// (but one could call all_samples_sampleset again to get a different
+    /// sample set including them).
+    virtual Status all_samples_sampleset(std::string& ans) = 0;
 };
 
 
@@ -63,6 +70,7 @@ public:
     Status sampleset_samples(const std::string& sampleset,
                              std::shared_ptr<const std::set<std::string> >& ans) const override;
     Status sample_dataset(const std::string& sample, std::string& ans) const override;
+    Status all_samples_sampleset(std::string& ans) override;
 
     const std::vector<std::pair<std::string,size_t> >& contigs() const;
     Status sampleset_datasets(const std::string& sampleset,

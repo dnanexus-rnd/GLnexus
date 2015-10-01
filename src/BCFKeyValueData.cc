@@ -10,6 +10,7 @@
 #include <math.h>
 #include <thread>
 #include <mutex>
+#include <sys/time.h>
 using namespace std;
 
 namespace GLnexus {
@@ -287,8 +288,10 @@ Status BCFKeyValueData::contigs(vector<pair<string,size_t> >& ans) const {
     return Status::OK();
 }
 
-Status BCFKeyValueData::sampleset_samples(const string& sampleset,
-                                          shared_ptr<const set<string> >& ans) const {
+// used by both sampleset_samples and all_samples_sampleset
+static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
+                                         const string& sampleset,
+                                         shared_ptr<const set<string> >& ans) {
     Status s;
     KeyValue::CollectionHandle coll;
     S(body_->db->collection("sampleset",coll));
@@ -331,7 +334,18 @@ Status BCFKeyValueData::sampleset_samples(const string& sampleset,
     ans = samples;
 
     return Status::OK();
+}
 
+Status BCFKeyValueData::sampleset_samples(const string& sampleset,
+                                          shared_ptr<const set<string> >& ans) const {
+    if (sampleset == "*") {
+        // * is a special reserved sample set representing all available
+        // samples in the database. It must be hidden from callers because
+        // it's mutable, while sample sets are supposed to be immutable.
+        return Status::NotFound();
+    }
+
+    return sampleset_samples_internal(body_.get(), sampleset, ans);
 }
 
 Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const {
@@ -339,6 +353,63 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
     KeyValue::CollectionHandle coll;
     S(body_->db->collection("sample_dataset",coll));
     return body_->db->get(coll, sample, ans);
+}
+
+Status BCFKeyValueData::all_samples_sampleset(string& ans) {
+    // TODO: reuse the last-created all-samples sample set if no samples have
+    // been added or removed since its creation
+    Status s;
+
+    // Create a new sample set from all the samples in the special "*" sample
+    // set. The name of the new sample set is based on the current time (since
+    // epoch in microseconds). We create this under an optimistic transaction
+    // loop ensuring uniqueness.
+    do {
+        // create timestamp-based sample set name
+        timeval tv;
+        if (gettimeofday(&tv, nullptr) != 0) {
+            return Status::Failure("BCFKeyValueData::all_samples_sampleset gettimeofday");
+        }
+        uint64_t usec = uint64_t(tv.tv_sec)*1000000 + tv.tv_usec;
+        ostringstream buf;
+        buf << "*@" << usec;
+        ans = buf.str();
+
+        // read all the sample names from the special * sample set
+        shared_ptr<const set<string>> samples;
+        S(sampleset_samples_internal(body_.get(), "*", samples));
+
+        // prepare a write batch for the new sample set
+        KeyValue::CollectionHandle coll;
+        S(body_->db->collection("sampleset",coll));
+        unique_ptr<KeyValue::WriteBatch> wb;
+        S(body_->db->begin_writes(wb));
+        S(wb->put(coll, ans, string()));
+        for (const auto& sample : *samples) {
+            string key = ans + string(1,'\0') + sample;
+            assert(key.size() == ans.size()+sample.size()+1);
+            S(wb->put(coll, key, string()));
+        }
+
+        {
+            // We now commit the write batch so long as a sample set with this
+            // name doesn't already exist. We perform this conditional put
+            // under the mutex to provide exclusion from any other thread also
+            // committing a sample set. We also have exclusion from the final
+            // commit of new samples although we don't really need that.
+            string ignore;
+            lock_guard<mutex>(body_->mutex);
+            if (body_->db->get(coll, ans, ignore) == StatusCode::NOT_FOUND) {
+                return wb->commit();
+            }
+        }
+
+        // Fall-through: there's already a sample set with the same timestamp-
+        // based name. Try again until success.
+        this_thread::yield();
+    } while(true);
+    assert(false);
+    return Status::Failure();
 }
 
 shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {

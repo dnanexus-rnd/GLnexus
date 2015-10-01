@@ -339,9 +339,11 @@ int main_dump(int argc, char *argv[]) {
             }
 
             // query and output records
-            vcfFile *vcfout = vcf_open("-", "w");
+            string sampleset;
+            H("all_samples_sampleset", metadata->all_samples_sampleset(sampleset));
             shared_ptr<const set<string>> samples, datasets;
-            H("sampleset_datasets", metadata->sampleset_datasets(string("*"), samples, datasets));
+            H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
+            vcfFile *vcfout = vcf_open("-", "w");
             for (const auto& dataset : *datasets) {
                 shared_ptr<const bcf_hdr_t> hdr;
                 vector<shared_ptr<bcf1_t>> records;
@@ -412,10 +414,21 @@ int main_genotype(int argc, char *argv[]) {
     string beg_txt(argv[optind+2]);
     string end_txt(argv[optind+3]);
 
-    // open the database
+    // open the database in read-write mode, create an all-samples sample set,
+    // and close it. This is not elegant. It'd be better for the bulk load
+    // process to create the sample set when it finishes. Need some way to
+    // recover the name of the most recently created all-samples sample set.
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    unique_ptr<GLnexus::BCFKeyValueData> data;
+    string sampleset;
+    H("open database R/W", GLnexus::RocksKeyValue::Open(dbpath, db));
+    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
+    data.reset();
+    db.reset();
 
+    // open the database in read-only mode to proceed
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
@@ -451,7 +464,6 @@ int main_genotype(int argc, char *argv[]) {
             unique_ptr<GLnexus::Service> svc;
             H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
 
-            const string sampleset("*");
             GLnexus::discovered_alleles alleles;
             H("discover alleles", svc->discover_alleles(sampleset, query, alleles));
 
