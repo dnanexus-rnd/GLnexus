@@ -97,7 +97,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="comment">// The mode in which to open the cache</span></div>
 <div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="comment">// NONE: no caching, read from the database directly</span></div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="comment">// READ_ONLY: caching of read-only BCF buckets</span></div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="keyword">enum class</span> CacheMode {NONE, READ_ONLY};</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="keyword">enum class</span> CacheMode {DISABLE, ENABLE};</div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;</div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="keyword">struct </span>BCFBucketCache_body;</div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;</div>
@@ -133,7 +133,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="class_g_lnexus_1_1_key_value_1_1_d_b_html"><div class="ttname"><a href="class_g_lnexus_1_1_key_value_1_1_d_b.html">GLnexus::KeyValue::DB</a></div><div class="ttdef"><b>Definition:</b> KeyValue.h:60</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:29</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">GLnexus::BCFBucketCache</a></div><div class="ttdef"><b>Definition:</b> BCFBucketCache.h:18</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a4939ddb00bbfd74006076691bc2b57e0"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a4939ddb00bbfd74006076691bc2b57e0">GLnexus::BCFBucketCache::get_bucket</a></div><div class="ttdeci">Status get_bucket(const std::string &amp;key, const std::string &amp;dataset, const range &amp;r, StatsRangeQuery &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;bucket)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:84</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a4939ddb00bbfd74006076691bc2b57e0"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a4939ddb00bbfd74006076691bc2b57e0">GLnexus::BCFBucketCache::get_bucket</a></div><div class="ttdeci">Status get_bucket(const std::string &amp;key, const std::string &amp;dataset, const range &amp;r, StatsRangeQuery &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;bucket)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:89</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
