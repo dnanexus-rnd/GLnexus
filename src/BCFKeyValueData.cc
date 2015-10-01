@@ -265,7 +265,7 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
-    S(BCFBucketCache::Open(db, CacheMode::READ_ONLY, 100000, ans->body_->bucketCache));
+    S(BCFBucketCache::Open(db, CacheMode::ENABLE, 100000, ans->body_->bucketCache));
     return Status::OK();
 }
 

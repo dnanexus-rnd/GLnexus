@@ -29,6 +29,11 @@ Status BCFBucketCache::Open(KeyValue::DB* db,
                             std::unique_ptr<BCFBucketCache>& ans) {
     assert(db != nullptr);
 
+    if (mode == CacheMode::DISABLE) {
+        // Don't waste memory if there if the cache is disabled.
+        nBCFcapacity = 0;
+    }
+
     ans.reset(new BCFBucketCache());
     ans->body_.reset(new BCFBucketCache_body);
     ans->body_->db = db;
@@ -86,7 +91,7 @@ Status BCFBucketCache::get_bucket(const string& key,
                                   const range& r,
                                   StatsRangeQuery &accu,
                                   shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
-    if (body_->mode == CacheMode::NONE ) {
+    if (body_->mode == CacheMode::DISABLE ) {
         // no real caching
         if (ans == nullptr) {
             ans =  make_shared<vector<shared_ptr<bcf1_t> > >();

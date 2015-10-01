@@ -8,7 +8,7 @@ namespace GLnexus {
 // The mode in which to open the cache
 // NONE: no caching, read from the database directly
 // READ_ONLY: caching of read-only BCF buckets
-enum class CacheMode {NONE, READ_ONLY};
+enum class CacheMode {DISABLE, ENABLE};
 
 struct BCFBucketCache_body;
 
