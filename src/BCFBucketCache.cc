@@ -12,7 +12,7 @@ namespace GLnexus {
 struct BCFBucketCache_body {
     KeyValue::DB* db;
     KeyValue::CollectionHandle coll;
-    CacheMode mode;
+    int64_t capacityRAM;
     shared_ptr<rocksdb::Cache> cache;
 };
 
@@ -24,21 +24,15 @@ BCFBucketCache::~BCFBucketCache() = default;
 
 
 Status BCFBucketCache::Open(KeyValue::DB* db,
-                            CacheMode mode,
-                            int nBCFcapacity,
+                            int capacityRAM,
                             std::unique_ptr<BCFBucketCache>& ans) {
     assert(db != nullptr);
-
-    if (mode == CacheMode::DISABLE) {
-        // Don't waste memory if there if the cache is disabled.
-        nBCFcapacity = 0;
-    }
 
     ans.reset(new BCFBucketCache());
     ans->body_.reset(new BCFBucketCache_body);
     ans->body_->db = db;
-    ans->body_->mode = mode;
-    ans->body_->cache = rocksdb::NewLRUCache(nBCFcapacity);
+    ans->body_->capacityRAM = capacityRAM;
+    ans->body_->cache = rocksdb::NewLRUCache(capacityRAM);
 
     // calculate once the BCF collection handle
     Status s;
@@ -48,11 +42,11 @@ Status BCFBucketCache::Open(KeyValue::DB* db,
 }
 
 // Get a shared read-only pointer to a bucket.
+// [memCost] is an estimate for how much memory is used by this bucket.
 static Status get_bucket_from_db(BCFBucketCache_body *body_,
                                  const string& key,
-                                 const string& dataset,
-                                 const range& r,
                                  StatsRangeQuery &accu,
+                                 int &memCost,
                                  shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
     // Retrieve the pertinent DB entries
     string data;
@@ -68,12 +62,12 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
         if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
-            return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
-                                   dataset + "@" + r.str());
+            return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", key);
         }
         ans->push_back(vt);
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
+    memCost = data.size() * 2;
     accu.nBCFRecordsReadFromDB += ans->size();
     return Status::OK();
 }
@@ -87,16 +81,15 @@ static void bucket_mem_free(const rocksdb::Slice& key, void* val) {
 }
 
 Status BCFBucketCache::get_bucket(const string& key,
-                                  const string& dataset,
-                                  const range& r,
                                   StatsRangeQuery &accu,
                                   shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
-    if (body_->mode == CacheMode::DISABLE ) {
+    int memCost = 0;
+    if (body_->capacityRAM == 0) {
         // no real caching
         if (ans == nullptr) {
             ans =  make_shared<vector<shared_ptr<bcf1_t> > >();
         }
-        return get_bucket_from_db(body_.get(), key, dataset, r, accu, ans);
+        return get_bucket_from_db(body_.get(), key, accu, memCost, ans);
     }
 
     // Check if the bucket is in memory. If so, hand a shared
@@ -114,17 +107,15 @@ Status BCFBucketCache::get_bucket(const string& key,
     // the cache.
     BktT* bucketPtr = new BktT;
     bucketPtr->reset(new vector<shared_ptr<bcf1_t> > );
-    Status s = get_bucket_from_db(body_.get(), key, dataset, r, accu, *bucketPtr);
-    int nRecordsInBucket = (*bucketPtr)->size();
+    Status s = get_bucket_from_db(body_.get(), key, accu, memCost, *bucketPtr);
     if (s.bad()) {
         return s;
     }
     ans = *bucketPtr;
 
-//    cout << "Insert into cache capacity=" << nRecordsInBucket
-//         << "/" << body_->cache->GetUsage() << endl;
+    //cout << "Insert into cache " << memCost << "/" << body_->cache->GetUsage() << endl;
     body_->cache->Insert(key, reinterpret_cast<void*>(bucketPtr),
-                         nRecordsInBucket, bucket_mem_free);
+                         memCost, bucket_mem_free);
 
     return Status::OK();
 }

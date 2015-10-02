@@ -265,7 +265,8 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
-    S(BCFBucketCache::Open(db, CacheMode::ENABLE, 100000, ans->body_->bucketCache));
+    S(BCFBucketCache::Open(db, 10000000, ans->body_->bucketCache));
+
     return Status::OK();
 }
 
@@ -519,7 +520,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         string key = body_->rangeHelper->gen_key(dataset, r);
 
         shared_ptr<vector<shared_ptr<bcf1_t> > > bucket;
-        s = body_->bucketCache->get_bucket(key, dataset, r, accu, bucket);
+        s = body_->bucketCache->get_bucket(key, accu, bucket);
         if (s != StatusCode::NOT_FOUND) {
             for (auto rec : *bucket) {
                 range vt_rng(rec.get());
