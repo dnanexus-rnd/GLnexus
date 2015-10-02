@@ -73,11 +73,11 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
 }
 
 // Release the memory held by a bucket
-static void bucket_mem_free(const rocksdb::Slice& key, void* val) {
+static void delete_cached_bucket(const rocksdb::Slice& key, void* val) {
 //    cout << "---  bucket_mem_free ---" << endl;
-    BktT *bucketPtr = reinterpret_cast<BktT*>(val);
+    BktT *bucketPtr = static_cast<BktT*>(val);
     bucketPtr->reset();
-    free(bucketPtr);
+    delete bucketPtr;
 }
 
 Status BCFBucketCache::get_bucket(const string& key,
@@ -94,10 +94,11 @@ Status BCFBucketCache::get_bucket(const string& key,
 
     // Check if the bucket is in memory. If so, hand a shared
     // pointer to the caller.
-    rocksdb::Cache::Handle *hndl = body_->cache->Lookup(key);
+    rocksdb::Slice sliceKey(key);
+    rocksdb::Cache::Handle *hndl = body_->cache->Lookup(sliceKey);
     if (hndl != nullptr) {
         void *val = body_->cache->Value(hndl);
-        BktT bucket = *reinterpret_cast<BktT*>(val);
+        BktT bucket = *static_cast<BktT*>(val);
         ans = bucket;
         body_->cache->Release(hndl);
         return Status::OK();
@@ -114,8 +115,8 @@ Status BCFBucketCache::get_bucket(const string& key,
     ans = *bucketPtr;
 
     //cout << "Insert into cache " << memCost << "/" << body_->cache->GetUsage() << endl;
-    body_->cache->Insert(key, reinterpret_cast<void*>(bucketPtr),
-                         memCost, bucket_mem_free);
+    body_->cache->Insert(sliceKey, static_cast<void*>(bucketPtr),
+                         memCost, &delete_cached_bucket);
 
     return Status::OK();
 }
