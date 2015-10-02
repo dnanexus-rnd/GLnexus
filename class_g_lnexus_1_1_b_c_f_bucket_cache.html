@@ -99,8 +99,11 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ad52d26d3497d10e5b5c5f4925a36c9fa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#ad52d26d3497d10e5b5c5f4925a36c9fa">get_bucket</a> (const std::string &amp;key, <a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;bucket)</td></tr>
-<tr class="separator:ad52d26d3497d10e5b5c5f4925a36c9fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a084d25f0146777f1ceca62cf19f6ba52"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a084d25f0146777f1ceca62cf19f6ba52">get_bucket</a> (const std::string &amp;key, <a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu, void *&amp;bucket_hndl, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;bucket)</td></tr>
+<tr class="separator:a084d25f0146777f1ceca62cf19f6ba52"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5120587bf130172bce9c51dc42756a67"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5120587bf130172bce9c51dc42756a67"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>release_bucket</b> (void *bucket_hndl)</td></tr>
+<tr class="separator:a5120587bf130172bce9c51dc42756a67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -110,7 +113,7 @@ Static Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Cache for BCF buckets. A bucket is stored in memory as a vector of parsed BCF records. Caching helps, for example, in cases where multiple threads access the same buckets. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="ad52d26d3497d10e5b5c5f4925a36c9fa"></a>
+<a class="anchor" id="a084d25f0146777f1ceca62cf19f6ba52"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
@@ -129,7 +132,13 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;&#160;</td>
+          <td class="paramtype">void *&amp;&#160;</td>
+          <td class="paramname"><em>bucket_hndl</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;&#160;</td>
           <td class="paramname"><em>bucket</em>&#160;</td>
         </tr>
         <tr>

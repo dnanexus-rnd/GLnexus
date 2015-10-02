@@ -110,21 +110,24 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;                       <span class="keywordtype">int</span> capacityRAM,</div>
 <div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;                       std::unique_ptr&lt;BCFBucketCache&gt;&amp; ans);</div>
 <div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#ad52d26d3497d10e5b5c5f4925a36c9fa">get_bucket</a>(<span class="keyword">const</span> std::string&amp; key,</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a084d25f0146777f1ceca62cf19f6ba52">get_bucket</a>(<span class="keyword">const</span> std::string&amp; key,</div>
 <div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;                      <a class="code" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu,</div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;                      std::shared_ptr&lt;std::vector&lt;std::shared_ptr&lt;bcf1_t&gt; &gt; &gt;&amp; bucket);</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;};</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;                      <span class="keywordtype">void</span> *&amp;bucket_hndl,</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;                      std::vector&lt;std::shared_ptr&lt;bcf1_t&gt; &gt; &amp;bucket);</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;</div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;}</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_ad52d26d3497d10e5b5c5f4925a36c9fa"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#ad52d26d3497d10e5b5c5f4925a36c9fa">GLnexus::BCFBucketCache::get_bucket</a></div><div class="ttdeci">Status get_bucket(const std::string &amp;key, StatsRangeQuery &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;bucket)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:85</div></div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;    <span class="keywordtype">void</span> release_bucket(<span class="keywordtype">void</span> *bucket_hndl);</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;};</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;}</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="preprocessor">#endif</span></div>
 <div class="ttc" id="struct_g_lnexus_1_1_stats_range_query_html"><div class="ttname"><a href="struct_g_lnexus_1_1_stats_range_query.html">GLnexus::StatsRangeQuery</a></div><div class="ttdef"><b>Definition:</b> types.h:276</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_key_value_1_1_d_b_html"><div class="ttname"><a href="class_g_lnexus_1_1_key_value_1_1_d_b.html">GLnexus::KeyValue::DB</a></div><div class="ttdef"><b>Definition:</b> KeyValue.h:60</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:29</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a084d25f0146777f1ceca62cf19f6ba52"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a084d25f0146777f1ceca62cf19f6ba52">GLnexus::BCFBucketCache::get_bucket</a></div><div class="ttdeci">Status get_bucket(const std::string &amp;key, StatsRangeQuery &amp;accu, void *&amp;bucket_hndl, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;bucket)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:101</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">GLnexus::BCFBucketCache</a></div><div class="ttdef"><b>Definition:</b> BCFBucketCache.h:13</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a6b588cf971bf6534c9bc4d6f6e2ab543"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a6b588cf971bf6534c9bc4d6f6e2ab543">GLnexus::BCFBucketCache::Open</a></div><div class="ttdeci">static Status Open(KeyValue::DB *db, int capacityRAM, std::unique_ptr&lt; BCFBucketCache &gt; &amp;ans)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:26</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a6b588cf971bf6534c9bc4d6f6e2ab543"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a6b588cf971bf6534c9bc4d6f6e2ab543">GLnexus::BCFBucketCache::Open</a></div><div class="ttdeci">static Status Open(KeyValue::DB *db, int capacityRAM, std::unique_ptr&lt; BCFBucketCache &gt; &amp;ans)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:42</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
