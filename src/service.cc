@@ -219,16 +219,23 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     // create a BCF header for this sample set
     // TODO: memoize
-    shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-    const char* hdrGT = "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">";
-    if (bcf_hdr_append(hdr.get(), hdrGT) != 0) {
-        return Status::Failure("bcf_hdr_append", hdrGT);
+    vector<string> hdr_lines;
+    hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+    if (!cfg.loss_symbolic_allele.empty()) {
+        // optional symbol to distinguish an "unrepresentable" allele from
+        // other no-calls due to missing data
+        hdr_lines.push_back("##ALT=<ID=" + cfg.loss_symbolic_allele + ",Description=\"Unrepresentable allele from GLnexus\">");
     }
     for (const auto& ctg : body_->metadata_->contigs()) {
         ostringstream stm;
         stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
-        if (bcf_hdr_append(hdr.get(), stm.str().c_str()) != 0) {
-            return Status::Failure("bcf_hdr_append", stm.str());
+        hdr_lines.push_back(stm.str());
+    }
+
+    shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
+    for (const auto& line : hdr_lines) {
+        if (bcf_hdr_append(hdr.get(), line.c_str()) != 0) {
+            return Status::Failure("bcf_hdr_append", line);
         }
     }
     for (const auto& sample : sample_names) {

@@ -11,7 +11,7 @@ using namespace std;
 
 namespace GLnexus {
 
-bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
+static bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
     return record->n_allele == 2 && string(record->d.allele[1]) == cfg.ref_symbolic_allele;
 }
 
@@ -196,7 +196,14 @@ Status LossTracker::get(loss_stats& ans) const noexcept {
 
 // Update the loss_stats data structure with call information for
 // original calls associated with a unified site
-Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, LossTrackers& losses_for_site) {
+#define IS_CALLED(cfg,gt_i) (!bcf_gt_is_missing(gt_i) &&                 \
+                             (cfg.loss_symbolic_allele.empty() ||      \
+                              bcf_gt_allele(gt_i) < site.alleles.size()))
+static Status update_orig_calls_for_loss(const genotyper_config& cfg,
+                                         const unified_site& site,
+                                         bcf1_t* record, int n_bcf_samples, int* gt,
+                                         const map<int,int>& sample_mapping,
+                                         LossTrackers& losses_for_site) {
     range rng(record);
     Status s;
 
@@ -204,7 +211,7 @@ Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, i
         int sample_ind = sample_mapping.at(i);
         auto& loss = losses_for_site[sample_ind];
 
-        int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
+        int n_calls = IS_CALLED(cfg,gt[i*2]) + IS_CALLED(cfg,gt[i*2 + 1]);
         loss.add_call_for_site(rng, n_calls, is_gvcf_ref_record(cfg, record));
     }
 
@@ -213,7 +220,9 @@ Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, i
 
 // Update the loss_stats data sturcture with the joint call for
 // the unified site and finalize the loss measures
-Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt, LossTrackers& losses_for_site) {
+static Status update_joint_call_loss(const genotyper_config& cfg, const unified_site& site,
+                                     bcf1_t* record, int n_bcf_samples, vector<int>& gt,
+                                     LossTrackers& losses_for_site) {
 
     if(n_bcf_samples != losses_for_site.size()) {
         return Status::Failure("update_joint_call_loss: number of samples and bcf does not match");
@@ -224,7 +233,7 @@ Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt
     for (int i = 0; i < n_bcf_samples; i++) {
         auto& loss = losses_for_site[i];
 
-        int n_gt_missing = (bcf_gt_is_missing(gt[i*2]) + bcf_gt_is_missing(gt[i*2 + 1]));
+        int n_gt_missing = (!IS_CALLED(cfg,gt[i*2]) + (!IS_CALLED(cfg,gt[i*2 + 1])));
 
         assert(n_gt_missing <= 2);
         // Lock down the loss associated with this unified_site
@@ -256,8 +265,19 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
 
     // map the bcf1_t alt alleles according to unification
     for (int i = 1; i < record->n_allele; i++) {
+        int a = -1; // default sentinel value for no-call
         auto p = site.unification.find(make_pair(rng.beg, string(record->d.allele[i])));
-        allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
+        if (p != site.unification.end()) {
+            // found a matching allele in the unified site
+            a = p->second;
+        } else if (!cfg.loss_symbolic_allele.empty()) {
+            // no matching allele in the unified site. if we actually observe
+            // a call of this allele, we will (if so configured) emit a
+            // symbolic ALT allele distinct from no-call. The symbolic allele
+            // will be added to the output BCF record in genotype_site below.
+            a = site.alleles.size();
+        }
+        allele_mapping.push_back(a);
     }
 
     // get the genotype calls
@@ -268,7 +288,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
     assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
     // update loss statistics for this bcf record
-    update_orig_calls_for_loss(cfg, record, n_bcf_samples, gt, sample_mapping, losses_for_site);
+    update_orig_calls_for_loss(cfg, site, record, n_bcf_samples, gt, sample_mapping, losses_for_site);
     // and the depth of coverage info
     unique_ptr<AlleleDepthHelper> depth;
     S(AlleleDepthHelper::Open(cfg, dataset, dataset_header, record, depth));
@@ -299,7 +319,9 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
             // accurately render the situation.
             genotypes[2*ij.second]
                 = genotypes[2*ij.second+1]
-                = bcf_gt_missing;
+                = (cfg.loss_symbolic_allele.empty()
+                        ? bcf_gt_missing
+                        : bcf_gt_unphased(site.alleles.size()));
         }
     }
 
@@ -363,6 +385,12 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
     for (const auto& allele : site.alleles) {
         c_alleles.push_back(allele.c_str());
     }
+    string unrepr;
+    if (!cfg.loss_symbolic_allele.empty()) {
+        // add an extra ALT entry for the "unrepresentable" symbolic allele
+        unrepr = "<" + cfg.loss_symbolic_allele + ">";
+        c_alleles.push_back(unrepr.c_str());
+    }
 
     ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
 
@@ -378,7 +406,7 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
         return Status::Failure("bcf_update_genotypes");
     }
 
-    S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, loss_trackers));
+    S(update_joint_call_loss(cfg, site, ans.get(), bcf_hdr_nsamples(hdr), genotypes, loss_trackers));
     // Package consolidated_loss for this site and merge into losses_for_site
     // to be returned to parent caller
     consolidated_loss losses;

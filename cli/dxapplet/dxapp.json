@@ -22,6 +22,11 @@
       "class": "array:string"
     },
     {
+      "name": "loss_symbolic_allele",
+      "class": "boolean",
+      "default": false
+    },
+    {
       "name": "output_name",
       "class": "string",
       "default": "GLnexus"

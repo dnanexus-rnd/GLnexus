@@ -36,13 +36,17 @@ main() {
     cp GLnexus.db/LOG "out/db_load_log/${output_name}.LOG"
 
     # genotype specified ranges
+    genotype_options=""
+    if [ "$loss_symbolic_allele" == "true" ]; then
+        genotype_options="$genotype_options --loss-symbolic-allele"
+    fi
     if [ "${#ranges_to_genotype[@]}" -gt "0" ]; then
         mkdir bcf
         i=0
         for range in "${ranges_to_genotype[@]}"; do
             range_sp=$(echo "$range" | tr -d "," | tr ":-" " ")
             outfn=$(printf "bcf/%05d.bcf" "$i")
-            time glnexus_cli genotype GLnexus.db $range_sp > "$outfn"
+            time glnexus_cli genotype $genotype_options GLnexus.db $range_sp > "$outfn"
             i=$(expr $i + 1)
         done
         ls -lh bcf
