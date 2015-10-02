@@ -41,8 +41,11 @@ public:
     /// The return value is OK, unless an IO error has occurred.
     Status get_bucket(const std::string& key,
                       StatsRangeQuery &accu,
-                      std::shared_ptr<std::vector<std::shared_ptr<bcf1_t> > >& bucket);
+                      void *&bucket_hndl,
+                      std::vector<std::shared_ptr<bcf1_t> > &bucket);
 
+
+    void release_bucket(void *bucket_hndl);
 };
 
 }

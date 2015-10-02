@@ -160,7 +160,12 @@ struct BCFKeyValueData_body {
 auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
 
 BCFKeyValueData::BCFKeyValueData() = default;
-BCFKeyValueData::~BCFKeyValueData() = default;
+
+BCFKeyValueData::~BCFKeyValueData() {
+    body_->rangeHelper.reset();
+    body_->bucketCache.reset();
+}
+
 
 Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
                                      const vector<pair<string,size_t>>& contigs,
@@ -519,15 +524,19 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         //cout << "scanning bucket " << r.str() << endl;
         string key = body_->rangeHelper->gen_key(dataset, r);
 
-        shared_ptr<vector<shared_ptr<bcf1_t> > > bucket;
-        s = body_->bucketCache->get_bucket(key, accu, bucket);
+        vector<shared_ptr<bcf1_t> > bucket;
+        void *bucket_hndl = NULL;
+        s = body_->bucketCache->get_bucket(key, accu, bucket_hndl, bucket);
         if (s != StatusCode::NOT_FOUND) {
-            for (auto rec : *bucket) {
+            for (auto rec : bucket) {
                 range vt_rng(rec.get());
                 if (query.overlaps(vt_rng)) {
                     records.push_back(rec);
                 }
             }
+        }
+        if (bucket_hndl != NULL) {
+            body_->bucketCache->release_bucket(bucket_hndl);
         }
     }
     accu.nBCFRecordsInRange += records.size();

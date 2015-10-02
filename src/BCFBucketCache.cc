@@ -17,10 +17,26 @@ struct BCFBucketCache_body {
 };
 
 // Type of values stored in a buckets
-using BktT = shared_ptr<vector<shared_ptr<bcf1_t> > >;
+using BktT = vector<shared_ptr<bcf1_t> >;
 
 BCFBucketCache::BCFBucketCache() = default;
-BCFBucketCache::~BCFBucketCache() = default;
+
+// Called when we shutdown the cache
+static void shutdown_bucket(void* val, size_t charge) {
+    if (val == NULL)
+        return;
+    cout << "---  shutdown bucket " << charge << "B" << endl;
+    BktT *bucketPtr = static_cast<BktT*>(val);
+    delete bucketPtr;
+}
+
+BCFBucketCache::~BCFBucketCache() {
+    if (body_->cache != nullptr) {
+        cout << "deleting the bucket cache" << endl;
+        body_->cache->ApplyToAllCacheEntries(&shutdown_bucket, false);
+        body_->cache.reset();
+    }
+}
 
 
 Status BCFBucketCache::Open(KeyValue::DB* db,
@@ -49,7 +65,7 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
                                  const string& key,
                                  StatsRangeQuery &accu,
                                  int &memCost,
-                                 shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
+                                 vector<shared_ptr<bcf1_t> > &ans) {
     // Retrieve the pertinent DB entries
     string data;
     Status s = body_->db->get(body_->coll, key, data);
@@ -66,31 +82,30 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
         if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
             return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", key);
         }
-        ans->push_back(vt);
+        ans.push_back(vt);
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
     memCost = data.size() * 2;
-    accu.nBCFRecordsReadFromDB += ans->size();
+    accu.nBCFRecordsReadFromDB += ans.size();
     return Status::OK();
 }
 
 // Release the memory held by a bucket
 static void delete_cached_bucket(const rocksdb::Slice& key, void* val) {
-//    cout << "---  bucket_mem_free ---" << endl;
+    if (val == NULL)
+        return;
     BktT *bucketPtr = static_cast<BktT*>(val);
-    bucketPtr->reset();
     delete bucketPtr;
 }
 
 Status BCFBucketCache::get_bucket(const string& key,
                                   StatsRangeQuery &accu,
-                                  shared_ptr<vector<shared_ptr<bcf1_t> > >& ans) {
+                                  void *&bucket_hndl,
+                                  vector<shared_ptr<bcf1_t> > & ans) {
+    bucket_hndl = NULL;
     int memCost = 0;
     if (body_->capacityRAM == 0) {
         // no real caching
-        if (ans == nullptr) {
-            ans =  make_shared<vector<shared_ptr<bcf1_t> > >();
-        }
         return get_bucket_from_db(body_.get(), key, accu, memCost, ans);
     }
 
@@ -98,29 +113,32 @@ Status BCFBucketCache::get_bucket(const string& key,
     // pointer to the caller.
     rocksdb::Slice sliceKey(key);
     rocksdb::Cache::Handle *hndl = body_->cache->Lookup(sliceKey);
-    if (hndl != nullptr) {
-        void *val = body_->cache->Value(hndl);
-        BktT bucket = *static_cast<BktT*>(val);
-        ans = bucket;
-        body_->cache->Release(hndl);
-        return Status::OK();
+    if (hndl == nullptr) {
+        // The bucket is not in memory. Read it from the DB and insert into
+        // the cache.
+        BktT* bucketPtr = new BktT;
+        Status s = get_bucket_from_db(body_.get(), key, accu, memCost, *bucketPtr);
+        if (s.bad()) {
+            return s;
+        }
+
+        //cout << "Insert into cache " << memCost << "/" << body_->cache->GetUsage() << endl;
+        body_->cache->Insert(sliceKey, static_cast<void*>(bucketPtr),
+                             memCost, &delete_cached_bucket);
+
+        // This should now succeed
+        hndl = body_->cache->Lookup(sliceKey);
     }
 
-    // The bucket is not in memory. Read it from the DB and insert into
-    // the cache.
-    BktT* bucketPtr = new BktT;
-    bucketPtr->reset(new vector<shared_ptr<bcf1_t> > );
-    Status s = get_bucket_from_db(body_.get(), key, accu, memCost, *bucketPtr);
-    if (s.bad()) {
-        return s;
-    }
-    ans = *bucketPtr;
-
-    //cout << "Insert into cache " << memCost << "/" << body_->cache->GetUsage() << endl;
-    body_->cache->Insert(sliceKey, static_cast<void*>(bucketPtr),
-                         memCost, &delete_cached_bucket);
-
+    void *val = body_->cache->Value(hndl);
+    ans = *static_cast<BktT*>(val);
+    bucket_hndl = static_cast<void*>(hndl);
     return Status::OK();
+}
+
+void BCFBucketCache::release_bucket(void *bucket_hndl) {
+    rocksdb::Cache::Handle *hndl = static_cast<rocksdb::Cache::Handle*>(bucket_hndl);
+    body_->cache->Release(hndl);
 }
 
 } // namespace GLnexus
