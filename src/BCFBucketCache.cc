@@ -32,7 +32,9 @@ Status BCFBucketCache::Open(KeyValue::DB* db,
     ans->body_.reset(new BCFBucketCache_body);
     ans->body_->db = db;
     ans->body_->capacityRAM = capacityRAM;
-    ans->body_->cache = rocksdb::NewLRUCache(capacityRAM);
+    if (capacityRAM > 0) {
+        ans->body_->cache = rocksdb::NewLRUCache(capacityRAM);
+    }
 
     // calculate once the BCF collection handle
     Status s;
