@@ -11,7 +11,26 @@ using namespace std;
 
 namespace GLnexus {
 
-bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
+// Reasons for emitting a non-call (.), encoded in the RNC FORMAT field in the
+// output VCF
+enum class NoCallReason {
+    N_A,          /// not applicable (the genotype *is* called)
+    MissingData,  /// no gVCF coverage or lack of sufficient depth
+    LostAllele    /// unrepresentable allele
+};
+
+/// A single allele call and metadata; diploid samples each have two calls
+struct one_call {
+    int32_t allele = bcf_gt_missing; /// or bcf_gt_allele(some_allele)
+    NoCallReason RNC = NoCallReason::MissingData;
+
+    one_call() = default;
+    one_call(int32_t allele_, NoCallReason RNC_) : allele(allele_), RNC(RNC_) {}
+};
+
+/// Determine whether the given record is a gVCF reference confidence record
+/// (or else a "normal" record with at least one specific ALT allele)
+static bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
     return record->n_allele == 2 && string(record->d.allele[1]) == cfg.ref_symbolic_allele;
 }
 
@@ -196,7 +215,7 @@ Status LossTracker::get(loss_stats& ans) const noexcept {
 
 // Update the loss_stats data structure with call information for
 // original calls associated with a unified site
-Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, LossTrackers& losses_for_site) {
+static Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, LossTrackers& losses_for_site) {
     range rng(record);
     Status s;
 
@@ -213,7 +232,7 @@ Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, i
 
 // Update the loss_stats data sturcture with the joint call for
 // the unified site and finalize the loss measures
-Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt, LossTrackers& losses_for_site) {
+static Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, const vector<one_call>& gt, LossTrackers& losses_for_site) {
 
     if(n_bcf_samples != losses_for_site.size()) {
         return Status::Failure("update_joint_call_loss: number of samples and bcf does not match");
@@ -224,7 +243,7 @@ Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt
     for (int i = 0; i < n_bcf_samples; i++) {
         auto& loss = losses_for_site[i];
 
-        int n_gt_missing = (bcf_gt_is_missing(gt[i*2]) + bcf_gt_is_missing(gt[i*2 + 1]));
+        int n_gt_missing = (bcf_gt_is_missing(gt[i*2].allele) + bcf_gt_is_missing(gt[i*2 + 1].allele));
 
         assert(n_gt_missing <= 2);
         // Lock down the loss associated with this unified_site
@@ -238,11 +257,11 @@ Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, vector<int>& gt
 // vector, based on a mapping from the bcf1_t sample indices into indices of
 // the genotype vector. Calls on update_orig_calls_for_loss to register
 // original calls in the bcf1_t for loss calculations
-Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
-                           const string& dataset, const bcf_hdr_t* dataset_header,
-                           bcf1_t* record, const map<int,int>& sample_mapping,
-                           vector<int32_t>& genotypes, vector<bool>& genotyped,
-                           LossTrackers& losses_for_site) {
+static Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
+                                  const string& dataset, const bcf_hdr_t* dataset_header,
+                                  bcf1_t* record, const map<int,int>& sample_mapping,
+                                  vector<one_call>& genotypes, vector<bool>& genotyped,
+                                  LossTrackers& losses_for_site) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
     Status s;
@@ -279,15 +298,21 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
         assert(ij.second < genotyped.size());
 
         if (!genotyped[ij.second]) {
-            #define fill_allele(ofs)                                \
-                if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&   \
-                    !bcf_gt_is_missing(gt[2*ij.first+ofs])) {       \
-                    auto al = bcf_gt_allele(gt[2*ij.first+ofs]);    \
-                    assert(al >= 0 && al < record->n_allele);       \
-                    if (allele_mapping[al] >= 0 && depth->sufficient(ij.second, al)) { \
-                        genotypes[2*ij.second+ofs]                  \
-                            = bcf_gt_unphased(allele_mapping[al]);  \
-                    }                                               \
+            #define fill_allele(ofs)                                           \
+                if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&              \
+                    !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
+                    auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
+                    assert(al >= 0 && al < record->n_allele);                  \
+                    if (depth->sufficient(ij.second, al)) {                    \
+                        if (allele_mapping[al] >= 0) {                         \
+                            genotypes[2*ij.second+(ofs)] =                     \
+                                one_call(bcf_gt_unphased(allele_mapping[al]),  \
+                                         NoCallReason::N_A);                   \
+                        } else {                                               \
+                            genotypes[2*ij.second+(ofs)].RNC =                 \
+                                NoCallReason::LostAllele;                      \
+                        }                                                      \
+                    }                                                          \
                 }
             fill_allele(0)
             fill_allele(1)
@@ -299,7 +324,7 @@ Status translate_genotypes(const genotyper_config& cfg, const unified_site& site
             // accurately render the situation.
             genotypes[2*ij.second]
                 = genotypes[2*ij.second+1]
-                = bcf_gt_missing;
+                = one_call(bcf_gt_missing, NoCallReason::LostAllele);
         }
     }
 
@@ -318,7 +343,7 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
     // Initialize a vector for the unified genotype calls for each sample,
     // starting with everything missing. We'll then loop through BCF records
     // overlapping this site and fill in the genotypes as we encounter them.
-    vector<int32_t> genotypes(2*samples.size(), bcf_gt_missing);
+    vector<one_call> genotypes(2*samples.size());
     // Also remember which samples we've already seen a genotype call for, in
     // case we encounter multiple BCF records from the sample
     vector<bool> genotyped(samples.size(), false);
@@ -358,26 +383,52 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
         }
     }
 
-    // Create the destination BCF record for this site
-    vector<const char*> c_alleles;
-    for (const auto& allele : site.alleles) {
-        c_alleles.push_back(allele.c_str());
-    }
-
+    // Create the destination BCF record for this site.
     ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
-
     ans->rid = site.pos.rid;
     ans->pos = site.pos.beg;
     ans->rlen = site.pos.end - site.pos.beg;
     ans->qual = 0;
+
+    // alleles
+    vector<const char*> c_alleles;
+    for (const auto& allele : site.alleles) {
+        c_alleles.push_back(allele.c_str());
+    }
     if (bcf_update_alleles(hdr, ans.get(), c_alleles.data(), c_alleles.size()) != 0) {
         return Status::Failure("bcf_update_alleles");
     }
 
-    if (bcf_update_genotypes(hdr, ans.get(), genotypes.data(), genotypes.size()) != 0) {
+    // GT
+    vector<int32_t> gt;
+    for (const auto& c : genotypes) {
+        gt.push_back(c.allele);
+    }
+    assert(gt.size() == genotypes.size());
+    if (bcf_update_genotypes(hdr, ans.get(), gt.data(), gt.size()) != 0) {
         return Status::Failure("bcf_update_genotypes");
     }
 
+    // RNC
+    vector<const char*> rnc;
+    for (const auto& c : genotypes) {
+        char* v = "M";
+        switch (c.RNC) {
+            case NoCallReason::N_A:
+                v = ".";
+                break;
+            case NoCallReason::LostAllele:
+                v = "L";
+                break;
+        }
+        rnc.push_back(v);
+    }
+    assert (gt.size() == rnc.size());
+    if (bcf_update_format_string(hdr, ans.get(), "RNC", rnc.data(), rnc.size()) != 0) {
+        return Status::Failure("bcf_update_format_string RNC");
+    }
+
+    // Finalize loss statistics for this site
     S(update_joint_call_loss(ans.get(), bcf_hdr_nsamples(hdr), genotypes, loss_trackers));
     // Package consolidated_loss for this site and merge into losses_for_site
     // to be returned to parent caller
