@@ -94,46 +94,37 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;</div>
 <div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
 <div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="comment">// The mode in which to open the cache</span></div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="comment">// NONE: no caching, read from the database directly</span></div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="comment">// READ_ONLY: caching of read-only BCF buckets</span></div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="keyword">enum class</span> CacheMode {DISABLE, ENABLE};</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="keyword">struct </span>BCFBucketCache_body;</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;</div>
-<div class="line"><a name="l00018"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">   18</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a> {</div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;    <span class="comment">// pImpl idiom</span></div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;    std::unique_ptr&lt;BCFBucketCache_body&gt; body_;</div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>();</div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>(<span class="keyword">const</span> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>&amp;) = <span class="keyword">delete</span>;</div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;</div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;    <span class="keyword">virtual</span> ~<a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>();</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#abb03d77412c2e522305b89f6402d4cbc">Open</a>(<a class="code" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">KeyValue::DB</a>* db,</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;                       CacheMode mode,</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;                       <span class="keywordtype">int</span> nBCFcapacity,</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;                       std::unique_ptr&lt;BCFBucketCache&gt;&amp; ans);</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a4939ddb00bbfd74006076691bc2b57e0">get_bucket</a>(<span class="keyword">const</span> std::string&amp; key,</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;                      <span class="keyword">const</span> std::string&amp; dataset,</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;                      <span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a>&amp; r,</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;                      <a class="code" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu,</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;                      std::shared_ptr&lt;std::vector&lt;std::shared_ptr&lt;bcf1_t&gt; &gt; &gt;&amp; bucket);</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;</div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;};</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;}</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">struct </span>BCFBucketCache_body;</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;</div>
+<div class="line"><a name="l00013"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">   13</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a> {</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;    <span class="comment">// pImpl idiom</span></div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;    std::unique_ptr&lt;BCFBucketCache_body&gt; body_;</div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;</div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>();</div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>(<span class="keyword">const</span> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>&amp;) = <span class="keyword">delete</span>;</div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;</div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;    <span class="keyword">virtual</span> ~<a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a>();</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;</div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a6b588cf971bf6534c9bc4d6f6e2ab543">Open</a>(<a class="code" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">KeyValue::DB</a>* db,</div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;                       <span class="keywordtype">int</span> capacityRAM,</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;                       std::unique_ptr&lt;BCFBucketCache&gt;&amp; ans);</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#ad52d26d3497d10e5b5c5f4925a36c9fa">get_bucket</a>(<span class="keyword">const</span> std::string&amp; key,</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;                      <a class="code" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu,</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;                      std::shared_ptr&lt;std::vector&lt;std::shared_ptr&lt;bcf1_t&gt; &gt; &gt;&amp; bucket);</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;};</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;}</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_ad52d26d3497d10e5b5c5f4925a36c9fa"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#ad52d26d3497d10e5b5c5f4925a36c9fa">GLnexus::BCFBucketCache::get_bucket</a></div><div class="ttdeci">Status get_bucket(const std::string &amp;key, StatsRangeQuery &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;bucket)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:83</div></div>
 <div class="ttc" id="struct_g_lnexus_1_1_stats_range_query_html"><div class="ttname"><a href="struct_g_lnexus_1_1_stats_range_query.html">GLnexus::StatsRangeQuery</a></div><div class="ttdef"><b>Definition:</b> types.h:276</div></div>
-<div class="ttc" id="struct_g_lnexus_1_1range_html"><div class="ttname"><a href="struct_g_lnexus_1_1range.html">GLnexus::range</a></div><div class="ttdoc">Genomic range (chromosome id, begin coordinate, end coordinate) </div><div class="ttdef"><b>Definition:</b> types.h:95</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_abb03d77412c2e522305b89f6402d4cbc"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#abb03d77412c2e522305b89f6402d4cbc">GLnexus::BCFBucketCache::Open</a></div><div class="ttdeci">static Status Open(KeyValue::DB *db, CacheMode mode, int nBCFcapacity, std::unique_ptr&lt; BCFBucketCache &gt; &amp;ans)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:26</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_key_value_1_1_d_b_html"><div class="ttname"><a href="class_g_lnexus_1_1_key_value_1_1_d_b.html">GLnexus::KeyValue::DB</a></div><div class="ttdef"><b>Definition:</b> KeyValue.h:60</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:29</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">GLnexus::BCFBucketCache</a></div><div class="ttdef"><b>Definition:</b> BCFBucketCache.h:18</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a4939ddb00bbfd74006076691bc2b57e0"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a4939ddb00bbfd74006076691bc2b57e0">GLnexus::BCFBucketCache::get_bucket</a></div><div class="ttdeci">Status get_bucket(const std::string &amp;key, const std::string &amp;dataset, const range &amp;r, StatsRangeQuery &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &gt; &amp;bucket)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:89</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">GLnexus::BCFBucketCache</a></div><div class="ttdef"><b>Definition:</b> BCFBucketCache.h:13</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_bucket_cache_html_a6b588cf971bf6534c9bc4d6f6e2ab543"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a6b588cf971bf6534c9bc4d6f6e2ab543">GLnexus::BCFBucketCache::Open</a></div><div class="ttdeci">static Status Open(KeyValue::DB *db, int capacityRAM, std::unique_ptr&lt; BCFBucketCache &gt; &amp;ans)</div><div class="ttdef"><b>Definition:</b> BCFBucketCache.cc:26</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
