@@ -10,7 +10,7 @@ namespace GLnexus {
 using discovered_allele = pair<allele,discovered_allele_info>;
 
 // Partition discovered alleles into non-overlapping "sites". However,
-// individual pairs of alleles within "sites" may not overlap.
+// individual pairs of alleles within "sites" might be non-overlapping
 auto partition_alleles(const discovered_alleles& alleles) {
     map<range,discovered_alleles> ans;
 
@@ -43,77 +43,108 @@ auto partition_alleles(const discovered_alleles& alleles) {
 }
 
 // Partition discovered alleles into non-overlapping "sites", where all
-// alleles at a site share at least one position. Prunes rare alleles until
-// that condition can be satisfied.
+// alleles at a site share at least one position. Alleles may be pruned to
+// satisfy this. We can view this as an 0-1 knapsack problem with values and
+// conflicts. We heuristically try to avoid pruning the most common alleles.
 auto prune_alleles(const discovered_alleles& alleles, discovered_alleles& pruned) {
     map<range,discovered_alleles> ans;
     pruned.clear();
 
-    // separate the ref and alt alleles
-    discovered_alleles ref_alleles, working_set;
-    for (const auto& dsal : alleles) {
-        UNPAIR(dsal,allele,ai)
-        if (ai.is_ref) {
-            ref_alleles.insert(dsal);
-        } else {
-            working_set.insert(dsal);
+    // First coarsely partition the alt alleles into clusters that don't
+    // interact with each other at all
+    auto clusters = partition_alleles(alleles);
+
+    // Now decompose each cluster into sites, where all alleles at a site
+    // share at least one reference position.
+    for (const pair<range,discovered_alleles>& cluster : clusters) {
+        // separate the ref and alt alleles
+        vector<discovered_allele> ref_alleles, alt_alleles;
+        for (const auto& dsal : cluster.second) {
+            if (dsal.second.is_ref) {
+                ref_alleles.push_back(dsal);
+            } else {
+                alt_alleles.push_back(dsal);
+            }
         }
-    }
 
-    // TODO: smarterer algorithm
-    do {
-        // partition the alt alleles into non-overlapping sites
-        ans = partition_alleles(working_set);
+        // sort alt alleles in the cluster by decreasing observation count
+        sort(alt_alleles.begin(), alt_alleles.end(),
+             [] (const discovered_allele& p1, const discovered_allele& p2) {
+                assert (!p1.second.is_ref && !p2.second.is_ref);
+                return p2.second.observation_count < p1.second.observation_count;
+             });
 
-        // at each site, do all alleles overlap by at least 1 position?
-        bool solution = true;
-        for (const auto& site : ans) {
-            UNPAIR(site,site_range,site_alleles)
-            for (const auto& dsal : site_alleles) {
-                auto common_range = site_range.intersect(dsal.first.pos);
-                if (common_range) {
-                    site_range = *common_range;
-                } else {
-                    solution = false;
-                    break;
+        map<range,discovered_alleles> cluster_sites;
+        // Build the sites by considering each alt allele and accepting or
+        // rejecting it as follows. If the allele overlaps exactly one
+        // existing site, accept it if it overlaps all existing alleles at
+        // that site. Also accept the allele if it doesn't overlap any
+        // already-accepted allele, creating a new site. Reject alleles that
+        // overlap some but not all alleles at a site, or that overlap
+        // multiple existing sites.
+        for (const discovered_allele& dal : alt_alleles) {
+            // find existing site(s) overlapping this allele
+            auto related_site = cluster_sites.end();
+            bool multiple_sites = false;
+            for (auto site = cluster_sites.begin(); site != cluster_sites.end(); site++) {
+                if (dal.first.pos.overlaps(site->first)) {
+                    if (related_site == cluster_sites.end()) {
+                        related_site = site;
+                    } else {
+                        multiple_sites = true;
+                    }
                 }
             }
-            if (!solution) break;
-        }
+            if (multiple_sites) {
+                // reject since this allele overlaps multiple existing sites
+                pruned.insert(dal);
+                continue;
+            }
+            if (related_site != cluster_sites.end()) {
+                if (any_of(related_site->second.begin(), related_site->second.end(),
+                           [&dal] (const discovered_allele& other) {
+                                return !(dal.first.pos.overlaps(other.first.pos));
+                            })) {
+                    // reject since this allele doesn't overlap all alleles in the site
+                    pruned.insert(dal);
+                    continue;
+                }
 
-        // if so, we have a solution
-        if (solution) break;
-
-        // otherwise, prune the rarest allele in the working set, and repeat
-        assert(working_set.size() > 2);
-        auto rare_allele = working_set.cend();
-        float rare_count = numeric_limits<float>::max();
-        for (auto it = working_set.cbegin(); it != working_set.cend(); it++) {
-            if(it->second.observation_count < rare_count) {
-                rare_allele = it;
-                rare_count = it->second.observation_count;
+                // merge this allele into the related site
+                range urng(dal.first.pos.rid,
+                           min(dal.first.pos.beg, related_site->first.beg),
+                           max(dal.first.pos.end, related_site->first.end));
+                discovered_alleles dals(related_site->second);
+                dals.insert(dal);
+                cluster_sites.erase(related_site);
+                cluster_sites[urng] = dals;
+            } else {
+                // no related site: insert a new site
+                cluster_sites[dal.first.pos] = discovered_alleles({dal});
             }
         }
-        assert(rare_allele != working_set.cend());
-        pruned.insert(*rare_allele);
-        working_set.erase(rare_allele);
-    } while(true);
 
-    // add back in the ref alleles matching the remaining alt alleles
-    for (const auto& refal : ref_alleles) {
-        auto site =
-            find_if(ans.begin(), ans.end(),
-                    [&] (const pair<range,discovered_alleles>& p) {
-                        return find_if(p.second.begin(), p.second.end(),
-                                       [&] (const discovered_allele& dsal) {
-                                        return (dsal.first.pos == refal.first.pos);
-                                       }) != p.second.end();
-                    });
-        if (site != ans.end()) {
-            assert(site->first.overlaps(refal.first.pos));
-            site->second.insert(refal);
-        } else {
-            pruned.insert(refal);
+        // add back in the ref alleles matching the remaining alt alleles
+        for (const auto& refal : ref_alleles) {
+            auto site =
+                find_if(cluster_sites.begin(), cluster_sites.end(),
+                        [&] (const pair<range,discovered_alleles>& p) {
+                            return find_if(p.second.begin(), p.second.end(),
+                                           [&] (const discovered_allele& dsal) {
+                                            return (dsal.first.pos == refal.first.pos);
+                                           }) != p.second.end();
+                        });
+            if (site != cluster_sites.end()) {
+                assert(site->first.overlaps(refal.first.pos));
+                site->second.insert(refal);
+            } else {
+                pruned.insert(refal);
+            }
+        }
+
+        // add the sites from this cluster to the final answer
+        for (const auto& site : cluster_sites) {
+            ans.insert(site);
         }
     }
 
