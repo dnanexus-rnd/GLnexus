@@ -359,3 +359,49 @@ TEST_CASE("Ensure uncompressed BCF encoding remains consistent") {
     }
     std::remove(tmp_bcf_file);
 }
+
+/*
+Some bcf1_t accessor functions take a non-const bcf1_t*. We believe this is
+because they need to "unpack" the record if it hasn't been already. Conversely
+we assume that if the record is already unpacked, the accessor functions don't
+in fact mutate the record, and they're safe to use from multiple threads. This
+test is supposed to detect obvious violations of this assumption (but doesn't
+prove its correctness)
+*/
+TEST_CASE("Check bcf1_t immutability") {
+    const char *tmp_bcf_file = "test/data/tmp.bcf";
+
+    // Read a VCF file into an array of in-memory records
+    vector<shared_ptr<bcf1_t>> records;
+    {
+        UPD(vcfFile, vcf, bcf_open("test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });
+        UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
+        shared_ptr<bcf1_t> vt;
+
+        do {
+            if (vt) {
+                records.push_back(vt);
+            }
+            vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+        } while (bcf_read(vcf, hdr, vt.get()) == 0);
+
+        UPD(void, buf, malloc(sizeof(bcf1_t)), free);
+        for (const auto& record : records) {
+            // unpack and verify (positive control) the record changes in memory
+            memcpy(buf, record.get(), sizeof(bcf1_t));
+            REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
+            REQUIRE(memcmp(buf, record.get(), sizeof(bcf1_t)) != 0);
+            memcpy(buf, record.get(), sizeof(bcf1_t));
+
+            // call accessors and verify the record does NOT obviously change in memory
+            int *gt_arr = nullptr, ngt_arr = 0;
+            REQUIRE(bcf_get_genotypes(hdr, record.get(), &gt_arr, &ngt_arr) > 0);
+            if (gt_arr) free(gt_arr);
+            int32_t *v = nullptr;
+            int vsz = 0;
+            REQUIRE(bcf_get_format_int32(hdr, record.get(), "AD", &v, &vsz) != 0);
+            if (v) free(v);
+            REQUIRE(memcmp(buf, record.get(), sizeof(bcf1_t)) == 0);
+        }
+    }
+}
