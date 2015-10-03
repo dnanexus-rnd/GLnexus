@@ -7,7 +7,7 @@
 #include "vcf.h"
 #include "hfile.h"
 #include "service.h"
-#include "alleles.h"
+#include "unifier.h"
 #include "BCFKeyValueData.h"
 #include "RocksKeyValue.h"
 #include "ctpl_stl.h"

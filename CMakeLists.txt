@@ -113,7 +113,7 @@ add_library(glnexus
             include/data.h src/data.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
-            include/alleles.h src/alleles.cc
+            include/unifier.h src/unifier.cc
             include/genotyper.h src/genotyper.cc
             include/KeyValue.h src/KeyValue.cc
             include/BCFSerialize.h src/BCFSerialize.cc

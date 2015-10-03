@@ -1,6 +1,6 @@
 #include "service.h"
 #include "data.h"
-#include "alleles.h"
+#include "unifier.h"
 #include "genotyper.h"
 #include <algorithm>
 #include <iostream>

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <vcf.h>
 #include "service.h"
-#include "alleles.h"
+#include "unifier.h"
 #include "genotyper.h"
 #include "catch.hpp"
 using namespace std;

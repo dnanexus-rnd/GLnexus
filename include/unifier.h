@@ -1,5 +1,5 @@
-#ifndef GLNEXUS_ALLELES_H
-#define GLNEXUS_ALLELES_H
+#ifndef GLNEXUS_UNIFIER_H
+#define GLNEXUS_UNIFIER_H
 
 #include "types.h"
 

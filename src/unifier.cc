@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <assert.h>
-#include "alleles.h"
+#include "unifier.h"
 #include <iostream>
 
 using namespace std;
