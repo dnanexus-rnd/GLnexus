@@ -11,6 +11,8 @@
 #include <thread>
 #include <mutex>
 #include <sys/time.h>
+#include "fcmm.hpp"
+#include "khash.h"
 using namespace std;
 
 namespace GLnexus {
@@ -131,9 +133,21 @@ struct ActiveMetadata {
     }
 };
 
+// std::hash<string> using the string hash function from htslib
+class KStringHash {
+public:
+    std::size_t operator()(string const& s) const  {
+        return (size_t) kh_str_hash_func(s.c_str());
+    }
+};
+using BCFHeaderCache = fcmm::Fcmm<string,shared_ptr<const bcf_hdr_t>,hash<string>,KStringHash>;
+// this is not a hard limit but the FCMM performance degrades if it's too low
+const size_t BCF_HEADER_CACHE_SIZE = 65536;
+
 // pImpl idiom
 struct BCFKeyValueData_body {
     KeyValue::DB* db;
+    unique_ptr<BCFHeaderCache> header_cache;
     std::unique_ptr<BCFBucketRange> rangeHelper;
     std::mutex mutex;
     ActiveMetadata amd;
@@ -248,6 +262,7 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
     }
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
+    ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
     return Status::OK();
 }
 
@@ -421,7 +436,13 @@ shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
 
 Status BCFKeyValueData::dataset_header(const string& dataset,
                                        shared_ptr<const bcf_hdr_t>& hdr) const {
-    // TODO: cache headers
+    auto cached = body_->header_cache->end();
+    if ((cached = body_->header_cache->find(dataset)) != body_->header_cache->end()) {
+        // Return memoized header
+        hdr = cached->second;
+        assert(hdr);
+        return Status::OK();
+    }
 
     // Retrieve the header
     Status s;
@@ -435,6 +456,9 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     int consumed;
     S(BCFReader::read_header(data.c_str(), data.size(), consumed, ans));
     hdr = ans;
+
+    // Memoize it
+    body_->header_cache->insert(make_pair(dataset, hdr));;
     return Status::OK();
 }
 
