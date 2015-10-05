@@ -54,7 +54,7 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
                                  const string& key,
                                  StatsRangeQuery &accu,
                                  int &memCost,
-                                 vector<shared_ptr<bcf1_t> > &ans) {
+                                 vector<shared_ptr<bcf1_t> > *&ans) {
     // Retrieve the pertinent DB entries
     string data;
     Status s = body_->db->get(body_->coll, key, data);
@@ -71,11 +71,11 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
         if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
             return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", key);
         }
-        ans.push_back(vt);
+        ans->push_back(vt);
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
     memCost = data.size() * 2;
-    accu.nBCFRecordsReadFromDB += ans.size();
+    accu.nBCFRecordsReadFromDB += ans->size();
     return Status::OK();
 }
 
@@ -90,7 +90,7 @@ static void delete_cached_bucket(const rocksdb::Slice& key, void* val) {
 Status BCFBucketCache::get_bucket(const string& key,
                                   StatsRangeQuery &accu,
                                   void *&bucket_hndl,
-                                  vector<shared_ptr<bcf1_t> > & ans) {
+                                  vector<shared_ptr<bcf1_t> > *& ans) {
     bucket_hndl = NULL;
     int memCost = 0;
     if (body_->capacityRAM == 0) {
@@ -106,22 +106,20 @@ Status BCFBucketCache::get_bucket(const string& key,
         // The bucket is not in memory. Read it from the DB and insert into
         // the cache.
         BktT* bucketPtr = new BktT;
-        Status s = get_bucket_from_db(body_.get(), key, accu, memCost, *bucketPtr);
+        Status s = get_bucket_from_db(body_.get(), key, accu, memCost, bucketPtr);
         if (s.bad()) {
             delete bucketPtr;
             return s;
         }
 
         //cout << "Insert into cache " << memCost << "/" << body_->cache->GetUsage() << endl;
-        body_->cache->Insert(sliceKey, static_cast<void*>(bucketPtr),
-                             memCost, &delete_cached_bucket);
-
-        // This should now succeed
-        hndl = body_->cache->Lookup(sliceKey);
+        hndl = body_->cache->Insert(sliceKey, static_cast<void*>(bucketPtr),
+                                    memCost, &delete_cached_bucket);
+        assert(hndl != nullptr);
     }
 
     void *val = body_->cache->Value(hndl);
-    ans = *static_cast<BktT*>(val);
+    ans = static_cast<BktT*>(val);
     bucket_hndl = static_cast<void*>(hndl);
     return Status::OK();
 }

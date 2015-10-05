@@ -39,11 +39,14 @@ public:
     /// modify it, even though the C++ type is not const.
     ///
     /// The return value is OK, unless an IO error has occurred.
+    ///
+    /// The caller must call [release_bucket] with the [bucket_handle]
+    /// once he is done using the data. This tells the cache that it
+    /// can release the data if short on memory.
     Status get_bucket(const std::string& key,
                       StatsRangeQuery &accu,
                       void *&bucket_hndl,
-                      std::vector<std::shared_ptr<bcf1_t> > &bucket);
-
+                      std::vector<std::shared_ptr<bcf1_t> > *&bucket);
 
     void release_bucket(void *bucket_hndl);
 };
