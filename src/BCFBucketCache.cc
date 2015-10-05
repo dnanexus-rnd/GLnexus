@@ -21,19 +21,8 @@ using BktT = vector<shared_ptr<bcf1_t> >;
 
 BCFBucketCache::BCFBucketCache() = default;
 
-// Called when we shutdown the cache
-static void shutdown_bucket(void* val, size_t charge) {
-    if (val == NULL)
-        return;
-    cout << "---  shutdown bucket " << charge << "B" << endl;
-    BktT *bucketPtr = static_cast<BktT*>(val);
-    delete bucketPtr;
-}
-
 BCFBucketCache::~BCFBucketCache() {
     if (body_->cache != nullptr) {
-        cout << "deleting the bucket cache" << endl;
-        body_->cache->ApplyToAllCacheEntries(&shutdown_bucket, false);
         body_->cache.reset();
     }
 }
@@ -119,6 +108,7 @@ Status BCFBucketCache::get_bucket(const string& key,
         BktT* bucketPtr = new BktT;
         Status s = get_bucket_from_db(body_.get(), key, accu, memCost, *bucketPtr);
         if (s.bad()) {
+            delete bucketPtr;
             return s;
         }
 
