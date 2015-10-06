@@ -38,17 +38,14 @@ public:
     /// and shared between all cache users. The caller must not try to
     /// modify it, even though the C++ type is not const.
     ///
-    /// The return value is OK, unless an IO error has occurred.
+    /// The caller must release the bucket shared_ptr before destroying the
+    /// BCFBucketCache object.
     ///
-    /// The caller must call [release_bucket] with the [bucket_handle]
-    /// once he is done using the data. This tells the cache that it
-    /// can release the data if short on memory.
+    /// The return value is typically OK or NOT_FOUND, unless an I/O error
+    /// occurs.
     Status get_bucket(const std::string& key,
                       StatsRangeQuery &accu,
-                      void *&bucket_hndl,
-                      std::vector<std::shared_ptr<bcf1_t> > *&bucket);
-
-    void release_bucket(void *bucket_hndl);
+                      std::shared_ptr<std::vector<std::shared_ptr<bcf1_t>>>& bucket);
 };
 
 }

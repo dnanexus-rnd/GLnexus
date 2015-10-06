@@ -519,23 +519,18 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         //cout << "scanning bucket " << r.str() << endl;
         string key = body_->rangeHelper->gen_key(dataset, r);
 
-        vector<shared_ptr<bcf1_t> > *bucket;
-        void *bucket_hndl = NULL;
-        s = body_->bucketCache->get_bucket(key, accu, bucket_hndl, bucket);
+        shared_ptr<vector<shared_ptr<bcf1_t>>> bucket;
+        s = body_->bucketCache->get_bucket(key, accu, bucket);
         if (s.ok()) {
-            for (auto rec : *bucket) {
+            for (const auto& rec : *bucket) {
                 range vt_rng(rec.get());
                 if (query.overlaps(vt_rng)) {
                     records.push_back(rec);
                 }
             }
-            body_->bucketCache->release_bucket(bucket_hndl);
-        }
-        else if (s == StatusCode::NOT_FOUND) {
-            // Skip this bucket, it is not in the database
-        }
-        else {
-            // raise error
+        } else if (s != StatusCode::NOT_FOUND) {
+            // Re-raise errors other than NOT_FOUND (which just means the
+            // bucket isn't in the database)
             return s;
         }
     }
