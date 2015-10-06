@@ -78,6 +78,16 @@ public:
                               std::shared_ptr<const std::set<std::string>>& datasets) const;
 };
 
+/// Iterate over BCF records within some range.
+class RangeBCFIterator {
+public:
+    virtual ~RangeBCFIterator() = default;
+
+    /// Get all the records in one dataset.
+    virtual Status next(std::string& dataset, std::shared_ptr<const bcf_hdr_t>& hdr,
+                        std::vector<std::shared_ptr<bcf1_t>>& records) = 0;
+};
+
 /// Abstract interface to stored BCF data sets. The implementation is
 /// responsible for any suitable caching.
 class BCFData {
@@ -105,6 +115,18 @@ public:
                                             std::shared_ptr<const bcf_hdr_t>& hdr,
                                             std::vector<std::shared_ptr<bcf1_t> >& records);
 
+    /// Get iterators for BCF records overlapping the given range in all
+    /// datasets containing at least one sample in the designated sample set.
+    /// To facilitate parallelization, the implementation may yield multiple
+    /// iterators, each of which will produce a range-based disjoint subset of
+    /// the relevant records. That is, each iterator will yield data for all
+    /// of the relevant datasets, and the iterators together will produce each
+    /// relevant record exactly once.
+    virtual Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset,
+                                   const range& pos,
+                                   std::shared_ptr<const std::set<std::string>>& samples,
+                                   std::shared_ptr<const std::set<std::string>>& datasets,
+                                   std::vector<std::unique_ptr<RangeBCFIterator>>& iterators);
 };
 
 }

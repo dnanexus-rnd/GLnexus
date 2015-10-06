@@ -497,3 +497,149 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 // |<-B1->|   |< -B2   ->|
 // Expected result: {A1, B2}
 // --------------------------------------------------------------------
+
+TEST_CASE("BCFKeyValueData::sampleset_range") {
+    KeyValueMem::DB db({});
+    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    REQUIRE(T::InitializeDB(&db, contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+    REQUIRE(s.ok());
+    s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+    REQUIRE(s.ok());
+
+    string sampleset;
+    s = cache->all_samples_sampleset(sampleset);
+    REQUIRE(s.ok());
+
+    shared_ptr<const set<string>> samples, datasets;
+    vector<unique_ptr<RangeBCFIterator>> iterators;
+
+    range rng(0, 100000, 200000);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 1);
+
+    string dataset;
+    shared_ptr<const bcf_hdr_t> hdr;
+    vector<shared_ptr<bcf1_t>> records, all_records;
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    #define check() s = data->dataset_range(dataset, hdr.get(), range(0,0,1000000), all_records); \
+                    REQUIRE(s.ok()); \
+                    REQUIRE(records.size() <= count_if(all_records.begin(), all_records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());})); \
+                    REQUIRE(all_of(records.begin(), records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());}))
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 3);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+
+    rng = range(0, 100000, 200001);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 2);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 3);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 1);
+    check();
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+
+    rng = range(0, 100000, 200100);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 2);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 3);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 2);
+    check();
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+
+    rng = range(0, 100000, 300500);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 3);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 3);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 5);
+    check();
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 3);
+    check();
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 2);
+    check();
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 2);
+    check();
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+}
