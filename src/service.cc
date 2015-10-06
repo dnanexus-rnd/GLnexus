@@ -211,30 +211,25 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     return discovered_alleles_refcheck(ans, body_->metadata_->contigs());
 }
 
-Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
-    Status s;
-    shared_ptr<const set<string>> samples, datasets;
-    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
-    vector<string> sample_names(samples->begin(), samples->end());
-
-    // create a BCF header for this sample set
-    // TODO: memoize
+static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
+                                 const vector<string>& samples,
+                                 shared_ptr<bcf_hdr_t>& ans) {
     vector<string> hdr_lines;
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
     hdr_lines.push_back("##FORMAT=<ID=RNC,Number=G,Type=Character,Description=\"Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele\">");
-    for (const auto& ctg : body_->metadata_->contigs()) {
+    for (const auto& ctg : contigs) {
         ostringstream stm;
         stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
         hdr_lines.push_back(stm.str());
     }
 
-    shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
+    shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w1"), &bcf_hdr_destroy);
     for (const auto& line : hdr_lines) {
         if (bcf_hdr_append(hdr.get(), line.c_str()) != 0) {
             return Status::Failure("bcf_hdr_append", line);
         }
     }
-    for (const auto& sample : sample_names) {
+    for (const auto& sample : samples) {
         if (bcf_hdr_add_sample(hdr.get(), sample.c_str()) != 0) {
             return Status::Failure("bcf_hdr_add_sample", sample);
         }
@@ -243,17 +238,74 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         return Status::Failure("bcf_hdr_sync");
     }
 
-    // safeguard against update_genotypes failure from improper header
-    assert(bcf_hdr_nsamples(hdr) == samples->size());
+     // safeguard against update_genotypes failure from improper header
+    assert(bcf_hdr_nsamples(hdr) == samples.size());
+    ans = hdr;
+    return Status::OK();
+}
+
+class BCFFileSink {
+    bool open_ = true;
+    const string& filename_;
+    bcf_hdr_t* header_;
+    vcfFile *outfile_;
+
+    BCFFileSink(const std::string& filename, bcf_hdr_t* hdr, vcfFile* outfile)
+        : filename_(filename), header_(hdr), outfile_(outfile)
+        {}
+
+public:
+    static Status Open(const string& filename,
+                       bcf_hdr_t* hdr,
+                       unique_ptr<BCFFileSink>& ans) {
+        // open output BCF file
+        vcfFile* outfile = bcf_open(filename.c_str(), "wb");
+        if (!outfile) {
+            return Status::IOError("failed to open BCF file for writing", filename);
+        }
+        if (bcf_hdr_write(outfile, hdr) != 0) {
+            bcf_close(outfile);
+            return Status::IOError("bcf_hdr_write", filename);
+        }
+
+        ans.reset(new BCFFileSink(filename, hdr, outfile));
+        return Status::OK();
+    }
+
+    virtual ~BCFFileSink() {
+        if (open_) {
+            bcf_close(outfile_);
+        }
+    }
+
+    virtual Status write(bcf1_t* record) {
+        if (!open_) return Status::Invalid("BCFFilkSink::write() called on closed writer");
+        return bcf_write(outfile_, header_, record) == 0
+                    ? Status::OK() : Status::IOError("bcf_write", filename_);
+    }
+
+    virtual Status close() {
+        if (!open_) return Status::Invalid("BCFFileSink::close() called on closed writer");
+        open_ = false;
+        return bcf_close(outfile_) == 0
+                ? Status::OK() : Status::IOError("bcf_close", filename_);
+    }
+};
+
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
+    Status s;
+    shared_ptr<const set<string>> samples, datasets;
+    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
+    vector<string> sample_names(samples->begin(), samples->end());
+
+    // create a BCF header for this sample set
+    // TODO: make optional
+    shared_ptr<bcf_hdr_t> hdr;
+    S(prepare_bcf_header(body_->metadata_->contigs(), sample_names, hdr));
 
     // open output BCF file
-    unique_ptr<vcfFile, void(*)(vcfFile*)> outfile(bcf_open(filename.c_str(), "wb"), [](vcfFile* f) { bcf_close(f); });
-    if (!outfile) {
-        return Status::IOError("failed to open BCF file for writing", filename);
-    }
-    if (bcf_hdr_write(outfile.get(), hdr.get()) != 0) {
-        return Status::IOError("bcf_hdr_write", filename);
-    }
+    unique_ptr<BCFFileSink> bcf_out;
+    S(BCFFileSink::Open(filename, hdr.get(), bcf_out));
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;
@@ -297,10 +349,11 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
             assert(bcf_i);
-            if (bcf_write(outfile.get(), hdr.get(), bcf_i.get()) != 0) {
-                s = Status::IOError("bcf_write", filename);
-            }
             merge_loss_stats(losses_for_site, dlosses);
+            s = bcf_out->write(bcf_i.get());
+            if (s.bad()) {
+                abort = true;
+            }
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort
             s = move(s_i);
@@ -314,8 +367,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // improved by genotyping in grid squares of N>1 sites and M>1 samples
 
     // close the output file
-    return bcf_close(outfile.release()) == 0
-                ? Status::OK() : Status::IOError("bcf_close", filename);
+    return bcf_out->close();
 }
 
 }
