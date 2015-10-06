@@ -11,8 +11,10 @@ addons:
       - libjemalloc-dev
       - libsnappy-dev
       - libc6-dbg
+      - gdb
 
 before_install:
+  - ulimit -c unlimited -S # enable core dump
   - .travis/before_install.sh
 
 script:
@@ -38,3 +40,7 @@ env:
 after_success:
   - coveralls --include src --include include --gcov-options '\-lp'
   - if [ "$TRAVIS_BRANCH" == "master" ]; then chmod u+x .travis/after_success.sh; .travis/after_success.sh; fi
+
+# After a failure, print the backtrace from any core dump
+after_failure:
+  - for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/test core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done
