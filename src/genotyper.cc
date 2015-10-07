@@ -272,11 +272,20 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     // reference allele maps if it contains the unified site
     range rng(record);
     allele_mapping.push_back(rng.contains(site.pos) ? 0 : -1);
-
-    // map the bcf1_t alt alleles according to unification
-    for (int i = 1; i < record->n_allele; i++) {
-        auto p = site.unification.find(make_pair(rng.beg, string(record->d.allele[i])));
-        allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
+    // if reference alleles are different, the same alt allele
+    // DNA sequence may have different meaning and cannot be translated
+    // directly as is.
+    bool isIdenticalRef = site.pos.size() == rng.size();
+    if (!isIdenticalRef) {
+        for (int i = 1; i < record->n_allele; i++) {
+            allele_mapping.push_back(-1);
+        }
+    } else {
+        // map the bcf1_t alt alleles according to unification
+        for (int i = 1; i < record->n_allele; i++) {
+            auto p = site.unification.find(make_pair(rng.beg, string(record->d.allele[i])));
+            allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
+        }
     }
 
     // get the genotype calls
