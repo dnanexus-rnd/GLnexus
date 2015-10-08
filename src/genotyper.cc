@@ -275,8 +275,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     // if reference alleles are different, the same alt allele
     // DNA sequence may have different meaning and cannot be translated
     // directly as is.
-    bool isIdenticalRef = site.pos.size() == rng.size();
-    if (!isIdenticalRef) {
+    bool is_identical_ref = site.pos == rng;
+    if (!is_identical_ref) {
         for (int i = 1; i < record->n_allele; i++) {
             allele_mapping.push_back(-1);
         }
