@@ -211,7 +211,7 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
     return db->put(sampleset, "*", string());
 }
 
-Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
+Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans, size_t cacheBytes) {
     assert(db != nullptr);
 
     // check database has been initialized
@@ -265,7 +265,7 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
-    S(BCFBucketCache::Open(db, 10000000, ans->body_->bucketCache));
+    S(BCFBucketCache::Open(db, cacheBytes, ans->body_->bucketCache));
 
     return Status::OK();
 }

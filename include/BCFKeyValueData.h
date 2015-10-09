@@ -28,7 +28,7 @@ public:
                                int interval_len = 30000);
 
     /// Open an existing database
-    static Status Open(KeyValue::DB* db, std::unique_ptr<BCFKeyValueData>& ans);
+    static Status Open(KeyValue::DB* db, std::unique_ptr<BCFKeyValueData>& ans, size_t cacheBytes = (1 << 30));
 
     virtual ~BCFKeyValueData();
 

@@ -12,7 +12,7 @@ namespace GLnexus {
 struct BCFBucketCache_body {
     KeyValue::DB* db;
     KeyValue::CollectionHandle coll;
-    int64_t capacityRAM;
+    size_t capacityRAM;
     shared_ptr<rocksdb::Cache> cache;
 };
 
@@ -24,7 +24,7 @@ BCFBucketCache::~BCFBucketCache() = default;
 
 
 Status BCFBucketCache::Open(KeyValue::DB* db,
-                            int capacityRAM,
+                            size_t capacityRAM,
                             std::unique_ptr<BCFBucketCache>& ans) {
     assert(db != nullptr);
 

@@ -23,7 +23,7 @@ public:
     /// The [capacityRAM] parameter describes how
     /// much memory the cache can use.
     static Status Open(KeyValue::DB* db,
-                       int capacityRAM,
+                       size_t capacityRAM,
                        std::unique_ptr<BCFBucketCache>& ans);
 
     /// Get a shared read-only pointer to a bucket.
