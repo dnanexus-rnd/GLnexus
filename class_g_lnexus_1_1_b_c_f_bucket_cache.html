@@ -99,21 +99,18 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a3e6aa50b4e2fe678a9e208a1b4189e0e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a3e6aa50b4e2fe678a9e208a1b4189e0e">get_bucket</a> (const std::string &amp;key, <a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu, void *&amp;bucket_hndl, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; *&amp;bucket)</td></tr>
-<tr class="separator:a3e6aa50b4e2fe678a9e208a1b4189e0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5120587bf130172bce9c51dc42756a67"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5120587bf130172bce9c51dc42756a67"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>release_bucket</b> (void *bucket_hndl)</td></tr>
-<tr class="separator:a5120587bf130172bce9c51dc42756a67"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac75d15ee9bf7ad7dc2fef4bfbbeb1a5d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#ac75d15ee9bf7ad7dc2fef4bfbbeb1a5d">get_bucket</a> (const std::string &amp;key, <a class="el" href="struct_g_lnexus_1_1_stats_range_query.html">StatsRangeQuery</a> &amp;accu, std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt;&gt;&gt; &amp;bucket)</td></tr>
+<tr class="separator:ac75d15ee9bf7ad7dc2fef4bfbbeb1a5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a6b588cf971bf6534c9bc4d6f6e2ab543"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a6b588cf971bf6534c9bc4d6f6e2ab543">Open</a> (<a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">KeyValue::DB</a> *db, int capacityRAM, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a> &gt; &amp;ans)</td></tr>
-<tr class="separator:a6b588cf971bf6534c9bc4d6f6e2ab543"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6098e163375812717862688d1d1796ce"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html#a6098e163375812717862688d1d1796ce">Open</a> (<a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">KeyValue::DB</a> *db, size_t capacityRAM, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a> &gt; &amp;ans)</td></tr>
+<tr class="separator:a6098e163375812717862688d1d1796ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Cache for BCF buckets. A bucket is stored in memory as a vector of parsed BCF records. Caching helps, for example, in cases where multiple threads access the same buckets. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="a3e6aa50b4e2fe678a9e208a1b4189e0e"></a>
+<a class="anchor" id="ac75d15ee9bf7ad7dc2fef4bfbbeb1a5d"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
@@ -132,13 +129,7 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">void *&amp;&#160;</td>
-          <td class="paramname"><em>bucket_hndl</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; *&amp;&#160;</td>
+          <td class="paramtype">std::shared_ptr&lt; std::vector&lt; std::shared_ptr&lt; bcf1_t &gt;&gt;&gt; &amp;&#160;</td>
           <td class="paramname"><em>bucket</em>&#160;</td>
         </tr>
         <tr>
@@ -151,12 +142,12 @@ Static Public Member Functions</h2></td></tr>
 <p>Get a shared read-only pointer to a bucket.</p>
 <p>Algorithm: look up if this bucket is already cached. If so, the caller get a reference to the existing bucket. Otherwise, the bucket is retrieved from the on disk database, parsed, and added to the cache. Then, the caller gets a reference.</p>
 <p>Notes: the shared reference is thread safe, so the caller can use it in any thread context. The bucket data is immutable, and shared between all cache users. The caller must not try to modify it, even though the C++ type is not const.</p>
-<p>The return value is OK, unless an IO error has occurred.</p>
-<p>The caller must call [release_bucket] with the [bucket_handle] once he is done using the data. This tells the cache that it can release the data if short on memory. </p>
+<p>The caller must release the bucket shared_ptr before destroying the <a class="el" href="class_g_lnexus_1_1_b_c_f_bucket_cache.html">BCFBucketCache</a> object.</p>
+<p>The return value is typically OK or NOT_FOUND, unless an I/O error occurs. </p>
 
 </div>
 </div>
-<a class="anchor" id="a6b588cf971bf6534c9bc4d6f6e2ab543"></a>
+<a class="anchor" id="a6098e163375812717862688d1d1796ce"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -172,7 +163,7 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">int&#160;</td>
+          <td class="paramtype">size_t&#160;</td>
           <td class="paramname"><em>capacityRAM</em>, </td>
         </tr>
         <tr>
