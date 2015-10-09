@@ -131,6 +131,7 @@ add_library(glnexus
             include/KeyValue.h src/KeyValue.cc
             include/BCFSerialize.h src/BCFSerialize.cc
             include/BCFKeyValueData.h src/BCFKeyValueData.cc
+            include/BCFBucketCache.h src/BCFBucketCache.cc
             include/RocksKeyValue.h src/RocksKeyValue.cc)
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
