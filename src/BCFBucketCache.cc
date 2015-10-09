@@ -12,7 +12,7 @@ namespace GLnexus {
 struct BCFBucketCache_body {
     KeyValue::DB* db;
     KeyValue::CollectionHandle coll;
-    int64_t capacityRAM;
+    size_t capacityRAM;
     shared_ptr<rocksdb::Cache> cache;
 };
 
@@ -20,16 +20,11 @@ struct BCFBucketCache_body {
 using BktT = vector<shared_ptr<bcf1_t> >;
 
 BCFBucketCache::BCFBucketCache() = default;
-
-BCFBucketCache::~BCFBucketCache() {
-    if (body_->cache != nullptr) {
-        body_->cache.reset();
-    }
-}
+BCFBucketCache::~BCFBucketCache() = default;
 
 
 Status BCFBucketCache::Open(KeyValue::DB* db,
-                            int capacityRAM,
+                            size_t capacityRAM,
                             std::unique_ptr<BCFBucketCache>& ans) {
     assert(db != nullptr);
 
@@ -54,7 +49,7 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
                                  const string& key,
                                  StatsRangeQuery &accu,
                                  int &memCost,
-                                 vector<shared_ptr<bcf1_t> > *&ans) {
+                                 BktT **ans) {
     // Retrieve the pertinent DB entries
     string data;
     Status s = body_->db->get(body_->coll, key, data);
@@ -65,37 +60,42 @@ static Status get_bucket_from_db(BCFBucketCache_body *body_,
     unique_ptr<BCFReader> reader;
     S(BCFReader::Open(data.c_str(), data.size(), reader));
 
+    *ans = new BktT;
     shared_ptr<bcf1_t> vt;
     while ((s = reader->read(vt)).ok()) {
         assert(vt);
         if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
+            delete *ans;
             return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack", key);
         }
-        ans->push_back(vt);
+        (*ans)->push_back(vt);
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
     memCost = data.size() * 2;
-    accu.nBCFRecordsReadFromDB += ans->size();
+    accu.nBCFRecordsReadFromDB += (*ans)->size();
     return Status::OK();
 }
 
-// Release the memory held by a bucket
+// Release the memory held by a bucket (RocksDB cache deleter function)
 static void delete_cached_bucket(const rocksdb::Slice& key, void* val) {
-    if (val == NULL)
-        return;
+    assert(val != nullptr);
     BktT *bucketPtr = static_cast<BktT*>(val);
     delete bucketPtr;
 }
 
 Status BCFBucketCache::get_bucket(const string& key,
                                   StatsRangeQuery &accu,
-                                  void *&bucket_hndl,
-                                  vector<shared_ptr<bcf1_t> > *& ans) {
-    bucket_hndl = NULL;
+                                  shared_ptr<BktT>& ans) {
+    Status s;
     int memCost = 0;
     if (body_->capacityRAM == 0) {
         // no real caching
-        return get_bucket_from_db(body_.get(), key, accu, memCost, ans);
+        BktT *bucketPtr;
+        s = get_bucket_from_db(body_.get(), key, accu, memCost, &bucketPtr);
+        if (s.ok()) {
+            ans.reset(bucketPtr);
+        }
+        return s;
     }
 
     // Check if the bucket is in memory. If so, hand a shared
@@ -105,28 +105,22 @@ Status BCFBucketCache::get_bucket(const string& key,
     if (hndl == nullptr) {
         // The bucket is not in memory. Read it from the DB and insert into
         // the cache.
-        BktT* bucketPtr = new BktT;
-        Status s = get_bucket_from_db(body_.get(), key, accu, memCost, bucketPtr);
-        if (s.bad()) {
-            delete bucketPtr;
-            return s;
-        }
+        BktT *bucketPtr;
+        S(get_bucket_from_db(body_.get(), key, accu, memCost, &bucketPtr));
 
         //cout << "Insert into cache " << memCost << "/" << body_->cache->GetUsage() << endl;
-        hndl = body_->cache->Insert(sliceKey, static_cast<void*>(bucketPtr),
-                                    memCost, &delete_cached_bucket);
+        hndl = body_->cache->Insert(sliceKey, bucketPtr, memCost, &delete_cached_bucket);
         assert(hndl != nullptr);
     }
 
+    // Return a shared_ptr to the bucket with an unusual custom deleter: it
+    // releases the cache handle instead of doing anything to directly free
+    // the BktT object itself. The RocksDB cache handles the reference
+    // counting on the BktT object instead of the shared_ptr.
     void *val = body_->cache->Value(hndl);
-    ans = static_cast<BktT*>(val);
-    bucket_hndl = static_cast<void*>(hndl);
+    ans = shared_ptr<BktT>(static_cast<BktT*>(val),
+                           [this, hndl] (BktT*) { this->body_->cache->Release(hndl); });
     return Status::OK();
-}
-
-void BCFBucketCache::release_bucket(void *bucket_hndl) {
-    rocksdb::Cache::Handle *hndl = static_cast<rocksdb::Cache::Handle*>(bucket_hndl);
-    body_->cache->Release(hndl);
 }
 
 } // namespace GLnexus
