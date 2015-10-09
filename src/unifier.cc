@@ -180,6 +180,7 @@ Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site
     vector<discovered_allele> allelesv(alleles.begin(), alleles.end());
     sort(allelesv.begin(), allelesv.end(),
          [] (const discovered_allele& p1, const discovered_allele& p2) {
+            assert(p1.first.pos.rid == p2.first.pos.rid);
             if (p1.second.is_ref == true && p2.second.is_ref == false) {
                 return true;
             } else if (p2.second.is_ref == true && p1.second.is_ref == false) {
@@ -216,7 +217,7 @@ Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site
         const allele& al = p.first;
 
         us.alleles.push_back(al.dna);
-        us.unification[make_pair(al.pos.beg,al.dna)] = i;
+        us.unification[make_pair(al.pos,al.dna)] = i;
         us.observation_count.push_back(p.second.observation_count);
     }
     ans = std::move(us);

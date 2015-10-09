@@ -182,8 +182,9 @@ struct unified_site {
     std::vector<std::string> alleles;
 
 
-    /// Mapping of overlapping alleles (begin coordinate, DNA) onto the unified alleles (by index).
-    std::map<std::pair<int,std::string>,int> unification;
+    /// Mapping of overlapping alleles (reference begin, reference end, allele
+    /// DNA) onto the unified alleles (by index).
+    std::map<std::pair<range,std::string>,int> unification;
 
     std::vector<float> observation_count;
     //std::vector<float> genotype_prior;
