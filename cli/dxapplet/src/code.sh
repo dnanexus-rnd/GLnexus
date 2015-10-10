@@ -42,7 +42,7 @@ main() {
         for range in "${ranges_to_genotype[@]}"; do
             range_sp=$(echo "$range" | tr -d "," | tr ":-" " ")
             outfn=$(printf "bcf/%05d.bcf" "$i")
-            time glnexus_cli genotype GLnexus.db $range_sp > "$outfn"
+            time glnexus_cli genotype --cache-bytes "$cache_bytes" GLnexus.db $range_sp > "$outfn"
             i=$(expr $i + 1)
         done
         ls -lh bcf

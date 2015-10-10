@@ -27,6 +27,11 @@
       "default": "GLnexus"
     },
     {
+      "name": "cache_bytes",
+      "class": "int",
+      "default": 1073741824
+    },
+    {
       "name": "sleep",
       "class": "int",
       "default": 0

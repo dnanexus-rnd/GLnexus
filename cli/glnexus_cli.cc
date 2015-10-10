@@ -386,14 +386,20 @@ int main_genotype(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"cache-bytes", required_argument, 0, 'c'},
         {0, 0, 0, 0}
     };
 
     int c;
+    size_t cache_bytes = 1 << 30;
     optind = 2; // force optind past command positional argument
     while (-1 != (c = getopt_long(argc, argv, "h",
                                   long_options, nullptr))) {
         switch (c) {
+            case 'c':
+                cache_bytes = strtoul(optarg, nullptr, 0);
+                break;
+
             case 'h':
             case '?':
                 help_genotype(argv[0]);
@@ -431,7 +437,7 @@ int main_genotype(int argc, char *argv[]) {
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
-        H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+        H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data, cache_bytes));
 
         // resolve the user-supplied contig name to rid
         std::vector<std::pair<std::string,size_t> > contigs;
