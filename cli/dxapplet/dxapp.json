@@ -18,6 +18,12 @@
       "patterns": ["*.tar"]
     },
     {
+      "name": "existing_db",
+      "class": "file",
+      "type": "GLnexus_db",
+      "optional": true
+    },
+    {
       "name": "ranges_to_genotype",
       "class": "array:string"
     },

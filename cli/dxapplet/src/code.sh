@@ -20,16 +20,22 @@ main() {
     sudo ldconfig
 
     # download inputs
-    dx-download-all-inputs --parallel --except gvcf_tar
+    dx-download-all-inputs --parallel --except gvcf_tar --except existing_db
+    mkdir -p in/gvcf
     if [ -n "$gvcf_tar" ]; then
-        mkdir -p in/gvcf
         dx cat "$gvcf_tar" | tar x -C in/gvcf --strip-components=1
     fi
     find in/gvcf -type f > all_gvcfs.txt
     wc -l all_gvcfs.txt
 
-    # initialize and load database
-    glnexus_cli init GLnexus.db $(find in/gvcf -type f | head -n 1)
+    # initialize database if none provided
+    if [ -n "$existing_db" ]; then
+        dx cat "$existing_db" | tar x
+    else
+        glnexus_cli init GLnexus.db $(find in/gvcf -type f | head -n 1)
+    fi
+
+    # load gVCFs
     cat all_gvcfs.txt | time glnexus_cli load GLnexus.db -
     ls -lh GLnexus.db
     mkdir -p out/db_load_log
