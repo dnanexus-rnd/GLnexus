@@ -8,6 +8,8 @@ using namespace std;
 
 namespace GLnexus {
 
+const int SHARD_BITS = 6;
+
 // pImpl idiom
 struct BCFBucketCache_body {
     KeyValue::DB* db;
@@ -33,7 +35,7 @@ Status BCFBucketCache::Open(KeyValue::DB* db,
     ans->body_->db = db;
     ans->body_->capacityRAM = capacityRAM;
     if (capacityRAM > 0) {
-        ans->body_->cache = rocksdb::NewLRUCache(capacityRAM);
+        ans->body_->cache = rocksdb::NewLRUCache(capacityRAM, SHARD_BITS);
     }
 
     // calculate once the BCF collection handle
