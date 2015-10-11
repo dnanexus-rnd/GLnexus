@@ -61,7 +61,7 @@ static Status discover_alleles_in_dataset(BCFData& data,
 
     // for each BCF record
     dsals.clear();
-    for (auto& record : records) {
+    for (const auto& record : records) {
         range rng(record);
         vector<float> obs_counts(record->n_allele, 0.0);
 

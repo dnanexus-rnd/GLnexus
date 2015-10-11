@@ -1,6 +1,5 @@
 #include "BCFKeyValueData.h"
 #include "BCFSerialize.h"
-#include "BCFBucketCache.h"
 #include "yaml-cpp/yaml.h"
 #include "vcf.h"
 #include "hfile.h"
@@ -154,7 +153,6 @@ struct BCFKeyValueData_body {
     ActiveMetadata amd;
     std::mutex statsMutex;
     StatsRangeQuery statsRq; // statistics for range queries
-    std::unique_ptr<BCFBucketCache> bucketCache;
 };
 
 auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
@@ -211,7 +209,7 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
     return db->put(sampleset, "*", string());
 }
 
-Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans, size_t cacheBytes) {
+Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
     assert(db != nullptr);
 
     // check database has been initialized
@@ -265,8 +263,6 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans,
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
-    S(BCFBucketCache::Open(db, cacheBytes, ans->body_->bucketCache));
-
     return Status::OK();
 }
 
@@ -487,6 +483,39 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
 }
 
 
+// Parse the records and extract those overlapping the query range
+static Status scan_bucket(
+    const string &dataset,
+    const string &key,
+    const string &data,
+    const bcf_hdr_t* hdr,
+    const range& query,
+    StatsRangeQuery &srq,
+    vector<shared_ptr<bcf1_t> >& records)
+{
+    Status s;
+    unique_ptr<BCFReader> reader;
+    S(BCFReader::Open(data.c_str(), data.size(), reader));
+
+    // statistics counter for BCF records
+    shared_ptr<bcf1_t> vt;
+    while ((s = reader->read(vt)).ok()) {
+        assert(vt);
+        srq.nBCFRecordsRead++;
+        range vt_rng(vt);
+        if (query.overlaps(vt_rng)) {
+            if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
+                return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
+                                       dataset + "@" + query.str());
+            }
+            records.push_back(vt);
+        }
+        vt.reset(); // important! otherwise reader overwrites the stored copy.
+    }
+
+    return Status::OK();
+}
+
 // Search all the buckets that may hold records within the query range. The tricky
 // corner case is the bucket immediately before the beginning of the query range.
 // It may hold records that start outside the range, but end inside it. We want
@@ -518,20 +547,10 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
         //cout << "scanning bucket " << r.str() << endl;
         string key = body_->rangeHelper->gen_key(dataset, r);
-
-        shared_ptr<vector<shared_ptr<bcf1_t>>> bucket;
-        s = body_->bucketCache->get_bucket(key, accu, bucket);
-        if (s.ok()) {
-            for (const auto& rec : *bucket) {
-                range vt_rng(rec.get());
-                if (query.overlaps(vt_rng)) {
-                    records.push_back(rec);
-                }
-            }
-        } else if (s != StatusCode::NOT_FOUND) {
-            // Re-raise errors other than NOT_FOUND (which just means the
-            // bucket isn't in the database)
-            return s;
+        string data;
+        s = body_->db->get(coll, key, data);
+        if (s != StatusCode::NOT_FOUND) {
+            scan_bucket(dataset, key, data, hdr, query, accu, records);
         }
     }
     accu.nBCFRecordsInRange += records.size();

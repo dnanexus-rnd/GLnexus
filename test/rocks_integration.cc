@@ -301,8 +301,9 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(s.ok());
         REQUIRE(records.size() == 2);
         std::shared_ptr<StatsRangeQuery> srq = data->getRangeStats();
+        //cout << srq->str() << endl;
+        REQUIRE(srq->nBCFRecordsRead == 10);
         REQUIRE(srq->nBCFRecordsInRange == 7);
-        int nReadFromDB = srq->nBCFRecordsReadFromDB;
 
         REQUIRE(records[0]->pos == 10009463);
         REQUIRE(records[0]->n_allele == 3);
@@ -315,26 +316,19 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(string(records[1]->d.allele[0]) == "A");
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
 
-        // Making sure the cache works
-        // Read the same records multiple times, verify that
-        // this does not cause additional DB accesses.
-        for (int i=0; i < 3; i++) {
-            s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
-            REQUIRE(s.ok());
-        }
-        srq = data->getRangeStats();
-        REQUIRE(srq->nBCFRecordsReadFromDB == nReadFromDB);
-
         // empty results
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), records);
         REQUIRE(records.size() == 0);
 
         s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
+        //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE(records.size() == 0);
 
         // bogus dataset
         s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
+        //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE(records.size() == 0);
+
     }
 
     RocksKeyValue::destroy(dbPath);

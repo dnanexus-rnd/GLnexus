@@ -108,9 +108,7 @@ Status MetadataCache::sampleset_datasets(const string& sampleset,
     return Status::OK();
 }
 
-Status BCFData::dataset_range_and_header(const string& dataset, const range& pos,
-                                         shared_ptr<const bcf_hdr_t>& hdr,
-                                         vector<shared_ptr<bcf1_t> >& records) {
+Status BCFData::dataset_range_and_header(const string& dataset, const range& pos, shared_ptr<const bcf_hdr_t>& hdr, vector<shared_ptr<bcf1_t> >& records) {
     Status s;
     S(dataset_header(dataset, hdr));
     return dataset_range(dataset, hdr.get(), pos, records);

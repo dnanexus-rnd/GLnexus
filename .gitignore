@@ -43,9 +43,6 @@ external/
 # cscope
 cscope*
 
-# emacs auxiliary files
-*~
-
 # htslib stuff
 mem:*
 src/1.*.zip
