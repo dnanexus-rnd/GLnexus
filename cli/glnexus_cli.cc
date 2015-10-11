@@ -11,14 +11,16 @@
 #include "BCFKeyValueData.h"
 #include "RocksKeyValue.h"
 #include "ctpl_stl.h"
+#include "spdlog/spdlog.h"
 
 using namespace std;
 
+auto console = spdlog::stderr_logger_mt("GLnexus");
 GLnexus::Status s;
 #define H(desc,expr) \
     s = expr; \
     if (s.bad()) { \
-        cerr << "Failed to " << desc << endl << s.str() << endl; \
+        console->error() << "Failed to " << desc << ": " << s.str(); \
         return 1; \
     }
 
@@ -426,6 +428,7 @@ int main_genotype(int argc, char *argv[]) {
     H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
     data.reset();
     db.reset();
+    console->info() << "created sample set " << "sampleset";
 
     // open the database in read-only mode to proceed
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
@@ -464,15 +467,19 @@ int main_genotype(int argc, char *argv[]) {
             unique_ptr<GLnexus::Service> svc;
             H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
 
+            console->info() << "discovering alleles in " << query.str(contigs);
             GLnexus::discovered_alleles alleles;
             H("discover alleles", svc->discover_alleles(sampleset, query, alleles));
+            console->info() << "discovered " << alleles.size() << " alleles";
 
             vector<GLnexus::unified_site> sites;
             H("unify sites", GLnexus::unified_sites(alleles, sites));
+            console->info() << "unified to " << sites.size() << " sites";
 
             GLnexus::consolidated_loss losses;
             H("genotype sites",
               svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-"), losses));
+            console->info("genotyping complete!");
 
             if (losses.size() < 100) {
                 cerr << "\nReporting loss for " << sites.size() << " site(s) genotyped for "<< losses.size() << " sample(s)." << endl;
@@ -503,6 +510,8 @@ void help(const char* prog) {
 }
 
 int main(int argc, char *argv[]) {
+    spdlog::set_level(spdlog::level::info);
+    spdlog::set_pattern("[%t] %+");
 
     if (argc == 1) {
         help(argv[0]);

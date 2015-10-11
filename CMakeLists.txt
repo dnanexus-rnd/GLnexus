@@ -112,6 +112,19 @@ ExternalProject_Get_Property(fcmm source_dir)
 set(FCMM_INCLUDE_DIR ${source_dir})
 include_directories(${FCMM_INCLUDE_DIR})
 
+ExternalProject_Add(spdlog
+    URL https://github.com/gabime/spdlog/archive/c900b25dfd.zip
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
+    CONFIGURE_COMMAND ""
+    BUILD_IN_SOURCE 1
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    LOG_DOWNLOAD ON
+  )
+ExternalProject_Get_Property(spdlog source_dir)
+set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
+include_directories(${SPDLOG_INCLUDE_DIR})
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto")
 
 ################################
@@ -145,6 +158,7 @@ target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb l
 
 add_executable(glnexus_cli cli/glnexus_cli.cc)
 add_dependencies(glnexus_cli libglnexus)
+add_dependencies(glnexus_cli spdlog)
 target_link_libraries(glnexus_cli -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp snappy bz2 lz4 rt)
 
 install(TARGETS playground DESTINATION bin)
