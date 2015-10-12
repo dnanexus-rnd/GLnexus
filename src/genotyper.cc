@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <algorithm>
 #include "genotyper.h"
 
 using namespace std;
@@ -335,8 +336,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
-Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_site& site,
-                     const vector<string>& samples, const set<string>& datasets,
+Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
+                     const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site) {
 	Status s;
 
@@ -353,12 +354,34 @@ Status genotype_site(const genotyper_config& cfg, BCFData& data, const unified_s
         loss_trackers.push_back(LossTracker(site.pos));
     }
 
+    shared_ptr<const set<string>> samples2, datasets;
+    vector<unique_ptr<RangeBCFIterator>> iterators;
+    S(data.sampleset_range(cache, sampleset, site.pos,
+                           samples2, datasets, iterators));
+    assert(samples.size() == samples2->size());
+
     // for each pertinent dataset
-    for (const auto& dataset : datasets) {
-        // load BCF records overlapping the site
+    for (const auto& dataset : *datasets) {
+        // load BCF records overlapping the site by "merging" the iterators
         shared_ptr<const bcf_hdr_t> dataset_header;
+        vector<vector<shared_ptr<bcf1_t>>> recordss(iterators.size());
         vector<shared_ptr<bcf1_t>> records;
-        S(data.dataset_range_and_header(dataset, site.pos, dataset_header, records));
+
+        for (const auto& iter : iterators) {
+            string this_dataset;
+            vector<shared_ptr<bcf1_t>> these_records;
+            S(iter->next(this_dataset, dataset_header, these_records));
+            if (dataset != this_dataset) {
+                return Status::Failure("genotype_site: iterator returned unexpected dataset",
+                                       this_dataset + " instead of " + dataset);
+            }
+            records.insert(records.end(), these_records.begin(), these_records.end());
+        }
+
+        assert(is_sorted(records.begin(), records.end(),
+                         [] (shared_ptr<bcf1_t>& p1, shared_ptr<bcf1_t>& p2) {
+                            return range(p1) < range(p2);
+                         }));
 
         // index the samples shared between the sample set and the BCFs
         // TODO: better algorithm, with caching (LRU given sampleset-dataset cross)

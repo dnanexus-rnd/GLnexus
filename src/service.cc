@@ -305,8 +305,8 @@ public:
 
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
-    shared_ptr<const set<string>> samples, datasets;
-    S(body_->metadata_->sampleset_datasets(sampleset, samples, datasets));
+    shared_ptr<const set<string>> samples;
+    S(body_->metadata_->sampleset_samples(sampleset, samples));
     vector<string> sample_names(samples->begin(), samples->end());
 
     // create a BCF header for this sample set
@@ -333,7 +333,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             }
             shared_ptr<bcf1_t> bcf;
             consolidated_loss losses_for_site;
-            Status ls = genotype_site(cfg, body_->data_, sites[i], sample_names, *datasets, hdr.get(), bcf, losses_for_site);
+            Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
+                                      sampleset, sample_names, hdr.get(), bcf, losses_for_site);
             if (ls.bad()) {
                 return ls;
             }
