@@ -100,6 +100,15 @@ public:
         return key;
     }
 
+    Status parse_key(const string& key, string& bucket, string& dataset) {
+        if (key.size() < 23) {
+            return Status::Invalid("BCFBucketRange::parse_key: key too small", key);
+        }
+        bucket = key.substr(0, 23);
+        dataset = key.substr(23);
+        return Status::OK();
+    }
+
     // Given a [query] range, return a structure describing all the buckets
     // to search through.
     std::shared_ptr<BucketExtent> scan(const std::string &dataset, const range& query) {
@@ -559,6 +568,172 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
     }
 
     return Status::OK();
+}
+
+// BCFKeyValueData::sampleset_range optimized implementation: if the sample
+// set covers >=25% of the samples in the database, produces RangeBCFIterators
+// that use underlying KeyValue::Iterators instead of repeated point lookups
+// (as in the base implementation). One iterator per underlying storage bucket
+// is produced.
+
+class BCFBucketIterator : public RangeBCFIterator {
+    BCFData& data_;
+    BCFKeyValueData_body& body_;
+
+    bool first_ = true;
+
+    range range_;
+    shared_ptr<const set<string>> datasets_;
+    set<string>::const_iterator dataset_;
+    
+    string bucket_;
+    shared_ptr<KeyValue::Reader> reader_;
+    unique_ptr<KeyValue::Iterator> it_;
+    
+    StatsRangeQuery stats_;
+
+public:
+    BCFBucketIterator(BCFData& data, BCFKeyValueData_body& body, range range,
+                      const std::string& bucket, shared_ptr<const set<string>>& datasets,
+                      const shared_ptr<KeyValue::Reader>& reader)
+        : data_(data), body_(body), range_(range), datasets_(datasets),
+          dataset_(datasets->begin()), bucket_(bucket), reader_(reader) {}
+
+    virtual ~BCFBucketIterator() {
+        lock_guard<mutex> lock(body_.statsMutex);
+        body_.statsRq += stats_;
+    }
+
+    Status next(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
+                vector<shared_ptr<bcf1_t>>& records) override {
+        Status s;
+
+        if (dataset_ == datasets_->end()) {
+            // we've finished returning all desired results
+            it_.reset();
+            return Status::NotFound();
+        }
+
+        // pull the desired data set ID (and increment the iterator for the next call)
+        dataset = *dataset_++;
+
+        // get the data set header
+        s = data_.dataset_header(dataset, hdr);
+        if (s.bad()) {
+            // Here and hereafter, we must censor NOT_FOUND errors so that the
+            // caller doesn't misinterpret them as normal EOF.
+            return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): dataset_header failed", dataset);
+        }
+
+        if (first_) {
+            // first call to next(): begin the iteration
+            assert(!it_);
+
+            KeyValue::CollectionHandle coll;
+            s = body_.db->collection("bcf",coll);
+            if (s.bad()) {
+                return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): KeyValue::collection() failed");
+            }
+
+            s = body_.db->iterator(coll, bucket_, it_);
+            if (s.bad()) {
+                return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): KeyValue::Iterator() failed", bucket_);
+            }
+            first_ = false;
+        }
+
+        records.clear();
+        if (!it_) {
+            // on a previous call to next() we noticed we've already advanced
+            // the KeyValue iterator past the end of the bucket, i.e. the
+            // bucket contains no further records for any dataset, so we're
+            // now just returning empty results for each dataset.
+            return Status::OK();
+        }
+
+        // advance the KeyValue iterator to the desired dataset
+        string key, key_dataset, value;
+        do {
+            s = it_->next(key, value);
+            if (s.bad()) {
+                if (s == StatusCode::NOT_FOUND) {
+                    // NOT_FOUND here indicates we've reached the end of the
+                    // whole database!
+                    it_.reset();
+                    return Status::OK();
+                }
+                return s;
+            }
+
+            // parse the key
+            string key_bucket;
+            s = body_.rangeHelper->parse_key(key, key_bucket, key_dataset);
+            if (s.bad()) {
+                return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): failed to parse key", key);
+            }
+
+            if (key_bucket != bucket_) {
+                // we've advanced past the end of the bucket
+                assert(key_bucket > bucket_);
+                it_.reset();
+                return Status::OK();
+            }
+        } while (key_dataset < dataset); // repeat until we reach the desired dataset
+        assert(key_dataset == dataset);
+
+        // extract the records overlapping range_
+        s = scan_bucket(dataset, value, hdr.get(), range_, stats_, records);
+        if (s.ok()) {
+            stats_.nBCFRecordsInRange += records.size();
+        }
+        return s;
+    }
+};
+
+Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const string& sampleset,
+                                        const range& pos,
+                                        shared_ptr<const set<string>>& samples,
+                                        shared_ptr<const set<string>>& datasets,
+                                        vector<unique_ptr<RangeBCFIterator>>& iterators) {
+    Status s;
+
+    // resolve samples and datasets
+    S(metadata.sampleset_datasets(sampleset, samples, datasets));
+
+    // TODO: dispatch to sampleset_range_base if the sample set is "too
+    // small". need a way to know N of the whole database
+
+    // get a KeyValue::Reader so that all iterators read from the same
+    // snapshot (this isn't strictly necessary since datasets are immutable,
+    // but seems nice to have)
+    unique_ptr<KeyValue::Reader> ureader;
+    S(body_->db->current(ureader));
+    shared_ptr<KeyValue::Reader> reader(move(ureader));
+
+    // create one iterator per bucket extent
+    shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan("", pos);
+    iterators.clear();
+    for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
+        // form a key less than all keys in this bucket
+        string key0 = body_->rangeHelper->gen_key("", r);
+        string bucket, blank;
+        S(body_->rangeHelper->parse_key(key0, bucket, blank));
+        assert(blank.empty());
+
+        iterators.push_back(make_unique<BCFBucketIterator>(*this, *body_, pos, bucket, datasets, reader));
+    }
+
+    return Status::OK();
+}
+
+// Provide a way to call the non-optimized base implementation of
+// sampleset_range. Mostly for unit testing.
+Status BCFKeyValueData::sampleset_range_base(const MetadataCache& metadata, const string& sampleset,
+                                             const range& pos,
+                                             shared_ptr<const set<string>>& samples,
+                                             shared_ptr<const set<string>>& datasets,
+                                             vector<unique_ptr<RangeBCFIterator>>& iterators) {
+    return BCFData::sampleset_range(metadata, sampleset, pos, samples, datasets, iterators);
 }
 
 // test whether a gVCF file is compatible for deposition into the database

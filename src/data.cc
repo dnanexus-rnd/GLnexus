@@ -139,11 +139,12 @@ public:
 
         vector<shared_ptr<bcf1_t>> all_records;
         Status s = data_.dataset_range_and_header(dataset, range_, hdr, all_records);
-        if (s == StatusCode::NOT_FOUND) {
-            // censor this error so caller doesn't think this is the normal
-            // end of iteration
-            s = Status::Failure("RangeBCFIterator::next(): unexpected NotFound error", dataset);
-        } else if (s.bad()) {
+        if (s.bad()) {
+             if (s == StatusCode::NOT_FOUND) {
+                // censor this error so caller doesn't think this is the normal
+                // end of iteration
+                return Status::Failure("RangeBCFIterator::next(): unexpected NotFound error", dataset);
+            }
             return s;
         }
 

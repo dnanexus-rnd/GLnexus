@@ -498,7 +498,10 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 // Expected result: {A1, B2}
 // --------------------------------------------------------------------
 
-TEST_CASE("BCFKeyValueData::sampleset_range") {
+TEST_CASE("BCFData::sampleset_range") {
+    // This tests the base implemention of sampleset_range in BCFData, which
+    // returns iterators over 100kbp slices.
+
     KeyValueMem::DB db({});
     auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
@@ -520,8 +523,12 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     shared_ptr<const set<string>> samples, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
 
+    // We'll slice various ranges and ensure we get the correct number of
+    // iterators and that each iterator returns the appropriate data for each
+    // dataset
+
     range rng(0, 100000, 200000);
-    s = data->sampleset_range(*cache, sampleset, rng,
+    s = data->sampleset_range_base(*cache, sampleset, rng,
                               samples, datasets, iterators);
     REQUIRE(s.ok());
     REQUIRE(iterators.size() == 1);
@@ -546,7 +553,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(s == StatusCode::NOT_FOUND);
 
     rng = range(0, 100000, 200001);
-    s = data->sampleset_range(*cache, sampleset, rng,
+    s = data->sampleset_range_base(*cache, sampleset, rng,
                               samples, datasets, iterators);
     REQUIRE(s.ok());
     REQUIRE(iterators.size() == 2);
@@ -574,7 +581,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(s == StatusCode::NOT_FOUND);
 
     rng = range(0, 100000, 200100);
-    s = data->sampleset_range(*cache, sampleset, rng,
+    s = data->sampleset_range_base(*cache, sampleset, rng,
                               samples, datasets, iterators);
     REQUIRE(s.ok());
     REQUIRE(iterators.size() == 2);
@@ -602,7 +609,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(s == StatusCode::NOT_FOUND);
 
     rng = range(0, 100000, 300500);
-    s = data->sampleset_range(*cache, sampleset, rng,
+    s = data->sampleset_range_base(*cache, sampleset, rng,
                               samples, datasets, iterators);
     REQUIRE(s.ok());
     REQUIRE(iterators.size() == 3);
@@ -642,4 +649,169 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     check();
     s = iterators[2]->next(dataset, hdr, records);
     REQUIRE(s == StatusCode::NOT_FOUND);
+}
+
+TEST_CASE("BCFKeyValueData::sampleset_range") {
+
+    // This tests the optimized bucket-based range slicing in BCFKeyValueData
+
+    KeyValueMem::DB db({});
+    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    REQUIRE(T::InitializeDB(&db, contigs, 25000).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+    REQUIRE(s.ok());
+    s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+    REQUIRE(s.ok());
+
+    string sampleset;
+    s = cache->all_samples_sampleset(sampleset);
+    REQUIRE(s.ok());
+
+    // We'll slice various ranges and ensure we get the correct number of
+    // iterators and that each iterator returns the appropriate data for each
+    // dataset
+
+    shared_ptr<const set<string>> samples, datasets;
+    vector<unique_ptr<RangeBCFIterator>> iterators;
+
+    range rng(0, 190000, 200000);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    // TODO: probably should be 2; the bucket range calculator is a little too
+    // inclusive when the range ends exactly on a boundary. Not a bug because
+    // records not overlapping the query range are always filtered out at the
+    // end.
+    REQUIRE(iterators.size() == 3);
+
+    string dataset;
+    shared_ptr<const bcf_hdr_t> hdr;
+    vector<shared_ptr<bcf1_t>> records, all_records;
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+     #define check() s = data->dataset_range(dataset, hdr.get(), range(0,0,1000000), all_records); \
+                    REQUIRE(s.ok()); \
+                    REQUIRE(records.size() <= count_if(all_records.begin(), all_records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());})); \
+                    REQUIRE(all_of(records.begin(), records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());}))
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 3);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[2]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    rng = range(0, 190000, 200050);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 3);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 3);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 1);
+    check();
+    REQUIRE(iterators[2]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    rng = range(0, 290000, 300050);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 3);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 3);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(records.size() == 3);
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 1);
+    check();
+    REQUIRE(iterators[2]->next(dataset, hdr, records).ok());
+    REQUIRE(records.size() == 1);
+    REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    // This query exercises a code path where the KeyValue iterator advances
+    // to the end of the database
+    rng = range(0, 399999, 400000);
+    s = data->sampleset_range(*cache, sampleset, rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 3);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 1);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.empty());
+    check();
+    REQUIRE(iterators[2]->next(dataset, hdr, records).ok());
+    REQUIRE(records.empty());
+    REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    // TODO: need a test with only a subset of the samples
 }
