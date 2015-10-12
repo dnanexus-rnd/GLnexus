@@ -461,6 +461,10 @@ int main_genotype(int argc, char *argv[]) {
             cerr << "Invalid query range" << endl;
             return 1;
         }
+        if (query.end > contigs[rid].second) {
+            query.end = contigs[rid].second;
+            console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+        }
 
         {
             // start service, discover alleles, unify sites, genotype sites
