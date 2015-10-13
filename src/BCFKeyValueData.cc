@@ -679,16 +679,20 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
     S(body_->db->collection("header",coll));
     string data;
     s = body_->db->get(coll, dataset, data);
-    if (s != StatusCode::NOT_FOUND) {
+    if (s.ok()) {
         return Status::Exists("data set already exists",
                               dataset + " (" + filename + ")");
+    } else if (s != StatusCode::NOT_FOUND) {
+        return s;
     }
 
     for (const auto& sample : samples) {
         string ignored_dataset;
         s = metadata.sample_dataset(sample, ignored_dataset);
-        if (s != StatusCode::NOT_FOUND) {
+        if (s.ok()) {
             return Status::Exists("sample already exists", sample + " " + dataset + " (" + filename + ")");
+        } else if (s != StatusCode::NOT_FOUND) {
+            return s;
         }
     }
     return Status::OK();
