@@ -486,7 +486,6 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
 // Parse the records and extract those overlapping the query range
 static Status scan_bucket(
     const string &dataset,
-    const string &key,
     const string &data,
     const bcf_hdr_t* hdr,
     const range& query,
@@ -513,6 +512,9 @@ static Status scan_bucket(
         vt.reset(); // important! otherwise reader overwrites the stored copy.
     }
 
+    if (s != StatusCode::NOT_FOUND) {
+        return s;
+    }
     return Status::OK();
 }
 
@@ -549,8 +551,10 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         string key = body_->rangeHelper->gen_key(dataset, r);
         string data;
         s = body_->db->get(coll, key, data);
-        if (s != StatusCode::NOT_FOUND) {
-            scan_bucket(dataset, key, data, hdr, query, accu, records);
+        if (s.ok()) {
+            S(scan_bucket(dataset, data, hdr, query, accu, records));
+        } else if (s != StatusCode::NOT_FOUND) {
+            return s;
         }
     }
     accu.nBCFRecordsInRange += records.size();
