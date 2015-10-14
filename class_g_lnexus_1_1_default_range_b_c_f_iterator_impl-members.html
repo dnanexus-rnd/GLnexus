@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.7"/>
-<title>GLnexus: Main Page</title>
+<title>GLnexus: Member List</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -37,8 +37,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </script>
   <div id="navrow1" class="tabs">
     <ul class="tablist">
-      <li class="current"><a href="index.html"><span>Main&#160;Page</span></a></li>
-      <li><a href="annotated.html"><span>Classes</span></a></li>
+      <li><a href="index.html"><span>Main&#160;Page</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Classes</span></a></li>
       <li><a href="files.html"><span>Files</span></a></li>
       <li>
         <div id="MSearchBox" class="MSearchBoxInactive">
@@ -58,7 +58,14 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
       </li>
     </ul>
   </div>
-</div><!-- top -->
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Class&#160;List</span></a></li>
+      <li><a href="classes.html"><span>Class&#160;Index</span></a></li>
+      <li><a href="hierarchy.html"><span>Class&#160;Hierarchy</span></a></li>
+      <li><a href="functions.html"><span>Class&#160;Members</span></a></li>
+    </ul>
+  </div>
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -73,39 +80,24 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </iframe>
 </div>
 
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html">DefaultRangeBCFIteratorImpl</a></li>  </ul>
+</div>
+</div><!-- top -->
 <div class="header">
   <div class="headertitle">
-<div class="title">GLnexus Documentation</div>  </div>
+<div class="title">GLnexus::DefaultRangeBCFIteratorImpl Member List</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><b>From DNAnexus R&amp;D: a scalable datastore for population genome sequencing, with on-demand joint genotyping.</b> (GL, genotype likelihood)</p>
-<p>This is an early-stage R&amp;D project we're developing openly. The code doesn't yet do anything useful! There's a <a href="https://github.com/dnanexus-rnd/GLnexus/wiki">wiki project roadmap</a>, which should be read in the spirit of "plans are worthless, but planning is insdispensable."</p>
-<h3>Build &amp; run tests</h3>
-<p><a href="https://travis-ci.org/dnanexus-rnd/GLnexus"></a> <a href="https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master">![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&amp;service=github)</a></p>
-<p>First <a href="http://askubuntu.com/a/581497">install gcc 4.9</a>, <code>cmake</code>, <code>libjemalloc-dev</code>, <code>libboost-dev</code>, <code>libzip-dev</code>, <code>libsnappy-dev</code>, <code>liblz4-dev</code>, <code>libbz2-dev</code>. Then:</p>
-<p>``` cmake -Dtest=ON . &amp;&amp; make &amp;&amp; ./unit_tests ```</p>
-<p>Other dependencies (should be set up automatically by CMake):</p><ul>
-<li><a href="https://github.com/samtools/htslib">htslib</a></li>
-<li><a href="https://github.com/facebook/rocksdb">rocksdb</a></li>
-<li><a href="https://github.com/jbeder/yaml-cpp">yaml-cpp</a></li>
-<li><a href="https://github.com/philsquared/Catch">Catch</a> test framework</li>
-</ul>
-<h3>Developer documentation</h3>
-<p>Evolving developer documentation can be found on the <a href="http://dnanexus-rnd.github.io/GLnexus/index.html">project github page</a>.</p>
-<h3>Coding conventions</h3>
-<ul>
-<li>C++14 - take advantage of <a href="http://shop.oreilly.com/product/0636920033707.do">the goodies</a></li>
-<li>Use smart pointers to avoid passing resources needing manual deallocation across function/class boundaries</li>
-<li>Prefer references over pointers when they shouldn't be null nor change ever.</li>
-<li>Avoid exceptions; prefer returning a <code>Status</code>, defined early in <a href="https://github.com/dnanexus-rnd/GLnexus/blob/master/include/types.h">types.h</a><ul>
-<li>nb the frequently-used convenience macro <code>S()</code> defined just below <code>Status</code></li>
-</ul>
-</li>
-<li>Avoid public constructors with nontrivial bodies; prefer static initializer function returning <code>Status</code></li>
-<li>Avoid elaborate templated class hierarchies</li>
-</ul>
-<p>Documentation Last Updated:Wed Oct 14 14:57:21 UTC 2015 </p>
-</div></div><!-- contents -->
+
+<p>This is the complete list of members for <a class="el" href="class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html">GLnexus::DefaultRangeBCFIteratorImpl</a>, including all inherited members.</p>
+<table class="directory">
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>DefaultRangeBCFIteratorImpl</b>(BCFData &amp;data, range range, bool first_range, shared_ptr&lt; const set&lt; string &gt;&gt; &amp;datasets) (defined in <a class="el" href="class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html">GLnexus::DefaultRangeBCFIteratorImpl</a>)</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html">GLnexus::DefaultRangeBCFIteratorImpl</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>next</b>(string &amp;dataset, shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, vector&lt; shared_ptr&lt; bcf1_t &gt;&gt; &amp;records) override (defined in <a class="el" href="class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html">GLnexus::DefaultRangeBCFIteratorImpl</a>)</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html">GLnexus::DefaultRangeBCFIteratorImpl</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="class_g_lnexus_1_1_range_b_c_f_iterator.html#aed93249a20e21f2f1a3ce7ffb613cfae">GLnexus::RangeBCFIterator::next</a>(std::string &amp;dataset, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt;&gt; &amp;records)=0</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_range_b_c_f_iterator.html">GLnexus::RangeBCFIterator</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>~RangeBCFIterator</b>()=default (defined in <a class="el" href="class_g_lnexus_1_1_range_b_c_f_iterator.html">GLnexus::RangeBCFIterator</a>)</td><td class="entry"><a class="el" href="class_g_lnexus_1_1_range_b_c_f_iterator.html">GLnexus::RangeBCFIterator</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
+</table></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">
