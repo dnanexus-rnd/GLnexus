@@ -5,7 +5,6 @@ var searchData=
   ['dataset_5frange_5fand_5fheader',['dataset_range_and_header',['../class_g_lnexus_1_1_b_c_f_data.html#a5976e3fe73b51c5f5a5194b36966e47f',1,'GLnexus::BCFData']]],
   ['db',['DB',['../class_g_lnexus_1_1_rocks_key_value_1_1_d_b.html',1,'GLnexus::RocksKeyValue']]],
   ['db',['DB',['../class_g_lnexus_1_1_key_value_1_1_d_b.html',1,'GLnexus::KeyValue']]],
-  ['defaultrangebcfiteratorimpl',['DefaultRangeBCFIteratorImpl',['../class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html',1,'GLnexus']]],
   ['discover_5falleles',['discover_alleles',['../class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22',1,'GLnexus::Service']]],
   ['discovered_5fallele_5finfo',['discovered_allele_info',['../struct_g_lnexus_1_1discovered__allele__info.html',1,'GLnexus']]]
 ];
