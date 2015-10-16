@@ -596,6 +596,75 @@ class BCFBucketIterator : public RangeBCFIterator {
     
     StatsRangeQuery stats_;
 
+    Status next_impl(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
+                      vector<shared_ptr<bcf1_t>>& records) {
+        // precondition: dataset_ != datasets_.end()
+
+        // pull the desired data set ID (and increment the iterator for the next call)
+        dataset = *dataset_++;
+
+        // get the data set header
+        Status s;
+        S(data_.dataset_header(dataset, hdr));
+
+        if (first_) {
+            // first call to next(): begin the iteration
+            assert(!it_);
+            KeyValue::CollectionHandle coll;
+            S(body_.db->collection("bcf",coll));
+            S(body_.db->iterator(coll, bucket_, it_));
+            assert(it_);
+            first_ = false;
+        }
+
+        records.clear();
+        if (!it_ || !it_->valid()) {
+            // we've already advanced the KeyValue iterator past the end of
+            // the bucket, i.e. the bucket contains no further records for any
+            // dataset, so we're now just returning empty results for each
+            // dataset.
+            return Status::OK();
+        }
+
+        // advance the KeyValue iterator to the desired dataset
+        string key_dataset;
+        for (; s.ok() && it_->valid(); s = it_->next()) {
+            string key_bucket;
+            S(body_.rangeHelper->parse_key(it_->key(), key_bucket, key_dataset));
+
+            if (key_bucket != bucket_) {
+                // we've now advanced past the end of the bucket, so there are
+                // no records for this data set (or subsequent data sets)
+                assert(key_bucket > bucket_);
+                it_.reset();
+                return Status::OK();
+            }
+
+            if (key_dataset >= dataset) {
+                break;
+            }
+        }
+        if (s.bad()) return s;
+        if (!it_->valid()) {
+            // wow, we've reached the end of the whole bcf collection
+            it_.reset();
+            return Status::OK();
+        }
+        if (key_dataset != dataset) {
+            // the database contains no bucket corresponding to this dataset,
+            // but might have them for subsequent data sets
+            assert(key_dataset > dataset);
+            return Status::OK();
+        }
+
+        // extract the records overlapping range_
+        s = scan_bucket(dataset, it_->value(), hdr.get(), range_, stats_, records);
+        if (s.ok()) {
+            stats_.nBCFRecordsInRange += records.size();
+        }
+        return s;
+    }
+
 public:
     BCFBucketIterator(BCFData& data, BCFKeyValueData_body& body, range range,
                       const std::string& bucket, shared_ptr<const set<string>>& datasets,
@@ -610,85 +679,17 @@ public:
 
     Status next(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
                 vector<shared_ptr<bcf1_t>>& records) override {
-        Status s;
-
         if (dataset_ == datasets_->end()) {
             // we've finished returning all desired results
             it_.reset();
             return Status::NotFound();
         }
 
-        // pull the desired data set ID (and increment the iterator for the next call)
-        dataset = *dataset_++;
-
-        // get the data set header
-        s = data_.dataset_header(dataset, hdr);
-        if (s.bad()) {
-            // Here and hereafter, we must censor NOT_FOUND errors so that the
-            // caller doesn't misinterpret them as normal EOF.
-            return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): dataset_header failed", dataset);
-        }
-
-        if (first_) {
-            // first call to next(): begin the iteration
-            assert(!it_);
-
-            KeyValue::CollectionHandle coll;
-            s = body_.db->collection("bcf",coll);
-            if (s.bad()) {
-                return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): KeyValue::collection() failed");
-            }
-
-            s = body_.db->iterator(coll, bucket_, it_);
-            if (s.bad()) {
-                return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): KeyValue::Iterator() failed", bucket_);
-            }
-            first_ = false;
-        }
-
-        records.clear();
-        if (!it_) {
-            // on a previous call to next() we noticed we've already advanced
-            // the KeyValue iterator past the end of the bucket, i.e. the
-            // bucket contains no further records for any dataset, so we're
-            // now just returning empty results for each dataset.
-            return Status::OK();
-        }
-
-        // advance the KeyValue iterator to the desired dataset
-        string key, key_dataset, value;
-        do {
-            s = it_->next(key, value);
-            if (s.bad()) {
-                if (s == StatusCode::NOT_FOUND) {
-                    // NOT_FOUND here indicates we've reached the end of the
-                    // whole database!
-                    it_.reset();
-                    return Status::OK();
-                }
-                return s;
-            }
-
-            // parse the key
-            string key_bucket;
-            s = body_.rangeHelper->parse_key(key, key_bucket, key_dataset);
-            if (s.bad()) {
-                return s != StatusCode::NOT_FOUND ? move(s) : Status::Failure("BCFBucketIterator::next(): failed to parse key", key);
-            }
-
-            if (key_bucket != bucket_) {
-                // we've advanced past the end of the bucket
-                assert(key_bucket > bucket_);
-                it_.reset();
-                return Status::OK();
-            }
-        } while (key_dataset < dataset); // repeat until we reach the desired dataset
-        assert(key_dataset == dataset);
-
-        // extract the records overlapping range_
-        s = scan_bucket(dataset, value, hdr.get(), range_, stats_, records);
-        if (s.ok()) {
-            stats_.nBCFRecordsInRange += records.size();
+        Status s = next_impl(dataset, hdr, records);
+        if (s == StatusCode::NOT_FOUND) {
+            // censor NotFound errors so that the caller doesn't misinterpret
+            // them as normal EOF.
+            return Status::Failure("BCFBucketIterator::next()", s.str());
         }
         return s;
     }

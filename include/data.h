@@ -83,7 +83,8 @@ class RangeBCFIterator {
 public:
     virtual ~RangeBCFIterator() = default;
 
-    /// Get all the records in one dataset.
+    /// Get all the records in one dataset. Returns NotFound at the end of the
+    /// iteration.
     virtual Status next(std::string& dataset, std::shared_ptr<const bcf_hdr_t>& hdr,
                         std::vector<std::shared_ptr<bcf1_t>>& records) = 0;
 };
