@@ -117,11 +117,13 @@ public:
 
     /// Get iterators for BCF records overlapping the given range in all
     /// datasets containing at least one sample in the designated sample set.
+    //
     /// To facilitate parallelization, the implementation may yield multiple
     /// iterators, each of which will produce a range-based disjoint subset of
-    /// the relevant records. That is, each iterator will yield data for all
-    /// of the relevant datasets, and the iterators together will produce each
-    /// relevant record exactly once.
+    /// the relevant records. Each iterator will yield results for each
+    /// relevant data set (possibly yielding zero records in some steps) --
+    /// that is, they will all reach their end after the same number of steps.
+    /// The iterators together will produce each relevant record exactly once.
     virtual Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset,
                                    const range& pos,
                                    std::shared_ptr<const std::set<std::string>>& samples,

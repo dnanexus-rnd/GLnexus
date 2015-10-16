@@ -127,8 +127,10 @@ class DefaultRangeBCFIteratorImpl : public RangeBCFIterator {
     set<string>::const_iterator it_;
 
 public:
-    DefaultRangeBCFIteratorImpl(BCFData& data, range range, bool first_range, shared_ptr<const set<string>>& datasets)
-        : data_(data), range_(range), first_range_(first_range), datasets_(datasets), it_(datasets->begin()) {}
+    DefaultRangeBCFIteratorImpl(BCFData& data, range range, bool first_range,
+                                shared_ptr<const set<string>>& datasets)
+        : data_(data), range_(range), first_range_(first_range),
+          datasets_(datasets), it_(datasets->begin()) {}
 
     Status next(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
                 vector<shared_ptr<bcf1_t>>& records) override {
@@ -166,7 +168,6 @@ public:
             }
         }
         records.clear();
-        records.reserve(all_records.size()-skip);
         records.insert(records.begin(), all_records.begin()+skip, all_records.end());
 
         return Status::OK();

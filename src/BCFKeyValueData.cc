@@ -81,6 +81,17 @@ public:
     // constructor
     BCFBucketRange(int interval_len) : interval_len(interval_len) {};
 
+    // Given the range of a bucket, produce the key prefix for the bucket.
+    std::string bucket_prefix(const range& rng) {
+        stringstream ss;
+        // We add leading zeros to ensure that string lexicographic ordering will sort
+        // keys in ascending order.
+        ss << setw(3) << setfill('0') << rng.rid
+           << setw(10) << setfill('0') << rng.beg
+           << setw(10) << setfill('0') << rng.end;
+        return ss.str();
+    }
+
 // Create a key for a bucket that includes records from [dataset],
 // on chromosome [rid], whose start position is in the genomic range [beg,end).
 //
@@ -89,17 +100,10 @@ public:
 // The key is generated so that data for a genomic range from all samples will be
 // located contiguously on disk.
     std::string gen_key(const std::string &dataset, const range& rng) {
-        stringstream ss;
-        // We add leading zeros to ensure that string lexicographic ordering will sort
-        // keys in ascending order.
-        ss << setw(3) << setfill('0') << rng.rid
-           << setw(10) << setfill('0') << rng.beg
-           << setw(10) << setfill('0') << rng.end
-           << dataset;
-        string key = ss.str();
-        return key;
+        return bucket_prefix(rng) + dataset;
     }
 
+    // Decompose the key into bucket prefix and dataset
     Status parse_key(const string& key, string& bucket, string& dataset) {
         if (key.size() < 23) {
             return Status::Invalid("BCFBucketRange::parse_key: key too small", key);
@@ -710,17 +714,18 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
     S(body_->db->current(ureader));
     shared_ptr<KeyValue::Reader> reader(move(ureader));
 
-    // create one iterator per bucket extent
+    // create one iterator per bucket
     shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan("", pos);
     iterators.clear();
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
-        // form a key less than all keys in this bucket
-        string key0 = body_->rangeHelper->gen_key("", r);
-        string bucket, blank;
-        S(body_->rangeHelper->parse_key(key0, bucket, blank));
-        assert(blank.empty());
+        // Calculate the key prefix for this bucket. The BCFBucketIterator
+        // object will use KeyValue::iterator() to position itself to scan all
+        // keys with this prefix, stopping upon reaching a key with a
+        // different prefix.
+        string bucket = body_->rangeHelper->bucket_prefix(r);
 
-        iterators.push_back(make_unique<BCFBucketIterator>(*this, *body_, pos, bucket, datasets, reader));
+        iterators.push_back(make_unique<BCFBucketIterator>
+                            (*this, *body_, pos, bucket, datasets, reader));
     }
 
     return Status::OK();
