@@ -50,22 +50,16 @@ namespace KeyValueMem {
             return Status::OK();
         }
 
-        Status iterator(CollectionHandle _coll, std::unique_ptr<KeyValue::Iterator>& it) const override {
-            auto coll = reinterpret_cast<uint64_t>(_coll);
-            assert(coll < data_.size());
-            auto it2 = std::make_unique<Iterator>();
-            it2->data_ = data_[coll];
-            it2->it_ = it2->data_.begin();
-            it.reset(it2.release());
-            return Status::OK();
-        }
-
         Status iterator(CollectionHandle _coll, const std::string& key, std::unique_ptr<KeyValue::Iterator>& it) const override {
             auto coll = reinterpret_cast<uint64_t>(_coll);
             assert(coll < data_.size());
             auto it2 = std::make_unique<Iterator>();
             it2->data_ = data_[coll];
-            it2->it_ = it2->data_.lower_bound(key);
+            if (key.empty()) {
+                it2->it_ = it2->data_.begin();
+            } else {
+                it2->it_ = it2->data_.lower_bound(key);
+            }
             it.reset(it2.release());
             return Status::OK();
         }

@@ -172,23 +172,6 @@ public:
     }
 
     Status iterator(KeyValue::CollectionHandle _coll,
-                    std::unique_ptr<KeyValue::Iterator>& it) const override {
-        auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-
-        rocksdb::ReadOptions options;  // default values
-        std::unique_ptr<rocksdb::Iterator> rit(db_->NewIterator(options, coll));
-        if (!rit) {
-            return Status::Failure("rocksdb::DB::NewIterator()");
-        }
-        rit->SeekToFirst();
-        if (!rit->status().ok()) {
-            return convertStatus(rit->status());
-        }
-        it = std::make_unique<Iterator>(move(rit));
-        return Status::OK();
-    }
-
-    Status iterator(KeyValue::CollectionHandle _coll,
                     const std::string& key,
                     std::unique_ptr<KeyValue::Iterator>& it) const override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
@@ -197,7 +180,11 @@ public:
         if (!rit) {
             return Status::Failure("rocksdb::DB::NewIterator()");
         }
-        rit->Seek(key);
+        if (key.empty()) {
+            rit->SeekToFirst();
+        } else {
+            rit->Seek(key);
+        }
         if (!rit->status().ok()) {
             return convertStatus(rit->status());
         }

@@ -43,15 +43,12 @@ public:
     /// if no corresponding record exists in the collection, or any error code
     virtual Status get(CollectionHandle coll, const std::string& key, std::string& value) const = 0;
 
-    /// Create an iterator initially positioned at the first key-value pair in
-    /// the collection. If the collection is empty, the return status will be
-    /// OK but it->valid() will be false.
-    virtual Status iterator(CollectionHandle coll, std::unique_ptr<Iterator>& it) const = 0;
-
     /// Create an iterator positioned at the first key equal to or greater
-    /// than the given one. If there are no extant keys equal to or greater
-    /// than the given one, the return status will be OK but it->valid() will
-    /// be false.
+    /// than the given one. If key is empty then position at the beginning of
+    /// the collection.
+    ///
+    /// If there are no extant keys equal to or greater than the given one,
+    /// the return status will be OK but it->valid() will be false.
     virtual Status iterator(CollectionHandle coll, const std::string& key,
                             std::unique_ptr<Iterator>& it) const = 0;
 };
@@ -96,7 +93,6 @@ public:
     // apply a "batch" of one write. Derived classes may want to provide more
     // efficient overrides.
     Status get(CollectionHandle coll, const std::string& key, std::string& value) const override;
-    Status iterator(CollectionHandle coll, std::unique_ptr<Iterator>& it) const override;
     Status iterator(CollectionHandle coll, const std::string& key, std::unique_ptr<Iterator>& it) const override;
     virtual Status put(CollectionHandle coll, const std::string& key, const std::string& value);
 };
