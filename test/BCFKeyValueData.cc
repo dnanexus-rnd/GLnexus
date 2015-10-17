@@ -15,11 +15,22 @@ namespace KeyValueMem {
         friend class Reader;
 
     public:
-        Status next(std::string& key, std::string& value) override {
-            if (it_ == data_.end()) return Status::NotFound();
-            key = it_->first;
-            value = it_->second;
-            it_++;
+        bool valid() override {
+            return it_ != data_.end();
+        }
+
+        const std::string& key() override {
+            return it_->first;
+        }
+
+        const std::string& value() override {
+            return it_->second;
+        }
+
+        Status next() override {
+            if (it_ != data_.end()) {
+                it_++;
+            }
             return Status::OK();
         }
     };
