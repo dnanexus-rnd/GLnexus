@@ -114,9 +114,7 @@ Inheritance diagram for GLnexus::KeyValue::Reader:</div>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a13222c19e866cb47286422c6bbe4786a"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html#a13222c19e866cb47286422c6bbe4786a">get</a> (CollectionHandle coll, const std::string &amp;key, std::string &amp;value) const =0</td></tr>
 <tr class="separator:a13222c19e866cb47286422c6bbe4786a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aacd95b4bcd33428f8854bf6f9f005043"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aacd95b4bcd33428f8854bf6f9f005043"></a>
-virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html#aacd95b4bcd33428f8854bf6f9f005043">iterator</a> (CollectionHandle coll, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">Iterator</a> &gt; &amp;it) const =0</td></tr>
-<tr class="memdesc:aacd95b4bcd33428f8854bf6f9f005043"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create an iterator over the whole collection. <br /></td></tr>
+<tr class="memitem:aacd95b4bcd33428f8854bf6f9f005043"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html#aacd95b4bcd33428f8854bf6f9f005043">iterator</a> (CollectionHandle coll, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">Iterator</a> &gt; &amp;it) const =0</td></tr>
 <tr class="separator:aacd95b4bcd33428f8854bf6f9f005043"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d982caa2094bb39e82c18ee4104216b"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html#a1d982caa2094bb39e82c18ee4104216b">iterator</a> (CollectionHandle coll, const std::string &amp;key, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">Iterator</a> &gt; &amp;it) const =0</td></tr>
 <tr class="separator:a1d982caa2094bb39e82c18ee4104216b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -167,6 +165,43 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 
 </div>
 </div>
+<a class="anchor" id="aacd95b4bcd33428f8854bf6f9f005043"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::KeyValue::Reader::iterator </td>
+          <td>(</td>
+          <td class="paramtype">CollectionHandle&#160;</td>
+          <td class="paramname"><em>coll</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">Iterator</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>it</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Create an iterator initially positioned at the first key-value pair in the collection. If the collection is empty, the return status will be OK but it-&gt;valid() will be false. </p>
+
+<p>Implemented in <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html#a0c9224f785f58ac0b5d7d4f7eb0dde36">GLnexus::KeyValue::DB</a>.</p>
+
+</div>
+</div>
 <a class="anchor" id="a1d982caa2094bb39e82c18ee4104216b"></a>
 <div class="memitem">
 <div class="memproto">
@@ -204,7 +239,7 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Create an iterator beginning at the key if a corresponding record exists, or the first subsequent record otherwise </p>
+<p>Create an iterator positioned at the first key equal to or greater than the given one. If there are no extant keys equal to or greater than the given one, the return status will be OK but it-&gt;valid() will be false. </p>
 
 <p>Implemented in <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html#aa8d8fa5ed907cdb0301440b7aa84f32b">GLnexus::KeyValue::DB</a>.</p>
 
