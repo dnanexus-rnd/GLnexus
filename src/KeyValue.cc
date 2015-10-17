@@ -16,13 +16,6 @@ namespace GLnexus { namespace KeyValue {
         return curr->get(coll, key, value);
     }
 
-    Status DB::iterator(CollectionHandle coll, unique_ptr<Iterator>& it) const {
-        Status s;
-        unique_ptr<Reader> curr;
-        S(current(curr));
-        return curr->iterator(coll, it);
-    }
-
     Status DB::iterator(CollectionHandle coll, const string& key, unique_ptr<Iterator>& it) const {
         Status s;
         unique_ptr<Reader> curr;

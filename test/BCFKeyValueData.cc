@@ -15,11 +15,22 @@ namespace KeyValueMem {
         friend class Reader;
 
     public:
-        Status next(std::string& key, std::string& value) override {
-            if (it_ == data_.end()) return Status::NotFound();
-            key = it_->first;
-            value = it_->second;
-            it_++;
+        bool valid() override {
+            return it_ != data_.end();
+        }
+
+        const std::string& key() override {
+            return it_->first;
+        }
+
+        const std::string& value() override {
+            return it_->second;
+        }
+
+        Status next() override {
+            if (it_ != data_.end()) {
+                it_++;
+            }
             return Status::OK();
         }
     };
@@ -39,22 +50,16 @@ namespace KeyValueMem {
             return Status::OK();
         }
 
-        Status iterator(CollectionHandle _coll, std::unique_ptr<KeyValue::Iterator>& it) const override {
-            auto coll = reinterpret_cast<uint64_t>(_coll);
-            assert(coll < data_.size());
-            auto it2 = std::make_unique<Iterator>();
-            it2->data_ = data_[coll];
-            it2->it_ = it2->data_.begin();
-            it.reset(it2.release());
-            return Status::OK();
-        }
-
         Status iterator(CollectionHandle _coll, const std::string& key, std::unique_ptr<KeyValue::Iterator>& it) const override {
             auto coll = reinterpret_cast<uint64_t>(_coll);
             assert(coll < data_.size());
             auto it2 = std::make_unique<Iterator>();
             it2->data_ = data_[coll];
-            it2->it_ = it2->data_.lower_bound(key);
+            if (key.empty()) {
+                it2->it_ = it2->data_.begin();
+            } else {
+                it2->it_ = it2->data_.lower_bound(key);
+            }
             it.reset(it2.release());
             return Status::OK();
         }

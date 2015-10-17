@@ -16,9 +16,22 @@ class Iterator {
 public:
     virtual ~Iterator() = default;
 
-    /// Update key and value with the next record and return OK. Return
-    /// NotFound if there are no remaining records, or any error code
-    virtual Status next(std::string& key, std::string& value) = 0;
+    // Is the iterator positioned at a key/value pair?
+    virtual bool valid() = 0;
+
+    // if valid(), get the current key
+    virtual const std::string& key() = 0;
+
+    // if valid(), get the current value
+    virtual const std::string& value() = 0;
+
+    // Advance the iterator to the next key/value pair. At the end of the
+    // collection, next() will return OK, but valid() will be false.
+    //
+    // If next() returns a bad status, any further operations on the iterator
+    // have undefined results.
+    virtual Status next() = 0;
+
 };
 
 /// A DB snapshot providing consistent multiple reads if possible
@@ -30,12 +43,14 @@ public:
     /// if no corresponding record exists in the collection, or any error code
     virtual Status get(CollectionHandle coll, const std::string& key, std::string& value) const = 0;
 
-    /// Create an iterator over the whole collection.
-    virtual Status iterator(CollectionHandle coll, std::unique_ptr<Iterator>& it) const = 0;
-
-    /// Create an iterator beginning at the key if a corresponding record
-    /// exists, or the first subsequent record otherwise
-    virtual Status iterator(CollectionHandle coll, const std::string& key, std::unique_ptr<Iterator>& it) const = 0;
+    /// Create an iterator positioned at the first key equal to or greater
+    /// than the given one. If key is empty then position at the beginning of
+    /// the collection.
+    ///
+    /// If there are no extant keys equal to or greater than the given one,
+    /// the return status will be OK but it->valid() will be false.
+    virtual Status iterator(CollectionHandle coll, const std::string& key,
+                            std::unique_ptr<Iterator>& it) const = 0;
 };
 
 /// A batch of writes to apply atomically if possible
@@ -78,7 +93,6 @@ public:
     // apply a "batch" of one write. Derived classes may want to provide more
     // efficient overrides.
     Status get(CollectionHandle coll, const std::string& key, std::string& value) const override;
-    Status iterator(CollectionHandle coll, std::unique_ptr<Iterator>& it) const override;
     Status iterator(CollectionHandle coll, const std::string& key, std::unique_ptr<Iterator>& it) const override;
     virtual Status put(CollectionHandle coll, const std::string& key, const std::string& value);
 };

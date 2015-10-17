@@ -325,27 +325,20 @@ static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
     // ...
     // the corresponding values are empty.
 
-    string key, value;
-    s = it->next(key, value);
-    if (s == StatusCode::NOT_FOUND) {
-        return Status::NotFound("sample set not found", sampleset);
-    } else if (s.bad()) {
-        return s;
-    } else if (key != sampleset) {
+    if (!it->valid() || it->key() != sampleset) {
         return Status::NotFound("sample set not found", sampleset);
     }
 
     auto samples = make_shared<set<string>>();
-    while ((s = it->next(key, value)).ok()) {
-        size_t nullpos = key.find('\0');
-        if (nullpos == string::npos || key.substr(0, nullpos) != sampleset) {
+    for (s = it->next(); s.ok() && it->valid(); s = it->next()) {
+        size_t nullpos = it->key().find('\0');
+        if (nullpos == string::npos || it->key().substr(0, nullpos) != sampleset) {
             break;
         }
-        samples->insert(key.substr(nullpos+1));
+        samples->insert(it->key().substr(nullpos+1));
     }
-    if (s.bad() && s != StatusCode::NOT_FOUND) {
-        return s;
-    }
+    if (s.bad()) return s;
+
     ans = samples;
 
     return Status::OK();

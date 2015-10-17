@@ -103,52 +103,41 @@ void ApplyDBOptions(rocksdb::Options& opts) {
 
 class Iterator : public KeyValue::Iterator {
 private:
-    rocksdb::Iterator* iter_;
-    bool atStart_ = false;
+    std::unique_ptr<rocksdb::Iterator> iter_;
+    std::string key_, value_;
 
     // No copying allowed
     Iterator(const Iterator&) = delete;
     void operator=(const Iterator&) = delete;
 
 public:
-    // Note: the NewIterator call allocates heap-memory
-    Iterator(rocksdb::DB* db, KeyValue::CollectionHandle _coll)
-    {
-        auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        rocksdb::ReadOptions options;  // default values
-        iter_ = db->NewIterator(options, coll);
-        iter_->SeekToFirst();
-        atStart_ = true;
-    }
 
-    // Destructor. We need to release the heap memory used by the
-    // the iterator.
-    ~Iterator() {
-        delete iter_;
-    }
-
-    Status next(std::string& key, std::string& value) override {
-        if (atStart_) {
-            // We are at the first element
-            atStart_ = false;
+    Iterator(std::unique_ptr<rocksdb::Iterator>&& iter) : iter_(move(iter)) {
+        if (iter_->Valid()) {
+            key_ = iter_->key().ToString();
+            value_ = iter_->value().ToString();
         }
-        else {
-            // We are beyong the first element
-            iter_->Next();
-        }
-        if (!iter_->Valid())
-            return Status::NotFound();
-        key = iter_->key().ToString();
-        value = iter_->value().ToString();
-        return Status::OK();
     }
 
-    Status seek(const std::string& key) {
-        if (!iter_->Valid())
-            return Status::NotFound();
-        iter_->Seek(key);
-        if (!iter_->Valid())
-            return Status::NotFound();
+    bool valid() override {
+        return iter_->Valid();
+    }
+
+    const std::string& key() { return key_; }
+    const std::string& value() { return value_; }
+
+    Status next() override {
+        if (!iter_->status().ok()) {
+            return convertStatus(iter_->status());
+        }
+        iter_->Next();
+        if (!iter_->status().ok()) {
+            return convertStatus(iter_->status());
+        }
+        if (iter_->Valid()) {
+            key_ = iter_->key().ToString();
+            value_ = iter_->value().ToString();
+        }
         return Status::OK();
     }
 };
@@ -183,20 +172,23 @@ public:
     }
 
     Status iterator(KeyValue::CollectionHandle _coll,
-                    std::unique_ptr<KeyValue::Iterator>& it) const override {
-        auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        it = std::make_unique<Iterator>(db_, coll);
-        return Status::OK();
-    }
-
-    Status iterator(KeyValue::CollectionHandle _coll,
                     const std::string& key,
                     std::unique_ptr<KeyValue::Iterator>& it) const override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        auto ans = std::make_unique<Iterator>(db_, coll);
-        Status s;
-        S(ans->seek(key));
-        it = std::move(ans);
+        rocksdb::ReadOptions options;  // default values
+        std::unique_ptr<rocksdb::Iterator> rit(db_->NewIterator(options, coll));
+        if (!rit) {
+            return Status::Failure("rocksdb::DB::NewIterator()");
+        }
+        if (key.empty()) {
+            rit->SeekToFirst();
+        } else {
+            rit->Seek(key);
+        }
+        if (!rit->status().ok()) {
+            return convertStatus(rit->status());
+        }
+        it = std::make_unique<Iterator>(move(rit));
         return Status::OK();
     }
 };
