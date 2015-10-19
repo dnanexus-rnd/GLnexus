@@ -8,7 +8,7 @@
 #include <memory>
 #include "types.h"
 #include "data.h"
-#include "genotyper_config.h"
+#include "service_config.h"
 
 namespace GLnexus {
 

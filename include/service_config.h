@@ -1,5 +1,4 @@
-#ifndef GLNEXUS_GENOTYPER_CONFIG_H
-#define GLNEXUS_GENOTYPER_CONFIG_H
+#pragma once
 
 #include <types.h>
 #include <string>
@@ -24,4 +23,3 @@ struct genotyper_config {
 
 }
 
-#endif

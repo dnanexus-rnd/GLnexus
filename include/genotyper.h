@@ -4,7 +4,7 @@
 #include "data.h"
 #include "types.h"
 #include <memory>
-#include "genotyper_config.h"
+#include "service_config.h"
 
 namespace GLnexus {
 
