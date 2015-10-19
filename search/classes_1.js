@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['bcfbucketiterator',['BCFBucketIterator',['../class_g_lnexus_1_1_b_c_f_bucket_iterator.html',1,'GLnexus']]],
   ['bcfbucketrange',['BCFBucketRange',['../class_g_lnexus_1_1_b_c_f_bucket_range.html',1,'GLnexus']]],
   ['bcfdata',['BCFData',['../class_g_lnexus_1_1_b_c_f_data.html',1,'GLnexus']]],
   ['bcffilesink',['BCFFileSink',['../class_g_lnexus_1_1_b_c_f_file_sink.html',1,'GLnexus']]],

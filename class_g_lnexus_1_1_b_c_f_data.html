@@ -115,8 +115,6 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 <tr class="separator:a0879d81ed86d2fa5173e30a95c5c58a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5976e3fe73b51c5f5a5194b36966e47f"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a5976e3fe73b51c5f5a5194b36966e47f">dataset_range_and_header</a> (const std::string &amp;dataset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::shared_ptr&lt; const bcf_hdr_t &gt; &amp;hdr, std::vector&lt; std::shared_ptr&lt; bcf1_t &gt; &gt; &amp;records)</td></tr>
 <tr class="separator:a5976e3fe73b51c5f5a5194b36966e47f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f6ef0f8d4c1ddb0da9faa3924949108"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_b_c_f_data.html#a4f6ef0f8d4c1ddb0da9faa3924949108">sampleset_range</a> (const <a class="el" href="class_g_lnexus_1_1_metadata_cache.html">MetadataCache</a> &amp;metadata, const std::string &amp;sampleset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, std::shared_ptr&lt; const std::set&lt; std::string &gt;&gt; &amp;samples, std::shared_ptr&lt; const std::set&lt; std::string &gt;&gt; &amp;datasets, std::vector&lt; std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_range_b_c_f_iterator.html">RangeBCFIterator</a> &gt;&gt; &amp;iterators)</td></tr>
-<tr class="separator:a4f6ef0f8d4c1ddb0da9faa3924949108"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstract interface to stored BCF data sets. The implementation is responsible for any suitable caching. </p>
@@ -216,67 +214,6 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 </table>
 </div><div class="memdoc">
 <p>Wrapper for dataset_range which first fetches the appropriate header (useful if the caller doesn't already have the header in hand) </p>
-
-</div>
-</div>
-<a class="anchor" id="a4f6ef0f8d4c1ddb0da9faa3924949108"></a>
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a> GLnexus::BCFData::sampleset_range </td>
-          <td>(</td>
-          <td class="paramtype">const <a class="el" href="class_g_lnexus_1_1_metadata_cache.html">MetadataCache</a> &amp;&#160;</td>
-          <td class="paramname"><em>metadata</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const std::string &amp;&#160;</td>
-          <td class="paramname"><em>sampleset</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;&#160;</td>
-          <td class="paramname"><em>pos</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::shared_ptr&lt; const std::set&lt; std::string &gt;&gt; &amp;&#160;</td>
-          <td class="paramname"><em>samples</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::shared_ptr&lt; const std::set&lt; std::string &gt;&gt; &amp;&#160;</td>
-          <td class="paramname"><em>datasets</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::vector&lt; std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_range_b_c_f_iterator.html">RangeBCFIterator</a> &gt;&gt; &amp;&#160;</td>
-          <td class="paramname"><em>iterators</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Get iterators for BCF records overlapping the given range in all datasets containing at least one sample in the designated sample set. To facilitate parallelization, the implementation may yield multiple iterators, each of which will produce a range-based disjoint subset of the relevant records. Each iterator will yield results for each relevant data set (possibly yielding zero records in some steps) &ndash; that is, they will all reach their end after the same number of steps. The iterators together will produce each relevant record exactly once. </p>
-
-<p>Reimplemented in <a class="el" href="class_g_lnexus_1_1_b_c_f_key_value_data.html#aa1d2826d55178b52f0c2282e45fd703e">GLnexus::BCFKeyValueData</a>.</p>
 
 </div>
 </div>
