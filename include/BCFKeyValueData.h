@@ -48,6 +48,18 @@ public:
     Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
                          std::vector<std::shared_ptr<bcf1_t> >& records) override;
 
+    Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset, const range& pos,
+                           std::shared_ptr<const std::set<std::string>>& samples,
+                           std::shared_ptr<const std::set<std::string>>& datasets,
+                           std::vector<std::unique_ptr<RangeBCFIterator>>& iterators) override;
+
+    // Provide a way to call the non-optimized base implementation of
+    // sampleset_range. Mostly for unit testing.
+    Status sampleset_range_base(const MetadataCache& metadata, const std::string& sampleset, const range& pos,
+                                std::shared_ptr<const std::set<std::string>>& samples,
+                                std::shared_ptr<const std::set<std::string>>& datasets,
+                                std::vector<std::unique_ptr<RangeBCFIterator>>& iterators);
+
     /// Import a new data set (a gVCF file, possibly containing multiple samples).
     /// The data set name must be unique.
     /// The sample names in the data set (gVCF column names) must be unique.
