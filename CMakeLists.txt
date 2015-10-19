@@ -32,6 +32,29 @@ MARK_AS_ADVANCED(
     CMAKE_EXE_LINKER_FLAGS_COVERAGE
     CMAKE_SHARED_LINKER_FLAGS_COVERAGE )
 
+# Compilation for performance profiling
+SET(CMAKE_CXX_FLAGS_PROFILE
+    "-ggdb -DNDEBUG -fno-omit-frame-pointer"
+    CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
+    FORCE )
+SET(CMAKE_C_FLAGS_PROFILE
+    "-ggdb -DNDEBUG -fno-omit-frame-pointer"
+    CACHE STRING "Flags used by the C compiler during performance profiling builds."
+    FORCE )
+SET(CMAKE_EXE_LINKER_FLAGS_PROFILE
+    ""
+    CACHE STRING "Flags used for linking binaries during performance profiling builds."
+    FORCE )
+SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE
+    ""
+    CACHE STRING "Flags used by the shared libraries linker during performance profiling builds."
+    FORCE )
+MARK_AS_ADVANCED(
+    CMAKE_CXX_FLAGS_PROFILE
+    CMAKE_C_FLAGS_PROFILE
+    CMAKE_EXE_LINKER_FLAGS_PROFILE
+    CMAKE_SHARED_LINKER_FLAGS_PROFILE )
+
 # Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
 project(GLnexus)
 
