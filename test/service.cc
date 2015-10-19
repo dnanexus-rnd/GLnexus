@@ -743,6 +743,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
         REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
 
+        REQUIRE(range(record.get()) == range(0, 1000, 1001));
         REQUIRE(record->n_allele == 2);
         REQUIRE(string(record->d.allele[0]) == "A");
         REQUIRE(string(record->d.allele[1]) == "G");
@@ -766,6 +767,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
         REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
 
+        REQUIRE(range(record.get()) == range(0, 1001, 1002));
         REQUIRE(record->n_allele == 4);
         REQUIRE(string(record->d.allele[0]) == "C");
         REQUIRE(string(record->d.allele[1]) == "A");
@@ -1060,6 +1062,28 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
+    }
+
+    SECTION("unification with multiple contigs") {
+        discovered_alleles als0, als1;
+
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als0);
+        REQUIRE(s.ok());
+
+        s = svc->discover_alleles("<ALL>", range(1, 0, 1000000), als1);
+        REQUIRE(s.ok());
+
+        als.clear();
+        REQUIRE(merge_discovered_alleles(als0, als).ok());
+        REQUIRE(merge_discovered_alleles(als1, als).ok());
+
+        vector<unified_site> sites;
+        s = unified_sites(als, sites);
+        REQUIRE(s.ok());
+
+        REQUIRE(is_sorted(sites.begin(), sites.end()));
+        REQUIRE(sites[0].pos.rid == 0);
+        REQUIRE(sites[sites.size()-1].pos.rid == 1);
     }
 }
 
