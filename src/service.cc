@@ -41,6 +41,7 @@ bool is_dna(const string& str) {
 
 // used on the thread pool below
 static Status discover_alleles_thread(const set<string>& samples,
+                                      const range& pos,
                                       RangeBCFIterator& iterator,
                                       discovered_alleles& final_dsals) {
     Status s;
@@ -63,6 +64,17 @@ static Status discover_alleles_thread(const set<string>& samples,
         // for each BCF record
         for (const auto& record : records) {
             range rng(record);
+            assert(pos.overlaps(rng));
+            if (!pos.contains(rng)) {
+                // Skip records that dangle off the edge of the target range.
+                // The problem is that such alleles could overlap other
+                // alleles not overlapping the target range at all, and that
+                // we therefore won't see in our query. So it wouldn't be safe
+                // for us to make claims about the genotypes of the resulting
+                // sites.
+                continue;
+            }
+
             vector<float> obs_counts(record->n_allele, 0.0);
 
             // count hard-called alt allele observations for desired samples
@@ -83,6 +95,9 @@ static Status discover_alleles_thread(const set<string>& samples,
             if (gt) {
                 free(gt);
             }
+
+            // FIXME -- minor potential bug -- double-counting observations of
+            // alleles that span multiple discovery ranges
 
             // create a discovered_alleles entry for each alt allele matching [ACGT]+
             // In particular this excludes gVCF <NON_REF> symbolic alleles
@@ -185,7 +200,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
             }
 
             discovered_alleles dsals;
-            Status ls = discover_alleles_thread(*samples, *raw_iter, dsals);
+            Status ls = discover_alleles_thread(*samples, pos, *raw_iter, dsals);
             results[i] = move(dsals);
             return ls;
         });

@@ -25,7 +25,8 @@ public:
     ~Service();
 
 
-    /// Discover all the alleles overlapping the given range for a sample set.
+    /// Discover all the alleles contained within the given range for a sample
+    /// set.
 
     /// Each allele has a reference range and DNA sequence. Additionally, it's
     /// marked as REF or not, and includes an estimate of the observation

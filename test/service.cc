@@ -211,6 +211,11 @@ TEST_CASE("service::discover_alleles") {
         s = svc->discover_alleles("discover_alleles_trio1", range(0, 1009, 1011), als);
         REQUIRE(s.ok());
 
+        REQUIRE(als.size() == 0);
+
+        s = svc->discover_alleles("discover_alleles_trio1", range(0, 1009, 1012), als);
+        REQUIRE(s.ok());
+
         REQUIRE(als.size() == 2);
         REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.observation_count == 3);
     }
@@ -236,11 +241,13 @@ TEST_CASE("service::discover_alleles") {
     SECTION("spanning allele") {
         s = svc->discover_alleles("<ALL>", range(1, 1010, 1012), als);
         REQUIRE(s.ok());
+        REQUIRE(als.size() == 2);
+        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA")) == als.end());
 
-        REQUIRE(als.size() == 4);
-
+        s = svc->discover_alleles("<ALL>", range(1, 1001, 1016), als);
+        REQUIRE(s.ok());
+        REQUIRE(als.size() == 6);
         REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.observation_count == 3);
-        // tentative: by default alleles that extend outside of the range of interest get unified to no-call
     }
 
     SECTION("detect inconsistent reference alleles") {
