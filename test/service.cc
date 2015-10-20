@@ -291,6 +291,35 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(s.ok());
         REQUIRE(als.size() == 2);
     }
+
+    SECTION("multiple ranges") {
+        vector<range> ranges;
+        ranges.push_back(range(0, 1000, 1001));
+        ranges.push_back(range(0, 1001, 1002));
+        ranges.push_back(range(0, 1010, 1013));
+        ranges.push_back(range(1, 1000, 1001));
+        ranges.push_back(range(1, 1010, 1012));
+        s = svc->discover_alleles("<ALL>", ranges, als);
+        REQUIRE(s.ok());
+
+        REQUIRE(als.size() == 14);
+
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "A"))->second.observation_count == 6);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "G"))->second.observation_count == 6);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "A"))->second.observation_count == 6);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "AG"))->second.observation_count == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.observation_count == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1013), "AGA"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(0, 1010, 1013), "CCC"))->second.observation_count == 4);
+
+        REQUIRE(als.find(allele(range(1, 1000, 1001), "A"))->second.observation_count == 2);
+        REQUIRE(als.find(allele(range(1, 1000, 1001), "AA"))->second.observation_count == 4);
+        REQUIRE(als.find(allele(range(1, 1010, 1012), "AG"))->second.observation_count == 3);
+        REQUIRE(als.find(allele(range(1, 1010, 1012), "CC"))->second.observation_count == 3);
+    }
 }
 
 

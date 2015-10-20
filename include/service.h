@@ -36,6 +36,13 @@ public:
     /// "unification"
     Status discover_alleles(const std::string& sampleset, const range& pos, discovered_alleles& ans);
 
+    /// Discover all the alleles contained within one of the given disjoint
+    /// ranges. Uses multithreading such that this may be preferable to
+    /// calling discover_alleles repeatedly for many small ranges (e.g. exome
+    /// target capture regions). However, attention should be paid to the
+    /// anticipated size of the result.
+    Status discover_alleles(const std::string& sampleset, const std::vector<range>& ranges,
+                            discovered_alleles& ans);
 
     /// Genotype a set of samples at the given sites, producing a BCF file.
     Status genotype_sites(const genotyper_config& cfg, const std::string& sampleset, const std::vector<unified_site>& sites, const std::string& filename, consolidated_loss& dlosses);

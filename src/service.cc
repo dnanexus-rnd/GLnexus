@@ -17,7 +17,13 @@ namespace GLnexus{
 struct Service::body {
     BCFData& data_;
     std::unique_ptr<MetadataCache> metadata_;
+
+    // thread pool for executing discover_alleles and genotype_sites operations
     ctpl::thread_pool threadpool_;
+
+    // "meta" thread pool for driving multiple concurrent discover_alleles and
+    // "genotype_sites operations
+    ctpl::thread_pool metapool_;
 
     body(BCFData& data) : data_(data) {}
 };
@@ -25,6 +31,7 @@ struct Service::body {
 Service::Service(BCFData& data) {
     body_ = make_unique<Service::body>(data);
     body_->threadpool_.resize(thread::hardware_concurrency());
+    body_->metapool_.resize(thread::hardware_concurrency());
 }
 
 Service::~Service() = default;
@@ -235,6 +242,51 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     }
 
     return discovered_alleles_refcheck(ans, body_->metadata_->contigs());
+}
+
+Status Service::discover_alleles(const string& sampleset, const vector<range>& ranges,
+                                 discovered_alleles& ans) {
+    atomic<bool> abort(false);
+    vector<future<Status>> statuses;
+    vector<discovered_alleles> results(ranges.size());
+
+    size_t i = 0;
+    for (const auto& range : ranges) {
+        auto fut = body_->metapool_.push([&, i, range](int tid){
+            if (abort) {
+                return Status::Invalid();
+            }
+
+            discovered_alleles dsals;
+            Status ls = discover_alleles(sampleset, range, dsals);
+            results[i] = move(dsals);
+            return ls;
+        });
+
+        statuses.push_back(move(fut));
+        i++;
+    }
+
+    ans.clear();
+    Status s = Status::OK();
+    for (i = 0; i < ranges.size(); i++) {
+        // wait for task i to complete and find out its status
+        Status s_i(statuses[i].get());
+        discovered_alleles dsals = move(results[i]);
+
+        if (s.ok() && s_i.ok()) {
+            s = merge_discovered_alleles(dsals, ans);
+            if (s.bad()) {
+                abort = true;
+            }
+        } else if (s.ok() && s_i.bad()) {
+            // record the first error, and tell remaining tasks to abort
+            s = move(s_i);
+            abort = true;
+        }
+    }
+
+    return s;
 }
 
 static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
