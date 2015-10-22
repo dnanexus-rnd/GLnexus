@@ -174,6 +174,14 @@ public:
     }
 };
 
+/* A naive implementation that splits the range into fixed sized
+ * sub-ranges. Inside a sub-range, it iterates over the datasets, and
+ * reads their records with point lookups.
+ *
+ * This is an inefficient DB access pattern, because it ignores the fact
+ * that the data is ordered lexicographically by bucket, and then dataset. In other words,
+ * data for one bucket for all datasets lies adjacently on disk.
+ */
 Status BCFData::sampleset_range(const MetadataCache& metadata, const string& sampleset,
                                 const range& pos,
                                 shared_ptr<const set<string>>& samples,
