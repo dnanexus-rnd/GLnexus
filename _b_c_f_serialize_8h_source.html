@@ -111,54 +111,56 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="comment">//  Read a BCF record from memory, return the length of the packed record in RAM.</span></div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="keywordtype">int</span> bcf_raw_read_from_mem(<span class="keyword">const</span> <span class="keywordtype">char</span> *addr, bcf1_t *v);</div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;</div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;</div>
-<div class="line"><a name="l00026"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_b_c_f_writer.html">   26</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a> {</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160; <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;    <span class="keyword">static</span> <span class="keywordtype">int</span> STACK_ALLOC_LIMIT;</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    std::ostringstream oss_;</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    <span class="keywordtype">int</span> valid_bytes_ = 0;</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    <span class="keywordtype">int</span> num_entries_ = 0;</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160; <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a>();</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html#a469a2a295b0746770eeb5f03b8430c5b">Open</a>(std::unique_ptr&lt;BCFWriter&gt;&amp; ans);</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;    <span class="keyword">static</span> std::string <a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html#a6dada30c7d7a6e5a47f94f2f1e09078e">write_header</a>(<span class="keyword">const</span> bcf_hdr_t *hdr);</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    ~<a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a>();</div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> write(bcf1_t* x);</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> contents(std::string&amp; ans);</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;    <span class="keywordtype">int</span> get_num_entries() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;};</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;</div>
-<div class="line"><a name="l00049"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_b_c_f_reader.html">   49</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html">BCFReader</a> {</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160; <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span>* buf_ = <span class="keyword">nullptr</span>;</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;    <span class="keywordtype">size_t</span> bufsz_;</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keywordtype">int</span> current_ = 0;</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html">BCFReader</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* buf, <span class="keywordtype">size_t</span> bufsz);</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160; <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html#adbed3af9e67f0498b098899c0be6295b">Open</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* buf, <span class="keywordtype">size_t</span> bufsz, std::unique_ptr&lt;BCFReader&gt;&amp; ans);</div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;    ~<a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html">BCFReader</a>();</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> read(std::shared_ptr&lt;bcf1_t&gt;&amp; ans);</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;</div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html#a9d42d179c44b3277eaa8bc85b83e6f29">read_header</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* buf, <span class="keywordtype">int</span> len, <span class="keywordtype">int</span>&amp; consumed, std::shared_ptr&lt;bcf_hdr_t&gt;&amp; ans);</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;};</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;</div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;} <span class="comment">// namespace GLnexus</span></div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="comment">// return 1 if the records are the same, 0 otherwise</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="keywordtype">int</span> bcf_raw_compare(<span class="keyword">const</span> bcf1_t *x, <span class="keyword">const</span> bcf1_t *y);</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;</div>
+<div class="line"><a name="l00028"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_b_c_f_writer.html">   28</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a> {</div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160; <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    <span class="keyword">static</span> <span class="keywordtype">int</span> STACK_ALLOC_LIMIT;</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;</div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    std::ostringstream oss_;</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    <span class="keywordtype">int</span> valid_bytes_ = 0;</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    <span class="keywordtype">int</span> num_entries_ = 0;</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160; <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a>();</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html#a469a2a295b0746770eeb5f03b8430c5b">Open</a>(std::unique_ptr&lt;BCFWriter&gt;&amp; ans);</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    <span class="keyword">static</span> std::string <a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html#a6dada30c7d7a6e5a47f94f2f1e09078e">write_header</a>(<span class="keyword">const</span> bcf_hdr_t *hdr);</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    ~<a class="code" href="class_g_lnexus_1_1_b_c_f_writer.html">BCFWriter</a>();</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> write(bcf1_t* x);</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> contents(std::string&amp; ans);</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;    <span class="keywordtype">int</span> get_num_entries() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;};</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;</div>
+<div class="line"><a name="l00051"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_b_c_f_reader.html">   51</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html">BCFReader</a> {</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160; <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span>* buf_ = <span class="keyword">nullptr</span>;</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keywordtype">size_t</span> bufsz_;</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <span class="keywordtype">int</span> current_ = 0;</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    <a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html">BCFReader</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* buf, <span class="keywordtype">size_t</span> bufsz);</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160; <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html#adbed3af9e67f0498b098899c0be6295b">Open</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* buf, <span class="keywordtype">size_t</span> bufsz, std::unique_ptr&lt;BCFReader&gt;&amp; ans);</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;    ~<a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html">BCFReader</a>();</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> read(std::shared_ptr&lt;bcf1_t&gt;&amp; ans);</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;</div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_b_c_f_reader.html#a9d42d179c44b3277eaa8bc85b83e6f29">read_header</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* buf, <span class="keywordtype">int</span> len, <span class="keywordtype">int</span>&amp; consumed, std::shared_ptr&lt;bcf_hdr_t&gt;&amp; ans);</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;};</div>
 <div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;</div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_reader_html_adbed3af9e67f0498b098899c0be6295b"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_reader.html#adbed3af9e67f0498b098899c0be6295b">GLnexus::BCFReader::Open</a></div><div class="ttdeci">static Status Open(const char *buf, size_t bufsz, std::unique_ptr&lt; BCFReader &gt; &amp;ans)</div><div class="ttdoc">Reads BCF records from a memory buffer (without the header) </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:199</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_writer_html_a469a2a295b0746770eeb5f03b8430c5b"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_writer.html#a469a2a295b0746770eeb5f03b8430c5b">GLnexus::BCFWriter::Open</a></div><div class="ttdeci">static Status Open(std::unique_ptr&lt; BCFWriter &gt; &amp;ans)</div><div class="ttdoc">Serializes BCF records into a memory buffer (without the header) </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:114</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_reader_html_a9d42d179c44b3277eaa8bc85b83e6f29"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_reader.html#a9d42d179c44b3277eaa8bc85b83e6f29">GLnexus::BCFReader::read_header</a></div><div class="ttdeci">static Status read_header(const char *buf, int len, int &amp;consumed, std::shared_ptr&lt; bcf_hdr_t &gt; &amp;ans)</div><div class="ttdoc">Reads a BCF header from a memory buffer. </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:227</div></div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;} <span class="comment">// namespace GLnexus</span></div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_reader_html_adbed3af9e67f0498b098899c0be6295b"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_reader.html#adbed3af9e67f0498b098899c0be6295b">GLnexus::BCFReader::Open</a></div><div class="ttdeci">static Status Open(const char *buf, size_t bufsz, std::unique_ptr&lt; BCFReader &gt; &amp;ans)</div><div class="ttdoc">Reads BCF records from a memory buffer (without the header) </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:218</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_writer_html_a469a2a295b0746770eeb5f03b8430c5b"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_writer.html#a469a2a295b0746770eeb5f03b8430c5b">GLnexus::BCFWriter::Open</a></div><div class="ttdeci">static Status Open(std::unique_ptr&lt; BCFWriter &gt; &amp;ans)</div><div class="ttdoc">Serializes BCF records into a memory buffer (without the header) </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:133</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_reader_html_a9d42d179c44b3277eaa8bc85b83e6f29"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_reader.html#a9d42d179c44b3277eaa8bc85b83e6f29">GLnexus::BCFReader::read_header</a></div><div class="ttdeci">static Status read_header(const char *buf, int len, int &amp;consumed, std::shared_ptr&lt; bcf_hdr_t &gt; &amp;ans)</div><div class="ttdoc">Reads a BCF header from a memory buffer. </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:246</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:29</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_writer_html_a6dada30c7d7a6e5a47f94f2f1e09078e"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_writer.html#a6dada30c7d7a6e5a47f94f2f1e09078e">GLnexus::BCFWriter::write_header</a></div><div class="ttdeci">static std::string write_header(const bcf_hdr_t *hdr)</div><div class="ttdoc">Writes a BCF header into a memory buffer. </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:170</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_writer_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_writer.html">GLnexus::BCFWriter</a></div><div class="ttdef"><b>Definition:</b> BCFSerialize.h:26</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_b_c_f_reader_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_reader.html">GLnexus::BCFReader</a></div><div class="ttdef"><b>Definition:</b> BCFSerialize.h:49</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_writer_html_a6dada30c7d7a6e5a47f94f2f1e09078e"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_writer.html#a6dada30c7d7a6e5a47f94f2f1e09078e">GLnexus::BCFWriter::write_header</a></div><div class="ttdeci">static std::string write_header(const bcf_hdr_t *hdr)</div><div class="ttdoc">Writes a BCF header into a memory buffer. </div><div class="ttdef"><b>Definition:</b> BCFSerialize.cc:189</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_writer_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_writer.html">GLnexus::BCFWriter</a></div><div class="ttdef"><b>Definition:</b> BCFSerialize.h:28</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_b_c_f_reader_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_reader.html">GLnexus::BCFReader</a></div><div class="ttdef"><b>Definition:</b> BCFSerialize.h:51</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
