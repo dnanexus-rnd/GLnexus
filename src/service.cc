@@ -423,7 +423,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         // the memory it takes ASAP
         shared_ptr<bcf1_t> bcf_i = move(results[i].first);
         assert(!results[i].first);
-        consolidated_loss losses_for_site = results[i].second;
+        consolidated_loss losses_for_site = move(results[i].second);
 
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
