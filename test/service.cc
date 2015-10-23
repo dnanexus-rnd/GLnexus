@@ -179,6 +179,41 @@ public:
     }
 };
 
+// Wrap BCFData to simulate I/O errors for quasi-random testing of errors
+class SimFailBCFData : public BCFData {
+    BCFData& inner_;
+    const size_t fail_every_;
+    mutable size_t i_ = 0;
+    mutable bool failed_once_ = false;
+
+    SimFailBCFData(BCFData& inner, size_t fail_every)
+        : inner_(inner), fail_every_(fail_every) {}
+
+public:
+    static Status Open(BCFData& inner, size_t fail_every, unique_ptr<SimFailBCFData>& ans) {
+        ans.reset(new SimFailBCFData(inner, fail_every));
+        return Status::OK();
+    }
+
+    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) const override {
+        if (i_++ % fail_every_ == 0) {
+            failed_once_ = true;
+            return Status::IOError("SIM");
+        }
+        return inner_.dataset_header(dataset, hdr);
+    }
+
+    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) override {
+        if (i_++ % fail_every_ == 0) {
+            failed_once_ = true;
+            return Status::IOError("SIM");
+        }
+        return inner_.dataset_range(dataset, hdr, pos, records);
+    }
+
+    bool failed_once() { return failed_once_; }
+};
+
 TEST_CASE("service::discover_alleles") {
     unique_ptr<VCFData> data;
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
@@ -319,6 +354,60 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(als.find(allele(range(1, 1000, 1001), "AA"))->second.observation_count == 4);
         REQUIRE(als.find(allele(range(1, 1010, 1012), "AG"))->second.observation_count == 3);
         REQUIRE(als.find(allele(range(1, 1010, 1012), "CC"))->second.observation_count == 3);
+    }
+
+    SECTION("simulate I/O errors - single") {
+        unique_ptr<SimFailBCFData> faildata;
+        bool worked = false;
+
+        for (size_t fail_every = 1; fail_every < 100; fail_every++) {
+            s = SimFailBCFData::Open(*data, fail_every, faildata);
+            REQUIRE(s.ok());
+
+            s = Service::Start(*data, *faildata, svc);
+            REQUIRE(s.ok());
+
+            s = svc->discover_alleles("<ALL>", range(0, 0, 1099), als);
+            if (faildata->failed_once()) {
+                worked = true;
+                REQUIRE(s == StatusCode::IO_ERROR);
+                REQUIRE(s.str() == "IOError: SIM");
+            } else {
+                REQUIRE(s.ok());
+            }
+        }
+
+        REQUIRE(worked);
+    }
+
+    SECTION("simulate I/O errors - multi") {
+        unique_ptr<SimFailBCFData> faildata;
+        bool worked = false;
+
+        for (size_t fail_every = 1; fail_every < 100; fail_every++) {
+            s = SimFailBCFData::Open(*data, fail_every, faildata);
+            REQUIRE(s.ok());
+
+            s = Service::Start(*data, *faildata, svc);
+            REQUIRE(s.ok());
+
+            vector<range> ranges;
+            ranges.push_back(range(0, 1000, 1001));
+            ranges.push_back(range(0, 1001, 1002));
+            ranges.push_back(range(0, 1010, 1013));
+            ranges.push_back(range(1, 1000, 1001));
+            ranges.push_back(range(1, 1010, 1012));
+            s = svc->discover_alleles("<ALL>", ranges, als);
+            if (faildata->failed_once()) {
+                worked = true;
+                REQUIRE(s == StatusCode::IO_ERROR);
+                REQUIRE(s.str() == "IOError: SIM");
+            } else {
+                REQUIRE(s.ok());
+            }
+        }
+
+        REQUIRE(worked);
     }
 }
 
@@ -1121,6 +1210,39 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(sites[0].pos.rid == 0);
         REQUIRE(sites[sites.size()-1].pos.rid == 1);
     }
+
+    SECTION("simulate I/O errors") {
+        s = Service::Start(*data, *data, svc);
+        REQUIRE(s.ok());
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+        REQUIRE(s.ok());
+        vector<unified_site> sites;
+        s = unified_sites(als, sites);
+        REQUIRE(s.ok());
+
+        unique_ptr<SimFailBCFData> faildata;
+        bool worked = false;
+
+        for (size_t fail_every = 1; fail_every < 100; fail_every++) {
+            s = SimFailBCFData::Open(*data, fail_every, faildata);
+            REQUIRE(s.ok());
+
+            s = Service::Start(*data, *faildata, svc);
+            REQUIRE(s.ok());
+
+            consolidated_loss losses;
+            s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
+            if (faildata->failed_once()) {
+                worked = true;
+                REQUIRE(s == StatusCode::IO_ERROR);
+                REQUIRE(s.str() == "IOError: SIM");
+            } else {
+                REQUIRE(s.ok());
+            }
+        }
+
+        REQUIRE(worked);
+    }
 }
 
 TEST_CASE("gVCF genotyper") {
@@ -1382,3 +1504,4 @@ TEST_CASE("gVCF genotyper") {
         REQUIRE(loss_d9.n_gvcf_bp_lost == 0);
     }
 }
+
