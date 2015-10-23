@@ -5,6 +5,25 @@
 using namespace std;
 using namespace GLnexus;
 
+// generate a random number in the range [0 .. n-1]
+static int genRandNumber(int n){
+    static bool firstTime = true;
+
+    // initialization
+    if (firstTime) {
+        firstTime = false;
+        srand (time(NULL));
+    }
+
+    int i = rand() % n;
+    return i;
+}
+
+static double genRandDouble(int n) {
+    return double(genRandNumber(n)) / double(n);
+}
+
+
 // Trivial in-memory KeyValue implementation used in unit tests.
 namespace KeyValueMem {
     using namespace KeyValue;
@@ -848,4 +867,93 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 
     // TODO: need a test with only a subset of the samples
+}
+
+static void read_entire_iter(RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> records) {
+    Status s;
+
+    string dataset;
+    shared_ptr<const bcf_hdr_t> hdr;
+    do {
+        vector<shared_ptr<bcf1_t>> v;
+        s = iter->next(dataset, hdr, v);
+        records.insert(records.begin(), v.begin(), v.end());
+    } while (s.ok());
+}
+
+
+// Read all the records in the range, and return as a vector of BCF records.
+// This is not a scalable function, because the return vector could be very
+// large. For debugging/testing use only.
+static void compare_query(T &data, MetadataCache &cache,
+                          const std::string& sampleset, const range& rng) {
+    Status s;
+    vector<shared_ptr<bcf1_t>> all_records_base, all_records_soph;
+    vector<unique_ptr<RangeBCFIterator>> iterators;
+    shared_ptr<const set<string>> samples, datasets;
+
+    // simple iterator
+    REQUIRE(data.sampleset_range_base(cache, sampleset, rng,
+                                      samples, datasets, iterators).ok());
+
+    for (int i=0; i < iterators.size(); i++) {
+        read_entire_iter(iterators[i].get(), all_records_base);
+    }
+
+    // sophisticated iterator
+    iterators.clear();
+    REQUIRE(data.sampleset_range(cache, sampleset, rng,
+                                 samples, datasets, iterators).ok());
+
+    for (int i=0; i < iterators.size(); i++) {
+        read_entire_iter(iterators[i].get(), all_records_soph);
+    }
+
+    // compare all the elements between the two results
+    //cout << rng.str() << " Compare BCF elements here" << endl;
+    int len = all_records_soph.size();
+    REQUIRE(len == all_records_base.size());
+    for (int i=0; i < len; i++) {
+        REQUIRE(bcf_raw_compare(all_records_base[i].get(), all_records_soph[i].get()) == 1);
+    }
+}
+
+TEST_CASE("BCFKeyValueData compare iterator implementations") {
+    // This tests the optimized bucket-based range slicing in BCFKeyValueData
+    int nRegions = 13;
+    int nIter = 10;
+    int lenChrom = 1000000;
+
+    KeyValueMem::DB db({});
+    auto contigs = {make_pair<string,uint64_t>("21", lenChrom)};
+    REQUIRE(T::InitializeDB(&db, contigs, 1011).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.ok());
+    s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+    REQUIRE(s.ok());
+    s = data->import_gvcf(*cache, "3", "test/data/sampleset_range3.gvcf", samples_imported);
+    REQUIRE(s.ok());
+
+
+    string sampleset;
+    s = cache->all_samples_sampleset(sampleset);
+    REQUIRE(s.ok());
+
+    // split the range [0 ... 1000000] into [nRegions] areas.
+    //
+    for (int i = 0; i < nIter; i++) {
+        int beg = genRandDouble(nRegions) * lenChrom;
+        int end = genRandDouble(nRegions) * lenChrom;
+        if (end < beg)
+            std::swap(beg, end);
+        range rng(0, beg, end);
+        compare_query(*data, *cache, sampleset, rng);
+    }
 }
