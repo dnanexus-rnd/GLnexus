@@ -27,14 +27,9 @@ main() {
     sudo rm -f /etc/apt/apt.conf.d/99dnanexus
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     sudo apt-get -qq update
-    sudo apt-get -qq install -y gcc-4.9 g++-4.9
+    sudo apt-get -qq install -y gcc-4.9 g++-4.9 liblz4-dev
     sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 100 \
                              --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
-    LZ4_REVISION="r131"
-    tar zxf lz4-${LZ4_REVISION}.tar.gz
-    make -C lz4-${LZ4_REVISION} -j$(nproc)
-    sudo make -C lz4-${LZ4_REVISION} install
-    sudo ldconfig
 
     # download inputs
     dx-download-all-inputs --parallel --except gvcf_tar --except existing_db
@@ -58,49 +53,45 @@ main() {
     mkdir -p out/db_load_log
     cp GLnexus.db/LOG "out/db_load_log/${output_name}.LOG"
 
-    # genotype specified ranges
-    if [ "${#ranges_to_genotype[@]}" -gt "0" ]; then
-        mkdir bcf
-        i=0
-        for range in "${ranges_to_genotype[@]}"; do
-            if [ "$enable_perf" == "1" ]; then
-                mkdir -p out/perf
-                sudo perf record -F $recordFreq -a -g &
-            fi
+    # assemble BED file of ranges to genotype
+    mkdir -p in/bed_ranges_to_genotype
+    touch in/bed_ranges_to_genotype/DUMMY
+    cat in/bed_ranges_to_genotype/* > ranges.bed
+    for range in "${ranges_to_genotype[@]}"; do
+        range_sp=$(echo "$range" | tr -d "," | tr ":-" "\t")
+        echo "$range_sp" >> ranges.bed
+    done
+    wc -l ranges.bed
 
-            range_sp=$(echo "$range" | tr -d "," | tr ":-" " ")
-            outfn=$(printf "bcf/%05d.bcf" "$i")
-            time glnexus_cli genotype GLnexus.db $range_sp > "$outfn"
-            i=$(expr $i + 1)
-
-            if [ "$enable_perf" == "1" ]; then
-                sudo killall perf
-                sudo chmod 644 perf.data
-                perf script > perf_genotype
-                FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
-                mv out/perf/genotype.stacks out/perf/genotype.stacks.${range}
-                /bin/rm -f perf.data
-            fi
-        done
-        ls -lh bcf
-
-        # generate merged VCF
-        mkdir -p out/vcf
-        if [ "${#ranges_to_genotype[@]}" -gt "1" ]; then
-            find bcf/ -type f -name "*.bcf" | xargs -n 1 -t bcftools index
-            bcftools concat bcf/*.bcf | bgzip -c > "out/vcf/${output_name}.vcf.gz"
-        else
-            bcftools view bcf/*.bcf | bgzip -c > "out/vcf/${output_name}.vcf.gz"
+    # genotype the ranges
+    if [ "$(cat ranges.bed | wc -l)" -gt "0" ]; then
+        if [ "$enable_perf" == "1" ]; then
+            mkdir -p out/perf
+            sudo perf record -F $recordFreq -a -g &
         fi
-        ls -lh out/vcf
+
+        mkdir -p out/vcf
+        time glnexus_cli genotype GLnexus.db --bed ranges.bed \
+            | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
+
+        if [ "$enable_perf" == "1" ]; then
+            sudo killall perf
+            sudo chmod 644 perf.data
+            perf script > perf_genotype
+            FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
+            mv out/perf/genotype.stacks out/perf/genotype.stacks.${range}
+            /bin/rm -f perf.data
+        fi
     fi
 
     # upload
     dx-upload-all-outputs --parallel
 
-    # upload database
-    dxdb=$(tar c GLnexus.db | dx upload --destination "${output_name}.db.tar" --type GLnexus_db --brief -)
-    dx-jobutil-add-output db "$dxdb" --class=file
+    # upload database (unless we used an existing one that we didn't change)
+    if [ -z "$existing_db" ] || [ "$(cat all_gvcfs.txt | wc -l)" -gt "0" ]; then
+        dxdb=$(tar c GLnexus.db | dx upload --destination "${output_name}.db.tar" --type GLnexus_db --brief -)
+        dx-jobutil-add-output db "$dxdb" --class=file
+    fi
 
     # sleep if requested
     if [ "$sleep" -gt "0" ]; then

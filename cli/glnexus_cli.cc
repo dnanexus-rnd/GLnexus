@@ -3,6 +3,7 @@
 // an always-on "server"
 
 #include <iostream>
+#include <fstream>
 #include <getopt.h>
 #include "vcf.h"
 #include "hfile.h"
@@ -375,8 +376,9 @@ int main_dump(int argc, char *argv[]) {
 
 void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
-         << "Genotype all samples in the database in the given interval. The positions are"
-         << "one-based, inclusive."
+         << "Genotype all samples in the database in the given interval. The positions are" << endl
+         << "one-based, inclusive. As an alternative to providing one interval on the" << endl
+         << "command line, you can pass a three-column BED file using --bed FILENAME."
          << endl;
 }
 
@@ -388,14 +390,24 @@ int main_genotype(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"bed", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
+
+    string bedfilename;
 
     int c;
     optind = 2; // force optind past command positional argument
     while (-1 != (c = getopt_long(argc, argv, "h",
                                   long_options, nullptr))) {
         switch (c) {
+            case 'b':
+                bedfilename = string(optarg);
+                if (bedfilename.size() == 0) {
+                    cerr <<  "invalid BED filename" << endl;
+                    return 1;
+                }
+                break;
             case 'h':
             case '?':
                 help_genotype(argv[0]);
@@ -407,14 +419,28 @@ int main_genotype(int argc, char *argv[]) {
         }
     }
 
-    if (optind != argc-4) {
+    if (optind > argc-1) {
         help_genotype(argv[0]);
         return 1;
     }
     string dbpath(argv[optind]);
-    string rname(argv[optind+1]);
-    string beg_txt(argv[optind+2]);
-    string end_txt(argv[optind+3]);
+    string rname, beg_txt, end_txt;
+
+    if (bedfilename.empty()) {
+        if (optind != argc-4) {
+            help_genotype(argv[0]);
+            return 1;
+        }
+
+        rname = argv[optind+1];
+        beg_txt = argv[optind+2];
+        end_txt = argv[optind+3];
+    } else {
+        if (optind != argc-1) {
+            help_genotype(argv[0]);
+            return 1;
+        }
+    }
 
     // open the database in read-write mode, create an all-samples sample set,
     // and close it. This is not elegant. It'd be better for the bulk load
@@ -428,7 +454,7 @@ int main_genotype(int argc, char *argv[]) {
     H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
     data.reset();
     db.reset();
-    console->info() << "created sample set " << "sampleset";
+    console->info() << "created sample set " << sampleset;
 
     // open the database in read-only mode to proceed
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
@@ -436,34 +462,56 @@ int main_genotype(int argc, char *argv[]) {
         unique_ptr<GLnexus::BCFKeyValueData> data;
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
 
-        // resolve the user-supplied contig name to rid
         std::vector<std::pair<std::string,size_t> > contigs;
         H("read contig metadata", data->contigs(contigs));
-        int rid = 0;
-        for(; rid<contigs.size(); rid++) {
-            if (contigs[rid].first == rname) {
-                break;
+
+        // parse ranges
+        vector<GLnexus::range> ranges;
+        if (bedfilename.empty()) {
+            // single range from the command line
+            int rid = 0;
+            for(; rid<contigs.size(); rid++)
+                if (contigs[rid].first == rname)
+                    break;
+            if (rid == contigs.size()) {
+                console->error() << "Unknown contig " << rname;
+                return 1;
+            }
+            ranges.push_back(GLnexus::range(rid,
+                                            strtol(beg_txt.c_str(), nullptr, 10)-1,
+                                            strtol(end_txt.c_str(), nullptr, 10)));
+        } else {
+            // read BED file
+            ifstream bedfile(bedfilename);
+            while (bedfile >> rname >> beg_txt >> end_txt) {
+                int rid = 0;
+                for(; rid<contigs.size(); rid++)
+                    if (contigs[rid].first == rname)
+                        break;
+                if (rid == contigs.size()) {
+                    console->error() << "Unknown contig " << rname;
+                    return 1;
+                }
+                ranges.push_back(GLnexus::range(rid,
+                                                strtol(beg_txt.c_str(), nullptr, 10),
+                                                strtol(end_txt.c_str(), nullptr, 10)));
+            }
+            if (bedfile.bad() || !bedfile.eof()) {
+                console->error() << "Error reading " << bedfilename;
+                return 1;
             }
         }
-        if (rid == contigs.size()) {
-            cerr << "Unknown contig " << rname << endl
-                 << "Known contigs:";
-            for (const auto& p : contigs) {
-                cerr << " " << p.first;
+
+        sort(ranges.begin(), ranges.end());
+        for (auto& query : ranges) {
+            if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
+                cerr << "Invalid query range " << query.str(contigs) << endl;
+                return 1;
             }
-            cerr << endl;
-            return 1;
-        }
-        // parse positions
-        GLnexus::range query(rid, strtol(beg_txt.c_str(), nullptr, 10)-1,
-                                  strtol(end_txt.c_str(), nullptr, 10));
-        if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
-            cerr << "Invalid query range" << endl;
-            return 1;
-        }
-        if (query.end > contigs[rid].second) {
-            query.end = contigs[rid].second;
-            console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+            if (query.end > contigs[query.rid].second) {
+                query.end = contigs[query.rid].second;
+                console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+            }
         }
 
         {
@@ -471,9 +519,9 @@ int main_genotype(int argc, char *argv[]) {
             unique_ptr<GLnexus::Service> svc;
             H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
 
-            console->info() << "discovering alleles in " << query.str(contigs);
+            console->info() << "discovering alleles in " << ranges.size() << " range(s)";
             GLnexus::discovered_alleles alleles;
-            H("discover alleles", svc->discover_alleles(sampleset, query, alleles));
+            H("discover alleles", svc->discover_alleles(sampleset, ranges, alleles));
             console->info() << "discovered " << alleles.size() << " alleles";
 
             vector<GLnexus::unified_site> sites;
