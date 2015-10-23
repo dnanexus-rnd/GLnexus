@@ -106,7 +106,6 @@ int bcf_raw_read_from_mem(const char *addr, bcf1_t *v) {
     return loc;
 }
 
-
 int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
 
 BCFWriter::BCFWriter() {}
