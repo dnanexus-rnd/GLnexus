@@ -260,9 +260,9 @@ int main_load(int argc, char *argv[]) {
         }
     }
 
-    console->info() << "Bulk load complete; beginning database compaction.";
+    console->info() << "Bulk load complete; awaiting convergence of database compactions.";
     db.reset();
-    console->info() << "Compaction complete!";
+    console->info() << "Compactions complete!";
 
     return 0;
 }

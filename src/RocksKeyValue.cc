@@ -7,6 +7,7 @@
 #include <sstream> // for ostringstream
 #include <string>
 #include <thread>
+#include <algorithm>
 #include <unistd.h>
 #include "KeyValue.h"
 #include "RocksKeyValue.h"
@@ -69,22 +70,25 @@ static Status convertStatus(const rocksdb::Status &s)
 }
 
 // Reference for RocksDB tuning: https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
-// TODO: instrument for grid search over:
-//       - memtable budget
-//       - file size multiplier
-//       - level/universal compaction
-//       - compression per level
-//       - block size
-
 void ApplyColumnFamilyOptions(OpenMode mode, rocksdb::ColumnFamilyOptions& opts) {
-    // level compaction, 1GiB memtable budget
-    opts.OptimizeLevelStyleCompaction(1<<30);
+    // universal compaction, 1GiB memtable budget
+    opts.OptimizeUniversalStyleCompaction(1<<30);
     opts.num_levels = 5;
+    opts.target_file_size_base = 1<<30;
+    opts.level0_file_num_compaction_trigger = 10;
+
     // speeds ingestion but slows reads:
     // opts.target_file_size_multiplier = 4;
     // compress all files in 64KiB blocks with LZ4
     opts.compression_per_level.clear();
     opts.compression = rocksdb::kLZ4Compression;
+
+    opts.compaction_options_universal.compression_size_percent = -1;
+    opts.compaction_options_universal.allow_trivial_move = true;
+    opts.compaction_options_universal.max_size_amplification_percent = 300;
+    opts.compaction_options_universal.size_ratio = 10;
+    opts.compaction_options_universal.min_merge_width = 3;
+    opts.compaction_options_universal.max_merge_width = 8;
 
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
@@ -94,28 +98,24 @@ void ApplyColumnFamilyOptions(OpenMode mode, rocksdb::ColumnFamilyOptions& opts)
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 
     if (mode == OpenMode::BULK_LOAD) {
-        // See also rocksdb::Options::PrepareForBulkLoad() in rocksdb/util/options.cc
-
         // Use RocksDB's vector memtable implementation instead of the default
         // skiplist. The vector has faster insertion but much slower lookup.
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
         // Increase memtable size
-        opts.write_buffer_size = totalRAM() / 8;
-        opts.max_write_buffer_number = 6;
+        opts.write_buffer_size = totalRAM() / 4;
+        opts.max_write_buffer_number = 3;
         opts.min_write_buffer_number_to_merge = 1;
 
-        // never slowdown ingest.
-        opts.level0_file_num_compaction_trigger = (1<<30);
+        // Never slowdown ingest since we'll wait for compaction to converge
+        // at the end of the bulk load operation
         opts.level0_slowdown_writes_trigger = (1<<30);
         opts.level0_stop_writes_trigger = (1<<30);
 
-        // A manual compaction run should pick all files in L0 in
-        // a single compaction run.
-        opts.source_compaction_factor = (1<<30);
-
-        // We'll complete the bulk load in the DB destructor by performing a
-        // full database compaction.
+        // Size amplification isn't really a thing during bulk loading because
+        // nothing is getting deleted. The heuristic can also lead to merges
+        // above max_merge_width, so disable it.
+        opts.compaction_options_universal.max_size_amplification_percent = (1<<30);
     }
 }
 
@@ -125,14 +125,17 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     opts.max_open_files = -1;
 
     // increase parallelism
-    opts.max_background_compactions = std::min(std::thread::hardware_concurrency(), 16U);
+    opts.enable_thread_tracking = true;
+    opts.max_background_compactions = std::min(std::thread::hardware_concurrency(),
+                                               mode == OpenMode::BULK_LOAD ? 16U : 3U);
     opts.max_background_flushes = std::min(std::thread::hardware_concurrency(), 4U);
     opts.env->SetBackgroundThreads(opts.max_background_compactions, rocksdb::Env::LOW);
     opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
 
+    opts.access_hint_on_compaction_start = rocksdb::Options::AccessHint::SEQUENTIAL;
+    // TODO: try setting compaction_readahead_size added in rocksdb D45123
+
     if (mode == OpenMode::BULK_LOAD) {
-        // See also rocksdb::Options::PrepareForBulkLoad() in rocksdb/util/options.cc
-        opts.disable_auto_compactions = true;
         opts.disableDataSync = true;
     }
 }
@@ -372,19 +375,39 @@ public:
     }
 
     ~DB() override {
-        if (mode_ == OpenMode::BULK_LOAD) {
-            // Complete the bulk load by compacting all the collections. This
-            // can take a long time.
-            for (const auto& p : coll2handle_) {
-                db_->CompactRange(p.second, nullptr, nullptr);
-            }
-        }
         if (mode_ != OpenMode::READ_ONLY) {
             // Flush
             db_->SyncWAL();
             for (const auto& p : coll2handle_) {
                 db_->Flush(rocksdb::FlushOptions(), p.second);
             }
+        }
+        if (mode_ == OpenMode::BULK_LOAD) {
+            // Wait for compactions to converge. Specifically, wait until
+            // there's no more than one background compaction running.
+            // Argument: once that's the case, the number of sorted runs must
+            // already be below level0_file_num_compaction_trigger, or else a
+            // second background compaction would start.
+            uint64_t num_running_compactions = 0;
+            do {
+                num_running_compactions = 0;
+                /* TODO: switch to this simpler method which was added in rocksdb D48693
+                if (db_->GetIntProperty(rocksdb::DB::Properties::kNumRunningCompactions,
+                                        &num_running_compactions) && num_running_compactions) {
+                */
+                // Important: DBOptions::enable_thread_status must be true for this to work!
+                std::vector<rocksdb::ThreadStatus> thread_list;
+                if (db_->GetEnv()->GetThreadList(&thread_list).ok()) {
+                    num_running_compactions =
+                        std::count_if(thread_list.begin(), thread_list.end(),
+                                      [](rocksdb::ThreadStatus& ts) {
+                                          return ts.operation_type == rocksdb::ThreadStatus::OP_COMPACTION;
+                                      });
+                }
+                if (num_running_compactions>1) {
+                    sleep(10);
+                }
+            } while(num_running_compactions>1);
         }
         // Free column handles
         for (const auto& p : coll2handle_) {
