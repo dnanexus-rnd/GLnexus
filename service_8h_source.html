@@ -113,19 +113,18 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> Start(<a class="code" href="class_g_lnexus_1_1_metadata.html">Metadata</a>&amp; metadata, <a class="code" href="class_g_lnexus_1_1_b_c_f_data.html">BCFData</a>&amp; data, std::unique_ptr&lt;Service&gt;&amp; svc);</div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;    ~<a class="code" href="class_g_lnexus_1_1_service.html">Service</a>();</div>
 <div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22">discover_alleles</a>(<span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a>&amp; pos, discovered_alleles&amp; ans);</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22">discover_alleles</a>(<span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> std::vector&lt;range&gt;&amp; ranges,</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;                            discovered_alleles&amp; ans);</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_service.html#acefa30e14cceb6d31a2efe15cfb65378">genotype_sites</a>(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a>&amp; cfg, <span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> std::vector&lt;unified_site&gt;&amp; sites, <span class="keyword">const</span> std::string&amp; filename, consolidated_loss&amp; dlosses);</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;};</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;}</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22">discover_alleles</a>(<span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a>&amp; pos, discovered_alleles&amp; ans);</div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22">discover_alleles</a>(<span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> std::vector&lt;range&gt;&amp; ranges,</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;                            discovered_alleles&amp; ans);</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <a class="code" href="class_g_lnexus_1_1_service.html#acefa30e14cceb6d31a2efe15cfb65378">genotype_sites</a>(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a>&amp; cfg, <span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> std::vector&lt;unified_site&gt;&amp; sites, <span class="keyword">const</span> std::string&amp; filename, consolidated_loss&amp; dlosses);</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;};</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;}</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="preprocessor">#endif</span></div>
 <div class="ttc" id="struct_g_lnexus_1_1range_html"><div class="ttname"><a href="struct_g_lnexus_1_1range.html">GLnexus::range</a></div><div class="ttdoc">Genomic range (chromosome id, begin coordinate, end coordinate) </div><div class="ttdef"><b>Definition:</b> types.h:95</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_metadata_html"><div class="ttname"><a href="class_g_lnexus_1_1_metadata.html">GLnexus::Metadata</a></div><div class="ttdef"><b>Definition:</b> data.h:23</div></div>
 <div class="ttc" id="class_g_lnexus_1_1_b_c_f_data_html"><div class="ttname"><a href="class_g_lnexus_1_1_b_c_f_data.html">GLnexus::BCFData</a></div><div class="ttdef"><b>Definition:</b> data.h:94</div></div>
