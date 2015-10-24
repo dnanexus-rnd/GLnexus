@@ -7,6 +7,7 @@
 #include <sstream> // for ostringstream
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include "KeyValue.h"
 #include "RocksKeyValue.h"
 #include "rocksdb/db.h"
@@ -19,6 +20,18 @@
 
 namespace GLnexus {
 namespace RocksKeyValue {
+
+static size_t totalRAM() {
+    // http://nadeausoftware.com/articles/2012/09/c_c_tip_how_get_physical_memory_size_system
+    static size_t memoized = 0;
+    if (!memoized) {
+        memoized = (size_t)sysconf( _SC_PHYS_PAGES ) * (size_t)sysconf( _SC_PAGESIZE );
+        if (!memoized) {
+            memoized = 4<<30;
+        }
+    }
+    return memoized;
+}
 
 // Convert a rocksdb Status into a GLnexus Status structure
 static Status convertStatus(const rocksdb::Status &s)
@@ -63,18 +76,12 @@ static Status convertStatus(const rocksdb::Status &s)
 //       - compression per level
 //       - block size
 
-void ApplyColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
+void ApplyColumnFamilyOptions(OpenMode mode, rocksdb::ColumnFamilyOptions& opts) {
     // level compaction, 1GiB memtable budget
-    opts.OptimizeLevelStyleCompaction(1024 * 1024 * 1024);
-    // opts.level0_slowdown_writes_trigger = 16;
-    // opts.level0_stop_writes_trigger = 32;
+    opts.OptimizeLevelStyleCompaction(1<<30);
+    opts.num_levels = 5;
     // speeds ingestion but slows reads:
     // opts.target_file_size_multiplier = 4;
-    //for (size_t i = 0; i < opts.compression_per_level.size(); i++) {
-    //    if (opts.compression_per_level[i] != rocksdb::kNoCompression) {
-    //        opts.compression_per_level[i] = rocksdb::kLZ4Compression;
-    //    }
-    //}
     // compress all files in 64KiB blocks with LZ4
     opts.compression_per_level.clear();
     opts.compression = rocksdb::kLZ4Compression;
@@ -82,23 +89,52 @@ void ApplyColumnFamilyOptions(rocksdb::ColumnFamilyOptions& opts) {
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
     bbto.block_size = 64 * 1024;
-    // TODO: shrink RocksDB block cache when we have higher-level caching
-    bbto.block_cache = rocksdb::NewLRUCache(1024 * 1024 * 1024);
+    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 4);
 
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
+
+    if (mode == OpenMode::BULK_LOAD) {
+        // See also rocksdb::Options::PrepareForBulkLoad() in rocksdb/util/options.cc
+
+        // Use RocksDB's vector memtable implementation instead of the default
+        // skiplist. The vector has faster insertion but much slower lookup.
+        opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
+
+        // Increase memtable size
+        opts.write_buffer_size = totalRAM() / 8;
+        opts.max_write_buffer_number = 6;
+        opts.min_write_buffer_number_to_merge = 1;
+
+        // never slowdown ingest.
+        opts.level0_file_num_compaction_trigger = (1<<30);
+        opts.level0_slowdown_writes_trigger = (1<<30);
+        opts.level0_stop_writes_trigger = (1<<30);
+
+        // A manual compaction run should pick all files in L0 in
+        // a single compaction run.
+        opts.source_compaction_factor = (1<<30);
+
+        // We'll complete the bulk load in the DB destructor by performing a
+        // full database compaction.
+    }
 }
 
-void ApplyDBOptions(rocksdb::Options& opts) {
-    ApplyColumnFamilyOptions(static_cast<rocksdb::ColumnFamilyOptions&>(opts));
+void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
+    ApplyColumnFamilyOptions(mode, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
 
     opts.max_open_files = -1;
-    // opts.delayed_write_rate = 4 * 1024 * 1024;
 
-    // reserve capacity to absorb parallelized bulk loads
+    // increase parallelism
     opts.max_background_compactions = std::min(std::thread::hardware_concurrency(), 16U);
     opts.max_background_flushes = std::min(std::thread::hardware_concurrency(), 4U);
     opts.env->SetBackgroundThreads(opts.max_background_compactions, rocksdb::Env::LOW);
     opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
+
+    if (mode == OpenMode::BULK_LOAD) {
+        // See also rocksdb::Options::PrepareForBulkLoad() in rocksdb/util/options.cc
+        opts.disable_auto_compactions = true;
+        opts.disableDataSync = true;
+    }
 }
 
 class Iterator : public KeyValue::Iterator {
@@ -258,7 +294,7 @@ public:
     static Status Initialize(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db) {
         rocksdb::Options options;
-        ApplyDBOptions(options);
+        ApplyDBOptions(OpenMode::NORMAL, options);
         options.create_if_missing = true;
         options.error_if_exists = true;
 
@@ -283,12 +319,8 @@ public:
                        OpenMode mode) {
         // prepare options
         rocksdb::Options options;
-        ApplyDBOptions(options);
+        ApplyDBOptions(mode, options);
         options.create_if_missing = false;
-
-        if (mode == OpenMode::BULK_LOAD) {
-            options.disableDataSync = true;
-        }
 
         // detect the database's column families
         std::vector<std::string> column_family_names;
@@ -299,13 +331,7 @@ public:
         std::vector<rocksdb::ColumnFamilyDescriptor> column_families;
         for (const auto& nm : column_family_names) {
             rocksdb::ColumnFamilyOptions colopts;
-            ApplyColumnFamilyOptions(colopts);
-            if (mode == OpenMode::BULK_LOAD) {
-                // For bulk load, use RocksDB's vector memtable implementation
-                // instead of the default skiplist. The vector has faster
-                // insertion but much slower lookup.
-                colopts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
-            }
+            ApplyColumnFamilyOptions(mode, colopts);
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
             cfd.options = colopts;
@@ -346,6 +372,13 @@ public:
     }
 
     ~DB() override {
+        if (mode_ == OpenMode::BULK_LOAD) {
+            // Complete the bulk load by compacting all the collections. This
+            // can take a long time.
+            for (const auto& p : coll2handle_) {
+                db_->CompactRange(p.second, nullptr, nullptr);
+            }
+        }
         if (mode_ != OpenMode::READ_ONLY) {
             // Flush
             db_->SyncWAL();
@@ -378,7 +411,7 @@ public:
 
         // create new column family in rocksdb
         rocksdb::ColumnFamilyOptions colopts;
-        ApplyColumnFamilyOptions(colopts);
+        ApplyColumnFamilyOptions(mode_, colopts);
         rocksdb::ColumnFamilyHandle *handle;
         rocksdb::Status s = db_->CreateColumnFamily(colopts, name, &handle);
         if (!s.ok()) {

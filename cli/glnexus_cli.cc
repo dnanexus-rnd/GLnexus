@@ -189,6 +189,8 @@ int main_load(int argc, char *argv[]) {
             unique_ptr<GLnexus::MetadataCache> metadata;
             H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
 
+            console->info() << "Beginning bulk load.";
+
             ctpl::thread_pool threadpool(thread::hardware_concurrency());
             vector<future<GLnexus::Status>> statuses;
             set<string> datasets_loaded;
@@ -216,7 +218,7 @@ int main_load(int argc, char *argv[]) {
                         datasets_loaded.insert(dataset);
                         size_t n = datasets_loaded.size();
                         if (n % 100 == 0) {
-                            cout << n << "..." << endl;
+                            console->info() << n << "...";
                             cout.flush();
                         }
                     }
@@ -257,6 +259,10 @@ int main_load(int argc, char *argv[]) {
             }
         }
     }
+
+    console->info() << "Bulk load complete; beginning database compaction.";
+    db.reset();
+    console->info() << "Compaction complete!";
 
     return 0;
 }
