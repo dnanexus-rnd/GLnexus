@@ -564,6 +564,7 @@ void help(const char* prog) {
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%t] %+");
+    console->info() << "glnexus_cli " << GIT_REVISION;
 
     if (argc == 1) {
         help(argv[0]);
