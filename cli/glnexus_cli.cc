@@ -26,6 +26,14 @@ GLnexus::Status s;
         return 1; \
     }
 
+static GLnexus::RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
+    static unique_ptr<GLnexus::RocksKeyValue::prefix_spec> p;
+    if (!p) {
+        p = make_unique<GLnexus::RocksKeyValue::prefix_spec>("bcf", GLnexus::BCFKeyValueDataPrefixLength());
+    }
+    return p.get();
+}
+
 void help_init(const char* prog) {
     cerr << "usage: " << prog << " init [options] /desired/db/path exemplar.gvcf[.gz]" << endl
          << "Initializes a new GLnexus database in the specified directory; the parent directory" << endl
@@ -94,7 +102,7 @@ int main_init(int argc, char *argv[]) {
 
     // create and initialize the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("create database", GLnexus::RocksKeyValue::Initialize(dbpath, db));
+    H("create database", GLnexus::RocksKeyValue::Initialize(dbpath, db, GLnexus_prefix_spec()));
     H("initialize database", GLnexus::BCFKeyValueData::InitializeDB(db.get(), contigs));
 
     // report success
@@ -188,7 +196,8 @@ int main_load(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -323,7 +332,8 @@ int main_dump(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -463,7 +473,8 @@ int main_genotype(int argc, char *argv[]) {
     unique_ptr<GLnexus::BCFKeyValueData> data;
 
     // open the database in read-only mode
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
@@ -581,7 +592,8 @@ int main_iter_compare(int argc, char *argv[]) {
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
     string sampleset;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
 
     unique_ptr<GLnexus::MetadataCache> metadata;

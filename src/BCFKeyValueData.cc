@@ -76,6 +76,7 @@ private:
     BCFBucketRange& operator=(const BCFBucketRange&);
 
 public:
+    static const size_t PREFIX_LENGTH = 23;
     int interval_len;
 
     // constructor
@@ -92,7 +93,9 @@ public:
         ss << setw(3) << setfill('0') << rng.rid
            << setw(10) << setfill('0') << rng.beg
            << setw(10) << setfill('0') << rng.end;
-        return ss.str();
+        std::string ans = ss.str();
+        assert(ans.size() == PREFIX_LENGTH);
+        return ans;
     }
 
     // Produce the complete key for a bucket (given the prefix) in a dataset
@@ -111,11 +114,11 @@ public:
 
     // Decompose the key into bucket prefix and dataset
     Status parse_key(const string& key, string& bucket, string& dataset) {
-        if (key.size() < 23) {
+        if (key.size() < PREFIX_LENGTH) {
             return Status::Invalid("BCFBucketRange::parse_key: key too small", key);
         }
-        bucket = key.substr(0, 23);
-        dataset = key.substr(23);
+        bucket = key.substr(0, PREFIX_LENGTH);
+        dataset = key.substr(PREFIX_LENGTH);
         return Status::OK();
     }
 
@@ -133,6 +136,8 @@ public:
         return range(rec->rid, bgn, bgn + interval_len);
     }
 };
+
+size_t BCFKeyValueDataPrefixLength() { return BCFBucketRange::PREFIX_LENGTH; }
 
 
 // Metadata that is being added to the DB
