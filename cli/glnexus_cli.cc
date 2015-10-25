@@ -110,8 +110,10 @@ int main_init(int argc, char *argv[]) {
 void help_load(const char* prog) {
     cerr << "usage: " << prog << " load [options] /db/path sample.gvcf[.gz] [sample2.gvcf[.gz] ...]" << endl
          << "Loads gVCF file(s) into an existing database. The data set name will be derived from" << endl
-         << "the gVCF filename. It can be overridden with --dataset if loading only one gVCF."
-         << "If the final argument is - then gVCF filenames are read from standard input."
+         << "the gVCF filename. It can be overridden with --dataset if loading only one gVCF." << endl
+         << "If the final argument is - then gVCF filenames are read from standard input." << endl
+         << "Options:" << endl
+         << "  --delete, -X    delete each gVCF file immediately after successful load" << endl
          << endl;
 }
 
@@ -124,10 +126,12 @@ int main_load(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"dataset", required_argument, 0, 'd'},
+        {"and-delete", no_argument, 0, 'X'},
         {0, 0, 0, 0}
     };
 
     string dataset;
+    bool and_delete = false;
 
     int c;
     optind = 2; // force optind past command positional argument
@@ -140,6 +144,10 @@ int main_load(int argc, char *argv[]) {
                     cerr <<  "invalid --dataset" << endl;
                     return 1;
                 }
+                break;
+
+            case 'X':
+                and_delete = true;
                 break;
 
             case 'h':
@@ -213,13 +221,15 @@ int main_load(int argc, char *argv[]) {
                     set<string> samples;
                     GLnexus::Status ls = data->import_gvcf(*metadata, dataset, gvcf, samples);
                     if (ls.ok()) {
+                        if (and_delete && unlink(gvcf.c_str())) {
+                            console->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
+                        }
                         lock_guard<mutex> lock(mu);
                         samples_loaded.insert(samples.begin(), samples.end());
                         datasets_loaded.insert(dataset);
                         size_t n = datasets_loaded.size();
                         if (n % 100 == 0) {
                             console->info() << n << "...";
-                            cout.flush();
                         }
                     }
                     return ls;

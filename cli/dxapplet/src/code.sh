@@ -48,7 +48,7 @@ main() {
     fi
 
     # load gVCFs
-    cat all_gvcfs.txt | time glnexus_cli load GLnexus.db -
+    cat all_gvcfs.txt | time glnexus_cli load --and-delete GLnexus.db -
     ls -lh GLnexus.db
     mkdir -p out/db_load_log
     cp GLnexus.db/LOG "out/db_load_log/${output_name}.LOG"
