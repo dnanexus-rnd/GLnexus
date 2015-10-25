@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <vcf.h>
 #include <mutex>
+#include "yaml-cpp/yaml.h"
 
 #define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;
 template<typename T> inline void ignore_retval(T) {}
@@ -195,6 +196,10 @@ struct unified_site {
 
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 };
+
+Status unified_site_of_yaml(const YAML::Node& yaml,
+                            const std::vector<std::pair<std::string,size_t> >& contigs,
+                            unified_site& ans);
 
 struct loss_stats {
     int n_calls_total=0, n_bp_total=0;
