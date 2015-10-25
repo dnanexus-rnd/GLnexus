@@ -76,3 +76,199 @@ TEST_CASE("range_of_bcf") {
     REQUIRE(rng.end == 10009466);
     REQUIRE(rng.size() == 1);
 }
+
+TEST_CASE("unified_site_of_yaml") {
+    vector<pair<string,size_t>> contigs;
+    contigs.push_back(make_pair("16",12345));
+    contigs.push_back(make_pair("17",23456));
+
+    const char* snp = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles: [A, G]
+observation_count: [100, 51]
+unification:
+  - range: {ref: '17', beg: 100, end: 100}
+    alt: A
+    to: 0
+  - range: {ref: '17', beg: 100, end: 100}
+    alt: G
+    to: 1
+)";
+
+
+    #define VERIFY_SNP(us) \
+        REQUIRE((us).pos == range(1, 99, 100)); \
+        REQUIRE((us).alleles.size() == 2);      \
+        REQUIRE((us).alleles[0] == "A");        \
+        REQUIRE((us).alleles[1] == "G");        \
+        REQUIRE((us).unification.size() == 2);  \
+        REQUIRE((us).unification[allele(range(1, 99, 100), "A")] == 0); \
+        REQUIRE((us).unification[allele(range(1, 99, 100), "G")] == 1); \
+        REQUIRE((us).observation_count.size() == 2); \
+        REQUIRE((us).observation_count[0] == 100.0); \
+        REQUIRE((us).observation_count[1] == 51.0);
+
+
+    const char* del = 1 + R"(
+range: {ref: '17', beg: 1000, end: 1001}
+alleles: [AG, AC, C]
+observation_count: [100, 50, 1]
+unification:
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: AG
+    to: 0
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: AC
+    to: 1
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: C
+    to: 2
+  - range: {ref: '17', beg: 1001, end: 1001}
+    alt: C
+    to: 1
+)";
+
+    #define VERIFY_DEL(us) \
+        REQUIRE((us).pos == range(1, 999, 1001)); \
+        REQUIRE((us).alleles.size() == 3);      \
+        REQUIRE((us).alleles[0] == "AG");       \
+        REQUIRE((us).alleles[1] == "AC");       \
+        REQUIRE((us).alleles[2] == "C");        \
+        REQUIRE((us).unification.size() == 4);  \
+        REQUIRE((us).unification[allele(range(1, 999, 1001), "AG")] == 0); \
+        REQUIRE((us).unification[allele(range(1, 999, 1001), "AC")] == 1); \
+        REQUIRE((us).unification[allele(range(1, 999, 1001), "C")] == 2);  \
+        REQUIRE((us).unification[allele(range(1, 1000, 1001), "C")] == 1);
+    
+    SECTION("snp") {
+        YAML::Node n = YAML::Load(snp);
+
+        unified_site us(range(-1,-1,-1));
+        Status s = unified_site_of_yaml(n, contigs, us);
+        REQUIRE(s.ok());
+        VERIFY_SNP(us);
+    }
+
+    SECTION("del") {
+        YAML::Node n = YAML::Load(del);
+
+        unified_site us(range(-1,-1,-1));
+        Status s = unified_site_of_yaml(n, contigs, us);
+        REQUIRE(s.ok());
+        VERIFY_DEL(us);
+    }
+    
+    SECTION("snp+del") {
+        vector<YAML::Node> ns = YAML::LoadAll("---\n" + string(snp) + "\n---\n" + string(del) + "\n...");
+        REQUIRE(ns.size() == 2);
+        unified_site us(range(-1,-1,-1));
+        Status s = unified_site_of_yaml(ns[0], contigs, us);
+        REQUIRE(s.ok());
+        VERIFY_SNP(us);
+        s = unified_site_of_yaml(ns[1], contigs, us);
+        REQUIRE(s.ok());
+        VERIFY_DEL(us);
+    }
+
+    SECTION("optional ref") {
+        const char* snp_opt = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles: [A, G]
+observation_count: [100, 51]
+unification:
+  - range: {beg: 100, end: 100}
+    alt: A
+    to: 0
+  - range: {beg: 100, end: 100}
+    alt: G
+    to: 1
+)";
+        YAML::Node n = YAML::Load(snp_opt);
+
+        unified_site us(range(-1,-1,-1));
+        Status s = unified_site_of_yaml(n, contigs, us);
+        REQUIRE(s.ok());
+        VERIFY_SNP(us);
+    }
+
+    SECTION("bogus range") {
+        const char* snp_bogus = 1 + R"(
+range: {ref: 'bogus', beg: 100, end: 100}
+alleles: [A, G]
+observation_count: [100, 51]
+unification:
+  - range: {beg: 100, end: 100}
+    alt: A
+    to: 0
+  - range: {beg: 100, end: 100}
+    alt: G
+    to: 1
+)";
+        YAML::Node n = YAML::Load(snp_bogus);
+
+        unified_site us(range(-1,-1,-1));
+        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+
+        snp_bogus = 1 + R"(
+range: 12345
+alleles: [A, G]
+observation_count: [100, 51]
+unification:
+  - range: {beg: 100, end: 100}
+    alt: A
+    to: 0
+  - range: {beg: 100, end: 100}
+    alt: G
+    to: 1
+)";
+        n = YAML::Load(snp_bogus);
+        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+    }
+
+    SECTION("bogus alleles") {
+        const char* snp_bogus = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles: [A]
+observation_count: [100, 51]
+unification:
+  - range: {beg: 100, end: 100}
+    alt: A
+    to: 0
+)";
+        YAML::Node n = YAML::Load(snp_bogus);
+
+        unified_site us(range(-1,-1,-1));
+        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+    }
+
+    SECTION("bogus unification") {
+        const char* snp_bogus = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles: [A, G]
+observation_count: [100, 51]
+unification:
+  - range: {ref: 'bogus', beg: 100, end: 100}
+    alt: A
+    to: 0
+  - range: {beg: 100, end: 100}
+    alt: G
+    to: 1
+)";
+        YAML::Node n = YAML::Load(snp_bogus);
+
+        unified_site us(range(-1,-1,-1));
+        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+
+        snp_bogus = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles: [A, G]
+observation_count: [100, 51]
+unification:
+  - range: {beg: 100, end: 100}
+    alt: A
+    to: 0
+)";
+        n = YAML::Load(snp_bogus);
+        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+    }
+}
