@@ -551,6 +551,176 @@ int main_genotype(int argc, char *argv[]) {
     return 0;
 }
 
+// generate a random number in the range [0 .. n-1]
+static int genRandInt(int n){
+    static bool firstTime = true;
+
+    // initialization
+    if (firstTime) {
+        firstTime = false;
+        srand (time(NULL));
+    }
+
+    int i = rand() % n;
+    return i;
+}
+
+// A quick comparision of BCF records
+//
+// Return 1 upon success, 0 for failure.
+static int bcf_shallow_compare(bcf1_t *x, bcf1_t *y) {
+    if (x->rid != y->rid) return 0;
+    if (x->pos != y->pos) return 0;
+    if (x->rlen != y->rlen) return 0;
+    return 1;
+}
+
+// read an entire iterator and add the bcf1 records to [records]
+static void read_entire_iter(GLnexus::RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> records) {
+    GLnexus::Status s;
+
+    string dataset;
+    shared_ptr<const bcf_hdr_t> hdr;
+    do {
+        vector<shared_ptr<bcf1_t>> v;
+        s = iter->next(dataset, hdr, v);
+        records.insert(records.begin(), v.begin(), v.end());
+    } while (s.ok());
+}
+
+
+// Read all the records in the range, and return as a vector of BCF records.
+// This is not a scalable function, because the return vector could be very
+// large. For debugging/testing use only.
+//
+// Return 1 upon success, 0 for failure.
+static int compare_query(GLnexus::BCFKeyValueData &data, GLnexus::MetadataCache &cache,
+                          const std::string& sampleset, const GLnexus::range& rng) {
+    int maxNumElemInQuery = 1000000;
+    cout << "compared range=" << rng.str() << " ";
+
+    GLnexus::Status s;
+    vector<shared_ptr<bcf1_t>> all_records_base, all_records_soph;
+    vector<unique_ptr<GLnexus::RangeBCFIterator>> iterators;
+    shared_ptr<const set<string>> samples, datasets;
+
+    // simple iterator
+    assert(data.sampleset_range_base(cache, sampleset, rng,
+                                     samples, datasets, iterators).ok());
+    cout << "num iterators=" << iterators.size() << endl;
+
+    for (int i=0; i < iterators.size(); i++) {
+        read_entire_iter(iterators[i].get(), all_records_base);
+
+        int numElem = all_records_base.size();
+        if (numElem > maxNumElemInQuery) {
+            cout << " too many elements (" << numElem << "), stopping" << endl;
+            return 1;
+        }
+    }
+
+    // sophisticated iterator
+    iterators.clear();
+    assert(data.sampleset_range(cache, sampleset, rng,
+                                 samples, datasets, iterators).ok());
+
+    for (int i=0; i < iterators.size(); i++) {
+        read_entire_iter(iterators[i].get(), all_records_soph);
+    }
+
+    // compare all the elements between the two results
+    int len = all_records_soph.size();
+
+    if (len != all_records_base.size())
+        return 0;
+    for (int i=0; i < len; i++) {
+        if (bcf_shallow_compare(all_records_base[i].get(), all_records_soph[i].get()) != 1)
+            return 0;
+    }
+    cout << " num_elem=" << len << endl;
+    return 1;
+}
+
+int main_iter_compare(int argc, char *argv[]) {
+    if (argc == 2) {
+        help_init(argv[0]);
+        return 1;
+    }
+
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int c;
+    optind = 2; // force optind past command positional argument
+    while (-1 != (c = getopt_long(argc, argv, "h",
+                                  long_options, nullptr))) {
+        switch (c) {
+            case 'h':
+            case '?':
+                help_init(argv[0]);
+                exit(1);
+                break;
+
+            default:
+                abort ();
+        }
+    }
+
+//    if (optind != argc-2) {
+//        help_init(argv[0]);
+//        return 1;
+//    }
+    string dbpath(argv[optind]);
+
+    // open the database in read-write mode, create an all-samples sample set,
+    // and close it. This is not elegant. It'd be better for the bulk load
+    // process to create the sample set when it finishes. Need some way to
+    // recover the name of the most recently created all-samples sample set.
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    unique_ptr<GLnexus::BCFKeyValueData> data;
+    string sampleset;
+    H("open database R/W", GLnexus::RocksKeyValue::Open(dbpath, db));
+    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
+    data.reset();
+    db.reset();
+    console->info() << "created sample set " << sampleset;
+
+
+    // open the database
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+    unique_ptr<GLnexus::MetadataCache> metadata;
+    H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
+
+    // resolve the user-supplied contig name to rid
+    const auto& contigs = metadata->contigs();
+
+    // get samples and datasets
+    shared_ptr<const set<string>> samples, datasets;
+    H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
+
+    int nChroms = contigs.size();
+    int nIter = 50;
+    for (int i = 0; i < nIter; i++) {
+        //int rid = genRandInt(nChroms);
+        int rid = 17;
+        size_t lenChrom = contigs[rid].second;
+
+        int beg = genRandInt(lenChrom/3);
+        int len = genRandInt(lenChrom - beg);
+        GLnexus::range rng(rid, beg, beg + len);
+        if (compare_query(*data, *metadata, sampleset, rng) != 1)
+            return 1; // ERROR
+    }
+
+    cout << "Passed " << nIter << " iterator comparison tests" << endl;
+    return 0; // GOOD STATUS
+}
+
+
 void help(const char* prog) {
     cerr << "usage: " << prog << " <command> [options]" << endl
              << endl
@@ -558,6 +728,7 @@ void help(const char* prog) {
              << "  init     initialize new database" << endl
              << "  load     load a gVCF file into an existing database" << endl
              << "  genotype genotype samples in the database" << endl
+             << "  iter_compare compare the two BCF iterator impelementations" << endl
              << endl;
 }
 
@@ -579,6 +750,8 @@ int main(int argc, char *argv[]) {
         return main_dump(argc, argv);
     } else if (command == "genotype") {
         return main_genotype(argc, argv);
+    } else if (command == "iter_compare") {
+        return main_iter_compare(argc, argv);
     } else {
         cerr << "unknown command " << command << endl;
         help(argv[0]);

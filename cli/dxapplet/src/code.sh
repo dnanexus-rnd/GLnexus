@@ -63,6 +63,14 @@ main() {
     done
     wc -l ranges.bed
 
+    # Test that the iterators work correctly
+    if [ "$iter_compare" == "1" ]; then
+        echo "Comparing iterator implementations"
+        glnexus_cli iter_compare GLnexus.db
+        rc=$?
+        exit $rc
+    fi
+
     # genotype the ranges
     if [ "$(cat ranges.bed | wc -l)" -gt "0" ]; then
         if [ "$enable_perf" == "1" ]; then
