@@ -869,18 +869,42 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     // TODO: need a test with only a subset of the samples
 }
 
-static void read_entire_iter(RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> records) {
+static void print_bcf_record(bcf1_t *x) {
+    range rng(x->rid, x->pos, x->pos + x->rlen);
+    cout << rng.str() << endl;
+}
+
+static int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
+    if (x->rid != y->rid) return 0;
+    if (x->pos != y->pos) return 0;
+    if (x->rlen != y->rlen) return 0;
+    return 1;
+}
+
+static void read_entire_iter(RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> &records) {
     Status s;
 
     string dataset;
     shared_ptr<const bcf_hdr_t> hdr;
     do {
         vector<shared_ptr<bcf1_t>> v;
+        v.clear();
         s = iter->next(dataset, hdr, v);
-        records.insert(records.begin(), v.begin(), v.end());
+        for (auto rec : v)
+            records.push_back(rec);
     } while (s.ok());
 }
 
+static void sort_records(vector<shared_ptr<bcf1_t>> &records) {
+    sort(records.begin(), records.end(),
+         [] (const shared_ptr<bcf1_t>& p1, const shared_ptr<bcf1_t>& p2) {
+             if (p1->rid < p2->rid) return true;
+             if (p1->rid > p2->rid) return false;
+             if (p1->pos < p2->pos) return true;
+             if (p1->pos > p2->pos) return false;
+             return (p1->rlen == p2->rlen);
+         });
+}
 
 // Read all the records in the range, and return as a vector of BCF records.
 // This is not a scalable function, because the return vector could be very
@@ -899,6 +923,7 @@ static void compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), all_records_base);
     }
+    sort_records(all_records_base);
 
     // sophisticated iterator
     iterators.clear();
@@ -908,20 +933,26 @@ static void compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), all_records_soph);
     }
+    sort_records(all_records_soph);
 
     // compare all the elements between the two results
     //cout << rng.str() << " Compare BCF elements here" << endl;
     int len = all_records_soph.size();
     REQUIRE(len == all_records_base.size());
     for (int i=0; i < len; i++) {
-        REQUIRE(bcf_raw_compare(all_records_base[i].get(), all_records_soph[i].get()) == 1);
+        if (bcf_shallow_compare(all_records_base[i].get(), all_records_soph[i].get()) == 0) {
+            print_bcf_record(all_records_base[i].get());
+            print_bcf_record(all_records_soph[i].get());
+            REQUIRE(false);
+        }
     }
+    //cout << "compare_query " << rng.str() << " len=" << len << endl;
 }
 
 TEST_CASE("BCFKeyValueData compare iterator implementations") {
     // This tests the optimized bucket-based range slicing in BCFKeyValueData
     int nRegions = 13;
-    int nIter = 10;
+    int nIter = 20;
     int lenChrom = 1000000;
 
     KeyValueMem::DB db({});
@@ -956,4 +987,6 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
         range rng(0, beg, end);
         compare_query(*data, *cache, sampleset, rng);
     }
+
+    cout << "Compared " << nIter << " range queries between the two iterators" << endl;
 }
