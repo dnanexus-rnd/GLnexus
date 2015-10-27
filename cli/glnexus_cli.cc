@@ -584,7 +584,6 @@ static void read_entire_iter(GLnexus::RangeBCFIterator *iter, vector<shared_ptr<
         vector<shared_ptr<bcf1_t>> v;
         v.clear();
         s = iter->next(dataset, hdr, v);
-        cout << "len(v)=" << v.size() << endl;
         for (auto rec : v)
             records.push_back(rec);
     } while (s.ok());
@@ -610,10 +609,11 @@ static int compare_query(GLnexus::BCFKeyValueData &data, GLnexus::MetadataCache 
     shared_ptr<const set<string>> samples, datasets;
 
     // simple iterator
-    assert(data.sampleset_range_base(cache, sampleset, rng,
-                                     samples, datasets, iterators).ok());
+    s = data.sampleset_range_base(cache, sampleset, rng,
+                                  samples, datasets, iterators);
+    if (!s.ok())
+        return 0;
 
-    cout << "--- regular iterator (" << iterators.size() << ")" << endl;
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), all_records_base);
 
@@ -626,10 +626,11 @@ static int compare_query(GLnexus::BCFKeyValueData &data, GLnexus::MetadataCache 
 
     // sophisticated iterator
     iterators.clear();
-    assert(data.sampleset_range(cache, sampleset, rng,
-                                 samples, datasets, iterators).ok());
+    s = data.sampleset_range(cache, sampleset, rng,
+                             samples, datasets, iterators);
+    if (!s.ok())
+        return 0;
 
-    cout << "--- sophisticated iterator (" << iterators.size() << ")" << endl;
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), all_records_soph);
     }
@@ -704,7 +705,7 @@ int main_iter_compare(int argc, char *argv[]) {
     shared_ptr<const set<string>> samples, datasets;
     H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
 
-    int nChroms = /*contigs.size()*/ 20;
+    int nChroms = min((size_t)22, contigs.size());
     int nIter = 50;
     for (int i = 0; i < nIter; i++) {
         int rid = genRandInt(nChroms);
