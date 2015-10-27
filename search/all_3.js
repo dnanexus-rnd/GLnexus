@@ -6,6 +6,6 @@ var searchData=
   ['db',['DB',['../class_g_lnexus_1_1_key_value_1_1_d_b.html',1,'GLnexus::KeyValue']]],
   ['db',['DB',['../class_g_lnexus_1_1_rocks_key_value_1_1_d_b.html',1,'GLnexus::RocksKeyValue']]],
   ['defaultrangebcfiteratorimpl',['DefaultRangeBCFIteratorImpl',['../class_g_lnexus_1_1_default_range_b_c_f_iterator_impl.html',1,'GLnexus']]],
-  ['discover_5falleles',['discover_alleles',['../class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22',1,'GLnexus::Service::discover_alleles(const std::string &amp;sampleset, const range &amp;pos, discovered_alleles &amp;ans)'],['../class_g_lnexus_1_1_service.html#a77137178530bf0f78916bb22db0ace27',1,'GLnexus::Service::discover_alleles(const std::string &amp;sampleset, const std::vector&lt; range &gt; &amp;ranges, discovered_alleles &amp;ans)']]],
+  ['discover_5falleles',['discover_alleles',['../class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22',1,'GLnexus::Service::discover_alleles(const std::string &amp;sampleset, const range &amp;pos, discovered_alleles &amp;ans)'],['../class_g_lnexus_1_1_service.html#a9358c04a78d10e2f686c4b6c4545c3a3',1,'GLnexus::Service::discover_alleles(const std::string &amp;sampleset, const std::vector&lt; range &gt; &amp;ranges, std::vector&lt; discovered_alleles &gt; &amp;ans)']]],
   ['discovered_5fallele_5finfo',['discovered_allele_info',['../struct_g_lnexus_1_1discovered__allele__info.html',1,'GLnexus']]]
 ];

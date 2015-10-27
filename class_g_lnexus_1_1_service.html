@@ -105,8 +105,8 @@ Classes</h2></td></tr>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ad25023a708863e26466c15cc999ebd22"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_service.html#ad25023a708863e26466c15cc999ebd22">discover_alleles</a> (const std::string &amp;sampleset, const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos, discovered_alleles &amp;ans)</td></tr>
 <tr class="separator:ad25023a708863e26466c15cc999ebd22"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77137178530bf0f78916bb22db0ace27"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_service.html#a77137178530bf0f78916bb22db0ace27">discover_alleles</a> (const std::string &amp;sampleset, const std::vector&lt; <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &gt; &amp;ranges, discovered_alleles &amp;ans)</td></tr>
-<tr class="separator:a77137178530bf0f78916bb22db0ace27"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9358c04a78d10e2f686c4b6c4545c3a3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_service.html#a9358c04a78d10e2f686c4b6c4545c3a3">discover_alleles</a> (const std::string &amp;sampleset, const std::vector&lt; <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &gt; &amp;ranges, std::vector&lt; discovered_alleles &gt; &amp;ans)</td></tr>
+<tr class="separator:a9358c04a78d10e2f686c4b6c4545c3a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acefa30e14cceb6d31a2efe15cfb65378"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="acefa30e14cceb6d31a2efe15cfb65378"></a>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_g_lnexus_1_1_service.html#acefa30e14cceb6d31a2efe15cfb65378">genotype_sites</a> (const <a class="el" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a> &amp;cfg, const std::string &amp;sampleset, const std::vector&lt; <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> &gt; &amp;sites, const std::string &amp;filename, consolidated_loss &amp;dlosses)</td></tr>
 <tr class="memdesc:acefa30e14cceb6d31a2efe15cfb65378"><td class="mdescLeft">&#160;</td><td class="mdescRight">Genotype a set of samples at the given sites, producing a BCF file. <br /></td></tr>
@@ -152,7 +152,7 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
 
 </div>
 </div>
-<a class="anchor" id="a77137178530bf0f78916bb22db0ace27"></a>
+<a class="anchor" id="a9358c04a78d10e2f686c4b6c4545c3a3"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
@@ -171,7 +171,7 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">discovered_alleles &amp;&#160;</td>
+          <td class="paramtype">std::vector&lt; discovered_alleles &gt; &amp;&#160;</td>
           <td class="paramname"><em>ans</em>&#160;</td>
         </tr>
         <tr>
@@ -181,7 +181,7 @@ static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Discover all the alleles contained within one of the given disjoint ranges. Uses multithreading such that this may be preferable to calling discover_alleles repeatedly for many small ranges (e.g. exome target capture regions). However, attention should be paid to the anticipated size of the result. </p>
+<p>Discover all the alleles contained within each of the given disjoint ranges. Uses multithreading such that this may be preferable to calling discover_alleles repeatedly for many small ranges (e.g. exome target capture regions). However, attention should be paid to the anticipated size of the results. </p>
 
 </div>
 </div>
