@@ -22,9 +22,6 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr);
 //  Read a BCF record from memory, return the length of the packed record in RAM.
 int bcf_raw_read_from_mem(const char *addr, bcf1_t *v);
 
-// return 1 if the records are the same, 0 otherwise
-int bcf_raw_compare(const bcf1_t *x, const bcf1_t *y);
-
 class BCFWriter {
  private:
     static int STACK_ALLOC_LIMIT;

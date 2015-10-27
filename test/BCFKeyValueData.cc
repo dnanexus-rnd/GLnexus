@@ -870,14 +870,33 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
 }
 
 static void print_bcf_record(bcf1_t *x) {
-    range rng(x->rid, x->pos, x->pos + x->rlen);
-    cout << rng.str() << endl;
+    cout << "rid=" << x->rid << endl;
+    cout << "pos=" << x->pos << endl;
+    cout << "rlen=" << x->rlen << endl;
+    cout << "qual=" << x->qual << endl;
+    cout << "n_info=" << x->n_info << endl;
+    cout << "n_allele=" << x->n_allele << endl;
+    cout << "n_sample=" << x->n_sample << endl;
+    cout << "shared.l=" << x->shared.l << endl;
+    cout << "indiv.l=" << x->indiv.l << endl;
+//    cout << std::string(x->indiv.s) << endl;
 }
 
+// return 1 if the records are the same, 0 otherwise
 static int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
     if (x->rid != y->rid) return 0;
     if (x->pos != y->pos) return 0;
     if (x->rlen != y->rlen) return 0;
+
+    // I think nan != nan, so we are skipping this comparison
+    //if (x->qual != y->qual) return 0;
+
+    if (x->n_info != y->n_info) return 0;
+    if (x->n_allele != y->n_allele) return 0;
+    if (x->n_sample != y->n_sample) return 0;
+    if (x->shared.l != y->shared.l) return 0;
+    if (x->indiv.l != y->indiv.l) return 0;
+
     return 1;
 }
 
@@ -923,7 +942,7 @@ static void compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), all_records_base);
     }
-    sort_records(all_records_base);
+    //sort_records(all_records_base);
 
     // sophisticated iterator
     iterators.clear();
@@ -933,14 +952,14 @@ static void compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), all_records_soph);
     }
-    sort_records(all_records_soph);
+    //sort_records(all_records_soph);
 
     // compare all the elements between the two results
-    //cout << rng.str() << " Compare BCF elements here" << endl;
     int len = all_records_soph.size();
     REQUIRE(len == all_records_base.size());
     for (int i=0; i < len; i++) {
         if (bcf_shallow_compare(all_records_base[i].get(), all_records_soph[i].get()) == 0) {
+            cout << "Error comparing two records"  << endl;
             print_bcf_record(all_records_base[i].get());
             print_bcf_record(all_records_soph[i].get());
             REQUIRE(false);
