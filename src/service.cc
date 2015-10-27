@@ -245,7 +245,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
 }
 
 Status Service::discover_alleles(const string& sampleset, const vector<range>& ranges,
-                                 discovered_alleles& ans) {
+                                 vector<discovered_alleles>& ans) {
     atomic<bool> abort(false);
     vector<future<Status>> statuses;
     vector<discovered_alleles> results(ranges.size());
@@ -275,16 +275,14 @@ Status Service::discover_alleles(const string& sampleset, const vector<range>& r
         discovered_alleles dsals = move(results[i]);
 
         if (s.ok() && s_i.ok()) {
-            s = merge_discovered_alleles(dsals, ans);
-            if (s.bad()) {
-                abort = true;
-            }
+            ans.push_back(move(dsals));
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort
             s = move(s_i);
             abort = true;
         }
     }
+    assert(s.bad() || ans.size() == ranges.size());
 
     return s;
 }

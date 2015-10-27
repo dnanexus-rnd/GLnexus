@@ -536,8 +536,12 @@ int main_genotype(int argc, char *argv[]) {
             H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
 
             console->info() << "discovering alleles in " << ranges.size() << " range(s)";
+            vector<GLnexus::discovered_alleles> valleles;
+            H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
             GLnexus::discovered_alleles alleles;
-            H("discover alleles", svc->discover_alleles(sampleset, ranges, alleles));
+            for (const auto& als : valleles) {
+                H("merging discovered alleles", GLnexus::merge_discovered_alleles(als, alleles));
+            }
             console->info() << "discovered " << alleles.size() << " alleles";
 
             vector<GLnexus::unified_site> sites;

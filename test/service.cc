@@ -334,26 +334,37 @@ TEST_CASE("service::discover_alleles") {
         ranges.push_back(range(0, 1010, 1013));
         ranges.push_back(range(1, 1000, 1001));
         ranges.push_back(range(1, 1010, 1012));
-        s = svc->discover_alleles("<ALL>", ranges, als);
+        ranges.push_back(range(1, 2000, 2100));
+        vector<discovered_alleles> mals;
+        s = svc->discover_alleles("<ALL>", ranges, mals);
         REQUIRE(s.ok());
+        REQUIRE(mals.size() == ranges.size());
 
-        REQUIRE(als.size() == 14);
+        REQUIRE(mals[0].size() == 2);
+        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "A"))->second.observation_count == 6);
+        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "G"))->second.observation_count == 6);
 
-        REQUIRE(als.find(allele(range(0, 1000, 1001), "A"))->second.observation_count == 6);
-        REQUIRE(als.find(allele(range(0, 1000, 1001), "G"))->second.observation_count == 6);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "A"))->second.observation_count == 6);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.observation_count == 2);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.observation_count == 2);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.observation_count == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "AG"))->second.observation_count == 3);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.observation_count == 3);
-        REQUIRE(als.find(allele(range(0, 1010, 1013), "AGA"))->second.observation_count == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1013), "CCC"))->second.observation_count == 4);
+        REQUIRE(mals[1].size() == 4);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "A"))->second.observation_count == 6);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "C"))->second.observation_count == 2);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "G"))->second.observation_count == 2);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "T"))->second.observation_count == 2);
 
-        REQUIRE(als.find(allele(range(1, 1000, 1001), "A"))->second.observation_count == 2);
-        REQUIRE(als.find(allele(range(1, 1000, 1001), "AA"))->second.observation_count == 4);
-        REQUIRE(als.find(allele(range(1, 1010, 1012), "AG"))->second.observation_count == 3);
-        REQUIRE(als.find(allele(range(1, 1010, 1012), "CC"))->second.observation_count == 3);
+        REQUIRE(mals[2].size() == 4);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1012), "AG"))->second.observation_count == 3);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1012), "CC"))->second.observation_count == 3);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "AGA"))->second.observation_count == 2);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "CCC"))->second.observation_count == 4);
+
+        REQUIRE(mals[3].size() == 2);
+        REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "A"))->second.observation_count == 2);
+        REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "AA"))->second.observation_count == 4);
+
+        REQUIRE(mals[4].size() == 2);
+        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "AG"))->second.observation_count == 3);
+        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "CC"))->second.observation_count == 3);
+
+        REQUIRE(mals[5].empty());
     }
 
     SECTION("simulate I/O errors - single") {
@@ -397,7 +408,8 @@ TEST_CASE("service::discover_alleles") {
             ranges.push_back(range(0, 1010, 1013));
             ranges.push_back(range(1, 1000, 1001));
             ranges.push_back(range(1, 1010, 1012));
-            s = svc->discover_alleles("<ALL>", ranges, als);
+            vector<discovered_alleles> mals;
+            s = svc->discover_alleles("<ALL>", ranges, mals);
             if (faildata->failed_once()) {
                 worked = true;
                 REQUIRE(s == StatusCode::IO_ERROR);
