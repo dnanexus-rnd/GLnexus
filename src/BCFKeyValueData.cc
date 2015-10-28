@@ -216,10 +216,10 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
         S(db->put(config, "param", yaml.c_str()));
     }
 
-    // create * sample set
+    // create * sample set, with version number 0
     KeyValue::CollectionHandle sampleset;
     S(db->collection("sampleset", sampleset));
-    return db->put(sampleset, "*", string());
+    return db->put(sampleset, "*", "0");
 }
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
@@ -982,26 +982,33 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
         // Serialize header into a string
         string hdr_data = BCFWriter::write_header(hdr.get());
 
-        // Store header and metadata
+        // Get collection handles and current * sample set version number
         KeyValue::CollectionHandle coll_header, coll_sample_dataset, coll_sampleset;
         S(body_->db->collection("header", coll_header));
         S(body_->db->collection("sample_dataset", coll_sample_dataset));
         S(body_->db->collection("sampleset", coll_sampleset));
+        string version_str;
+        S(body_->db->get(coll_sampleset, "*", version_str));
+        uint64_t version = strtoull(version_str.c_str(), nullptr, 10);
+
+        // Store header and metadata (with updated version number)
         unique_ptr<KeyValue::WriteBatch> wb;
         S(body_->db->begin_writes(wb));
         S(wb->put(coll_header, dataset, hdr_data));
         for (const auto& sample : samples_out) {
+            // place an entry for this sample in the special "*" sample set
             S(wb->put(coll_sample_dataset, sample, dataset));
             string key = "*" + string(1,'\0') + sample;
             assert(key.size() == sample.size()+2);
             S(wb->put(coll_sampleset, key, string()));
         }
+        // update the * sample set version number
+        S(wb->put(coll_sampleset, "*", to_string(version+1)));
 
         // Remove from active metadata
         body_->amd.erase(dataset, samples_out);
 
         retval = wb->commit();
-        // TODO: invalidate metadata cache for "*"
     }
 
     // good path

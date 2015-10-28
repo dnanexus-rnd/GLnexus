@@ -163,7 +163,7 @@ TEST_CASE("BCFKeyValueData initialization") {
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
 
-    SECTION("contigs") {
+    SECTION("metadata") {
         vector<pair<string,size_t>> contigs;
         Status s = data->contigs(contigs);
         REQUIRE(s.ok());
@@ -172,6 +172,12 @@ TEST_CASE("BCFKeyValueData initialization") {
         REQUIRE(contigs[0].second == 1000000);
         REQUIRE(contigs[1].first == "22");
         REQUIRE(contigs[1].second == 1000001);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("sampleset_samples") {
@@ -248,12 +254,27 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = cache->sampleset_samples(sampleset, all);
         REQUIRE(s.ok());
         REQUIRE(all->size() == 0);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
         Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
+        // check that internal version number of all-samples sampleset was
+        // incremented
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
+
+        // check the * sample set
         string dataset;
         REQUIRE(data->sample_dataset("NA12878", dataset).ok());
         REQUIRE(dataset == "NA12878D");
@@ -281,6 +302,13 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(MetadataCache::Start(*data, cache).ok());
         s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
+
+        // * sample set version number should NOT change
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("detect bogus END field") {
@@ -292,6 +320,13 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(MetadataCache::Start(*data, cache).ok());
         s = data->import_gvcf(*cache, "NA12878D", "test/data/bogus_END.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
+
+        // * sample set version number should NOT change
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("reject duplicate data set") {
@@ -300,6 +335,12 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
         s = data->import_gvcf(*cache, "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::EXISTS);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
     }
 
     SECTION("reject duplicate sample") {
@@ -308,6 +349,12 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
         s = data->import_gvcf(*cache, "z", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::EXISTS);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
     }
 }
 
@@ -515,6 +562,13 @@ TEST_CASE("BCFData::sampleset_range") {
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
     REQUIRE(s.ok());
+
+    // check * version number
+    KeyValue::CollectionHandle coll;
+    REQUIRE(db.collection("sampleset", coll).ok());
+    string version;
+    REQUIRE(db.get(coll, "*", version).ok());
+    REQUIRE(version == "2");
 
     string sampleset;
     s = cache->all_samples_sampleset(sampleset);
