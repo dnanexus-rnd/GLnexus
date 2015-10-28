@@ -900,7 +900,9 @@ static int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
     return 1;
 }
 
-static void read_entire_iter(RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> &records) {
+using IterResults = map<string, shared_ptr<vector<shared_ptr<bcf1_t>>>>;
+
+static void read_entire_iter(RangeBCFIterator *iter, shared_ptr<IterResults> results) {
     Status s;
 
     string dataset;
@@ -909,20 +911,37 @@ static void read_entire_iter(RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> 
         vector<shared_ptr<bcf1_t>> v;
         v.clear();
         s = iter->next(dataset, hdr, v);
-        for (auto rec : v)
-            records.push_back(rec);
+        for (auto rec : v) {
+            if (results->find(dataset) == results->end()) {
+                auto w = make_shared<vector<shared_ptr<bcf1_t>>>();
+                (*results)[dataset] = w;
+            }
+            results->at(dataset)->push_back(rec);
+        }
     } while (s.ok());
 }
 
-static void sort_records(vector<shared_ptr<bcf1_t>> &records) {
-    sort(records.begin(), records.end(),
-         [] (const shared_ptr<bcf1_t>& p1, const shared_ptr<bcf1_t>& p2) {
-             if (p1->rid < p2->rid) return true;
-             if (p1->rid > p2->rid) return false;
-             if (p1->pos < p2->pos) return true;
-             if (p1->pos > p2->pos) return false;
-             return (p1->rlen == p2->rlen);
-         });
+static void compare_results(shared_ptr<IterResults> resultsBase,
+                            shared_ptr<IterResults> resultsSoph) {
+    for(IterResults::iterator iter = resultsBase->begin();
+        iter != resultsBase->end();
+        ++iter) {
+        string dataset = iter->first;
+        shared_ptr<vector<shared_ptr<bcf1_t>>> v = iter->second;
+        shared_ptr<vector<shared_ptr<bcf1_t>>> w = resultsSoph->at(dataset);
+
+        REQUIRE(v->size() == w->size());
+        int len = v->size();
+        //cout << dataset << " len=" << len << endl;
+        for (int i=0; i < len; i++) {
+            if (bcf_shallow_compare((*v)[i].get(), (*w)[i].get()) == 0) {
+                cout << "Error comparing two records"  << endl;
+                print_bcf_record((*v)[i].get());
+                print_bcf_record((*w)[i].get());
+                REQUIRE(false);
+            }
+        }
+    }
 }
 
 // Read all the records in the range, and return as a vector of BCF records.
@@ -930,8 +949,9 @@ static void sort_records(vector<shared_ptr<bcf1_t>> &records) {
 // large. For debugging/testing use only.
 static void compare_query(T &data, MetadataCache &cache,
                           const std::string& sampleset, const range& rng) {
+    //cout << "compare_query " << rng.str() << endl;
+
     Status s;
-    vector<shared_ptr<bcf1_t>> all_records_base, all_records_soph;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     shared_ptr<const set<string>> samples, datasets;
 
@@ -939,33 +959,22 @@ static void compare_query(T &data, MetadataCache &cache,
     REQUIRE(data.sampleset_range_base(cache, sampleset, rng,
                                       samples, datasets, iterators).ok());
 
+    auto resultsBase = make_shared<IterResults>();
     for (int i=0; i < iterators.size(); i++) {
-        read_entire_iter(iterators[i].get(), all_records_base);
+        read_entire_iter(iterators[i].get(), resultsBase);
     }
-    //sort_records(all_records_base);
+    iterators.clear();
 
     // sophisticated iterator
-    iterators.clear();
+    auto resultsSoph = make_shared<IterResults>();
     REQUIRE(data.sampleset_range(cache, sampleset, rng,
                                  samples, datasets, iterators).ok());
-
     for (int i=0; i < iterators.size(); i++) {
-        read_entire_iter(iterators[i].get(), all_records_soph);
+        read_entire_iter(iterators[i].get(), resultsSoph);
     }
-    //sort_records(all_records_soph);
 
     // compare all the elements between the two results
-    int len = all_records_soph.size();
-    REQUIRE(len == all_records_base.size());
-    for (int i=0; i < len; i++) {
-        if (bcf_shallow_compare(all_records_base[i].get(), all_records_soph[i].get()) == 0) {
-            cout << "Error comparing two records"  << endl;
-            print_bcf_record(all_records_base[i].get());
-            print_bcf_record(all_records_soph[i].get());
-            REQUIRE(false);
-        }
-    }
-    //cout << "compare_query " << rng.str() << " len=" << len << endl;
+    compare_results(resultsBase, resultsSoph);
 }
 
 TEST_CASE("BCFKeyValueData compare iterator implementations") {
