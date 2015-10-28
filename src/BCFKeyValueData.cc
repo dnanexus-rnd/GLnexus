@@ -338,17 +338,18 @@ static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
     // ...
     // the corresponding values are empty.
 
-    if (!it->valid() || it->key() != sampleset) {
+    if (!it->valid() || it->key_str() != sampleset) {
         return Status::NotFound("sample set not found", sampleset);
     }
 
     auto samples = make_shared<set<string>>();
     for (s = it->next(); s.ok() && it->valid(); s = it->next()) {
-        size_t nullpos = it->key().find('\0');
-        if (nullpos == string::npos || it->key().substr(0, nullpos) != sampleset) {
+        auto key = it->key_str();
+        size_t nullpos = key.find('\0');
+        if (nullpos == string::npos || key.substr(0, nullpos) != sampleset) {
             break;
         }
-        samples->insert(it->key().substr(nullpos+1));
+        samples->insert(key.substr(nullpos+1));
     }
     if (s.bad()) return s;
 
@@ -492,7 +493,7 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
 // Parse the records and extract those overlapping the query range
 static Status scan_bucket(
     const string &dataset,
-    const string &data,
+    const pair<const char*, size_t>& data,
     const bcf_hdr_t* hdr,
     const range& query,
     StatsRangeQuery &srq,
@@ -500,7 +501,7 @@ static Status scan_bucket(
 {
     Status s;
     unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(data.c_str(), data.size(), reader));
+    S(BCFReader::Open(data.first, data.second, reader));
 
     // statistics counter for BCF records
     shared_ptr<bcf1_t> vt;
@@ -558,7 +559,8 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         string data;
         s = body_->db->get(coll, key, data);
         if (s.ok()) {
-            S(scan_bucket(dataset, data, hdr, query, accu, records));
+            S(scan_bucket(dataset, make_pair(data.c_str(), data.size()), hdr, query,
+                          accu, records));
         } else if (s != StatusCode::NOT_FOUND) {
             return s;
         }
@@ -630,7 +632,7 @@ class BCFBucketIterator : public RangeBCFIterator {
         string key_dataset;
         for (; s.ok() && it_->valid(); s = it_->next()) {
             string key_bucket;
-            S(body_.rangeHelper->parse_key(it_->key(), key_bucket, key_dataset));
+            S(body_.rangeHelper->parse_key(it_->key_str(), key_bucket, key_dataset));
 
             if (key_bucket != bucket_) {
                 // we've now advanced past the end of the bucket, so there are

@@ -11,19 +11,27 @@ namespace KeyValue {
 
 using CollectionHandle = void*;
 
-/// In-order iterator over records in a collection
+/// In-order iterator over records in a collection. Not thread-safe.
 class Iterator {
 public:
     virtual ~Iterator() = default;
 
     // Is the iterator positioned at a key/value pair?
-    virtual bool valid() = 0;
+    virtual bool valid() const = 0;
 
-    // if valid(), get the current key
-    virtual const std::string& key() = 0;
+    // If valid(), get the current key. The resulting buffer shall remain
+    // available until next() is invoked or the iterator is destroyed.
+    virtual std::pair<const char*, size_t> key() const = 0;
 
-    // if valid(), get the current value
-    virtual const std::string& value() = 0;
+    // If valid(), get the current key as a std::string (likely copying it)
+    virtual std::string key_str() const {
+        auto p = key();
+        return std::string(p.first, p.second);
+    }
+
+    // If valid(), get the current value. The resulting buffer shall remain
+    // available until next() is invoked or the iterator is destroyed.
+    virtual std::pair<const char*, size_t> value() const = 0;
 
     // Advance the iterator to the next key/value pair. At the end of the
     // collection, next() will return OK, but valid() will be false.
@@ -34,7 +42,7 @@ public:
 
 };
 
-/// A DB snapshot providing consistent multiple reads if possible
+/// A DB snapshot providing consistent multiple reads if possible. Thread-safe.
 class Reader {
 public:
     virtual ~Reader() = default;
@@ -53,7 +61,8 @@ public:
                             std::unique_ptr<Iterator>& it) const = 0;
 };
 
-/// A batch of writes to apply atomically if possible
+/// A batch of writes to apply atomically if possible. Thread-safe until
+/// commit.
 class WriteBatch {
 public:
     virtual ~WriteBatch() = default;
@@ -71,7 +80,7 @@ public:
 /// guarantees between multiple calls) and the WriteBatch interface (which
 /// applies one write immediately, no atomicity guarantees between multiple
 /// calls). Caller must ensure that the parent DB object still exists when any
-/// Reader or WriteBatch object is used.
+/// Reader or WriteBatch object is used. Thread-safe.
 class DB : public Reader {
 public:
     virtual ~DB() = default;

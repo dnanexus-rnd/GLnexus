@@ -15,16 +15,16 @@ namespace KeyValueMem {
         friend class Reader;
 
     public:
-        bool valid() override {
+        bool valid() const override {
             return it_ != data_.end();
         }
 
-        const std::string& key() override {
-            return it_->first;
+        pair<const char*,size_t> key() const override {
+            return make_pair(it_->first.c_str(), it_->first.size());
         }
 
-        const std::string& value() override {
-            return it_->second;
+        pair<const char*,size_t> value() const override {
+            return make_pair(it_->second.c_str(), it_->second.size());
         }
 
         Status next() override {

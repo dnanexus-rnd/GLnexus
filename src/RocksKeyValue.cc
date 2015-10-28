@@ -143,7 +143,7 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
 class Iterator : public KeyValue::Iterator {
 private:
     std::unique_ptr<rocksdb::Iterator> iter_;
-    std::string key_, value_;
+    rocksdb::Slice key_, value_;
 
     // No copying allowed
     Iterator(const Iterator&) = delete;
@@ -153,17 +153,21 @@ public:
 
     Iterator(std::unique_ptr<rocksdb::Iterator>&& iter) : iter_(move(iter)) {
         if (iter_->Valid()) {
-            key_ = iter_->key().ToString();
-            value_ = iter_->value().ToString();
+            key_ = iter_->key();
+            value_ = iter_->value();
         }
     }
 
-    bool valid() override {
+    bool valid() const override {
         return iter_->Valid();
     }
 
-    const std::string& key() { return key_; }
-    const std::string& value() { return value_; }
+    std::pair<const char*, size_t> key() const override {
+        return std::make_pair(key_.data(), key_.size());
+    }
+    std::pair<const char*, size_t> value() const override {
+        return std::make_pair(value_.data(), value_.size());
+    }
 
     Status next() override {
         if (!iter_->status().ok()) {
@@ -174,8 +178,8 @@ public:
             return convertStatus(iter_->status());
         }
         if (iter_->Valid()) {
-            key_ = iter_->key().ToString();
-            value_ = iter_->value().ToString();
+            key_ = iter_->key();
+            value_ = iter_->value();
         }
         return Status::OK();
     }
