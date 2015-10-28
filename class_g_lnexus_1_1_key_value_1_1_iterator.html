@@ -94,7 +94,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </div><!--header-->
 <div class="contents">
 
-<p>In-order iterator over records in a collection. Not thread-safe.  
+<p>In-order iterator over records in a collection.  
  <a href="class_g_lnexus_1_1_key_value_1_1_iterator.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="_key_value_8h_source.html">KeyValue.h</a>&gt;</code></p>
@@ -110,26 +110,21 @@ Inheritance diagram for GLnexus::KeyValue::Iterator:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2be6a6f9967790c7ad3c326358415f5d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2be6a6f9967790c7ad3c326358415f5d"></a>
-virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>valid</b> () const =0</td></tr>
-<tr class="separator:a2be6a6f9967790c7ad3c326358415f5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a36a8a86ca058de7cdfb5114d52539f69"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a36a8a86ca058de7cdfb5114d52539f69"></a>
-virtual std::pair&lt; const char <br class="typebreak" />
-*, size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>key</b> () const =0</td></tr>
-<tr class="separator:a36a8a86ca058de7cdfb5114d52539f69"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a08996e55e213e4410d93a25b070ccc87"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a08996e55e213e4410d93a25b070ccc87"></a>
-virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><b>key_str</b> () const </td></tr>
-<tr class="separator:a08996e55e213e4410d93a25b070ccc87"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a446e38983e5d332b9b6a6933b8aebe88"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a446e38983e5d332b9b6a6933b8aebe88"></a>
-virtual std::pair&lt; const char <br class="typebreak" />
-*, size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>value</b> () const =0</td></tr>
-<tr class="separator:a446e38983e5d332b9b6a6933b8aebe88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae800353a819c1490cb4abbed97e1c574"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae800353a819c1490cb4abbed97e1c574"></a>
+virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>valid</b> ()=0</td></tr>
+<tr class="separator:ae800353a819c1490cb4abbed97e1c574"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aad4a124c48e4f9403dbacc7870342558"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aad4a124c48e4f9403dbacc7870342558"></a>
+virtual const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>key</b> ()=0</td></tr>
+<tr class="separator:aad4a124c48e4f9403dbacc7870342558"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a31d064a44394073f364de869fda50aa7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a31d064a44394073f364de869fda50aa7"></a>
+virtual const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>value</b> ()=0</td></tr>
+<tr class="separator:a31d064a44394073f364de869fda50aa7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae7994effa328e35b71d17e1a8363c7e3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae7994effa328e35b71d17e1a8363c7e3"></a>
 virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>next</b> ()=0</td></tr>
 <tr class="separator:ae7994effa328e35b71d17e1a8363c7e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>In-order iterator over records in a collection. Not thread-safe. </p>
+<div class="textblock"><p>In-order iterator over records in a collection. </p>
 </div><hr/>The documentation for this class was generated from the following file:<ul>
 <li>include/<a class="el" href="_key_value_8h_source.html">KeyValue.h</a></li>
 </ul>

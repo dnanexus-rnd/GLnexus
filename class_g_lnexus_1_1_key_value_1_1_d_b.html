@@ -101,7 +101,7 @@ Inheritance diagram for GLnexus::KeyValue::DB:</div>
  <div class="center">
   <img src="class_g_lnexus_1_1_key_value_1_1_d_b.png" usemap="#GLnexus::KeyValue::DB_map" alt=""/>
   <map id="GLnexus::KeyValue::DB_map" name="GLnexus::KeyValue::DB_map">
-<area href="class_g_lnexus_1_1_key_value_1_1_reader.html" title="A DB snapshot providing consistent multiple reads if possible. Thread-safe. " alt="GLnexus::KeyValue::Reader" shape="rect" coords="0,0,179,24"/>
+<area href="class_g_lnexus_1_1_key_value_1_1_reader.html" title="A DB snapshot providing consistent multiple reads if possible. " alt="GLnexus::KeyValue::Reader" shape="rect" coords="0,0,179,24"/>
 <area href="class_g_lnexus_1_1_rocks_key_value_1_1_d_b.html" alt="GLnexus::RocksKeyValue::DB" shape="rect" coords="0,112,179,136"/>
 </map>
  </div></div>
@@ -133,7 +133,7 @@ virtual <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td
 <tr class="separator:a5831e3c89ee2ab13633787567426951e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Main database interface for retrieving collection handles, generating snapshopts to read from, and creating and applying write batches. The <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">DB</a> object itself implements the <a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html" title="A DB snapshot providing consistent multiple reads if possible. Thread-safe. ">Reader</a> interface (with no consistency guarantees between multiple calls) and the <a class="el" href="class_g_lnexus_1_1_key_value_1_1_write_batch.html">WriteBatch</a> interface (which applies one write immediately, no atomicity guarantees between multiple calls). Caller must ensure that the parent <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">DB</a> object still exists when any <a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html" title="A DB snapshot providing consistent multiple reads if possible. Thread-safe. ">Reader</a> or <a class="el" href="class_g_lnexus_1_1_key_value_1_1_write_batch.html">WriteBatch</a> object is used. Thread-safe. </p>
+<div class="textblock"><p>Main database interface for retrieving collection handles, generating snapshopts to read from, and creating and applying write batches. The <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">DB</a> object itself implements the <a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html" title="A DB snapshot providing consistent multiple reads if possible. ">Reader</a> interface (with no consistency guarantees between multiple calls) and the <a class="el" href="class_g_lnexus_1_1_key_value_1_1_write_batch.html" title="A batch of writes to apply atomically if possible. ">WriteBatch</a> interface (which applies one write immediately, no atomicity guarantees between multiple calls). Caller must ensure that the parent <a class="el" href="class_g_lnexus_1_1_key_value_1_1_d_b.html">DB</a> object still exists when any <a class="el" href="class_g_lnexus_1_1_key_value_1_1_reader.html" title="A DB snapshot providing consistent multiple reads if possible. ">Reader</a> or <a class="el" href="class_g_lnexus_1_1_key_value_1_1_write_batch.html" title="A batch of writes to apply atomically if possible. ">WriteBatch</a> object is used. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a class="anchor" id="a4f66bd38d20924695082e79e5568bd8c"></a>
 <div class="memitem">
