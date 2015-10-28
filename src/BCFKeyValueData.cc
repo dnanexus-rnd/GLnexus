@@ -316,16 +316,14 @@ Status BCFKeyValueData::contigs(vector<pair<string,size_t> >& ans) const {
     return Status::OK();
 }
 
-// used by both sampleset_samples and all_samples_sampleset
-static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
-                                         const string& sampleset,
-                                         shared_ptr<const set<string> >& ans) {
-    Status s;
-    KeyValue::CollectionHandle coll;
-    S(body_->db->collection("sampleset",coll));
-
-    unique_ptr<KeyValue::Iterator> it;
-    S(body_->db->iterator(coll, sampleset, it));
+Status BCFKeyValueData::sampleset_samples(const string& sampleset,
+                                          shared_ptr<const set<string> >& ans) const {
+    if (sampleset == "*") {
+        // * is a special reserved sample set representing all available
+        // samples in the database. It must be hidden from callers because
+        // it's mutable, while sample sets are supposed to be immutable.
+        return Status::NotFound();
+    }
 
     // samplesets collection key scheme:
     // sampleset_id
@@ -337,6 +335,13 @@ static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
     // next_sampleset\0sample_1
     // ...
     // the corresponding values are empty.
+
+    Status s;
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("sampleset",coll));
+
+    unique_ptr<KeyValue::Iterator> it;
+    S(body_->db->iterator(coll, sampleset, it));
 
     if (!it->valid() || it->key_str() != sampleset) {
         return Status::NotFound("sample set not found", sampleset);
@@ -358,18 +363,6 @@ static Status sampleset_samples_internal(const BCFKeyValueData_body* body_,
     return Status::OK();
 }
 
-Status BCFKeyValueData::sampleset_samples(const string& sampleset,
-                                          shared_ptr<const set<string> >& ans) const {
-    if (sampleset == "*") {
-        // * is a special reserved sample set representing all available
-        // samples in the database. It must be hidden from callers because
-        // it's mutable, while sample sets are supposed to be immutable.
-        return Status::NotFound();
-    }
-
-    return sampleset_samples_internal(body_.get(), sampleset, ans);
-}
-
 Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const {
     Status s;
     KeyValue::CollectionHandle coll;
@@ -378,60 +371,51 @@ Status BCFKeyValueData::sample_dataset(const string& sample, string& ans) const 
 }
 
 Status BCFKeyValueData::all_samples_sampleset(string& ans) {
-    // TODO: reuse the last-created all-samples sample set if no samples have
-    // been added or removed since its creation
     Status s;
 
-    // Create a new sample set from all the samples in the special "*" sample
-    // set. The name of the new sample set is based on the current time (since
-    // epoch in microseconds). We create this under an optimistic transaction
-    // loop ensuring uniqueness.
-    do {
-        // create timestamp-based sample set name
-        timeval tv;
-        if (gettimeofday(&tv, nullptr) != 0) {
-            return Status::Failure("BCFKeyValueData::all_samples_sampleset gettimeofday");
+    // Get the current * sample set version number.
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("sampleset",coll));
+    unique_ptr<KeyValue::Iterator> it;
+    S(body_->db->iterator(coll, "*", it));
+    if (!it->valid() || it->key_str() != "*") return Status::NotFound("BCFKeyValueData::all_samples_sampleset: improperly initialized database");
+    uint64_t version = strtoull(it->value().first, nullptr, 10);
+    ans = "*@" + to_string(version); // this is the desired sample set
+
+    // Does the desired sample set exist already? If so, we are done.
+    string ignore;
+    s = body_->db->get(coll, ans, ignore);
+    if (s.ok() || s != StatusCode::NOT_FOUND) {
+        return s;
+    }
+
+    // Otherwise, continue to read all the samples in the * sample set, and
+    // prepare a write batch creating the desired sample set.
+    unique_ptr<KeyValue::WriteBatch> wb;
+    S(body_->db->begin_writes(wb));
+    S(wb->put(coll, ans, string()));
+    for (s = it->next(); s.ok() && it->valid(); s = it->next()) {
+        auto key = it->key_str();
+        size_t nullpos = key.find('\0');
+        if (nullpos == string::npos || key.substr(0, nullpos) != "*") {
+            break;
         }
-        uint64_t usec = uint64_t(tv.tv_sec)*1000000 + tv.tv_usec;
-        ostringstream buf;
-        buf << "*@" << usec;
-        ans = buf.str();
+        string sample = key.substr(nullpos+1);
+        S(wb->put(coll, ans + string(1,'\0') + sample, string()));
+    }
+    if (s.bad()) return s;
+    it.reset();
 
-        // read all the sample names from the special * sample set
-        shared_ptr<const set<string>> samples;
-        S(sampleset_samples_internal(body_.get(), "*", samples));
-
-        // prepare a write batch for the new sample set
-        KeyValue::CollectionHandle coll;
-        S(body_->db->collection("sampleset",coll));
-        unique_ptr<KeyValue::WriteBatch> wb;
-        S(body_->db->begin_writes(wb));
-        S(wb->put(coll, ans, string()));
-        for (const auto& sample : *samples) {
-            string key = ans + string(1,'\0') + sample;
-            assert(key.size() == ans.size()+sample.size()+1);
-            S(wb->put(coll, key, string()));
+    // Commit the new sample set iff no other thread has done so in the
+    // meantime.
+    {
+        lock_guard<mutex> lock(body_->mutex);
+        s = body_->db->get(coll, ans, ignore);
+        if (s != StatusCode::NOT_FOUND) {
+            return s;
         }
-
-        {
-            // We now commit the write batch so long as a sample set with this
-            // name doesn't already exist. We perform this conditional put
-            // under the mutex to provide exclusion from any other thread also
-            // committing a sample set. We also have exclusion from the final
-            // commit of new samples although we don't really need that.
-            string ignore;
-            lock_guard<mutex>(body_->mutex);
-            if (body_->db->get(coll, ans, ignore) == StatusCode::NOT_FOUND) {
-                return wb->commit();
-            }
-        }
-
-        // Fall-through: there's already a sample set with the same timestamp-
-        // based name. Try again until success.
-        this_thread::yield();
-    } while(true);
-    assert(false);
-    return Status::Failure();
+        return wb->commit();
+    }
 }
 
 shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {

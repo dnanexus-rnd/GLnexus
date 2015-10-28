@@ -293,6 +293,51 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(*(all->begin()) == "NA12878");
     }
 
+    SECTION("all_samples_sampleset") {
+        Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
+
+        string sampleset, sampleset2;
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        shared_ptr<const set<string>> all;
+        s = cache->sampleset_samples(sampleset, all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 1);
+
+        // the sample set should now be memoized so long as no new samples are added
+        s = cache->all_samples_sampleset(sampleset2);
+        REQUIRE(s.ok());
+        REQUIRE(sampleset == sampleset2);
+
+
+        s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "2");
+
+        // now we should get a new sample set
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+        REQUIRE(sampleset != sampleset2);
+
+        s = cache->sampleset_samples(sampleset, all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 2);
+
+        s = cache->all_samples_sampleset(sampleset2);
+        REQUIRE(s.ok());
+        REQUIRE(sampleset == sampleset2);
+    }
+
     SECTION("incompatible contigs") {
         db.wipe();
         contigs = { make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000000) };
