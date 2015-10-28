@@ -99,7 +99,7 @@ Inheritance diagram for GLnexus::RocksKeyValue::Iterator:</div>
  <div class="center">
   <img src="class_g_lnexus_1_1_rocks_key_value_1_1_iterator.png" usemap="#GLnexus::RocksKeyValue::Iterator_map" alt=""/>
   <map id="GLnexus::RocksKeyValue::Iterator_map" name="GLnexus::RocksKeyValue::Iterator_map">
-<area href="class_g_lnexus_1_1_key_value_1_1_iterator.html" title="In-order iterator over records in a collection. " alt="GLnexus::KeyValue::Iterator" shape="rect" coords="0,0,202,24"/>
+<area href="class_g_lnexus_1_1_key_value_1_1_iterator.html" title="In-order iterator over records in a collection. Not thread-safe. " alt="GLnexus::KeyValue::Iterator" shape="rect" coords="0,0,202,24"/>
 </map>
  </div></div>
 <table class="memberdecls">
@@ -108,18 +108,22 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:acccd26f8da525ebd700f7b20a66ba09d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="acccd26f8da525ebd700f7b20a66ba09d"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Iterator</b> (std::unique_ptr&lt; rocksdb::Iterator &gt; &amp;&amp;iter)</td></tr>
 <tr class="separator:acccd26f8da525ebd700f7b20a66ba09d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a73ff3bb6f95fa477956e06069f4c1047"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a73ff3bb6f95fa477956e06069f4c1047"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>valid</b> () override</td></tr>
-<tr class="separator:a73ff3bb6f95fa477956e06069f4c1047"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8eb9ff14fd0c4c0985410ba08658667e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8eb9ff14fd0c4c0985410ba08658667e"></a>
-const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>key</b> ()</td></tr>
-<tr class="separator:a8eb9ff14fd0c4c0985410ba08658667e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a32859ed2fb7621a0270f89de99d02033"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a32859ed2fb7621a0270f89de99d02033"></a>
-const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>value</b> ()</td></tr>
-<tr class="separator:a32859ed2fb7621a0270f89de99d02033"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a37b616a8e97a87a6c67b97928ee36478"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a37b616a8e97a87a6c67b97928ee36478"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>valid</b> () const override</td></tr>
+<tr class="separator:a37b616a8e97a87a6c67b97928ee36478"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8f8c0291229fff145328bb6e3446453"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab8f8c0291229fff145328bb6e3446453"></a>
+std::pair&lt; const char *, size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>key</b> () const override</td></tr>
+<tr class="separator:ab8f8c0291229fff145328bb6e3446453"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1509d8aebacb5c826e7eac429311b12"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae1509d8aebacb5c826e7eac429311b12"></a>
+std::pair&lt; const char *, size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>value</b> () const override</td></tr>
+<tr class="separator:ae1509d8aebacb5c826e7eac429311b12"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af022d6d555339f4192b6975811207835"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af022d6d555339f4192b6975811207835"></a>
 <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>next</b> () override</td></tr>
 <tr class="separator:af022d6d555339f4192b6975811207835"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_methods_class_g_lnexus_1_1_key_value_1_1_iterator"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_g_lnexus_1_1_key_value_1_1_iterator')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_g_lnexus_1_1_key_value_1_1_iterator.html">GLnexus::KeyValue::Iterator</a></td></tr>
+<tr class="memitem:a08996e55e213e4410d93a25b070ccc87 inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_iterator"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a08996e55e213e4410d93a25b070ccc87"></a>
+virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><b>key_str</b> () const </td></tr>
+<tr class="separator:a08996e55e213e4410d93a25b070ccc87 inherit pub_methods_class_g_lnexus_1_1_key_value_1_1_iterator"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>src/RocksKeyValue.cc</li>
