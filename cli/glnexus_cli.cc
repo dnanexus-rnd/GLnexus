@@ -248,22 +248,22 @@ int main_load(int argc, char *argv[]) {
             }
 
             // report results
-            cout << "Loaded datasets:";
-            for (const auto& ds : datasets_loaded) {
-                cout << " " << ds;
-            }
-            cout << endl;
+            console->info() << "Loaded " << datasets_loaded.size() << " datasets with "
+                            << samples_loaded.size() << " samples.";
 
-            cout << "Loaded samples:";
-            for (const auto& sample : samples_loaded) {
-                cout << " " << sample;
-            }
-            cout << endl;
+            // call all_samples_sampleset to create the sample set including
+            // the newly loaded ones. By doing this now we make it possible
+            // for other CLI functions to open the database in purely read-
+            // only mode (since the sample set has to get written into the
+            // database to be used)
+            string sampleset;
+            H("update * sample set", data->all_samples_sampleset(sampleset));
+            console->info() << "Created sample set " << sampleset;
 
             if (failures.size()) {
-                cout << "FAILED to load one or more datasets:" << endl;
+                console->error() << "FAILED to load " << failures.size() << " datasets:";
                 for (const auto& p : failures) {
-                    cout << p.first << "\t" << p.second.str() << endl;
+                    console->error() << p.first << " " << p.second.str();
                 }
                 return datasets_loaded.size() ? 2 : 1;
             }
@@ -359,7 +359,7 @@ int main_dump(int argc, char *argv[]) {
 
             // query and output records
             string sampleset;
-            H("all_samples_sampleset", metadata->all_samples_sampleset(sampleset));
+            H("list all samples", metadata->all_samples_sampleset(sampleset));
             shared_ptr<const set<string>> samples, datasets;
             H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
             vcfFile *vcfout = vcf_open("-", "w");
@@ -458,21 +458,10 @@ int main_genotype(int argc, char *argv[]) {
         }
     }
 
-    // open the database in read-write mode, create an all-samples sample set,
-    // and close it. This is not elegant. It'd be better for the bulk load
-    // process to create the sample set when it finishes. Need some way to
-    // recover the name of the most recently created all-samples sample set.
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
-    string sampleset;
-    H("open database R/W", GLnexus::RocksKeyValue::Open(dbpath, db));
-    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
-    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
-    data.reset();
-    db.reset();
-    console->info() << "created sample set " << sampleset;
 
-    // open the database in read-only mode to proceed
+    // open the database in read-only mode
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -534,6 +523,10 @@ int main_genotype(int argc, char *argv[]) {
             // start service, discover alleles, unify sites, genotype sites
             unique_ptr<GLnexus::Service> svc;
             H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
+
+            string sampleset;
+            H("list all samples", data->all_samples_sampleset(sampleset));
+            console->info() << "found sample set " << sampleset;
 
             console->info() << "discovering alleles in " << ranges.size() << " range(s)";
             vector<GLnexus::discovered_alleles> valleles;
