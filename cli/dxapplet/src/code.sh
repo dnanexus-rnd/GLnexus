@@ -58,8 +58,6 @@ main() {
     if [ "$iter_compare" == "1" ]; then
         echo "Comparing iterator implementations"
         glnexus_cli iter_compare GLnexus.db
-        rc=$?
-        exit $rc
     fi
 
     # assemble BED file of ranges to genotype

@@ -13,6 +13,7 @@
 #include "RocksKeyValue.h"
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
+#include "compare_iter.h"
 
 using namespace std;
 
@@ -571,104 +572,6 @@ int main_genotype(int argc, char *argv[]) {
     return 0;
 }
 
-// generate a random number in the range [0 .. n-1]
-static int genRandInt(int n){
-    static bool firstTime = true;
-
-    // initialization
-    if (firstTime) {
-        firstTime = false;
-        srand (time(NULL));
-    }
-
-    int i = rand() % n;
-    return i;
-}
-
-// A quick comparision of BCF records
-//
-// Return 1 upon success, 0 for failure.
-static int bcf_shallow_compare(bcf1_t *x, bcf1_t *y) {
-    if (x->rid != y->rid) return 0;
-    if (x->pos != y->pos) return 0;
-    if (x->rlen != y->rlen) return 0;
-    return 1;
-}
-
-static void read_entire_iter(GLnexus::RangeBCFIterator *iter, vector<shared_ptr<bcf1_t>> &records) {
-    GLnexus::Status s;
-
-    string dataset;
-    shared_ptr<const bcf_hdr_t> hdr;
-    do {
-        vector<shared_ptr<bcf1_t>> v;
-        v.clear();
-        s = iter->next(dataset, hdr, v);
-        for (auto rec : v)
-            records.push_back(rec);
-    } while (s.ok());
-}
-
-static void sort_records(vector<shared_ptr<bcf1_t>> &records) {
-    sort(records.begin(), records.end(),
-         [] (const shared_ptr<bcf1_t>& p1, const shared_ptr<bcf1_t>& p2) {
-             if (p1->rid < p2->rid) return true;
-             if (p1->rid == p2->rid && p1->pos < p2->pos) return true;
-             return false;
-         });
-}
-
-static int compare_query(GLnexus::BCFKeyValueData &data, GLnexus::MetadataCache &cache,
-                          const std::string& sampleset, const GLnexus::range& rng) {
-    int maxNumElemInQuery = 1000000;
-    cout << "compared range=" << rng.str() << " " << endl;
-
-    GLnexus::Status s;
-    vector<shared_ptr<bcf1_t>> all_records_base, all_records_soph;
-    vector<unique_ptr<GLnexus::RangeBCFIterator>> iterators;
-    shared_ptr<const set<string>> samples, datasets;
-
-    // simple iterator
-    s = data.sampleset_range_base(cache, sampleset, rng,
-                                  samples, datasets, iterators);
-    if (!s.ok())
-        return 0;
-
-    for (int i=0; i < iterators.size(); i++) {
-        read_entire_iter(iterators[i].get(), all_records_base);
-
-        int numElem = all_records_base.size();
-        if (numElem > maxNumElemInQuery) {
-            cout << " too many elements (" << numElem << "), stopping" << endl;
-            return 1;
-        }
-    }
-
-    // sophisticated iterator
-    iterators.clear();
-    s = data.sampleset_range(cache, sampleset, rng,
-                             samples, datasets, iterators);
-    if (!s.ok())
-        return 0;
-
-    for (int i=0; i < iterators.size(); i++) {
-        read_entire_iter(iterators[i].get(), all_records_soph);
-    }
-
-    // verify that we get the same number of results. This is not a complete
-    // test, however, to compare the records more throughly, we need to sort them in
-    // memory, and that could be expensive with these large data sets.
-    int nElem = all_records_soph.size();
-    if (nElem != all_records_base.size())
-        return 0;
-//    for (int i=0; i < nElem; i++) {
-//        if (bcf_shallow_compare(all_records_base[i].get(), all_records_soph[i].get()) != 1)
-//            return 0;
-//    }
-    cout << " num_elem=" << nElem << endl;
-    return 1;
-}
-
 int main_iter_compare(int argc, char *argv[]) {
     if (argc == 2) {
         help_init(argv[0]);
@@ -726,17 +629,24 @@ int main_iter_compare(int argc, char *argv[]) {
     H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
 
     int nChroms = min((size_t)22, contigs.size());
-    int nIter = 50;
+    int nIter = 20;
+    int nRegions = 13;
+
     for (int i = 0; i < nIter; i++) {
-        int rid = genRandInt(nChroms);
-        //int rid = 17;
+        int rid = genRandNumber(nChroms);
         size_t lenChrom = contigs[rid].second;
-        //int beg = genRandInt(lenChrom/3);
-        //int len = genRandInt(lenChrom - beg);
-        //GLnexus::range rng(rid, beg, beg + len);
-        GLnexus::range rng(rid, 0, lenChrom);
-        if (compare_query(*data, *metadata, sampleset, rng) != 1)
-            return 1; // ERROR
+        int beg = genRandDouble(nRegions) * lenChrom;
+        int end = genRandDouble(nRegions) * lenChrom;
+        if (end < beg)
+            std::swap(beg, end);
+        GLnexus::range rng(0, beg, end);
+
+        int rc = compare_query(*data, *metadata, sampleset, rng);
+        switch (rc) {
+        case 1: break;
+        case 0: return 1; // ERROR Status
+        case -1: break;  // Query used too much memory, aborted
+        }
     }
 
     cout << "Passed " << nIter << " iterator comparison tests" << endl;

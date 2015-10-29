@@ -181,7 +181,7 @@ add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
 
-add_executable(glnexus_cli cli/glnexus_cli.cc)
+add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
 add_dependencies(glnexus_cli spdlog)
 target_link_libraries(glnexus_cli -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp snappy bz2 lz4 rt)
@@ -217,7 +217,8 @@ if (test)
                  test/genotyper.cc
                  test/service.cc
                  test/BCFKeyValueData.cc
-                 test/rocks_integration.cc)
+                 test/rocks_integration.cc
+                 test/compare_iter.cc)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts rt snappy z bz2 lz4 rt libyaml-cpp)
 

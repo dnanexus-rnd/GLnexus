@@ -106,6 +106,25 @@ int bcf_raw_read_from_mem(const char *addr, bcf1_t *v) {
     return loc;
 }
 
+// Return 1 if the records are the same, 0 otherwise.
+// This compares most, but not all, fields.
+int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
+    if (x->rid != y->rid) return 0;
+    if (x->pos != y->pos) return 0;
+    if (x->rlen != y->rlen) return 0;
+
+    // I think nan != nan, so we are skipping this comparison
+    //if (x->qual != y->qual) return 0;
+
+    if (x->n_info != y->n_info) return 0;
+    if (x->n_allele != y->n_allele) return 0;
+    if (x->n_sample != y->n_sample) return 0;
+    if (x->shared.l != y->shared.l) return 0;
+    if (x->indiv.l != y->indiv.l) return 0;
+
+    return 1;
+}
+
 int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
 
 BCFWriter::BCFWriter() {}
