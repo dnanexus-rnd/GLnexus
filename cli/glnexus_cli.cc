@@ -630,16 +630,21 @@ int main_iter_compare(int argc, char *argv[]) {
 
     int nChroms = min((size_t)22, contigs.size());
     int nIter = 20;
-    int nRegions = 13;
+    int maxRangeLen = 1000000;
+    int minLen = 10; // ensure that the the range is of some minimal size
 
     for (int i = 0; i < nIter; i++) {
         int rid = genRandNumber(nChroms);
-        size_t lenChrom = contigs[rid].second;
-        int beg = genRandDouble(nRegions) * lenChrom;
-        int end = genRandDouble(nRegions) * lenChrom;
-        if (end < beg)
-            std::swap(beg, end);
-        GLnexus::range rng(0, beg, end);
+        int lenChrom = (int)contigs[rid].second;
+        assert(lenChrom > minLen);
+
+        // bound the range to be no larger than the chromosome
+        int rangeLen = min(maxRangeLen, lenChrom);
+        assert(rangeLen > minLen);
+
+        int beg = genRandNumber(lenChrom - rangeLen);
+        int rlen = genRandNumber(rangeLen - minLen);
+        GLnexus::range rng(0, beg, beg + minLen + rlen);
 
         int rc = compare_query(*data, *metadata, sampleset, rng);
         switch (rc) {

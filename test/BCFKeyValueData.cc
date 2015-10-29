@@ -855,7 +855,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
 TEST_CASE("BCFKeyValueData compare iterator implementations") {
     // This tests the optimized bucket-based range slicing in BCFKeyValueData
     int nRegions = 13;
-    int nIter = 20;
+    int nIter = 10;
     int lenChrom = 1000000;
 
     KeyValueMem::DB db({});
