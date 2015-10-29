@@ -5,6 +5,8 @@
 using namespace std;
 using namespace GLnexus;
 
+#define PSEUDO_RAND_SEED (1103)
+
 // generate a random number in the range [0 .. n-1]
 static int genRandNumber(int n){
     static bool firstTime = true;
@@ -12,7 +14,7 @@ static int genRandNumber(int n){
     // initialization
     if (firstTime) {
         firstTime = false;
-        srand (time(NULL));
+        srand(PSEUDO_RAND_SEED);
     }
 
     int i = rand() % n;
