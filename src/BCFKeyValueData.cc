@@ -611,6 +611,7 @@ class BCFBucketIterator : public RangeBCFIterator {
 
         if (first_) {
             // first call to next(): begin the iteration
+            // TODO: seek to (bucket_+dataset)
             assert(!it_);
             KeyValue::CollectionHandle coll;
             S(body_.db->collection("bcf",coll));

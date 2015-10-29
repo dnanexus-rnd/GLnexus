@@ -1,5 +1,6 @@
 language: cpp
 sudo: yes
+dist: trusty
 
 compiler:
   - gcc
@@ -28,7 +29,7 @@ script:
   # http://stackoverflow.com/q/11061970
   - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release && make -j $(nproc)
   # Run tests under valgrind (errors don't fail the build for now)
-  - .travis/install_valgrind.sh
+  - (.travis/install_valgrind.sh > /tmp/install_valgrind.log 2>&1) || cat /tmp/install_valgrind.log
   - valgrind --leak-check=full --error-exitcode=1 ./unit_tests || true
 
 # Encrypted Github credential (using yifei's account)
