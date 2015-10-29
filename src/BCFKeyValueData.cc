@@ -82,6 +82,9 @@ public:
     BCFBucketRange(int interval_len) : interval_len(interval_len) {};
 
     // Given the range of a bucket, produce the key prefix for the bucket.
+    // Important: the range must be exactly that of the bucket.
+    // BCFBucketRange::bucket below translates an arbitrary range into a
+    // bucket's range.
     std::string bucket_prefix(const range& rng) {
         stringstream ss;
         // We add leading zeros to ensure that string lexicographic ordering will sort
@@ -92,15 +95,18 @@ public:
         return ss.str();
     }
 
-// Create a key for a bucket that includes records from [dataset],
-// on chromosome [rid], whose start position is in the genomic range [beg,end).
-//
-// Note that the end position might be outside the [beg,end) genomic range.
-// The search logic needs to compensate for this, by looking at several buckets.
-// The key is generated so that data for a genomic range from all samples will be
-// located contiguously on disk.
-    std::string gen_key(const std::string &dataset, const range& rng) {
-        return bucket_prefix(rng) + dataset;
+    // Produce the complete key for a bucket (given the prefix) in a dataset
+    std::string bucket_key(const std::string& prefix, const std::string& dataset) {
+        assert(prefix.size() == 23);
+        return prefix+dataset;
+    }
+
+    // Same as bucket_key(bucket_prefix(rng), dataset)
+    // Important: the range must be exactly that of the bucket.
+    // BCFBucketRange::bucket below translates an arbitrary range into a
+    // bucket's range.
+    std::string bucket_key(const range& rng, const std::string& dataset) {
+        return bucket_key(bucket_prefix(rng), dataset);
     }
 
     // Decompose the key into bucket prefix and dataset
@@ -113,14 +119,16 @@ public:
         return Status::OK();
     }
 
-    // Given a [query] range, return a structure describing all the buckets
-    // to search through.
-    std::shared_ptr<BucketExtent> scan(const std::string &dataset, const range& query) {
+    // Given arbitrary [query] range, return a structure describing one or
+    // more buckets to search through in order to find all records overlapping
+    // query. This may be multiple buckets, even for small query ranges, to
+    // account for the possibility of records spanning multiple buckets.
+    std::shared_ptr<BucketExtent> scan(const range& query) {
         return make_shared<BucketExtent>(query, interval_len);
     }
 
     // Which bucket should a BCF record be placed in?
-    range bucket(const std::string &dataset, bcf1_t *rec) {
+    range bucket(bcf1_t *rec) {
         int bgn = (rec->pos / interval_len) * interval_len;
         return range(rec->rid, bgn, bgn + interval_len);
     }
@@ -480,7 +488,7 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
     S(writer->contents(data));
 
     // Generate the key
-    string key = rangeHelper.gen_key(dataset, rng);
+    string key = rangeHelper.bucket_key(rng, dataset);
 
     // write to the database
     KeyValue::CollectionHandle coll_bcf;
@@ -550,12 +558,12 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
     S(body_->db->collection("bcf",coll));
 
     // iterate through the buckets in range
-    shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan(dataset, query);
+    shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan(query);
 
     StatsRangeQuery accu;
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
         //cout << "scanning bucket " << r.str() << endl;
-        string key = body_->rangeHelper->gen_key(dataset, r);
+        string key = body_->rangeHelper->bucket_key(r, dataset);
         string data;
         s = body_->db->get(coll, key, data);
         if (s.ok()) {
@@ -592,7 +600,7 @@ class BCFBucketIterator : public RangeBCFIterator {
     shared_ptr<const set<string>> datasets_;
     set<string>::const_iterator dataset_;
     
-    string bucket_;
+    string bucket_prefix_;
     shared_ptr<KeyValue::Reader> reader_;
     unique_ptr<KeyValue::Iterator> it_;
     
@@ -610,11 +618,13 @@ class BCFBucketIterator : public RangeBCFIterator {
         S(data_.dataset_header(dataset, hdr));
 
         if (first_) {
-            // first call to next(): begin the iteration
+            // first call to next(): begin the iteration at the first dataset
             assert(!it_);
             KeyValue::CollectionHandle coll;
             S(body_.db->collection("bcf",coll));
-            S(body_.db->iterator(coll, bucket_, it_));
+            S(body_.db->iterator(coll,
+                                 body_.rangeHelper->bucket_key(bucket_prefix_, dataset),
+                                 it_));
             assert(it_);
             first_ = false;
         }
@@ -631,13 +641,13 @@ class BCFBucketIterator : public RangeBCFIterator {
         // advance the KeyValue iterator to the desired dataset
         string key_dataset;
         for (; s.ok() && it_->valid(); s = it_->next()) {
-            string key_bucket;
-            S(body_.rangeHelper->parse_key(it_->key_str(), key_bucket, key_dataset));
+            string key_prefix;
+            S(body_.rangeHelper->parse_key(it_->key_str(), key_prefix, key_dataset));
 
-            if (key_bucket != bucket_) {
+            if (key_prefix != bucket_prefix_) {
                 // we've now advanced past the end of the bucket, so there are
                 // no records for this data set (or subsequent data sets)
-                assert(key_bucket > bucket_);
+                assert(key_prefix > bucket_prefix_);
                 it_.reset();
                 return Status::OK();
             }
@@ -669,10 +679,10 @@ class BCFBucketIterator : public RangeBCFIterator {
 
 public:
     BCFBucketIterator(BCFData& data, BCFKeyValueData_body& body, range range,
-                      const std::string& bucket, shared_ptr<const set<string>>& datasets,
+                      const std::string& bucket_prefix, shared_ptr<const set<string>>& datasets,
                       const shared_ptr<KeyValue::Reader>& reader)
         : data_(data), body_(body), range_(range), datasets_(datasets),
-          dataset_(datasets->begin()), bucket_(bucket), reader_(reader) {}
+          dataset_(datasets->begin()), bucket_prefix_(bucket_prefix), reader_(reader) {}
 
     virtual ~BCFBucketIterator() {
         lock_guard<mutex> lock(body_.statsMutex);
@@ -718,7 +728,7 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
     shared_ptr<KeyValue::Reader> reader(move(ureader));
 
     // create one iterator per bucket
-    shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan("", pos);
+    shared_ptr<BucketExtent> bkExt = body_->rangeHelper->scan(pos);
     iterators.clear();
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
         // Calculate the key prefix for this bucket. The BCFBucketIterator
@@ -908,7 +918,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
 
             // Move to a new genomic range. Round down the start address to
             // a natural multiple of the interval length.
-            bucket = rangeHelper.bucket(dataset, vt.get());
+            bucket = rangeHelper.bucket(vt.get());
         }
         S(writer->write(vt.get()));
         prev_rid = vt->rid;
