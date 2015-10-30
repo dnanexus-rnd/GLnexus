@@ -572,38 +572,18 @@ int main_genotype(int argc, char *argv[]) {
     return 0;
 }
 
+void help_iter_compare(const char* prog) {
+    cerr << "usage: " << prog << " iter_compare /db/path" << endl
+         << "Run tests comparing the two BCF iterators" << endl
+         << endl;
+}
+
 int main_iter_compare(int argc, char *argv[]) {
-    if (argc == 2) {
-        help_init(argv[0]);
+    if (argc != 3) {
+        help_iter_compare(argv[0]);
         return 1;
     }
-
-    static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}
-    };
-
-    int c;
-    optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "h",
-                                  long_options, nullptr))) {
-        switch (c) {
-            case 'h':
-            case '?':
-                help_init(argv[0]);
-                exit(1);
-                break;
-
-            default:
-                abort ();
-        }
-    }
-
-//    if (optind != argc-2) {
-//        help_init(argv[0]);
-//        return 1;
-//    }
-    string dbpath(argv[optind]);
+    string dbpath(argv[2]);
 
     // open the database in read-write mode, create an all-samples sample set,
     // and close it. This is not elegant. It'd be better for the bulk load
@@ -621,7 +601,6 @@ int main_iter_compare(int argc, char *argv[]) {
     H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
     console->info() << "created sample set " << sampleset;
 
-    // resolve the user-supplied contig name to rid
     const auto& contigs = metadata->contigs();
 
     // get samples and datasets
@@ -629,7 +608,7 @@ int main_iter_compare(int argc, char *argv[]) {
     H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
 
     int nChroms = min((size_t)22, contigs.size());
-    int nIter = 20;
+    int nIter = 50;
     int maxRangeLen = 1000000;
     int minLen = 10; // ensure that the the range is of some minimal size
 
@@ -644,7 +623,7 @@ int main_iter_compare(int argc, char *argv[]) {
 
         int beg = genRandNumber(lenChrom - rangeLen);
         int rlen = genRandNumber(rangeLen - minLen);
-        GLnexus::range rng(0, beg, beg + minLen + rlen);
+        GLnexus::range rng(rid, beg, beg + minLen + rlen);
 
         int rc = compare_query(*data, *metadata, sampleset, rng);
         switch (rc) {
