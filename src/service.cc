@@ -41,11 +41,6 @@ Status Service::Start(Metadata& metadata, BCFData& data, unique_ptr<Service>& sv
     return MetadataCache::Start(metadata, svc->body_->metadata_);
 }
 
-bool is_dna(const string& str) {
-    return all_of(str.begin(), str.end(),
-                  [](char ch) { return ch == 'A' || ch == 'C' || ch == 'G' || ch == 'T' || ch =='N'; });
-}
-
 // used on the thread pool below
 static Status discover_alleles_thread(const set<string>& samples,
                                       const range& pos,

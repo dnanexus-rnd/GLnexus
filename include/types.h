@@ -92,6 +92,9 @@ public:
 // Convenience macro for re-raising a bad status when no recovery/cleanup is needed
 #define S(st) s = st; if (s.bad()) return s;
 
+/// [AGCTN]+
+bool is_dna(const std::string&);
+
 /// Genomic range (chromosome id, begin coordinate, end coordinate)
 struct range {
     int rid=-1, beg=-1, end=-1;
@@ -154,7 +157,7 @@ struct allele {
 
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
-        // TODO: validate allele matches [ACTGN]+
+        if (!is_dna(dna)) throw std::invalid_argument("allele(): invalid DNA");
     }
 
     /// Equality is based on identity of position and allele
