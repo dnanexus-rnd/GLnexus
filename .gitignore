@@ -43,6 +43,9 @@ external/
 # cscope
 cscope*
 
+#emacs
+*~
+
 # htslib stuff
 mem:*
 src/1.*.zip
