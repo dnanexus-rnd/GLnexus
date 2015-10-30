@@ -31,7 +31,7 @@ script:
   - cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release && make -j $(nproc)
   # Run tests under valgrind (errors don't fail the build for now)
   - (.travis/install_valgrind.sh > /tmp/install_valgrind.log 2>&1) || cat /tmp/install_valgrind.log
-  - valgrind --leak-check=full --error-exitcode=1 ./unit_tests || true
+  - valgrind --suppressions=GLnexus.supp --leak-check=full --error-exitcode=1 ./unit_tests || true
 
 # Encrypted Github credential (using yifei's account)
 env:
