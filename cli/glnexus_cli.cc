@@ -578,21 +578,17 @@ int main_iter_compare(int argc, char *argv[]) {
     }
     string dbpath(argv[2]);
 
-    // open the database in read-write mode, create an all-samples sample set,
-    // and close it. This is not elegant. It'd be better for the bulk load
-    // process to create the sample set when it finishes. Need some way to
-    // recover the name of the most recently created all-samples sample set.
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
     string sampleset;
-    H("open database R/W", GLnexus::RocksKeyValue::Open(dbpath, db));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
 
     unique_ptr<GLnexus::MetadataCache> metadata;
     H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
 
     H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
-    console->info() << "created sample set " << sampleset;
+    console->info() << "using sample set " << sampleset;
 
     const auto& contigs = metadata->contigs();
 

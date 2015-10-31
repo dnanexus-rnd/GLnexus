@@ -51,8 +51,8 @@
     },
     {
       "name": "iter_compare",
-      "class": "int",
-      "default": 0,
+      "class": "boolean",
+      "default": false,
       "optional": true
     }
   ],

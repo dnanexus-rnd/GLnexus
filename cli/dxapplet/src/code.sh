@@ -55,7 +55,7 @@ main() {
 
 
     # Test that the iterators work correctly
-    if [ "$iter_compare" == "1" ]; then
+    if [ "$iter_compare" == "true" ]; then
         echo "Comparing iterator implementations"
         glnexus_cli iter_compare GLnexus.db
     fi
