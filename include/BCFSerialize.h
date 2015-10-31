@@ -20,7 +20,7 @@ int bcf_raw_calc_packed_len(bcf1_t *v);
 void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr);
 
 //  Read a BCF record from memory, return the length of the packed record in RAM.
-int bcf_raw_read_from_mem(const char *addr, bcf1_t *v);
+int bcf_raw_read_from_mem(const char *buf, int loc, size_t len, bcf1_t *v);
 
 // Return 1 if the records are the same, 0 otherwise.
 // This compares most, but not all, fields.
@@ -65,6 +65,30 @@ class BCFReader {
 
     /// Reads a BCF header from a memory buffer
     static Status read_header(const char* buf, int len, int& consumed, std::shared_ptr<bcf_hdr_t>& ans);
+};
+
+class BCFScanner {
+ private:
+    const char* buf_ = nullptr;
+    size_t bufsz_;
+    int current_ = 0;
+
+    BCFScanner(const char* buf, size_t bufsz);
+ public:
+    /// Reads BCF records from a memory buffer (without the header). Allows peeking, and
+    /// checking if a record overlaps a range, prior to fully opening the BCF record.
+    /// The idea is to save the expensive unpack operation for records that the caller
+    /// wishes to skip.
+    static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFScanner>& ans);
+
+    ~BCFScanner();
+    Status next(); // move the cursor to the next record
+    bool overlaps(const range &rng); // check if the current record overlaps a range
+    Status read(std::shared_ptr<bcf1_t>& ans); // read the current record, return a BCF
+
+    /// Reads a BCF header from a memory buffer
+    static Status read_header(const char* buf, int len, int& consumed,
+                              std::shared_ptr<bcf_hdr_t>& ans);
 };
 
 } // namespace GLnexus

@@ -1,4 +1,4 @@
-// Test certain non-obvious behaviors of htslib 
+// Test certain non-obvious behaviors of htslib
 
 #include <iostream>
 #include <fstream>
@@ -121,7 +121,7 @@ TEST_CASE("htslib VCF header chrom injection") {
 
 TEST_CASE("htslib VCF header synthesis") {
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-    
+
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=A,length=1000000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
@@ -196,7 +196,7 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
     // now read the records back from memory & ensure they match the originals
     loc = 0;
     for (const auto& rec : records) {
-        loc += GLnexus::bcf_raw_read_from_mem(&buf[loc], vt.get());
+        loc += GLnexus::bcf_raw_read_from_mem(buf, loc, memlen, vt.get());
         REQUIRE(vt->rid == rec->rid);
         REQUIRE(vt->pos == rec->pos);
         REQUIRE(vt->n_sample == rec->n_sample);

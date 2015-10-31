@@ -497,24 +497,24 @@ static Status scan_bucket(
     vector<shared_ptr<bcf1_t> >& records)
 {
     Status s;
-    unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(data.first, data.second, reader));
+    unique_ptr<BCFScanner> scanner;
+    S(BCFScanner::Open(data.first, data.second, scanner));
 
     // statistics counter for BCF records
     shared_ptr<bcf1_t> vt;
-    while ((s = reader->read(vt)).ok()) {
-        assert(vt);
+    do {
         srq.nBCFRecordsRead++;
-        range vt_rng(vt);
-        if (query.overlaps(vt_rng)) {
+        if (scanner->overlaps(query)) {
+            scanner->read(vt);
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
                 return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
                                        dataset + "@" + query.str());
             }
             records.push_back(vt);
+            vt.reset(); // important! otherwise reader overwrites the stored copy.
         }
-        vt.reset(); // important! otherwise reader overwrites the stored copy.
-    }
+        s = scanner->next();
+    } while (s.ok());
 
     if (s != StatusCode::NOT_FOUND) {
         return s;
@@ -588,11 +588,11 @@ class BCFBucketIterator : public RangeBCFIterator {
     range range_;
     shared_ptr<const set<string>> datasets_;
     set<string>::const_iterator dataset_;
-    
+
     string bucket_prefix_;
     shared_ptr<KeyValue::Reader> reader_;
     unique_ptr<KeyValue::Iterator> it_;
-    
+
     StatsRangeQuery stats_;
 
     Status next_impl(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
