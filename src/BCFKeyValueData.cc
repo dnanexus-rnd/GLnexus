@@ -176,7 +176,7 @@ struct BCFKeyValueData_body {
     StatsRangeQuery statsRq; // statistics for range queries
 };
 
-auto collections { "config", "sampleset", "sample_dataset", "header", "bcf" };
+auto collections = { "config", "sampleset", "sample_dataset", "header", "bcf" };
 
 BCFKeyValueData::BCFKeyValueData() = default;
 BCFKeyValueData::~BCFKeyValueData() = default;
