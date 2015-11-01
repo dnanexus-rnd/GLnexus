@@ -217,7 +217,7 @@ Status unify_alleles_placeholder(const discovered_alleles& alleles, unified_site
         const allele& al = p.first;
 
         us.alleles.push_back(al.dna);
-        us.unification[make_pair(al.pos,al.dna)] = i;
+        us.unification[al] = i;
         us.observation_count.push_back(p.second.observation_count);
     }
     ans = std::move(us);

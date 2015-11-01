@@ -490,8 +490,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[0].alleles.size() == 2);
         REQUIRE(sites[0].alleles[0] == "A");
         REQUIRE(sites[0].alleles[1] == "G");
-        REQUIRE(sites[0].unification[make_pair(range(0,1000,1001),string("A"))] == 0);
-        REQUIRE(sites[0].unification[make_pair(range(0,1000,1001),string("G"))] == 1);
+        REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("A"))] == 0);
+        REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("G"))] == 1);
         REQUIRE(sites[0].observation_count.size() == 2);
         REQUIRE(sites[0].observation_count[0] == 2);
         REQUIRE(sites[0].observation_count[1] == 4);
@@ -501,9 +501,9 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[1].alleles[0] == "C");
         REQUIRE(sites[1].alleles[1] == "G");
         REQUIRE(sites[1].alleles[2] == "T");
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("C"))] == 0);
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("G"))] == 1);
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("T"))] == 2);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("C"))] == 0);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 1);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 2);
         REQUIRE(sites[1].observation_count.size() == 3);
         REQUIRE(sites[1].observation_count[0] == 2);
         REQUIRE(sites[1].observation_count[1] == 2);
@@ -513,8 +513,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[2].alleles.size() == 2);
         REQUIRE(sites[2].alleles[0] == "CC");
         REQUIRE(sites[2].alleles[1] == "AG");
-        REQUIRE(sites[2].unification[make_pair(range(0,1010,1012),string("CC"))] == 0);
-        REQUIRE(sites[2].unification[make_pair(range(0,1010,1012),string("AG"))] == 1);
+        REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("CC"))] == 0);
+        REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("AG"))] == 1);
         REQUIRE(sites[2].observation_count.size() == 2);
         REQUIRE(sites[2].observation_count[0] == 3);
         REQUIRE(sites[2].observation_count[1] == 3);
@@ -523,8 +523,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[3].alleles.size() == 2);
         REQUIRE(sites[3].alleles[0] == "C");
         REQUIRE(sites[3].alleles[1] == "A");
-        REQUIRE(sites[3].unification[make_pair(range(0,1100,1101),string("C"))] == 0);
-        REQUIRE(sites[3].unification[make_pair(range(0,1100,1101),string("A"))] == 1);
+        REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("C"))] == 0);
+        REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("A"))] == 1);
         REQUIRE(sites[3].observation_count.size() == 2);
         REQUIRE(sites[3].observation_count[0] == 3);
         REQUIRE(sites[3].observation_count[1] == 3);
@@ -533,8 +533,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].alleles.size() == 2);
         REQUIRE(sites[4].alleles[0] == "C");
         REQUIRE(sites[4].alleles[1] == "G");
-        REQUIRE(sites[4].unification[make_pair(range(0,1102,1103),string("C"))] == 0);
-        REQUIRE(sites[4].unification[make_pair(range(0,1102,1103),string("G"))] == 1);
+        REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("C"))] == 0);
+        REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("G"))] == 1);
         REQUIRE(sites[4].observation_count.size() == 2);
         REQUIRE(sites[4].observation_count[0] == 3);
         REQUIRE(sites[4].observation_count[1] == 3);
@@ -543,8 +543,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[5].alleles.size() == 2);
         REQUIRE(sites[5].alleles[0] == "C");
         REQUIRE(sites[5].alleles[1] == "A");
-        REQUIRE(sites[5].unification[make_pair(range(0,1200,1201),string("C"))] == 0);
-        REQUIRE(sites[5].unification[make_pair(range(0,1200,1201),string("A"))] == 1);
+        REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("C"))] == 0);
+        REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("A"))] == 1);
         REQUIRE(sites[5].observation_count.size() == 2);
         REQUIRE(sites[5].observation_count[0] == 3);
         REQUIRE(sites[5].observation_count[1] == 3);
@@ -567,8 +567,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[0].alleles.size() == 2);
         REQUIRE(sites[0].alleles[0] == "A");
         REQUIRE(sites[0].alleles[1] == "G");
-        REQUIRE(sites[0].unification[make_pair(range(0,1000,1001),string("A"))] == 0);
-        REQUIRE(sites[0].unification[make_pair(range(0,1000,1001),string("G"))] == 1);
+        REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("A"))] == 0);
+        REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("G"))] == 1);
         REQUIRE(sites[0].observation_count.size() == 2);
         REQUIRE(sites[0].observation_count[0] == 6);
         REQUIRE(sites[0].observation_count[1] == 6);
@@ -579,10 +579,10 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[1].alleles[1] == "A");
         REQUIRE(sites[1].alleles[2] == "G");
         REQUIRE(sites[1].alleles[3] == "T");
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("C"))] == 0);
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("A"))] == 1);
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("G"))] == 2);
-        REQUIRE(sites[1].unification[make_pair(range(0,1001,1002),string("T"))] == 3);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("C"))] == 0);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("A"))] == 1);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 2);
+        REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 3);
         REQUIRE(sites[1].observation_count.size() == 4);
         REQUIRE(sites[1].observation_count[0] == 2);
         REQUIRE(sites[1].observation_count[1] == 6);
@@ -593,8 +593,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[2].alleles.size() == 2);
         REQUIRE(sites[2].alleles[0] == "CC");
         REQUIRE(sites[2].alleles[1] == "AG");
-        REQUIRE(sites[2].unification[make_pair(range(0,1010,1012),string("CC"))] == 0);
-        REQUIRE(sites[2].unification[make_pair(range(0,1010,1012),string("AG"))] == 1);
+        REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("CC"))] == 0);
+        REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("AG"))] == 1);
         REQUIRE(sites[2].observation_count.size() == 2);
         REQUIRE(sites[2].observation_count[0] == 3);
         REQUIRE(sites[2].observation_count[1] == 3);
@@ -603,8 +603,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[3].alleles.size() == 2);
         REQUIRE(sites[3].alleles[0] == "C");
         REQUIRE(sites[3].alleles[1] == "A");
-        REQUIRE(sites[3].unification[make_pair(range(0,1100,1101),string("C"))] == 0);
-        REQUIRE(sites[3].unification[make_pair(range(0,1100,1101),string("A"))] == 1);
+        REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("C"))] == 0);
+        REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("A"))] == 1);
         REQUIRE(sites[3].observation_count.size() == 2);
         REQUIRE(sites[3].observation_count[0] == 3);
         REQUIRE(sites[3].observation_count[1] == 3);
@@ -613,8 +613,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].alleles.size() == 2);
         REQUIRE(sites[4].alleles[0] == "C");
         REQUIRE(sites[4].alleles[1] == "G");
-        REQUIRE(sites[4].unification[make_pair(range(0,1102,1103),string("C"))] == 0);
-        REQUIRE(sites[4].unification[make_pair(range(0,1102,1103),string("G"))] == 1);
+        REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("C"))] == 0);
+        REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("G"))] == 1);
         REQUIRE(sites[4].observation_count.size() == 2);
         REQUIRE(sites[4].observation_count[0] == 3);
         REQUIRE(sites[4].observation_count[1] == 3);
@@ -623,8 +623,8 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[5].alleles.size() == 2);
         REQUIRE(sites[5].alleles[0] == "C");
         REQUIRE(sites[5].alleles[1] == "A");
-        REQUIRE(sites[5].unification[make_pair(range(0,1200,1201),string("C"))] == 0);
-        REQUIRE(sites[5].unification[make_pair(range(0,1200,1201),string("A"))] == 1);
+        REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("C"))] == 0);
+        REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("A"))] == 1);
         REQUIRE(sites[5].observation_count.size() == 2);
         REQUIRE(sites[5].observation_count[0] == 3);
         REQUIRE(sites[5].observation_count[1] == 3);
@@ -1275,8 +1275,8 @@ TEST_CASE("gVCF genotyper") {
         unified_site us(range(0,10009461,10009462));
         us.alleles.push_back("T");
         us.alleles.push_back("A");
-        us.unification[make_pair(range(0,10009461,10009462),"T")] = 0;
-        us.unification[make_pair(range(0,10009461,10009462),"A")] = 1;
+        us.unification[allele(range(0,10009461,10009462),"T")] = 0;
+        us.unification[allele(range(0,10009461,10009462),"A")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
@@ -1285,8 +1285,8 @@ TEST_CASE("gVCF genotyper") {
         us.alleles.push_back("C");
         us.alleles.push_back("G");
         us.unification.clear();
-        us.unification[make_pair(range(0,10009462,10009463),"C")] = 0;
-        us.unification[make_pair(range(0,10009462,10009463),"G")] = 1;
+        us.unification[allele(range(0,10009462,10009463),"C")] = 0;
+        us.unification[allele(range(0,10009462,10009463),"G")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
@@ -1296,8 +1296,8 @@ TEST_CASE("gVCF genotyper") {
         us.alleles.push_back("AA");
         us.alleles.push_back("GT");
         us.unification.clear();
-        us.unification[make_pair(range(0,10009465,10009467),"AA")] = 0;
-        us.unification[make_pair(range(0,10009465,10009467),"GT")] = 1;
+        us.unification[allele(range(0,10009465,10009467),"AA")] = 0;
+        us.unification[allele(range(0,10009465,10009467),"GT")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
@@ -1371,8 +1371,8 @@ TEST_CASE("gVCF genotyper") {
         unified_site us(range(0,10009463,10009465));
         us.alleles.push_back("TA");
         us.alleles.push_back("T");
-        us.unification[make_pair(range(0,10009463,10009465),"TA")] = 0;
-        us.unification[make_pair(range(0,10009463,10009465),"T")] = 1;
+        us.unification[allele(range(0,10009463,10009465),"TA")] = 0;
+        us.unification[allele(range(0,10009463,10009465),"T")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
@@ -1381,8 +1381,8 @@ TEST_CASE("gVCF genotyper") {
         us.alleles.push_back("A");
         us.alleles.push_back("G");
         us.unification.clear();
-        us.unification[make_pair(range(0,10009465,10009466),"A")] = 0;
-        us.unification[make_pair(range(0,10009465,10009466),"G")] = 1;
+        us.unification[allele(range(0,10009465,10009466),"A")] = 0;
+        us.unification[allele(range(0,10009465,10009466),"G")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
@@ -1391,8 +1391,8 @@ TEST_CASE("gVCF genotyper") {
         us.alleles.push_back("A");
         us.alleles.push_back("C");
         us.unification.clear();
-        us.unification[make_pair(range(0,10009466,10009467),"A")] = 0;
-        us.unification[make_pair(range(0,10009466,10009467),"C")] = 1;
+        us.unification[allele(range(0,10009466,10009467),"A")] = 0;
+        us.unification[allele(range(0,10009466,10009467),"C")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 
@@ -1470,8 +1470,8 @@ TEST_CASE("gVCF genotyper") {
         unified_site us(range(0,10009463,10009465));
         us.alleles.push_back("TA");
         us.alleles.push_back("T");
-        us.unification[make_pair(range(0,10009463,10009465),"TA")] = 0;
-        us.unification[make_pair(range(0,10009463,10009465),"T")] = 1;
+        us.unification[allele(range(0,10009463,10009465),"TA")] = 0;
+        us.unification[allele(range(0,10009463,10009465),"T")] = 1;
         us.observation_count = { 1, 1 };
         sites.push_back(us);
 

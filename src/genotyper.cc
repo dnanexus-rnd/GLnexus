@@ -276,7 +276,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
     // map the bcf1_t alt alleles according to unification
     for (int i = 1; i < record->n_allele; i++) {
-        auto p = site.unification.find(make_pair(rng, string(record->d.allele[i])));
+        auto p = site.unification.find(allele(rng, string(record->d.allele[i])));
         allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
     }
 
