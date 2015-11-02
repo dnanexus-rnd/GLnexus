@@ -12,10 +12,6 @@ sudo apt-get -qq install -y doxygen
 # The lz4 library requires a special repository
 sudo apt-get -qq install -y liblz4-dev
 
-# install updated version of cmake
-wget http://www.cmake.org/files/v3.3/cmake-3.3.0-rc3-Linux-x86_64.sh
-sh cmake-3.3.0-rc3-Linux-x86_64.sh --prefix=$HOME --exclude-subdir
-
 # Install GCC 4.9
 sudo apt-get -qq install -y gcc-4.9 g++-4.9 binutils
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
