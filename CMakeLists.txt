@@ -169,7 +169,8 @@ add_library(glnexus
             include/KeyValue.h src/KeyValue.cc
             include/BCFSerialize.h src/BCFSerialize.cc
             include/BCFKeyValueData.h src/BCFKeyValueData.cc
-            include/RocksKeyValue.h src/RocksKeyValue.cc)
+            include/RocksKeyValue.h src/RocksKeyValue.cc
+            test/utils.cc)
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
 add_dependencies(glnexus yaml-cpp)
@@ -216,6 +217,7 @@ if (test)
                  test/types.cc
                  test/genotyper.cc
                  test/service.cc
+                 test/curated_cases.cc
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc)
   add_dependencies(unit_tests libglnexus)

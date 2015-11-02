@@ -111,7 +111,7 @@ Status unified_site_of_yaml(const YAML::Node& yaml, const vector<pair<string,siz
         const auto n_urange = (*p)["range"];
         VR(n_urange, "missing 'range' field in unification entry");
         S(range_of_yaml(n_urange, contigs, urange, ans.pos.rid));
-        VR(ans.pos.contains(urange), "unification entry range isn't contained within site range");
+        VR(ans.pos.overlaps(urange), "unification entry range does not overlap site range");
 
         const auto n_ualt = (*p)["alt"];
         VR(n_ualt && n_ualt.IsScalar(), "missing/invalid 'alt' field in unification entry");
