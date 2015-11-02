@@ -18,6 +18,7 @@
 #include "rocksdb/table.h"
 #include "rocksdb/memtablerep.h"
 #include "rocksdb/cache.h"
+#include "rocksdb/slice_transform.h"
 
 namespace GLnexus {
 namespace RocksKeyValue {
@@ -70,18 +71,13 @@ static Status convertStatus(const rocksdb::Status &s)
 }
 
 // Reference for RocksDB tuning: https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
-void ApplyColumnFamilyOptions(OpenMode mode, rocksdb::ColumnFamilyOptions& opts) {
+void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
+                              rocksdb::ColumnFamilyOptions& opts) {
     // universal compaction, 1GiB memtable budget
     opts.OptimizeUniversalStyleCompaction(1<<30);
     opts.num_levels = 5;
     opts.target_file_size_base = 1<<30;
     opts.level0_file_num_compaction_trigger = 10;
-
-    // speeds ingestion but slows reads:
-    // opts.target_file_size_multiplier = 4;
-    // compress all files in 64KiB blocks with LZ4
-    opts.compression_per_level.clear();
-    opts.compression = rocksdb::kLZ4Compression;
 
     opts.compaction_options_universal.compression_size_percent = -1;
     opts.compaction_options_universal.allow_trivial_move = true;
@@ -90,10 +86,22 @@ void ApplyColumnFamilyOptions(OpenMode mode, rocksdb::ColumnFamilyOptions& opts)
     opts.compaction_options_universal.min_merge_width = 3;
     opts.compaction_options_universal.max_merge_width = 8;
 
+    // compress all files with LZ4
+    opts.compression_per_level.clear();
+    opts.compression = rocksdb::kLZ4Compression;
+
+    // 64 KiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
     bbto.block_size = 64 * 1024;
-    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 4);
+    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 4, 6);
+
+    if (prefix_length) {
+        // prefix-based hash indexing for this column family
+        opts.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(prefix_length));
+        opts.memtable_factory.reset(rocksdb::NewHashSkipListRepFactory());
+        bbto.index_type = rocksdb::BlockBasedTableOptions::kHashSearch;
+    }
 
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 
@@ -120,7 +128,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, rocksdb::ColumnFamilyOptions& opts)
 }
 
 void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
-    ApplyColumnFamilyOptions(mode, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
+    ApplyColumnFamilyOptions(mode, 0, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
 
     opts.max_open_files = -1;
 
@@ -278,6 +286,7 @@ private:
     rocksdb::DB* db_;
     std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle_;
     OpenMode mode_;
+    prefix_spec prefix_spec_;
     rocksdb::WriteOptions write_options_, batch_write_options_;
 
     // No copying allowed
@@ -285,9 +294,12 @@ private:
     void operator=(const DB&);
 
     DB(rocksdb::DB *db, std::map<const std::string, rocksdb::ColumnFamilyHandle*>& coll2handle,
-       OpenMode mode)
+       OpenMode mode, prefix_spec* pfx)
         : db_(db), coll2handle_(std::move(coll2handle)),
           mode_(mode) {
+            if (pfx) {
+                prefix_spec_ = *pfx;
+            }
             // prepare write options
             if (mode_ == OpenMode::BULK_LOAD) {
                 write_options_.disableWAL = true;
@@ -299,7 +311,8 @@ private:
 
 public:
     static Status Initialize(const std::string& dbPath,
-                       std::unique_ptr<KeyValue::DB> &db) {
+                             std::unique_ptr<KeyValue::DB> &db,
+                             prefix_spec* pfx) {
         rocksdb::Options options;
         ApplyDBOptions(OpenMode::NORMAL, options);
         options.create_if_missing = true;
@@ -313,7 +326,7 @@ public:
         assert(rawdb != nullptr);
 
         std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle;
-        db.reset(new DB(rawdb, coll2handle, OpenMode::NORMAL));
+        db.reset(new DB(rawdb, coll2handle, OpenMode::NORMAL, pfx));
         if (!db) {
             delete rawdb;
             return Status::Failure();
@@ -323,6 +336,7 @@ public:
 
     static Status Open(const std::string& dbPath,
                        std::unique_ptr<KeyValue::DB> &db,
+                       prefix_spec *pfx,
                        OpenMode mode) {
         // prepare options
         rocksdb::Options options;
@@ -338,7 +352,11 @@ public:
         std::vector<rocksdb::ColumnFamilyDescriptor> column_families;
         for (const auto& nm : column_family_names) {
             rocksdb::ColumnFamilyOptions colopts;
-            ApplyColumnFamilyOptions(mode, colopts);
+            size_t effective_pfx = 0;
+            if (pfx && nm == pfx->first) {
+                effective_pfx = pfx->second;
+            }
+            ApplyColumnFamilyOptions(mode, effective_pfx, colopts);
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
             cfd.options = colopts;
@@ -366,7 +384,7 @@ public:
         for (size_t i = 0; i < column_families.size(); i++) {
             coll2handle[column_family_names[i]] = column_family_handles[i];
         }
-        db.reset(new DB(rawdb, coll2handle, mode));
+        db.reset(new DB(rawdb, coll2handle, mode, pfx));
         if (!db) {
             for (auto h : column_family_handles) {
                 delete h;
@@ -432,13 +450,18 @@ public:
     }
 
     Status create_collection(const std::string& name) override {
+        assert(name.size());
         if (coll2handle_.find(name) != coll2handle_.end()) {
             return Status::Exists("column family already exists", name);
         }
 
         // create new column family in rocksdb
         rocksdb::ColumnFamilyOptions colopts;
-        ApplyColumnFamilyOptions(mode_, colopts);
+        size_t pfx = 0;
+        if (name == prefix_spec_.first) {
+            pfx = prefix_spec_.second;
+        }
+        ApplyColumnFamilyOptions(mode_, pfx, colopts);
         rocksdb::ColumnFamilyHandle *handle;
         rocksdb::Status s = db_->CreateColumnFamily(colopts, name, &handle);
         if (!s.ok()) {
@@ -481,14 +504,15 @@ public:
     }
 };
 
-Status Initialize(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db)
+Status Initialize(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db, prefix_spec* pfx)
 {
-    return DB::Initialize(dbPath, db);
+    return DB::Initialize(dbPath, db, pfx);
 }
 
-Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db, OpenMode mode)
+Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db,
+            prefix_spec* pfx, OpenMode mode)
 {
-    return DB::Open(dbPath, db, mode);
+    return DB::Open(dbPath, db, pfx, mode);
 }
 
 Status destroy(const std::string dbPath)

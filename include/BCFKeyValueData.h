@@ -69,6 +69,10 @@ public:
                        std::set<std::string>& samples);
 };
 
+/// Get the bucket key prefix length for the bcf collection. This is used with
+/// e.g. the RocksDB prefix mode, or DynamoDB hash-range key.
+size_t BCFKeyValueDataPrefixLength();
+
 }
 
 #endif
