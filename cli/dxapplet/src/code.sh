@@ -53,6 +53,13 @@ main() {
     mkdir -p out/db_load_log
     cp GLnexus.db/LOG "out/db_load_log/${output_name}.LOG"
 
+
+    # Test that the iterators work correctly
+    if [ "$iter_compare" == "true" ]; then
+        echo "Comparing iterator implementations"
+        glnexus_cli iter_compare GLnexus.db
+    fi
+
     # assemble BED file of ranges to genotype
     mkdir -p in/bed_ranges_to_genotype
     touch in/bed_ranges_to_genotype/DUMMY

@@ -48,6 +48,12 @@
       "class": "int",
       "default": 0,
       "optional": true
+    },
+    {
+      "name": "iter_compare",
+      "class": "boolean",
+      "default": false,
+      "optional": true
     }
   ],
   "outputSpec": [

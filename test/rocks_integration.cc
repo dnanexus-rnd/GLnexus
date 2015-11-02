@@ -77,7 +77,7 @@ TEST_CASE("RocksDB open/initialize states") {
     db.reset();
 
     // open read-only
-    s = RocksKeyValue::Open(dbPath, db, RocksKeyValue::OpenMode::READ_ONLY);
+    s = RocksKeyValue::Open(dbPath, db, nullptr, RocksKeyValue::OpenMode::READ_ONLY);
     REQUIRE(s.ok());
     REQUIRE(db->collection("test",coll).ok());
     v.clear();
@@ -88,7 +88,7 @@ TEST_CASE("RocksDB open/initialize states") {
     db.reset();
 
     // open in "bulk load" mode
-    s = RocksKeyValue::Open(dbPath, db, RocksKeyValue::OpenMode::BULK_LOAD);
+    s = RocksKeyValue::Open(dbPath, db, nullptr, RocksKeyValue::OpenMode::BULK_LOAD);
     REQUIRE(s.ok());
     REQUIRE(db->collection("test",coll).ok());
     v.clear();
@@ -327,6 +327,63 @@ TEST_CASE("RocksDB BCF retrieval") {
         // bogus dataset
         s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
+        REQUIRE(records.size() == 0);
+
+    }
+
+    RocksKeyValue::destroy(dbPath);
+}
+
+TEST_CASE("RocksKeyValue prefix mode") {
+    RocksKeyValue::prefix_spec prefix_spec("bcf", BCFKeyValueDataPrefixLength());
+    std::unique_ptr<KeyValue::DB> db;
+    std::string dbPath = createRandomDBFileName();
+    Status s = RocksKeyValue::Initialize(dbPath, db, &prefix_spec);
+    REQUIRE(s.ok());
+
+    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    REQUIRE(T::InitializeDB(db.get(), contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(db.get(), data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+    REQUIRE(s.ok());
+
+    SECTION("dataset_range") {
+        // get all records
+        shared_ptr<const bcf_hdr_t> hdr;
+        s = data->dataset_header("NA12878D", hdr);
+        REQUIRE(s.ok());
+        vector<shared_ptr<bcf1_t>> records;
+
+        // subset of records
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 2);
+
+        REQUIRE(records[0]->pos == 10009463);
+        REQUIRE(records[0]->n_allele == 3);
+        REQUIRE(string(records[0]->d.allele[0]) == "TA");
+        REQUIRE(string(records[0]->d.allele[1]) == "T");
+        REQUIRE(string(records[0]->d.allele[2]) == "<NON_REF>");
+
+        REQUIRE(records[1]->pos == 10009465);
+        REQUIRE(records[1]->n_allele == 2);
+        REQUIRE(string(records[1]->d.allele[0]) == "A");
+        REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
+
+        // empty results
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), records);
+        REQUIRE(records.size() == 0);
+
+        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
+        REQUIRE(records.size() == 0);
+
+        // bogus dataset
+        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
         REQUIRE(records.size() == 0);
 
     }

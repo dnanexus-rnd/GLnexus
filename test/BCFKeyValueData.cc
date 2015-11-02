@@ -1,30 +1,11 @@
 #include <iostream>
 #include <map>
 #include "BCFKeyValueData.h"
+#include "BCFSerialize.h"
+#include "compare_iter.h"
 #include "catch.hpp"
 using namespace std;
 using namespace GLnexus;
-
-#define PSEUDO_RAND_SEED (1103)
-
-// generate a random number in the range [0 .. n-1]
-static int genRandNumber(int n){
-    static bool firstTime = true;
-
-    // initialization
-    if (firstTime) {
-        firstTime = false;
-        srand(PSEUDO_RAND_SEED);
-    }
-
-    int i = rand() % n;
-    return i;
-}
-
-static double genRandDouble(int n) {
-    return double(genRandNumber(n)) / double(n);
-}
-
 
 // Trivial in-memory KeyValue implementation used in unit tests.
 namespace KeyValueMem {
@@ -184,7 +165,7 @@ TEST_CASE("BCFKeyValueData initialization") {
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
 
-    SECTION("contigs") {
+    SECTION("metadata") {
         vector<pair<string,size_t>> contigs;
         Status s = data->contigs(contigs);
         REQUIRE(s.ok());
@@ -193,6 +174,12 @@ TEST_CASE("BCFKeyValueData initialization") {
         REQUIRE(contigs[0].second == 1000000);
         REQUIRE(contigs[1].first == "22");
         REQUIRE(contigs[1].second == 1000001);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("sampleset_samples") {
@@ -269,12 +256,27 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = cache->sampleset_samples(sampleset, all);
         REQUIRE(s.ok());
         REQUIRE(all->size() == 0);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
         Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
 
+        // check that internal version number of all-samples sampleset was
+        // incremented
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
+
+        // check the * sample set
         string dataset;
         REQUIRE(data->sample_dataset("NA12878", dataset).ok());
         REQUIRE(dataset == "NA12878D");
@@ -293,6 +295,51 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(*(all->begin()) == "NA12878");
     }
 
+    SECTION("all_samples_sampleset") {
+        Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
+
+        string sampleset, sampleset2;
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        shared_ptr<const set<string>> all;
+        s = cache->sampleset_samples(sampleset, all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 1);
+
+        // the sample set should now be memoized so long as no new samples are added
+        s = cache->all_samples_sampleset(sampleset2);
+        REQUIRE(s.ok());
+        REQUIRE(sampleset == sampleset2);
+
+
+        s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "2");
+
+        // now we should get a new sample set
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+        REQUIRE(sampleset != sampleset2);
+
+        s = cache->sampleset_samples(sampleset, all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 2);
+
+        s = cache->all_samples_sampleset(sampleset2);
+        REQUIRE(s.ok());
+        REQUIRE(sampleset == sampleset2);
+    }
+
     SECTION("incompatible contigs") {
         db.wipe();
         contigs = { make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000000) };
@@ -302,6 +349,13 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(MetadataCache::Start(*data, cache).ok());
         s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
+
+        // * sample set version number should NOT change
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("detect bogus END field") {
@@ -313,6 +367,13 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(MetadataCache::Start(*data, cache).ok());
         s = data->import_gvcf(*cache, "NA12878D", "test/data/bogus_END.gvcf", samples_imported);
         REQUIRE(s == StatusCode::INVALID);
+
+        // * sample set version number should NOT change
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "0");
     }
 
     SECTION("reject duplicate data set") {
@@ -321,6 +382,12 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
         s = data->import_gvcf(*cache, "x", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::EXISTS);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
     }
 
     SECTION("reject duplicate sample") {
@@ -329,6 +396,12 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
         s = data->import_gvcf(*cache, "z", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s == StatusCode::EXISTS);
+
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "1");
     }
 }
 
@@ -536,6 +609,13 @@ TEST_CASE("BCFData::sampleset_range") {
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
     REQUIRE(s.ok());
+
+    // check * version number
+    KeyValue::CollectionHandle coll;
+    REQUIRE(db.collection("sampleset", coll).ok());
+    string version;
+    REQUIRE(db.get(coll, "*", version).ok());
+    REQUIRE(version == "2");
 
     string sampleset;
     s = cache->all_samples_sampleset(sampleset);
@@ -871,118 +951,10 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     // TODO: need a test with only a subset of the samples
 }
 
-static void print_bcf_record(bcf1_t *x) {
-    cout << "rid=" << x->rid << endl;
-    cout << "pos=" << x->pos << endl;
-    cout << "rlen=" << x->rlen << endl;
-    cout << "qual=" << x->qual << endl;
-    cout << "n_info=" << x->n_info << endl;
-    cout << "n_allele=" << x->n_allele << endl;
-    cout << "n_sample=" << x->n_sample << endl;
-    cout << "shared.l=" << x->shared.l << endl;
-    cout << "indiv.l=" << x->indiv.l << endl;
-//    cout << std::string(x->indiv.s) << endl;
-}
-
-// return 1 if the records are the same, 0 otherwise
-static int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
-    if (x->rid != y->rid) return 0;
-    if (x->pos != y->pos) return 0;
-    if (x->rlen != y->rlen) return 0;
-
-    // I think nan != nan, so we are skipping this comparison
-    //if (x->qual != y->qual) return 0;
-
-    if (x->n_info != y->n_info) return 0;
-    if (x->n_allele != y->n_allele) return 0;
-    if (x->n_sample != y->n_sample) return 0;
-    if (x->shared.l != y->shared.l) return 0;
-    if (x->indiv.l != y->indiv.l) return 0;
-
-    return 1;
-}
-
-using IterResults = map<string, shared_ptr<vector<shared_ptr<bcf1_t>>>>;
-
-static void read_entire_iter(RangeBCFIterator *iter, shared_ptr<IterResults> results) {
-    Status s;
-
-    string dataset;
-    shared_ptr<const bcf_hdr_t> hdr;
-    do {
-        vector<shared_ptr<bcf1_t>> v;
-        v.clear();
-        s = iter->next(dataset, hdr, v);
-        for (auto rec : v) {
-            if (results->find(dataset) == results->end()) {
-                auto w = make_shared<vector<shared_ptr<bcf1_t>>>();
-                (*results)[dataset] = w;
-            }
-            results->at(dataset)->push_back(rec);
-        }
-    } while (s.ok());
-}
-
-static void compare_results(shared_ptr<IterResults> resultsBase,
-                            shared_ptr<IterResults> resultsSoph) {
-    for(IterResults::iterator iter = resultsBase->begin();
-        iter != resultsBase->end();
-        ++iter) {
-        string dataset = iter->first;
-        shared_ptr<vector<shared_ptr<bcf1_t>>> v = iter->second;
-        shared_ptr<vector<shared_ptr<bcf1_t>>> w = resultsSoph->at(dataset);
-
-        REQUIRE(v->size() == w->size());
-        int len = v->size();
-        //cout << dataset << " len=" << len << endl;
-        for (int i=0; i < len; i++) {
-            if (bcf_shallow_compare((*v)[i].get(), (*w)[i].get()) == 0) {
-                cout << "Error comparing two records"  << endl;
-                print_bcf_record((*v)[i].get());
-                print_bcf_record((*w)[i].get());
-                REQUIRE(false);
-            }
-        }
-    }
-}
-
-// Read all the records in the range, and return as a vector of BCF records.
-// This is not a scalable function, because the return vector could be very
-// large. For debugging/testing use only.
-static void compare_query(T &data, MetadataCache &cache,
-                          const std::string& sampleset, const range& rng) {
-    //cout << "compare_query " << rng.str() << endl;
-
-    Status s;
-    vector<unique_ptr<RangeBCFIterator>> iterators;
-    shared_ptr<const set<string>> samples, datasets;
-
-    // simple iterator
-    REQUIRE(data.sampleset_range_base(cache, sampleset, rng,
-                                      samples, datasets, iterators).ok());
-
-    auto resultsBase = make_shared<IterResults>();
-    for (int i=0; i < iterators.size(); i++) {
-        read_entire_iter(iterators[i].get(), resultsBase);
-    }
-    iterators.clear();
-
-    // sophisticated iterator
-    auto resultsSoph = make_shared<IterResults>();
-    REQUIRE(data.sampleset_range(cache, sampleset, rng,
-                                 samples, datasets, iterators).ok());
-    for (int i=0; i < iterators.size(); i++) {
-        read_entire_iter(iterators[i].get(), resultsSoph);
-    }
-
-    // compare all the elements between the two results
-    compare_results(resultsBase, resultsSoph);
-}
-
 TEST_CASE("BCFKeyValueData compare iterator implementations") {
     // This tests the optimized bucket-based range slicing in BCFKeyValueData
     int nRegions = 13;
-    int nIter = 20;
+    int nIter = 10;
     int lenChrom = 1000000;
 
     KeyValueMem::DB db({});
@@ -1015,7 +987,12 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
         if (end < beg)
             std::swap(beg, end);
         range rng(0, beg, end);
-        compare_query(*data, *cache, sampleset, rng);
+        int rc = compare_query(*data, *cache, sampleset, rng);
+        switch (rc) {
+        case 1: break; // comparison succeeded
+        case 0: REQUIRE(false); // ERROR
+        case -1: break;  // Query used too much memory, continue
+        }
     }
 
     cout << "Compared " << nIter << " range queries between the two iterators" << endl;

@@ -102,8 +102,8 @@ unification:
         REQUIRE((us).alleles[0] == "A");        \
         REQUIRE((us).alleles[1] == "G");        \
         REQUIRE((us).unification.size() == 2);  \
-        REQUIRE((us).unification[make_pair(range(1, 99, 100), "A")] == 0); \
-        REQUIRE((us).unification[make_pair(range(1, 99, 100), "G")] == 1); \
+        REQUIRE((us).unification[allele(range(1, 99, 100), "A")] == 0); \
+        REQUIRE((us).unification[allele(range(1, 99, 100), "G")] == 1); \
         REQUIRE((us).observation_count.size() == 2); \
         REQUIRE((us).observation_count[0] == 100.0); \
         REQUIRE((us).observation_count[1] == 51.0);
@@ -135,10 +135,10 @@ unification:
         REQUIRE((us).alleles[1] == "AC");       \
         REQUIRE((us).alleles[2] == "C");        \
         REQUIRE((us).unification.size() == 4);  \
-        REQUIRE((us).unification[make_pair(range(1, 999, 1001), "AG")] == 0); \
-        REQUIRE((us).unification[make_pair(range(1, 999, 1001), "AC")] == 1); \
-        REQUIRE((us).unification[make_pair(range(1, 999, 1001), "C")] == 2);  \
-        REQUIRE((us).unification[make_pair(range(1, 1000, 1001), "C")] == 1);
+        REQUIRE((us).unification[allele(range(1, 999, 1001), "AG")] == 0); \
+        REQUIRE((us).unification[allele(range(1, 999, 1001), "AC")] == 1); \
+        REQUIRE((us).unification[allele(range(1, 999, 1001), "C")] == 2);  \
+        REQUIRE((us).unification[allele(range(1, 1000, 1001), "C")] == 1);
     
     SECTION("snp") {
         YAML::Node n = YAML::Load(snp);

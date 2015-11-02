@@ -13,6 +13,7 @@ addons:
       - libsnappy-dev
       - libc6-dbg
       - gdb
+      - cmake
 
 before_install:
   - ulimit -c unlimited -S # enable core dump

@@ -189,7 +189,7 @@ public:
             cout << "@@@@@ Output vcf and truth agrees!" << endl;
         } else {
             cout << "^^^^^ Output vcf and truth differs. Diff file: " << endl;
-            system(("cat " + diff_fn).c_str());
+            retval = system(("cat " + diff_fn).c_str());
         }
 
         cout << "++++++++++++++++++++++++++++++++++++" << endl;

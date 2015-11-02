@@ -13,6 +13,7 @@
 #include "RocksKeyValue.h"
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
+#include "compare_iter.h"
 
 using namespace std;
 
@@ -24,6 +25,14 @@ GLnexus::Status s;
         console->error() << "Failed to " << desc << ": " << s.str(); \
         return 1; \
     }
+
+static GLnexus::RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
+    static unique_ptr<GLnexus::RocksKeyValue::prefix_spec> p;
+    if (!p) {
+        p = make_unique<GLnexus::RocksKeyValue::prefix_spec>("bcf", GLnexus::BCFKeyValueDataPrefixLength());
+    }
+    return p.get();
+}
 
 void help_init(const char* prog) {
     cerr << "usage: " << prog << " init [options] /desired/db/path exemplar.gvcf[.gz]" << endl
@@ -93,7 +102,7 @@ int main_init(int argc, char *argv[]) {
 
     // create and initialize the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("create database", GLnexus::RocksKeyValue::Initialize(dbpath, db));
+    H("create database", GLnexus::RocksKeyValue::Initialize(dbpath, db, GLnexus_prefix_spec()));
     H("initialize database", GLnexus::BCFKeyValueData::InitializeDB(db.get(), contigs));
 
     // report success
@@ -187,7 +196,8 @@ int main_load(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -248,22 +258,22 @@ int main_load(int argc, char *argv[]) {
             }
 
             // report results
-            cout << "Loaded datasets:";
-            for (const auto& ds : datasets_loaded) {
-                cout << " " << ds;
-            }
-            cout << endl;
+            console->info() << "Loaded " << datasets_loaded.size() << " datasets with "
+                            << samples_loaded.size() << " samples.";
 
-            cout << "Loaded samples:";
-            for (const auto& sample : samples_loaded) {
-                cout << " " << sample;
-            }
-            cout << endl;
+            // call all_samples_sampleset to create the sample set including
+            // the newly loaded ones. By doing this now we make it possible
+            // for other CLI functions to open the database in purely read-
+            // only mode (since the sample set has to get written into the
+            // database to be used)
+            string sampleset;
+            H("update * sample set", data->all_samples_sampleset(sampleset));
+            console->info() << "Created sample set " << sampleset;
 
             if (failures.size()) {
-                cout << "FAILED to load one or more datasets:" << endl;
+                console->error() << "FAILED to load " << failures.size() << " datasets:";
                 for (const auto& p : failures) {
-                    cout << p.first << "\t" << p.second.str() << endl;
+                    console->error() << p.first << " " << p.second.str();
                 }
                 return datasets_loaded.size() ? 2 : 1;
             }
@@ -322,7 +332,8 @@ int main_dump(int argc, char *argv[]) {
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
 
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -359,7 +370,7 @@ int main_dump(int argc, char *argv[]) {
 
             // query and output records
             string sampleset;
-            H("all_samples_sampleset", metadata->all_samples_sampleset(sampleset));
+            H("list all samples", metadata->all_samples_sampleset(sampleset));
             shared_ptr<const set<string>> samples, datasets;
             H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
             vcfFile *vcfout = vcf_open("-", "w");
@@ -458,22 +469,12 @@ int main_genotype(int argc, char *argv[]) {
         }
     }
 
-    // open the database in read-write mode, create an all-samples sample set,
-    // and close it. This is not elegant. It'd be better for the bulk load
-    // process to create the sample set when it finishes. Need some way to
-    // recover the name of the most recently created all-samples sample set.
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
-    string sampleset;
-    H("open database R/W", GLnexus::RocksKeyValue::Open(dbpath, db));
-    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
-    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
-    data.reset();
-    db.reset();
-    console->info() << "created sample set " << sampleset;
 
-    // open the database in read-only mode to proceed
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    // open the database in read-only mode
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
     {
         unique_ptr<GLnexus::BCFKeyValueData> data;
         H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
@@ -535,6 +536,10 @@ int main_genotype(int argc, char *argv[]) {
             unique_ptr<GLnexus::Service> svc;
             H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
 
+            string sampleset;
+            H("list all samples", data->all_samples_sampleset(sampleset));
+            console->info() << "found sample set " << sampleset;
+
             console->info() << "discovering alleles in " << ranges.size() << " range(s)";
             vector<GLnexus::discovered_alleles> valleles;
             H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
@@ -571,6 +576,69 @@ int main_genotype(int argc, char *argv[]) {
     return 0;
 }
 
+void help_iter_compare(const char* prog) {
+    cerr << "usage: " << prog << " iter_compare /db/path" << endl
+         << "Run tests comparing the two BCF iterators" << endl
+         << endl;
+}
+
+int main_iter_compare(int argc, char *argv[]) {
+    if (argc != 3) {
+        help_iter_compare(argv[0]);
+        return 1;
+    }
+    string dbpath(argv[2]);
+
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    unique_ptr<GLnexus::BCFKeyValueData> data;
+    string sampleset;
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+
+    unique_ptr<GLnexus::MetadataCache> metadata;
+    H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
+
+    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
+    console->info() << "using sample set " << sampleset;
+
+    const auto& contigs = metadata->contigs();
+
+    // get samples and datasets
+    shared_ptr<const set<string>> samples, datasets;
+    H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
+
+    int nChroms = min((size_t)22, contigs.size());
+    int nIter = 50;
+    int maxRangeLen = 1000000;
+    int minLen = 10; // ensure that the the range is of some minimal size
+
+    for (int i = 0; i < nIter; i++) {
+        int rid = genRandNumber(nChroms);
+        int lenChrom = (int)contigs[rid].second;
+        assert(lenChrom > minLen);
+
+        // bound the range to be no larger than the chromosome
+        int rangeLen = min(maxRangeLen, lenChrom);
+        assert(rangeLen > minLen);
+
+        int beg = genRandNumber(lenChrom - rangeLen);
+        int rlen = genRandNumber(rangeLen - minLen);
+        GLnexus::range rng(rid, beg, beg + minLen + rlen);
+
+        int rc = compare_query(*data, *metadata, sampleset, rng);
+        switch (rc) {
+        case 1: break;
+        case 0: return 1; // ERROR Status
+        case -1: break;  // Query used too much memory, aborted
+        }
+    }
+
+    cout << "Passed " << nIter << " iterator comparison tests" << endl;
+    return 0; // GOOD STATUS
+}
+
+
 void help(const char* prog) {
     cerr << "usage: " << prog << " <command> [options]" << endl
              << endl
@@ -578,6 +646,7 @@ void help(const char* prog) {
              << "  init     initialize new database" << endl
              << "  load     load a gVCF file into an existing database" << endl
              << "  genotype genotype samples in the database" << endl
+             << "  iter_compare compare the two BCF iterator impelementations" << endl
              << endl;
 }
 
@@ -600,6 +669,8 @@ int main(int argc, char *argv[]) {
         return main_dump(argc, argv);
     } else if (command == "genotype") {
         return main_genotype(argc, argv);
+    } else if (command == "iter_compare") {
+        return main_iter_compare(argc, argv);
     } else {
         cerr << "unknown command " << command << endl;
         help(argv[0]);

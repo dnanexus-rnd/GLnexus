@@ -123,9 +123,9 @@ Status unified_site_of_yaml(const YAML::Node& yaml, const vector<pair<string,siz
         int to = n_uto.as<int>();
         VR(to >= 0 && to < ans.alleles.size(), "invalid 'to' field in unification entry");
 
-        auto k = make_pair(urange,alt);
-        VR(ans.unification.find(k) == ans.unification.end(), "duplicate unification entries");
-        ans.unification[k] = to;
+        allele al(urange,alt);
+        VR(ans.unification.find(al) == ans.unification.end(), "duplicate unification entries");
+        ans.unification[al] = to;
     }
     VR(ans.unification.size() >= 2, "not enough unification entries");
 
