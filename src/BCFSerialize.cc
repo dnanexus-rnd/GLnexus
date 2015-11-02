@@ -41,7 +41,7 @@ namespace GLnexus {
 
 static void range_check(int x, size_t y) {
     // FIXME: this should -not- be removed in Release builds
-//    assert(x < y);
+    assert(x <= y);
 }
 
 // Ccalculate the amount of bytes it would take to pack this bcf1 record.
@@ -115,8 +115,9 @@ int bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v) {
 }
 
 // Calculate the total length of a record, without unpacking it.
-uint32_t bcf_raw_calc_rec_len(const char *addr) {
-    uint32_t *x = (uint32_t*) addr;
+uint32_t bcf_raw_calc_rec_len(const char *buf, int start, size_t len) {
+    range_check(start + 32, len);
+    uint32_t *x = (uint32_t*) &buf[start];
 
     assert(x[0] > 0);
     uint32_t rc = 32 + (x[0] -24) + x[1];
@@ -125,8 +126,9 @@ uint32_t bcf_raw_calc_rec_len(const char *addr) {
 
 // Check if the record that starts at memory address [addr] overlaps
 // the range [rng]. The trick is to do this without unpacking the record.
-bool bcf_raw_overlap(const char *addr, const range &rng) {
-    uint32_t *x = (uint32_t*) addr;
+bool bcf_raw_overlap(const char *buf, int start, size_t len, const range &rng) {
+    range_check(start + 32, len);
+    uint32_t *x = (uint32_t*) &buf[start];
 
     int32_t rid = x[2];
     int32_t beg = x[3];
@@ -330,7 +332,7 @@ BCFScanner::~BCFScanner() {
 Status BCFScanner::next() {
     if ((size_t)current_ >= bufsz_)
         return Status::NotFound();
-    current_ += bcf_raw_calc_rec_len(&buf_[current_]);
+    current_ += bcf_raw_calc_rec_len(buf_, current_, bufsz_);
     if ((size_t)current_ >= bufsz_)
         return Status::NotFound();
     return Status::OK();
@@ -346,7 +348,7 @@ Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
 
 // check if the current record overlaps a range
 bool BCFScanner::overlaps(const range &rng) {
-    return bcf_raw_overlap(&buf_[current_], rng);
+    return bcf_raw_overlap(buf_, current_, bufsz_, rng);
 }
 
 /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
