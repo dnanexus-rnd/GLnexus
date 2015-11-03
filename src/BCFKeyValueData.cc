@@ -458,7 +458,7 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     // Parse the header
     shared_ptr<bcf_hdr_t> ans;
     int consumed;
-    S(BCFReader::read_header(data.c_str(), data.size(), consumed, ans));
+    S(BCFScanner::read_header(data.c_str(), data.size(), consumed, ans));
     hdr = ans;
 
     // Memoize it

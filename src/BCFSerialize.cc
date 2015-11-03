@@ -287,43 +287,6 @@ std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
 
 
 
-// constructor
-BCFReader::BCFReader(const char* buf, size_t bufsz) :
-    buf_(buf), bufsz_(bufsz)
-{}
-
-Status BCFReader::Open(const char* buf,
-                       size_t bufsz,
-                       unique_ptr<BCFReader>& ans) {
-    ans.reset(new BCFReader(buf, bufsz));
-    return Status::OK();
-}
-
-BCFReader::~BCFReader() {
-    buf_ = nullptr;
-    bufsz_ = 0;
-    current_ = 0;
-}
-
-Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
-    if (!ans) {
-        ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
-    }
-    if ((size_t)current_ >= bufsz_)
-        return Status::NotFound();
-    int reclen = 0;
-    Status s = bcf_raw_read_from_mem(buf_, current_, bufsz_, ans.get(), reclen);
-    if (!s.ok())
-        return s;
-    current_ += reclen;
-    return Status::OK();
-}
-
-Status BCFReader::read_header(const char* buf, int hdrlen, int& consumed,
-                              shared_ptr<bcf_hdr_t>& ans) {
-    return bcf_raw_read_header(buf, hdrlen, consumed, ans);
-}
-
 // BCFScanner
 // constructor
 BCFScanner::BCFScanner(const char* buf, size_t bufsz) :
