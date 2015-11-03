@@ -8,7 +8,7 @@ namespace GLnexus {
 
 // Checks that the offset [x] is no larger than [y].
 // Return OK status if x <= y, Invalid otherwise.
-Status range_check(int x, size_t y, std::string errmsg);
+Status range_check(int x, size_t y, const char *errmsg);
 
 // The following three functions, prefixed with bcf_raw, are copied
 // and modified from the htslib sources. They are used to read/write

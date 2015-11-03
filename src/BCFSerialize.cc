@@ -39,9 +39,9 @@ using namespace std;
 
 namespace GLnexus {
 
-Status range_check(int x, size_t y, string errmsg) {
+Status range_check(int x, size_t y, const char* errmsg) {
     if (x <= y) return Status::OK();
-    string msg = errmsg + ", memory range check failed. Reading offset ";
+    string msg = string(errmsg) + ", memory range check failed. Reading offset ";
     msg += to_string(x) + " in buffer of length ";
     msg += std::to_string(y);
     return Status::Invalid(msg.c_str());
