@@ -97,7 +97,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;</div>
 <div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="comment">// Checks that the offset [x] is no larger than [y].</span></div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="comment">// Return OK status if x &lt;= y, Invalid otherwise.</span></div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;Status range_check(<span class="keywordtype">int</span> x, <span class="keywordtype">size_t</span> y, std::string errmsg);</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;Status range_check(<span class="keywordtype">int</span> x, <span class="keywordtype">size_t</span> y, <span class="keyword">const</span> <span class="keywordtype">char</span> *errmsg);</div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;</div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="comment">// The following three functions, prefixed with bcf_raw, are copied</span></div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="comment">// and modified from the htslib sources. They are used to read/write</span></div>
