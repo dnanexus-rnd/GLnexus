@@ -196,7 +196,9 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
     // now read the records back from memory & ensure they match the originals
     loc = 0;
     for (const auto& rec : records) {
-        loc += GLnexus::bcf_raw_read_from_mem(buf, loc, memlen, vt.get());
+        int reclen = 0;
+        REQUIRE(GLnexus::bcf_raw_read_from_mem(buf, loc, memlen, vt.get(), reclen).ok());
+        loc += reclen;
         REQUIRE(vt->rid == rec->rid);
         REQUIRE(vt->pos == rec->pos);
         REQUIRE(vt->n_sample == rec->n_sample);

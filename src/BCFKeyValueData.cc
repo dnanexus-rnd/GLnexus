@@ -501,17 +501,19 @@ static Status scan_bucket(
     S(BCFScanner::Open(data.first, data.second, scanner));
 
     // statistics counter for BCF records
-    shared_ptr<bcf1_t> vt;
     do {
         srq.nBCFRecordsRead++;
-        if (scanner->overlaps(query)) {
-            scanner->read(vt);
+        bool flag;
+        S(scanner->overlaps(query, flag));
+
+        if (flag) {
+            shared_ptr<bcf1_t> vt;
+            S(scanner->read(vt));
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
                 return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
                                        dataset + "@" + query.str());
             }
             records.push_back(vt);
-            vt.reset(); // important! otherwise reader overwrites the stored copy.
         }
         s = scanner->next();
     } while (s.ok());
