@@ -17,6 +17,16 @@ using namespace std;
 // sugar for declaring a unique_ptr with a custom deleter function
 #define UPD(T,name,ini,del) std::unique_ptr<T, void(*)(T*)> up_##name((ini), (del)); auto name = up_##name.get();
 
+TEST_CASE("Memory range checks") {
+    for (int i = 0; i < 2; i++) {
+        REQUIRE(GLnexus::range_check(i * 10, 20).ok());
+    }
+    for (int i = 2; i < 5; i++) {
+        GLnexus::Status s = GLnexus::range_check((i * 10) + 1, 20);
+        REQUIRE(s == GLnexus::StatusCode::INVALID);
+    }
+}
+
 TEST_CASE("htslib VCF missing data representation") {
     // Verify how htslib data structures represent missing data such as ./.
     // genotypes, . genotype likelihoods, etc.

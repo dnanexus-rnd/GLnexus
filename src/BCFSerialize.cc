@@ -41,7 +41,7 @@ namespace GLnexus {
 
 Status range_check(int x, size_t y) {
     if (x <= y) return Status::OK();
-    return Status::Invalid();
+    return Status::Invalid("Memory range check failed");
 }
 
 // Ccalculate the amount of bytes it would take to pack this bcf1 record.
@@ -142,9 +142,9 @@ Status bcf_raw_overlap(const char *buf, int start, size_t len, const range &rng,
     S(range_check(start + 32, len));
 
     uint32_t *x = (uint32_t*) &buf[start];
-    int32_t rid = x[2];
-    int32_t beg = x[3];
-    int32_t rlen = x[4];
+    uint32_t rid = x[2];
+    uint32_t beg = x[3];
+    uint32_t rlen = x[4];
     ans = range(rid, beg, beg + rlen).overlaps(rng);
     return Status::OK();
 }
