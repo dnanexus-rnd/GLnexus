@@ -310,10 +310,9 @@ BCFScanner::~BCFScanner() {
 Status BCFScanner::next() {
     if ((size_t)current_ >= bufsz_)
         return Status::NotFound();
+    Status s;
     uint32_t reclen = 0;
-    Status s = bcf_raw_calc_rec_len(buf_, current_, bufsz_, reclen);
-    if (!s.ok())
-        return s;
+    S(bcf_raw_calc_rec_len(buf_, current_, bufsz_, reclen));
     current_ += reclen;
     if ((size_t)current_ >= bufsz_)
         return Status::NotFound();
