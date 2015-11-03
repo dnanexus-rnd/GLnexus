@@ -6,21 +6,36 @@
 namespace GLnexus {
 // Classes for serializing BCF structures to/from RAM
 
+// Checks that the offset [x] is no larger than [y].
+// Return OK status if x <= y, Invalid otherwise.
+Status range_check(int x, size_t y);
+
 // The following three functions, prefixed with bcf_raw, are copied
 // and modified from the htslib sources. They are used to read/write
 // uncompressed BCF records from/to memory. They are declared for
 // testing purposes, they are not to be used without the proper wrappers
-// provided by the BCFWriter and BCFReader classes.
+// provided by the BCFWriter and BCFScanner classes.
 
 // Ccalculate the amount of bytes it would take to pack this bcf1 record.
 int bcf_raw_calc_packed_len(bcf1_t *v);
 
-//  Write the BCF record directly to a memory location. Return how much
-//  space was used.
-void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr);
+// Read a BCF record from memory, return the length of the packed record in [ans].
+// Return Invalid in case of error (out of bounds memory access).
+//
+// Returns:
+// 1) A BCF record
+// 2) length of memory extent read
+// 3) Status code
+Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
+                             int &ans);
 
-//  Read a BCF record from memory, return the length of the packed record in RAM.
-int bcf_raw_read_from_mem(const char *addr, bcf1_t *v);
+
+/*
+  Write the BCF record directly to a memory location. This function is
+  unsafe, it assumes that the caller allocated sufficient space, by
+  calling [bcf_raw_calc_packed_len] beforehand.
+*/
+void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr);
 
 // Return 1 if the records are the same, 0 otherwise.
 // This compares most, but not all, fields.
@@ -49,22 +64,34 @@ class BCFWriter {
     int get_num_entries() const;
 };
 
-class BCFReader {
+class BCFScanner {
  private:
     const char* buf_ = nullptr;
     size_t bufsz_;
     int current_ = 0;
 
-    BCFReader(const char* buf, size_t bufsz);
+    BCFScanner(const char* buf, size_t bufsz);
  public:
-    /// Reads BCF records from a memory buffer (without the header)
-    static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFReader>& ans);
+    /// Reads BCF records from a memory buffer (without the header). Allows peeking, and
+    /// checking if a record overlaps a range, prior to fully opening the BCF record.
+    /// The idea is to save the expensive unpack operation for records that the caller
+    /// wishes to skip.
+    static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFScanner>& ans);
 
-    ~BCFReader();
+    ~BCFScanner();
+
+    // move the cursor to the next record
+    Status next();
+
+    // check if the current record overlaps a range
+    Status overlaps(const range &rng, bool &ans);
+
+    // read the current record, return a BCF
     Status read(std::shared_ptr<bcf1_t>& ans);
 
     /// Reads a BCF header from a memory buffer
-    static Status read_header(const char* buf, int len, int& consumed, std::shared_ptr<bcf_hdr_t>& ans);
+    static Status read_header(const char* buf, int len, int& consumed,
+                              std::shared_ptr<bcf_hdr_t>& ans);
 };
 
 } // namespace GLnexus
