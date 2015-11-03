@@ -39,9 +39,12 @@ using namespace std;
 
 namespace GLnexus {
 
-Status range_check(int x, size_t y) {
+Status range_check(int x, size_t y, string errmsg) {
     if (x <= y) return Status::OK();
-    return Status::Invalid("Memory range check failed");
+    string msg = errmsg + ", memory range check failed. Reading offset ";
+    msg += to_string(x) + " in buffer of length ";
+    msg += std::to_string(y);
+    return Status::Invalid(msg.c_str());
 }
 
 // Ccalculate the amount of bytes it would take to pack this bcf1 record.
@@ -95,13 +98,13 @@ Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
     int loc = 0;
     uint32_t x[8];
 
-    S(range_check(start + 32, len));
+    S(range_check(start + 32, len, "reading header of BCF record"));
     memcpy(x, &buf[start + loc], 32);
     loc += 32;
     assert(x[0] > 0);
     x[0] -= 24; // to exclude six 32-bit integers
 
-    S(range_check(start + loc + x[0] + x[1], len));
+    S(range_check(start + loc + x[0] + x[1], len, "reading BCF record"));
     ks_resize(&v->shared, x[0]);
     ks_resize(&v->indiv, x[1]);
     memcpy(v, (char*)&x[2], 16);
@@ -125,7 +128,7 @@ Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
 // Calculate the total length of a record, without unpacking it.
 Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &ans) {
     Status s;
-    S(range_check(start + 32, len));
+    S(range_check(start + 32, len, "calculating the length of a BCF record"));
 
     uint32_t *x = (uint32_t*) &buf[start];
     assert(x[0] > 0);
@@ -139,7 +142,7 @@ Status bcf_raw_overlap(const char *buf, int start, size_t len, const range &rng,
                        bool &ans) {
     ans = false; // extra sanitation
     Status s;
-    S(range_check(start + 32, len));
+    S(range_check(start + 32, len, "checking BCF overlap"));
 
     uint32_t *x = (uint32_t*) &buf[start];
     uint32_t rid = x[2];
@@ -306,16 +309,16 @@ BCFScanner::~BCFScanner() {
     current_ = 0;
 }
 
+bool BCFScanner::valid() {
+    return (size_t)current_ < bufsz_;
+}
+
  // move the cursor to the next record
 Status BCFScanner::next() {
-    if ((size_t)current_ >= bufsz_)
-        return Status::NotFound();
     Status s;
     uint32_t reclen = 0;
     S(bcf_raw_calc_rec_len(buf_, current_, bufsz_, reclen));
     current_ += reclen;
-    if ((size_t)current_ >= bufsz_)
-        return Status::NotFound();
     return Status::OK();
 }
 

@@ -439,6 +439,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
+        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);

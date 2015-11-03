@@ -501,7 +501,7 @@ static Status scan_bucket(
     S(BCFScanner::Open(data.first, data.second, scanner));
 
     // statistics counter for BCF records
-    do {
+    while (scanner->valid()) {
         srq.nBCFRecordsRead++;
         bool flag;
         S(scanner->overlaps(query, flag));
@@ -515,12 +515,11 @@ static Status scan_bucket(
             }
             records.push_back(vt);
         }
-        s = scanner->next();
-    } while (s.ok());
-
-    if (s != StatusCode::NOT_FOUND) {
-        return s;
+        S(scanner->next());
     }
+
+    if (!s.ok())
+        return s;
     return Status::OK();
 }
 
