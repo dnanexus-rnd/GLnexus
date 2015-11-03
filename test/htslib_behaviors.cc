@@ -18,13 +18,21 @@ using namespace std;
 #define UPD(T,name,ini,del) std::unique_ptr<T, void(*)(T*)> up_##name((ini), (del)); auto name = up_##name.get();
 
 TEST_CASE("Memory range checks") {
+    // Trivial range checks
     for (int i = 0; i < 2; i++) {
-        REQUIRE(GLnexus::range_check(i * 10, 20).ok());
+        REQUIRE(GLnexus::range_check(i * 10, 20, "should work").ok());
     }
     for (int i = 2; i < 5; i++) {
-        GLnexus::Status s = GLnexus::range_check((i * 10) + 1, 20);
+        GLnexus::Status s = GLnexus::range_check((i * 10) + 1, 20, "out of bounds");
         REQUIRE(s == GLnexus::StatusCode::INVALID);
     }
+
+    // A BCF record that is too short, reading should fail
+    char buf[16];
+    int reclen = 0;
+    shared_ptr<bcf1_t> vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+    GLnexus::Status s = GLnexus::bcf_raw_read_from_mem(buf, 0, sizeof(buf), vt.get(), reclen);
+    REQUIRE(s == GLnexus::StatusCode::INVALID);
 }
 
 TEST_CASE("htslib VCF missing data representation") {
@@ -221,6 +229,8 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
         free(buf);
     }
 }
+
+
 
 TEST_CASE("htslib gVCF representation") {
     UPD(vcfFile, vcf, bcf_open("test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });

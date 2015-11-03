@@ -8,7 +8,7 @@ namespace GLnexus {
 
 // Checks that the offset [x] is no larger than [y].
 // Return OK status if x <= y, Invalid otherwise.
-Status range_check(int x, size_t y);
+Status range_check(int x, size_t y, const char *errmsg);
 
 // The following three functions, prefixed with bcf_raw, are copied
 // and modified from the htslib sources. They are used to read/write
@@ -79,6 +79,10 @@ class BCFScanner {
     static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFScanner>& ans);
 
     ~BCFScanner();
+
+    // check if the cursor is inside the buffer. If true, you can
+    // call "read".
+    bool valid();
 
     // move the cursor to the next record
     Status next();
