@@ -179,6 +179,10 @@ struct BCFKeyValueData_body {
     ActiveMetadata amd;
     std::mutex statsMutex;
     StatsRangeQuery statsRq; // statistics for range queries
+    atomic<size_t> sample_count; // number of samples in the database. could be
+                                 // obtained from the size of the current
+                                 // all-samples sampleset, but maintained here
+                                 // for convenience.
 };
 
 auto collections = { "config", "sampleset", "sample_dataset", "header", "bcf" };
@@ -289,6 +293,14 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
+
+    // initialize sample_count
+    string sampleset;
+    S(ans->all_samples_sampleset(sampleset));
+    shared_ptr<const set<string>> all_samples;
+    S(ans->sampleset_samples(sampleset, all_samples));
+    ans->body_->sample_count = all_samples->size();
+
     return Status::OK();
 }
 
@@ -477,6 +489,11 @@ Status BCFKeyValueData::new_sampleset(MetadataCache& metadata,
     return wb->commit();
 }
 
+Status BCFKeyValueData::sample_count(size_t& ans) const {
+    ans = body_->sample_count;
+    return Status::OK();
+}
+
 shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
     // return a copy of the current statistics
     std::lock_guard<std::mutex> lock(body_->statsMutex);
@@ -621,7 +638,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
 }
 
 // BCFKeyValueData::sampleset_range optimized implementation: if the sample
-// set covers >=25% of the samples in the database, produces RangeBCFIterators
+// set covers >=10% of the samples in the database, produces RangeBCFIterators
 // that use underlying KeyValue::Iterators instead of repeated point lookups
 // (as in the base implementation). One iterator per underlying storage bucket
 // is produced.
@@ -753,8 +770,15 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
     // resolve samples and datasets
     S(metadata.sampleset_datasets(sampleset, samples, datasets));
 
-    // TODO: dispatch to sampleset_range_base if the sample set is "too
-    // small". need a way to know N of the whole database
+    // Heuristic: if the desired sample set has fewer than 10% of the samples
+    // in the database, then dispatch to the repeated-lookup strategy of
+    // sampleset_range_base. This heuristic is wrong if the desired samples
+    // are actually contiguous in the database, though.
+    size_t total_sample_count;
+    S(metadata.sample_count(total_sample_count));
+    if (samples->size() == 1 || samples->size() * 10 < total_sample_count) {
+        return sampleset_range_base(metadata, sampleset, pos, samples, datasets, iterators);
+    }
 
     // get a KeyValue::Reader so that all iterators read from the same
     // snapshot (this isn't strictly necessary since datasets are immutable,
@@ -1055,6 +1079,9 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
         body_->amd.erase(dataset, samples_out);
 
         retval = wb->commit();
+        if (retval.ok()) {
+            body_->sample_count++;
+        }
     }
 
     // good path

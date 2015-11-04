@@ -243,8 +243,12 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     unique_ptr<MetadataCache> cache;
     REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
+    size_t ct;
 
     SECTION("empty all_samples_sampleset") {
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 0);
+
         shared_ptr<const set<string>> all;
         Status s = cache->sampleset_samples("*", all);
         REQUIRE(s == StatusCode::NOT_FOUND);
@@ -267,6 +271,9 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
         Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
+
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 1);
 
         // check that internal version number of all-samples sampleset was
         // incremented
@@ -299,6 +306,9 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
         REQUIRE(s.ok());
 
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 1);
+
         KeyValue::CollectionHandle coll;
         REQUIRE(db.collection("sampleset", coll).ok());
         string version;
@@ -322,6 +332,9 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
         s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
         REQUIRE(s.ok());
+
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 2);
 
         REQUIRE(db.get(coll, "*", version).ok());
         REQUIRE(version == "2");
@@ -648,6 +661,10 @@ TEST_CASE("BCFData::sampleset_range") {
     s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
     REQUIRE(s.ok());
 
+    size_t ct;
+    REQUIRE(cache->sample_count(ct).ok());
+    REQUIRE(ct == 2);
+
     // check * version number
     KeyValue::CollectionHandle coll;
     REQUIRE(db.collection("sampleset", coll).ok());
@@ -809,6 +826,10 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "3", "test/data/sampleset_range3.gvcf", samples_imported);
     REQUIRE(s.ok());
+
+    size_t ct;
+    REQUIRE(cache->sample_count(ct).ok());
+    REQUIRE(ct == 3);
 
     string sampleset;
     s = cache->all_samples_sampleset(sampleset);
