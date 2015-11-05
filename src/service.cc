@@ -325,7 +325,6 @@ class BCFFileSink {
     const string& filename_;
     bcf_hdr_t* header_;
     vcfFile *outfile_;;
-    bool write_vcf = false;
 
     BCFFileSink(const std::string& filename, bcf_hdr_t* hdr, vcfFile* outfile)
         : filename_(filename), header_(hdr), outfile_(outfile)
@@ -335,15 +334,18 @@ public:
     static Status Open(const string& filename,
                        bcf_hdr_t* hdr,
                        unique_ptr<BCFFileSink>& ans,
-                       bool write_vcf=false) {
+                       const string output_format) {
 
         vcfFile* outfile;
-        if (write_vcf) {
+        if (output_format == "VCF") {
             // open as (uncompressed) vcf
             outfile = vcf_open(filename.c_str(), "w");
-        } else {
+        } else if (output_format == "BCF") {
             // open as bcf
             outfile = bcf_open(filename.c_str(), "wb");
+        } else {
+            cout << "UNKNOWN OUTPUT FORMAT!" << endl;
+            return Status::Invalid("BCFFileSink::Open: Invalid output format");
         }
         if (!outfile) {
             return Status::IOError("failed to open BCF file for writing", filename);
@@ -378,7 +380,7 @@ public:
     }
 };
 
-Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses, bool write_vcf/*= false*/) {
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples;
     S(body_->metadata_->sampleset_samples(sampleset, samples));
@@ -391,7 +393,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     // open output BCF file
     unique_ptr<BCFFileSink> bcf_out;
-    S(BCFFileSink::Open(filename, hdr.get(), bcf_out, write_vcf));
+    S(BCFFileSink::Open(filename, hdr.get(), bcf_out, cfg.output_format));
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;

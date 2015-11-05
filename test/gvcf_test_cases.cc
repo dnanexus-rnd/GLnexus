@@ -4,20 +4,29 @@
 #include "types.h"
 #include "utils.cc"
 #include "catch.hpp"
+#include "sys/stat.h"
 #include "yaml-cpp/yaml.h"
 using namespace std;
 using namespace GLnexus;
 
 #define test_contigs {{"A", 0},}
 
-/// CuratedCase is the overarching class for unit-testing
+/// GVCFTestCase is the overarching class for unit-testing
 /// of a curated "case" for the glnexus workflow.
 /// It handles parsing of a yaml file with information on
 /// gvcf input. It supports comparing output of the GLnexus workflow
 /// with the expected unified_sites and joint genotype output.
+class GVCFTestCase {
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("GVCFTestCase::load_yml: ", msg);
 
-class CuratedCase {
-    #define V(pred,msg) if (!(pred)) return Status::Invalid("CuratedCase::load_yml: " msg)
+    // Shortened verion of file path for VCFData::Open method
+    const string INPUT_ROOT_DIR_SHORT = "special_cases/";
+
+    // Root of folder in which GVCFTestCases input files
+    const string INPUT_ROOT_DIR = "test/data/special_cases/";
+
+    // Name of temp dir to store output
+    const string TEMP_DIR = "tmp/";
 
     // Name of curated case
     string name;
@@ -27,6 +36,9 @@ class CuratedCase {
 
     // Filename of truth vcf
     string truth_vcf_fn;
+
+    // Header text (for each input gvcf & output vcf)
+    string header;
 
     // Parsed "truth" unfiied sites
     vector<unified_site> truth_sites;
@@ -40,11 +52,27 @@ class CuratedCase {
     // Service for algorithmic procedures
     unique_ptr<Service> svc;
 
+    // Creates the folder based on given path
+    Status create_folder(const string path) {
+        int status = mkdir(path.c_str(), S_IRWXU);
+
+        // Failed to create folder and it doesn't already exist
+        if (status && errno != EEXIST) {
+            return Status::Invalid("Failed to create folder", path);
+        }
+
+        return Status::OK();
+    }
+
     // Write out a gvcf based on information parsed from yaml file
     Status write_gvcfs(const YAML::Node& n_gvcfs, bool is_input) {
 
         Status s;
         V(n_gvcfs.IsSequence(), "gvcf YAML node is not a sequence at top level.");
+
+        string temp_dir_path = INPUT_ROOT_DIR + name + "/" + TEMP_DIR;
+        create_folder(temp_dir_path);
+
         // Iterate through sequence of input_gvcf
         for(YAML::const_iterator gvcf = n_gvcfs.begin(); gvcf != n_gvcfs.end(); ++gvcf) {
             V(gvcf->IsMap(), "input_gvcf is not a map");
@@ -55,19 +83,26 @@ class CuratedCase {
                 string vcf_body = it->second.as<string>();
 
                 // Write each gvcf to file
-                string gvcf_out_path = "test/data/special_cases/" + name + "/" + fn;
+                string gvcf_out_path = temp_dir_path + fn;
                 ofstream fout;
                 fout.open(gvcf_out_path);
-                fout << vcf_body;
+
+                // header is shared amongst all input gvcfs
+                if (is_input)
+                    fout << header << "\t" << vcf_body;
+                else
+                    fout << vcf_body;
+
                 fout.close();
 
                 // Track gvcf filename fpr input_gvcfs
                 if (is_input){
                     // the structure test/data is embedded in VCFData::Open
-                    input_gvcfs.insert("special_cases/" + name + "/" + fn);
+                    string short_gvcf_path = INPUT_ROOT_DIR_SHORT + name + "/" + TEMP_DIR+ fn;
+                    input_gvcfs.insert(short_gvcf_path);
                 } else {
                     // Specify the full filepath
-                    truth_vcf_fn = "test/data/special_cases/" + name + "/" + fn;
+                    truth_vcf_fn = temp_dir_path + fn;
                 }
 
             } // Close iterator over gvcf map
@@ -96,8 +131,8 @@ public:
 
     // Constructor takes in the name of the curated case, used
     // for locating input yaml file; by convention, the yaml file is found
-    // at test/data/special_cases/<name>/<name>.yml
-    CuratedCase(const string _name): name(_name) {
+    // at INPUT_ROOT_DIR/<name>/<name>.yml
+    GVCFTestCase(const string _name): name(_name) {
         cout << "====================================" << endl;
         cout << "Start of test for curated case: " << name << endl;
         cout << "====================================" << endl;
@@ -108,9 +143,13 @@ public:
     Status load_yml() {
         Status s;
 
-        string path = "test/data/special_cases/" + name + "/" + name + ".yml";
+        string path = INPUT_ROOT_DIR + name + "/" + name + ".yml";
         YAML::Node yaml = YAML::LoadFile(path);
         V(yaml.IsMap(), "not a map at top level");
+
+        const auto n_header = yaml["header"];
+        V(n_header.IsScalar(), "header string invalid");
+        header = n_header.Scalar();
 
         // write gvcf entries into flat file
         const auto n_gvcfs = yaml["input"];
@@ -172,12 +211,12 @@ public:
         REQUIRE(!sites.empty());
 
         consolidated_loss losses;
-        string out_fn = "test/data/special_cases/" + name + "/output.vcf";
-        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, out_fn, losses, true);
+        string out_fn = INPUT_ROOT_DIR + name + "/" + TEMP_DIR + "output.vcf";
+        s = svc->genotype_sites(genotyper_config("VCF"), string("<ALL>"), sites, out_fn, losses);
 
         REQUIRE(s.ok());
 
-        string diff_fn = "test/data/special_cases/" + name + "/output.diff";
+        string diff_fn = INPUT_ROOT_DIR + name + "/" + TEMP_DIR + "/output.diff";
 
         string diff_cmd = "diff " + out_fn + " " + truth_vcf_fn + " > " + diff_fn;
 
@@ -199,14 +238,24 @@ public:
     }
 
     Status cleanup() {
-        // TO-DO: delete intermediate gvcf/vcf files written to disk
-        return Status::OK();
+        string temp_dir_path = INPUT_ROOT_DIR + name + "/"+ TEMP_DIR;
+        int retval = system(("rm -rf " + temp_dir_path).c_str());
+        if (retval == 0)
+            return Status::OK();
+        else
+            return Status::Invalid("Failed to remove directory", temp_dir_path);
     }
 };
 
 TEST_CASE("trim_input") {
-    CuratedCase trim_input_case("trim_input");
-    trim_input_case.load_yml();
-    trim_input_case.check_unify_sites();
-    trim_input_case.check_genotypes();
+    GVCFTestCase trim_input_case("trim_input");
+    Status s;
+    s = trim_input_case.load_yml();
+    REQUIRE(s.ok());
+    s = trim_input_case.check_unify_sites();
+    REQUIRE(s.ok());
+    s = trim_input_case.check_genotypes();
+    REQUIRE(s.ok());
+    // s = trim_input_case.cleanup();
+    // REQUIRE(s.ok());
 }

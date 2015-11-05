@@ -217,7 +217,7 @@ if (test)
                  test/types.cc
                  test/genotyper.cc
                  test/service.cc
-                 test/curated_cases.cc
+                 test/gvcf_test_cases.cc
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc
                  test/compare_iter.cc)

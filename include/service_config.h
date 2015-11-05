@@ -18,7 +18,12 @@ struct genotyper_config {
     /// FORMAT field to consult for reference depth in gVCF reference records
     std::string ref_dp_format = "MIN_DP";
 
+    /// Output format (default = bcf), choices = "BCF", "VCF"
+    std::string output_format = "BCF";
+
     genotyper_config() = default;
+
+    genotyper_config(std::string _output_format) : output_format(_output_format) {}
 };
 
 }
