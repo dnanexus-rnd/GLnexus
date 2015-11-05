@@ -1007,7 +1007,55 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(records.empty());
     REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 
-    // TODO: need a test with only a subset of the samples
+    // now test with a subset of the samples
+    REQUIRE(data->new_sampleset(*cache, "two", set<string>{"HX0002", "HX0003"}).ok());
+
+    rng = range(0, 199899, 199900);
+    s = data->sampleset_range(*cache, "two", rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(*samples == set<string>({"HX0002", "HX0003"}));
+    REQUIRE(*datasets == set<string>({"2", "3"}));
+    REQUIRE(iterators.size() == 2);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(dataset == "3");
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.empty());
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(dataset == "3");
+    REQUIRE(records.size() == 2);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    // and finally just one sample (tests the code path using sampleset_range_base)
+    REQUIRE(data->new_sampleset(*cache, "one", set<string>{"HX0002"}).ok());
+
+    rng = range(0, 299899, 299900);
+    s = data->sampleset_range(*cache, "one", rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(*samples == set<string>({"HX0002"}));
+    REQUIRE(*datasets == set<string>({"2"}));
+    // we only get one iterator, not iterators for two buckets, because
+    // sampleset_range_base is used
+    REQUIRE(iterators.size() == 1);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 2);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 }
 
 TEST_CASE("BCFKeyValueData compare iterator implementations") {
