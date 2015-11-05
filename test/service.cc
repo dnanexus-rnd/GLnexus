@@ -145,6 +145,11 @@ public:
         return Status::NotImplemented();
     }
 
+    Status sample_count(size_t& ans) const override {
+        ans = sample_datasets_.size();
+        return Status::OK();
+    }
+
     Status sample_dataset(const string& sample, string& ans) const override {
         auto p = sample_datasets_.find(sample);
         if (p == sample_datasets_.end()) {

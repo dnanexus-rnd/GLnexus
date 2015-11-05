@@ -50,6 +50,9 @@ public:
     /// (but one could call all_samples_sampleset again to get a different
     /// sample set including them).
     virtual Status all_samples_sampleset(std::string& ans) = 0;
+
+    /// Return the count of all samples in the database.
+    virtual Status sample_count(size_t& ans) const = 0;
 };
 
 
@@ -71,6 +74,7 @@ public:
                              std::shared_ptr<const std::set<std::string> >& ans) const override;
     Status sample_dataset(const std::string& sample, std::string& ans) const override;
     Status all_samples_sampleset(std::string& ans) override;
+    Status sample_count(size_t& ans) const override;
 
     const std::vector<std::pair<std::string,size_t> >& contigs() const;
     Status sampleset_datasets(const std::string& sampleset,

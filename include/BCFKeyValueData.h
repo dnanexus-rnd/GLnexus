@@ -38,6 +38,10 @@ public:
                              std::shared_ptr<const std::set<std::string> >& ans) const override;
     Status sample_dataset(const std::string& sample, std::string& ans) const override;
     Status all_samples_sampleset(std::string& ans) override;
+    Status sample_count(size_t& ans) const override;
+
+    Status new_sampleset(MetadataCache& metadata, const std::string& sampleset,
+                         const std::set<std::string>& samples);
 
     // statistics
     std::shared_ptr<StatsRangeQuery> getRangeStats();
