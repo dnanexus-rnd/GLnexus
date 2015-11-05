@@ -340,6 +340,43 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(sampleset == sampleset2);
     }
 
+    SECTION("new_sampleset") {
+        Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        s = data->new_sampleset(*cache, "x", set<string>{"HX0001"});
+        REQUIRE(s.ok());
+
+        shared_ptr<const set<string>> samples;
+        s = cache->sampleset_samples("x", samples);
+        REQUIRE(s.ok());
+        REQUIRE(*samples == set<string>{"HX0001"});
+
+        s = data->new_sampleset(*cache, "y", set<string>{"HX0001","HX0002"});
+        REQUIRE(s.ok());
+
+        s = cache->sampleset_samples("y", samples);
+        REQUIRE(s.ok());
+        REQUIRE(*samples == set<string>({"HX0001","HX0002"}));
+
+        // empty samples
+        s = data->new_sampleset(*cache, "z", set<string>());
+        REQUIRE(s == StatusCode::INVALID);
+
+        // nonexistent sample
+        s = data->new_sampleset(*cache, "z", set<string>{"HX0001","hX0002"});
+        REQUIRE(s == StatusCode::NOT_FOUND);
+
+        // duplicate sample set
+        s = data->new_sampleset(*cache, "x", set<string>{"HX0001","HX0002"});
+        REQUIRE(s == StatusCode::EXISTS);
+
+        // TODO: test invalid sample set names
+    }
+
     SECTION("incompatible contigs") {
         db.wipe();
         contigs = { make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000000) };

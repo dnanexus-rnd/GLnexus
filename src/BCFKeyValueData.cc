@@ -431,6 +431,52 @@ Status BCFKeyValueData::all_samples_sampleset(string& ans) {
     }
 }
 
+Status BCFKeyValueData::new_sampleset(MetadataCache& metadata,
+                                      const string& sampleset,
+                                      const set<string>& samples) {
+    // TODO: validation regexp for sampleset
+    if (samples.empty()) {
+        return Status::Invalid("BCFKeyValueData::new_sampleset: no samples provided");
+    }
+
+    // Prepare a write batch for the new sample set. While doing so, verify
+    // that all the samples actually exist. We do this before we take the
+    // mutex, thus assuming that samples cannot be deleted.
+    Status s;
+    string all_samples_id;
+    S(metadata.all_samples_sampleset(all_samples_id));
+    shared_ptr<const set<string>> all_samples;
+    S(metadata.sampleset_samples(all_samples_id, all_samples));
+
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("sampleset",coll));
+    unique_ptr<KeyValue::WriteBatch> wb;
+    S(body_->db->begin_writes(wb));
+    S(wb->put(coll, sampleset, string()));
+
+    for (const string& sample : samples) {
+        if (all_samples->find(sample) == all_samples->end()) {
+            return Status::NotFound("BCFKeyValueData::new_sampleset: sample does not exist", sample);
+        }
+        S(wb->put(coll, sampleset + string(1,'\0') + sample, string()));
+    }
+
+    // Now take the mutex
+    lock_guard<mutex> lock(body_->mutex);
+
+    // verify the sample set doesn't already exist
+    shared_ptr<const set<string>> dummy;
+    s = metadata.sampleset_samples(sampleset, dummy);
+    if (s.ok()) {
+        return Status::Exists("BCFKeyValueData::new_sampleset: sample set already exists", sampleset);
+    } else if (s != StatusCode::NOT_FOUND) {
+        return s;
+    }
+
+    // commit the new sample set
+    return wb->commit();
+}
+
 shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
     // return a copy of the current statistics
     std::lock_guard<std::mutex> lock(body_->statsMutex);
