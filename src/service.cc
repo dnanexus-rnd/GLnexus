@@ -331,20 +331,19 @@ class BCFFileSink {
         {}
 
 public:
-    static Status Open(const string& filename,
+    static Status Open(const genotyper_config& cfg,
+                       const string& filename,
                        bcf_hdr_t* hdr,
-                       unique_ptr<BCFFileSink>& ans,
-                       const string output_format) {
+                       unique_ptr<BCFFileSink>& ans) {
 
         vcfFile* outfile;
-        if (output_format == "VCF") {
+        if (cfg.output_format == GLnexusOutputFormat::VCF) {
             // open as (uncompressed) vcf
             outfile = vcf_open(filename.c_str(), "w");
-        } else if (output_format == "BCF") {
+        } else if (cfg.output_format == GLnexusOutputFormat::BCF) {
             // open as bcf
             outfile = bcf_open(filename.c_str(), "wb");
         } else {
-            cout << "UNKNOWN OUTPUT FORMAT!" << endl;
             return Status::Invalid("BCFFileSink::Open: Invalid output format");
         }
         if (!outfile) {
@@ -393,7 +392,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     // open output BCF file
     unique_ptr<BCFFileSink> bcf_out;
-    S(BCFFileSink::Open(filename, hdr.get(), bcf_out, cfg.output_format));
+    S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;

@@ -1,32 +1,43 @@
 readme: |
-  This is a README
-  More readme lines
+  ## Why this is a problematic case
+  The input GVCF includes additional INDELs allele(s) (often longer DELs) as compared to the unified site. The input record REF thus differ from the unified site REF (commonly due to more reference padding for representing the longer DEL). Disagreement of REF alleles causes GLnexus to render all ALTs as lost in naive interpretations.
 
-header : |-
-    ##fileformat=VCFv4.2
-    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-    ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
-    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
-    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
-    ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
-    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
-    ##FILTER=<ID=PASS,Description="All filters passed">
-    ##contig=<ID=A,length=1000000>
-    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  ## Overcoming this problem
+  For every ALT allele, we look back to the REF and represent the allele in a minimal fashion (by stripping away unnecessary left or right reference padding for this allele). This allows for efficient "unification" of sites where more padded representations can be interpreted as equivalent to the most compact representation
+  We need to make sure that the more padded version (found in the original record) is still preserved in the unified_site.unification structure so that the lookup for allele mapping can be done accurately.
+
+  ## Included example
+  A.gvcf = problematic sample
+  B.gvcf; C.gvcf; D.gvcf = samples to suggest compact unified_site
+
+  ## Explanation on included sample
+  Sample A has 2 observed ATT -> AT allele, which can be more compactly represented as AT -> A. The more compact representation is the expected representation in the unified_site.
 
 input:
-  - A.gvcf: |
-      A
-      A	1000	.	ATT	A,AT,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	2/2:1,2,49,0:52:99:1404,1351,1457,127,104,0,1392,1380,147,1412:1,0,44,5
-  - B.gvcf: |
-      B
-      A	1000	rs33919161	AT	A,<NON_REF>	1337.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:1,49,0:50:99:1377,121,0,1380,147,1405:1,0,44,5
-  - C.gvcf: |
-      C
-      A	1000	rs33919161	AT	A,<NON_REF>	1262.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:1,47,0:48:99:1302,115,0,1305,141,1331:1,0,40,7
-  - D.gvcf: |
-      D
-      A	1000	rs33919161	AT	A,<NON_REF>	1473.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,53,0:53:99:1516,159,0,1516,159,1516:0,0,44,9
+  header: |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	1000	.	ATT	A,AT,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	2/2:1,2,49,0:52:99:1404,1351,1457,127,104,0,1392,1380,147,1412:1,0,44,5
+    - B.gvcf: |
+        B
+        A	1000	rs33919161	AT	A,<NON_REF>	1337.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:1,49,0:50:99:1377,121,0,1380,147,1405:1,0,44,5
+    - C.gvcf: |
+        C
+        A	1000	rs33919161	AT	A,<NON_REF>	1262.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:1,47,0:48:99:1302,115,0,1305,141,1331:1,0,40,7
+    - D.gvcf: |
+        D
+        A	1000	rs33919161	AT	A,<NON_REF>	1473.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,53,0:53:99:1516,159,0,1516,159,1516:0,0,44,9
 
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1001}

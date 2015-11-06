@@ -5,6 +5,13 @@
 
 namespace GLnexus {
 
+enum class GLnexusOutputFormat {
+    /// Compressed bcf (default option)
+    BCF,
+
+    /// Uncompressed vcf (for ease of comparison in small cases)
+    VCF,
+};
 struct genotyper_config {
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
@@ -19,11 +26,11 @@ struct genotyper_config {
     std::string ref_dp_format = "MIN_DP";
 
     /// Output format (default = bcf), choices = "BCF", "VCF"
-    std::string output_format = "BCF";
+    GLnexusOutputFormat output_format = GLnexusOutputFormat::BCF;
 
     genotyper_config() = default;
 
-    genotyper_config(std::string _output_format) : output_format(_output_format) {}
+    genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
 };
 
 }

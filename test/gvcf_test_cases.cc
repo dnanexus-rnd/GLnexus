@@ -2,6 +2,7 @@
 #include <fstream>
 #include "service.h"
 #include "types.h"
+#include "service_config.h"
 #include "utils.cc"
 #include "catch.hpp"
 #include "sys/stat.h"
@@ -19,14 +20,11 @@ using namespace GLnexus;
 class GVCFTestCase {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("GVCFTestCase::load_yml: ", msg);
 
-    // Shortened verion of file path for VCFData::Open method
-    const string INPUT_ROOT_DIR_SHORT = "special_cases/";
-
     // Root of folder in which GVCFTestCases input files
     const string INPUT_ROOT_DIR = "test/data/special_cases/";
 
     // Name of temp dir to store output
-    const string TEMP_DIR = "tmp/";
+    const string TEMP_DIR = "/tmp/GLnexus";
 
     // Name of curated case
     string name;
@@ -34,8 +32,11 @@ class GVCFTestCase {
     // Filenames of input gvcfs
     set<string> input_gvcfs;
 
+    // Path to temp directory where files are written to
+    string temp_dir_path;
+
     // Filename of truth vcf
-    string truth_vcf_fn;
+    string truth_vcf_path;
 
     // Header text (for each input gvcf & output vcf)
     string header;
@@ -52,7 +53,8 @@ class GVCFTestCase {
     // Service for algorithmic procedures
     unique_ptr<Service> svc;
 
-    // Creates the folder based on given path
+    // Creates the folder based on given path, do not raise
+    // error if folder already exists
     Status create_folder(const string path) {
         int status = mkdir(path.c_str(), S_IRWXU);
 
@@ -69,9 +71,6 @@ class GVCFTestCase {
 
         Status s;
         V(n_gvcfs.IsSequence(), "gvcf YAML node is not a sequence at top level.");
-
-        string temp_dir_path = INPUT_ROOT_DIR + name + "/" + TEMP_DIR;
-        create_folder(temp_dir_path);
 
         // Iterate through sequence of input_gvcf
         for(YAML::const_iterator gvcf = n_gvcfs.begin(); gvcf != n_gvcfs.end(); ++gvcf) {
@@ -95,14 +94,12 @@ class GVCFTestCase {
 
                 fout.close();
 
-                // Track gvcf filename fpr input_gvcfs
                 if (is_input){
-                    // the structure test/data is embedded in VCFData::Open
-                    string short_gvcf_path = INPUT_ROOT_DIR_SHORT + name + "/" + TEMP_DIR+ fn;
-                    input_gvcfs.insert(short_gvcf_path);
+                    // Track gvcf filename fpr input_gvcfs
+                    input_gvcfs.insert(fn);
                 } else {
                     // Specify the full filepath
-                    truth_vcf_fn = temp_dir_path + fn;
+                    truth_vcf_path = gvcf_out_path;
                 }
 
             } // Close iterator over gvcf map
@@ -147,12 +144,18 @@ public:
         YAML::Node yaml = YAML::LoadFile(path);
         V(yaml.IsMap(), "not a map at top level");
 
-        const auto n_header = yaml["header"];
+        const auto n_input = yaml["input"];
+        const auto n_header = n_input["header"];
         V(n_header.IsScalar(), "header string invalid");
         header = n_header.Scalar();
 
+        // Stage temp folders for output
+        S(create_folder(TEMP_DIR));
+        temp_dir_path = TEMP_DIR + name + "/";
+        S(create_folder(temp_dir_path));
+
         // write gvcf entries into flat file
-        const auto n_gvcfs = yaml["input"];
+        const auto n_gvcfs = n_input["body"];
         S(write_gvcfs(n_gvcfs, true));
 
         // parse truth unified_sites
@@ -169,7 +172,7 @@ public:
     // the expected "truth"
     Status check_unify_sites() {
         Status s;
-        S(VCFData::Open(input_gvcfs, data));
+        S(VCFData::Open(input_gvcfs, data, temp_dir_path));
         s = Service::Start(*data, *data, svc);
         REQUIRE(s.ok());
 
@@ -211,14 +214,14 @@ public:
         REQUIRE(!sites.empty());
 
         consolidated_loss losses;
-        string out_fn = INPUT_ROOT_DIR + name + "/" + TEMP_DIR + "output.vcf";
-        s = svc->genotype_sites(genotyper_config("VCF"), string("<ALL>"), sites, out_fn, losses);
+        string out_vcf_path = temp_dir_path + "output.vcf";
+        s = svc->genotype_sites(genotyper_config(GLnexusOutputFormat::VCF), string("<ALL>"), sites, out_vcf_path, losses);
 
         REQUIRE(s.ok());
 
-        string diff_fn = INPUT_ROOT_DIR + name + "/" + TEMP_DIR + "/output.diff";
+        string diff_out_path = temp_dir_path +  "output.diff";
 
-        string diff_cmd = "diff " + out_fn + " " + truth_vcf_fn + " > " + diff_fn;
+        string diff_cmd = "diff " + out_vcf_path + " " + truth_vcf_path + " > " + diff_out_path;
 
         int retval = system(diff_cmd.c_str());
         REQUIRE (WIFEXITED(retval));
@@ -228,7 +231,8 @@ public:
             cout << "@@@@@ Output vcf and truth agrees!" << endl;
         } else {
             cout << "^^^^^ Output vcf and truth differs. Diff file: " << endl;
-            retval = system(("cat " + diff_fn).c_str());
+            retval = system(("cat " + diff_out_path).c_str());
+            REQUIRE(retval == 0);
         }
 
         cout << "++++++++++++++++++++++++++++++++++++" << endl;
@@ -238,24 +242,28 @@ public:
     }
 
     Status cleanup() {
-        string temp_dir_path = INPUT_ROOT_DIR + name + "/"+ TEMP_DIR;
         int retval = system(("rm -rf " + temp_dir_path).c_str());
         if (retval == 0)
             return Status::OK();
         else
             return Status::Invalid("Failed to remove directory", temp_dir_path);
     }
+
+    Status perform_gvcf_test() {
+        Status s;
+        s = this->load_yml();
+        REQUIRE(s.ok());
+        s = this->check_unify_sites();
+        REQUIRE(s.ok());
+        s = this->check_genotypes();
+        REQUIRE(s.ok());
+        s = this->cleanup();
+        REQUIRE(s.ok());
+        return Status::OK();
+    }
 };
 
 TEST_CASE("trim_input") {
     GVCFTestCase trim_input_case("trim_input");
-    Status s;
-    s = trim_input_case.load_yml();
-    REQUIRE(s.ok());
-    s = trim_input_case.check_unify_sites();
-    REQUIRE(s.ok());
-    s = trim_input_case.check_genotypes();
-    REQUIRE(s.ok());
-    // s = trim_input_case.cleanup();
-    // REQUIRE(s.ok());
+    trim_input_case.perform_gvcf_test();
 }

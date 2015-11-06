@@ -21,8 +21,7 @@ class VCFData : public Metadata, public BCFData {
 
     VCFData() {}
 
-    static Status load_vcf(const string& name, vcf_data_t& ans) {
-        string path = "test/data/" + name;
+    static Status load_vcf(const string& path, vcf_data_t& ans) {
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(path.c_str(), "r"),
                                                    [](vcfFile* f) { bcf_close(f); });
         if (!vcf) {
@@ -62,12 +61,13 @@ class VCFData : public Metadata, public BCFData {
     }
 
 public:
-    static Status Open(const set<string> names, unique_ptr<VCFData>& ans) {
+    static Status Open(const set<string> names, unique_ptr<VCFData>& ans, const string path="test/data/") {
         Status s;
         map<string,vcf_data_t> datasets;
         for (const auto& nm : names) {
             vcf_data_t d;
-            s = load_vcf(nm, d);
+            string f_path = path + nm;
+            s = load_vcf(f_path, d);
             if (s.bad()) return s;
 
             datasets[nm.substr(0,nm.find_last_of("."))] = d;
