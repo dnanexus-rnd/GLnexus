@@ -24,7 +24,7 @@ class GVCFTestCase {
     const string INPUT_ROOT_DIR = "test/data/special_cases/";
 
     // Name of temp dir to store output
-    const string TEMP_DIR = "/tmp/GLnexus";
+    const string TEMP_DIR = "/tmp/GLnexus/";
 
     // Name of curated case
     string name;
@@ -266,4 +266,24 @@ public:
 TEST_CASE("trim_input") {
     GVCFTestCase trim_input_case("trim_input");
     trim_input_case.perform_gvcf_test();
+}
+
+TEST_CASE("join_gvcf") {
+    GVCFTestCase join_gvcf_case("join_gvcf");
+    join_gvcf_case.perform_gvcf_test();
+}
+
+TEST_CASE("join_vcf") {
+    GVCFTestCase join_vcf_case("join_vcf");
+    join_vcf_case.perform_gvcf_test();
+}
+
+TEST_CASE("overlap_gvcf") {
+    GVCFTestCase overlap_gvcf_case("overlap_gvcf");
+    overlap_gvcf_case.perform_gvcf_test();
+}
+
+TEST_CASE("inconsistent_trim") {
+    GVCFTestCase inconsistent_trim_case("inconsistent_trim");
+    inconsistent_trim_case.perform_gvcf_test();
 }
