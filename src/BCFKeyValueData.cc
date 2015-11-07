@@ -179,6 +179,10 @@ struct BCFKeyValueData_body {
     ActiveMetadata amd;
     std::mutex statsMutex;
     StatsRangeQuery statsRq; // statistics for range queries
+    atomic<size_t> sample_count; // number of samples in the database. could be
+                                 // obtained from the size of the current
+                                 // all-samples sampleset, but maintained here
+                                 // for convenience.
 };
 
 auto collections = { "config", "sampleset", "sample_dataset", "header", "bcf" };
@@ -289,6 +293,14 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
     ans->body_->header_cache = make_unique<BCFHeaderCache>(BCF_HEADER_CACHE_SIZE);
+
+    // initialize sample_count
+    string sampleset;
+    S(ans->all_samples_sampleset(sampleset));
+    shared_ptr<const set<string>> all_samples;
+    S(ans->sampleset_samples(sampleset, all_samples));
+    ans->body_->sample_count = all_samples->size();
+
     return Status::OK();
 }
 
@@ -431,6 +443,57 @@ Status BCFKeyValueData::all_samples_sampleset(string& ans) {
     }
 }
 
+Status BCFKeyValueData::new_sampleset(MetadataCache& metadata,
+                                      const string& sampleset,
+                                      const set<string>& samples) {
+    // TODO: validation regexp for sampleset
+    if (samples.empty()) {
+        return Status::Invalid("BCFKeyValueData::new_sampleset: no samples provided");
+    }
+
+    // Prepare a write batch for the new sample set. While doing so, verify
+    // that all the samples actually exist. We do this before we take the
+    // mutex, thus assuming that samples cannot be deleted.
+    Status s;
+    string all_samples_id;
+    S(metadata.all_samples_sampleset(all_samples_id));
+    shared_ptr<const set<string>> all_samples;
+    S(metadata.sampleset_samples(all_samples_id, all_samples));
+
+    KeyValue::CollectionHandle coll;
+    S(body_->db->collection("sampleset",coll));
+    unique_ptr<KeyValue::WriteBatch> wb;
+    S(body_->db->begin_writes(wb));
+    S(wb->put(coll, sampleset, string()));
+
+    for (const string& sample : samples) {
+        if (all_samples->find(sample) == all_samples->end()) {
+            return Status::NotFound("BCFKeyValueData::new_sampleset: sample does not exist", sample);
+        }
+        S(wb->put(coll, sampleset + string(1,'\0') + sample, string()));
+    }
+
+    // Now take the mutex
+    lock_guard<mutex> lock(body_->mutex);
+
+    // verify the sample set doesn't already exist
+    shared_ptr<const set<string>> dummy;
+    s = metadata.sampleset_samples(sampleset, dummy);
+    if (s.ok()) {
+        return Status::Exists("BCFKeyValueData::new_sampleset: sample set already exists", sampleset);
+    } else if (s != StatusCode::NOT_FOUND) {
+        return s;
+    }
+
+    // commit the new sample set
+    return wb->commit();
+}
+
+Status BCFKeyValueData::sample_count(size_t& ans) const {
+    ans = body_->sample_count;
+    return Status::OK();
+}
+
 shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
     // return a copy of the current statistics
     std::lock_guard<std::mutex> lock(body_->statsMutex);
@@ -458,7 +521,7 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     // Parse the header
     shared_ptr<bcf_hdr_t> ans;
     int consumed;
-    S(BCFReader::read_header(data.c_str(), data.size(), consumed, ans));
+    S(BCFScanner::read_header(data.c_str(), data.size(), consumed, ans));
     hdr = ans;
 
     // Memoize it
@@ -497,28 +560,29 @@ static Status scan_bucket(
     vector<shared_ptr<bcf1_t> >& records)
 {
     Status s;
-    unique_ptr<BCFReader> reader;
-    S(BCFReader::Open(data.first, data.second, reader));
+    unique_ptr<BCFScanner> scanner;
+    S(BCFScanner::Open(data.first, data.second, scanner));
 
     // statistics counter for BCF records
-    shared_ptr<bcf1_t> vt;
-    while ((s = reader->read(vt)).ok()) {
-        assert(vt);
+    while (scanner->valid()) {
         srq.nBCFRecordsRead++;
-        range vt_rng(vt);
-        if (query.overlaps(vt_rng)) {
+        bool flag;
+        S(scanner->overlaps(query, flag));
+
+        if (flag) {
+            shared_ptr<bcf1_t> vt;
+            S(scanner->read(vt));
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
                 return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
                                        dataset + "@" + query.str());
             }
             records.push_back(vt);
         }
-        vt.reset(); // important! otherwise reader overwrites the stored copy.
+        S(scanner->next());
     }
 
-    if (s != StatusCode::NOT_FOUND) {
+    if (!s.ok())
         return s;
-    }
     return Status::OK();
 }
 
@@ -574,7 +638,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
 }
 
 // BCFKeyValueData::sampleset_range optimized implementation: if the sample
-// set covers >=25% of the samples in the database, produces RangeBCFIterators
+// set covers >=10% of the samples in the database, produces RangeBCFIterators
 // that use underlying KeyValue::Iterators instead of repeated point lookups
 // (as in the base implementation). One iterator per underlying storage bucket
 // is produced.
@@ -588,11 +652,11 @@ class BCFBucketIterator : public RangeBCFIterator {
     range range_;
     shared_ptr<const set<string>> datasets_;
     set<string>::const_iterator dataset_;
-    
+
     string bucket_prefix_;
     shared_ptr<KeyValue::Reader> reader_;
     unique_ptr<KeyValue::Iterator> it_;
-    
+
     StatsRangeQuery stats_;
 
     Status next_impl(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
@@ -706,8 +770,15 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
     // resolve samples and datasets
     S(metadata.sampleset_datasets(sampleset, samples, datasets));
 
-    // TODO: dispatch to sampleset_range_base if the sample set is "too
-    // small". need a way to know N of the whole database
+    // Heuristic: if the desired sample set has fewer than 10% of the samples
+    // in the database, then dispatch to the repeated-lookup strategy of
+    // sampleset_range_base. This heuristic is wrong if the desired samples
+    // are actually contiguous in the database, though.
+    size_t total_sample_count;
+    S(metadata.sample_count(total_sample_count));
+    if (samples->size() == 1 || samples->size() * 10 < total_sample_count) {
+        return sampleset_range_base(metadata, sampleset, pos, samples, datasets, iterators);
+    }
 
     // get a KeyValue::Reader so that all iterators read from the same
     // snapshot (this isn't strictly necessary since datasets are immutable,
@@ -1008,6 +1079,9 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
         body_->amd.erase(dataset, samples_out);
 
         retval = wb->commit();
+        if (retval.ok()) {
+            body_->sample_count++;
+        }
     }
 
     // good path

@@ -39,6 +39,14 @@ using namespace std;
 
 namespace GLnexus {
 
+Status range_check(int x, size_t y, const char* errmsg) {
+    if (x <= y) return Status::OK();
+    string msg = string(errmsg) + ", memory range check failed. Reading offset ";
+    msg += to_string(x) + " in buffer of length ";
+    msg += std::to_string(y);
+    return Status::Invalid(msg.c_str());
+}
+
 // Ccalculate the amount of bytes it would take to pack this bcf1 record.
 int bcf_raw_calc_packed_len(bcf1_t *v)
 {
@@ -46,8 +54,10 @@ int bcf_raw_calc_packed_len(bcf1_t *v)
 }
 
 /*
-  Write the BCF record directly to a memory location. Return how much
-  space was used.
+  Write the BCF record directly to a memory location. This function is
+  unsafe, it assumes that the caller allocated sufficient space, by
+  calling [bcf_raw_calc_packed_len] beforehand.
+
    Note: the code is adapted from the bcf_write routine in htslib/vcf.c.
   The original prototype is:
       int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
@@ -68,25 +78,33 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr) {
     loc += v->shared.l;
     memcpy(&addr[loc], v->indiv.s, v->indiv.l);
     loc += v->indiv.l;
-     assert(loc == reclen);
+    assert(loc == reclen);
 }
 
 /*
-    Read a BCF record from memory, return the length of the packed record in RAM.
+    Read a BCF record from memory, returns:
+1) A BCF record
+2) length of memory extent read
+3) Status code
 
     Note: the code is adapted from the bcf_read1_core routine in htslib/vcf.c.
     The original prototype is:
          int bcf_read1_core(BGZF *fp, bcf1_t *v)
     The original routine reads from a file, not from memory.
 */
-int bcf_raw_read_from_mem(const char *addr, bcf1_t *v) {
+Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
+                             int &ans) {
+    Status s;
     int loc = 0;
     uint32_t x[8];
-    memcpy(x, &addr[loc], 32);
-    loc += 32;
 
+    S(range_check(start + 32, len, "reading header of BCF record"));
+    memcpy(x, &buf[start + loc], 32);
+    loc += 32;
     assert(x[0] > 0);
     x[0] -= 24; // to exclude six 32-bit integers
+
+    S(range_check(start + loc + x[0] + x[1], len, "reading BCF record"));
     ks_resize(&v->shared, x[0]);
     ks_resize(&v->indiv, x[1]);
     memcpy(v, (char*)&x[2], 16);
@@ -98,12 +116,40 @@ int bcf_raw_read_from_mem(const char *addr, bcf1_t *v) {
     // bcf_subset, prior to and including bd6ed8b4
     if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
 
-    memcpy(v->shared.s, &addr[loc], v->shared.l);
+    memcpy(v->shared.s, &buf[start + loc], v->shared.l);
     loc += v->shared.l;
-    memcpy(v->indiv.s, &addr[loc], v->indiv.l);
+    memcpy(v->indiv.s, &buf[start + loc], v->indiv.l);
     loc += v->indiv.l;
 
-    return loc;
+    ans = loc;
+    return Status::OK();
+}
+
+// Calculate the total length of a record, without unpacking it.
+Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &ans) {
+    Status s;
+    S(range_check(start + 32, len, "calculating the length of a BCF record"));
+
+    uint32_t *x = (uint32_t*) &buf[start];
+    assert(x[0] > 0);
+    ans = 32 + (x[0] -24) + x[1];
+    return Status::OK();
+}
+
+// Check if the record that starts at memory address [addr] overlaps
+// the range [rng]. The trick is to do this without unpacking the record.
+Status bcf_raw_overlap(const char *buf, int start, size_t len, const range &rng,
+                       bool &ans) {
+    ans = false; // extra sanitation
+    Status s;
+    S(range_check(start + 32, len, "checking BCF overlap"));
+
+    uint32_t *x = (uint32_t*) &buf[start];
+    uint32_t rid = x[2];
+    uint32_t beg = x[3];
+    uint32_t rlen = x[4];
+    ans = range(rid, beg, beg + rlen).overlaps(rng);
+    return Status::OK();
 }
 
 // Return 1 if the records are the same, 0 otherwise.
@@ -124,6 +170,41 @@ int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
 
     return 1;
 }
+
+/* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
+   from memory instead of disk.
+*/
+static Status bcf_raw_read_header(const char* buf,
+                                  int hdrlen,
+                                  int& consumed,
+                                  shared_ptr<bcf_hdr_t>& ans) {
+    if (strncmp(buf, "BCF\2\2", 5) != 0) {
+        return Status::Invalid("BCFSerialize::bcf_raw_read_header invalid BCF2 magic string");
+    }
+
+    ans = shared_ptr<bcf_hdr_t>(bcf_hdr_init("r"), &bcf_hdr_destroy);
+    int loc = 5;
+    int hlen;
+    memcpy(&hlen, &buf[loc], 4);
+    loc += 4;
+
+    // make sure we do not read beyond the buffer end
+    if (loc + hlen > hdrlen) {
+        return Status::Invalid("BCFSerialize::bcf_raw_read_header truncated header");
+    }
+
+    auto htxt = make_unique<char[]>(hlen);
+    memcpy(htxt.get(), &buf[loc], hlen);
+
+    // FIXME bcf_hdr_parse does not seem to check bounds -- potential security issue
+    if (bcf_hdr_parse(ans.get(), htxt.get()) != 0) {
+        return Status::Invalid("BCFSerialize::bcf_raw_read_header parse error");
+    }
+
+    consumed = loc + hlen;
+    return Status::OK();
+}
+
 
 int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
 
@@ -209,65 +290,56 @@ std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
 
 
 
+// BCFScanner
 // constructor
-BCFReader::BCFReader(const char* buf, size_t bufsz) :
+BCFScanner::BCFScanner(const char* buf, size_t bufsz) :
     buf_(buf), bufsz_(bufsz)
 {}
 
-Status BCFReader::Open(const char* buf,
+Status BCFScanner::Open(const char* buf,
                        size_t bufsz,
-                       unique_ptr<BCFReader>& ans) {
-    ans.reset(new BCFReader(buf, bufsz));
+                       unique_ptr<BCFScanner>& ans) {
+    ans.reset(new BCFScanner(buf, bufsz));
     return Status::OK();
 }
 
-BCFReader::~BCFReader() {
+BCFScanner::~BCFScanner() {
     buf_ = nullptr;
     bufsz_ = 0;
     current_ = 0;
 }
 
-Status BCFReader::read(shared_ptr<bcf1_t>& ans) {
+bool BCFScanner::valid() {
+    return (size_t)current_ < bufsz_;
+}
+
+ // move the cursor to the next record
+Status BCFScanner::next() {
+    Status s;
+    uint32_t reclen = 0;
+    S(bcf_raw_calc_rec_len(buf_, current_, bufsz_, reclen));
+    current_ += reclen;
+    return Status::OK();
+}
+
+Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
     if (!ans) {
         ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
     }
-    if ((size_t)current_ >= bufsz_)
-        return Status::NotFound();
-    // FIXME bcf_raw_read_from_mem does not seem to check bounds -- potential security issue
-    int reclen = bcf_raw_read_from_mem(&buf_[current_], ans.get());
-    current_ += reclen;
-    return Status::OK();
+    int reclen;
+    return bcf_raw_read_from_mem(buf_, current_, bufsz_, ans.get(), reclen);
+}
+
+// check if the current record overlaps a range
+Status BCFScanner::overlaps(const range &rng, bool &ans) {
+    return bcf_raw_overlap(buf_, current_, bufsz_, rng, ans);
 }
 
 /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
    from memory instead of disk.
 */
-Status BCFReader::read_header(const char* buf, int hdrlen, int& consumed, shared_ptr<bcf_hdr_t>& ans) {
-    if (strncmp(buf, "BCF\2\2", 5) != 0) {
-        return Status::Invalid("BCFReader::read_header invalid BCF2 magic string");
-    }
-
-    ans = shared_ptr<bcf_hdr_t>(bcf_hdr_init("r"), &bcf_hdr_destroy);
-    int loc = 5;
-    int hlen;
-    memcpy(&hlen, &buf[loc], 4);
-    loc += 4;
-
-    // make sure we do not read beyond the buffer end
-    if (loc + hlen > hdrlen) {
-        return Status::Invalid("BCFReader::read_header truncated header");
-    }
-
-    auto htxt = make_unique<char[]>(hlen);
-    memcpy(htxt.get(), &buf[loc], hlen);
-
-    // FIXME bcf_hdr_parse does not seem to check bounds -- potential security issue
-    if (bcf_hdr_parse(ans.get(), htxt.get()) != 0) {
-        return Status::Invalid("BCFReader::read_header parse error");
-    }
-
-    consumed = loc + hlen;
-    return Status::OK();
+Status BCFScanner::read_header(const char* buf, int hdrlen, int& consumed, shared_ptr<bcf_hdr_t>& ans) {
+    return bcf_raw_read_header(buf, hdrlen, consumed, ans);
 }
 
 } // namespace GLnexus

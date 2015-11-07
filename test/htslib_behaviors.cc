@@ -1,4 +1,4 @@
-// Test certain non-obvious behaviors of htslib 
+// Test certain non-obvious behaviors of htslib
 
 #include <iostream>
 #include <fstream>
@@ -16,6 +16,24 @@ using namespace std;
 
 // sugar for declaring a unique_ptr with a custom deleter function
 #define UPD(T,name,ini,del) std::unique_ptr<T, void(*)(T*)> up_##name((ini), (del)); auto name = up_##name.get();
+
+TEST_CASE("Memory range checks") {
+    // Trivial range checks
+    for (int i = 0; i < 2; i++) {
+        REQUIRE(GLnexus::range_check(i * 10, 20, "should work").ok());
+    }
+    for (int i = 2; i < 5; i++) {
+        GLnexus::Status s = GLnexus::range_check((i * 10) + 1, 20, "out of bounds");
+        REQUIRE(s == GLnexus::StatusCode::INVALID);
+    }
+
+    // A BCF record that is too short, reading should fail
+    char buf[16];
+    int reclen = 0;
+    shared_ptr<bcf1_t> vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
+    GLnexus::Status s = GLnexus::bcf_raw_read_from_mem(buf, 0, sizeof(buf), vt.get(), reclen);
+    REQUIRE(s == GLnexus::StatusCode::INVALID);
+}
 
 TEST_CASE("htslib VCF missing data representation") {
     // Verify how htslib data structures represent missing data such as ./.
@@ -121,7 +139,7 @@ TEST_CASE("htslib VCF header chrom injection") {
 
 TEST_CASE("htslib VCF header synthesis") {
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w"), &bcf_hdr_destroy);
-    
+
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=A,length=1000000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=B,length=100000>") == 0);
     REQUIRE(bcf_hdr_append(hdr.get(),"##contig=<ID=C,length=10000>") == 0);
@@ -196,7 +214,9 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
     // now read the records back from memory & ensure they match the originals
     loc = 0;
     for (const auto& rec : records) {
-        loc += GLnexus::bcf_raw_read_from_mem(&buf[loc], vt.get());
+        int reclen = 0;
+        REQUIRE(GLnexus::bcf_raw_read_from_mem(buf, loc, memlen, vt.get(), reclen).ok());
+        loc += reclen;
         REQUIRE(vt->rid == rec->rid);
         REQUIRE(vt->pos == rec->pos);
         REQUIRE(vt->n_sample == rec->n_sample);
@@ -209,6 +229,8 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
         free(buf);
     }
 }
+
+
 
 TEST_CASE("htslib gVCF representation") {
     UPD(vcfFile, vcf, bcf_open("test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });

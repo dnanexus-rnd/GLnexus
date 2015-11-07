@@ -30,7 +30,7 @@ input:
   body:
     - A.gvcf: |
         A
-        A	1000	rs35253111	A	AT,<NON_REF>	229.73	.	.	GT:AD:DP:GQ:PL:SB 0/1:13,13,0:26:99:267,0,209,305,251,556:0,13,0,13
+        A	1000	rs35253111	A	AT,<NON_REF>	229.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:13,13,0:26:99:267,0,209,305,251,556:0,13,0,13
         A	1001	.	T	<NON_REF>	.	.	END=1038	GT:DP:GQ:MIN_DP:PL	0/0:44:0:44:0,0,710
     - B.gvcf: |
         B
@@ -40,7 +40,7 @@ input:
         A	1000	.	AT	A,ATT,<NON_REF>	278.73	.	.	GT:AD:DP:GQ:PL:SB	0/2:7,3,16,0:26:99:317,325,708,0,99,132,338,486,160,498:1,6,0,16
     - D.gvcf: |
         D
-        A 998  . G <NON_REF> . . END=1038  GT:DP:GQ:MIN_DP:PL  0/0:25:57:24:0,57,855
+        A	998	.	G	<NON_REF>	.	.	END=1038	GT:DP:GQ:MIN_DP:PL	0/0:25:57:24:0,57,855
 
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1001}

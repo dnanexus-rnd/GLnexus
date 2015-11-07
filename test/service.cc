@@ -9,7 +9,6 @@
 using namespace std;
 using namespace GLnexus;
 
-
 // Wrap BCFData to simulate I/O errors for quasi-random testing of errors
 class SimFailBCFData : public BCFData {
     BCFData& inner_;

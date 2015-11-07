@@ -61,7 +61,8 @@ class VCFData : public Metadata, public BCFData {
     }
 
 public:
-    static Status Open(const set<string> names, unique_ptr<VCFData>& ans, const string path="test/data/") {
+    static Status Open(const set<string> names, unique_ptr<VCFData>& ans,
+                       const string path="test/data/") {
         Status s;
         map<string,vcf_data_t> datasets;
         for (const auto& nm : names) {
@@ -141,6 +142,11 @@ public:
 
     Status all_samples_sampleset(string& ans) override {
         return Status::NotImplemented();
+    }
+
+    Status sample_count(size_t& ans) const override {
+        ans = sample_datasets_.size();
+        return Status::OK();
     }
 
     Status sample_dataset(const string& sample, string& ans) const override {

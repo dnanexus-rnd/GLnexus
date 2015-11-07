@@ -243,8 +243,12 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     unique_ptr<MetadataCache> cache;
     REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
+    size_t ct;
 
     SECTION("empty all_samples_sampleset") {
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 0);
+
         shared_ptr<const set<string>> all;
         Status s = cache->sampleset_samples("*", all);
         REQUIRE(s == StatusCode::NOT_FOUND);
@@ -267,6 +271,9 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
         Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
+
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 1);
 
         // check that internal version number of all-samples sampleset was
         // incremented
@@ -299,6 +306,9 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
         REQUIRE(s.ok());
 
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 1);
+
         KeyValue::CollectionHandle coll;
         REQUIRE(db.collection("sampleset", coll).ok());
         string version;
@@ -323,6 +333,9 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
         REQUIRE(s.ok());
 
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 2);
+
         REQUIRE(db.get(coll, "*", version).ok());
         REQUIRE(version == "2");
 
@@ -338,6 +351,43 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = cache->all_samples_sampleset(sampleset2);
         REQUIRE(s.ok());
         REQUIRE(sampleset == sampleset2);
+    }
+
+    SECTION("new_sampleset") {
+        Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        s = data->new_sampleset(*cache, "x", set<string>{"HX0001"});
+        REQUIRE(s.ok());
+
+        shared_ptr<const set<string>> samples;
+        s = cache->sampleset_samples("x", samples);
+        REQUIRE(s.ok());
+        REQUIRE(*samples == set<string>{"HX0001"});
+
+        s = data->new_sampleset(*cache, "y", set<string>{"HX0001","HX0002"});
+        REQUIRE(s.ok());
+
+        s = cache->sampleset_samples("y", samples);
+        REQUIRE(s.ok());
+        REQUIRE(*samples == set<string>({"HX0001","HX0002"}));
+
+        // empty samples
+        s = data->new_sampleset(*cache, "z", set<string>());
+        REQUIRE(s == StatusCode::INVALID);
+
+        // nonexistent sample
+        s = data->new_sampleset(*cache, "z", set<string>{"HX0001","hX0002"});
+        REQUIRE(s == StatusCode::NOT_FOUND);
+
+        // duplicate sample set
+        s = data->new_sampleset(*cache, "x", set<string>{"HX0001","HX0002"});
+        REQUIRE(s == StatusCode::EXISTS);
+
+        // TODO: test invalid sample set names
     }
 
     SECTION("incompatible contigs") {
@@ -439,6 +489,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
+        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);
@@ -610,6 +661,10 @@ TEST_CASE("BCFData::sampleset_range") {
     s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
     REQUIRE(s.ok());
 
+    size_t ct;
+    REQUIRE(cache->sample_count(ct).ok());
+    REQUIRE(ct == 2);
+
     // check * version number
     KeyValue::CollectionHandle coll;
     REQUIRE(db.collection("sampleset", coll).ok());
@@ -771,6 +826,10 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "3", "test/data/sampleset_range3.gvcf", samples_imported);
     REQUIRE(s.ok());
+
+    size_t ct;
+    REQUIRE(cache->sample_count(ct).ok());
+    REQUIRE(ct == 3);
 
     string sampleset;
     s = cache->all_samples_sampleset(sampleset);
@@ -948,7 +1007,55 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(records.empty());
     REQUIRE(iterators[2]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 
-    // TODO: need a test with only a subset of the samples
+    // now test with a subset of the samples
+    REQUIRE(data->new_sampleset(*cache, "two", set<string>{"HX0002", "HX0003"}).ok());
+
+    rng = range(0, 199899, 199900);
+    s = data->sampleset_range(*cache, "two", rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(*samples == set<string>({"HX0002", "HX0003"}));
+    REQUIRE(*datasets == set<string>({"2", "3"}));
+    REQUIRE(iterators.size() == 2);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(dataset == "3");
+    REQUIRE(records.empty());
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.empty());
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(dataset == "3");
+    REQUIRE(records.size() == 2);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    // and finally just one sample (tests the code path using sampleset_range_base)
+    REQUIRE(data->new_sampleset(*cache, "one", set<string>{"HX0002"}).ok());
+
+    rng = range(0, 299899, 299900);
+    s = data->sampleset_range(*cache, "one", rng,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(*samples == set<string>({"HX0002"}));
+    REQUIRE(*datasets == set<string>({"2"}));
+    // we only get one iterator, not iterators for two buckets, because
+    // sampleset_range_base is used
+    REQUIRE(iterators.size() == 1);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 2);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 }
 
 TEST_CASE("BCFKeyValueData compare iterator implementations") {
