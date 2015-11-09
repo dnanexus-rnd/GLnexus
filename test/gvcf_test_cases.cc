@@ -278,11 +278,6 @@ TEST_CASE("join_vcf") {
     join_vcf_case.perform_gvcf_test();
 }
 
-TEST_CASE("overlap_gvcf") {
-    GVCFTestCase overlap_gvcf_case("overlap_gvcf");
-    overlap_gvcf_case.perform_gvcf_test();
-}
-
 TEST_CASE("inconsistent_trim") {
     GVCFTestCase inconsistent_trim_case("inconsistent_trim");
     inconsistent_trim_case.perform_gvcf_test();
