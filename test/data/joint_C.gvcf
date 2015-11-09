@@ -3,4 +3,4 @@
 ##FILTER=<ID=PASS,Description="All filters passed">
 ##contig=<ID=A,length=1000000>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	JOINT_C
-A	1000	.	ATG	ATGTG, A	.	PASS	.	GT	0/1
+A	1000	.	ATG	ATGTG,A	.	PASS	.	GT	0/1

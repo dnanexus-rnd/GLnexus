@@ -157,7 +157,7 @@ struct allele {
 
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
-        if (!is_dna(dna)) throw std::invalid_argument("allele(): invalid DNA");
+        if (!is_dna(dna)) throw std::invalid_argument("allele(): invalid DNA " + dna);
     }
 
     /// Equality is based on identity of position and allele

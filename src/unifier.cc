@@ -34,7 +34,6 @@ Status minimize_allele(const allele& ref, allele& alt) {
     // trim from the right first, to maintain indel left-alignment
     for (r=0; r<alt.dna.size()-1 && r<ref.dna.size()-1
               && alt.dna[alt.dna.size()-r-1] == ref.dna[ref.dna.size()-r-1]; r++);
-    if (alt.dna[alt.dna.size()-r-1] == ref.dna[ref.dna.size()-r-1]) return Status::Invalid("minimize_allele: ref == alt");
 
     // then trim from the left if possible
     for (l=0; l<alt.dna.size()-r-1 && l<ref.dna.size()-r-1 && alt.dna[l] == ref.dna[l]; l++);
@@ -99,8 +98,8 @@ Status minimize_alleles(const discovered_alleles& src,
 
 
 // Partition alleles into non-overlapping "active regions" where all the
-// alleles in an active region are connected through overlap. (However,
-// individual pairs of alleles within an active region might be non-
+// alleles in an active region are transitively connected through overlap.
+// (However, individual pairs of alleles within an active region might be non-
 // overlapping.)
 template<class discovered_or_minimized_alleles>
 auto partition(const discovered_or_minimized_alleles& alleles) {
