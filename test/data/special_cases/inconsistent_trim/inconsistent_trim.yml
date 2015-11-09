@@ -1,0 +1,75 @@
+readme: |
+  ## Why this is a problematic case
+  This case is similar to input_trim, but where all input have variously padded alleles. Eventually, the most compact representation *may* be preferred as the output, instead of the various padded versions.
+
+  ## Overcoming this problem
+  The chief task is to retain minimal representation of the alleles and prune alleles appropriately based on observation counts over these minimally represented alleles.
+
+  ## Included example
+  A.gvcf, B.gvcf; C.gvcf; D.gvcf = samples with various levels of padded representation of the alleles
+
+  ## Notes
+  There is a trade-off between concision and accuracy in this given case. By choosing the most concise REF=T, ALT=TA representation suggested in the current truth, we lose one alelle (A deletion). To present this alleles, we need, minimally, adopt the following representation (REF=TA, ALT=T, TAA)
+
+input:
+  header: |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	1000	.	TA	T,TAA,TAAA,<NON_REF>	5.26	.	.	GT:AD:DP:GQ:PL:SB	0/3:15,8,4,6,0:33:41:271,239,886,41,216,360,0,219,319,540,101,306,314,325,374:9,6,1,5
+        A	1002	.	A	<NON_REF>	.	.	END=1002	GT:DP:GQ:MIN_DP:PL	0/0:86:0:86:0,0,2694
+    - B.gvcf: |
+        B
+        A	1000	.	TAA	T,TA,TAAA,<NON_REF>	189.73	.	.	GT:AD:DP:GQ:PL:SB	2/3:4,5,4,17,0:30:5:272,227,1118,234,645,642,26,5,0,127,246,322,307,63,318:2,2,12,5
+    - C.gvcf: |
+        C
+        A	1000	.	TAA	T,TA,TAAA,<NON_REF>	178.73	.	.	GT:AD:DP:GQ:PL:SB	0/3:9,4,5,18,0:36:64:253,271,1347,216,794,735,0,148,64,207,250,486,398,153,430:8,1,11,7
+    - D.gvcf: |
+        D
+        A	1000	.	TAAA	T,TAAAA,<NON_REF>	530.87	.	.	GT:AD:DP:GQ:PL:SB	2/2:4,2,34,0:40:15:568,711,2775,15,142,0,581,805,97,662:1,3,24,10
+
+truth_unified_sites:
+    - range: {ref: "A", beg: 1000, end: 1000}
+      alleles: [T, TA]
+      observation_count: [2, 5]
+      unification:
+        - range: {beg: 1000, end: 1001}
+          alt: TA
+          to: 0
+        - range: {beg: 1000, end: 1002}
+          alt: TAA
+          to: 0
+        - range: {beg: 1000, end: 1003}
+          alt: TAAA
+          to: 0
+        - range: {beg: 1000, end: 1001}
+          alt: TAA
+          to: 1
+        - range: {beg: 1000, end: 1002}
+          alt: TAAA
+          to: 1
+        - range: {beg: 1000, end: 1003}
+          alt: TAAAA
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      A	1000	.	T	TA	0	.	.	GT:RNC	0/1:..	./1:L.	0/1:..	1/1:..

@@ -190,11 +190,31 @@ struct unified_site {
     std::vector<float> observation_count;
     //std::vector<float> genotype_prior;
 
-    bool operator==(const unified_site& rhs) const noexcept{ return pos == rhs.pos && alleles == alleles && observation_count == observation_count; }
+    bool operator==(const unified_site& rhs) const noexcept{ return pos == rhs.pos && alleles == rhs.alleles && observation_count == rhs.observation_count; }
     bool operator<(const unified_site& rhs) const noexcept{ return pos < rhs.pos; }
     bool operator<=(const unified_site& rhs) const noexcept{ return pos <= rhs.pos; }
 
     unified_site(const range& pos_) noexcept : pos(pos_) {}
+
+    std::string str() const noexcept {
+        std::ostringstream ans;
+
+        ans << "Unified site: " << pos.str() << "\n";
+
+        ans << "Alleles: ";
+        for (auto& allele : alleles) {
+            ans << allele << " ";
+        }
+        ans << "\n";
+
+        ans << "Observation Count: ";
+        for (auto count : observation_count) {
+            ans << count << " ";
+        }
+        ans << "\n";
+
+        return ans.str();
+    }
 };
 
 Status unified_site_of_yaml(const YAML::Node& yaml,

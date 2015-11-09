@@ -324,18 +324,28 @@ class BCFFileSink {
     bool open_ = true;
     const string& filename_;
     bcf_hdr_t* header_;
-    vcfFile *outfile_;
+    vcfFile *outfile_;;
 
     BCFFileSink(const std::string& filename, bcf_hdr_t* hdr, vcfFile* outfile)
         : filename_(filename), header_(hdr), outfile_(outfile)
         {}
 
 public:
-    static Status Open(const string& filename,
+    static Status Open(const genotyper_config& cfg,
+                       const string& filename,
                        bcf_hdr_t* hdr,
                        unique_ptr<BCFFileSink>& ans) {
-        // open output BCF file
-        vcfFile* outfile = bcf_open(filename.c_str(), "wb");
+
+        vcfFile* outfile;
+        if (cfg.output_format == GLnexusOutputFormat::VCF) {
+            // open as (uncompressed) vcf
+            outfile = vcf_open(filename.c_str(), "w");
+        } else if (cfg.output_format == GLnexusOutputFormat::BCF) {
+            // open as bcf
+            outfile = bcf_open(filename.c_str(), "wb");
+        } else {
+            return Status::Invalid("BCFFileSink::Open: Invalid output format");
+        }
         if (!outfile) {
             return Status::IOError("failed to open BCF file for writing", filename);
         }
@@ -357,7 +367,8 @@ public:
     virtual Status write(bcf1_t* record) {
         if (!open_) return Status::Invalid("BCFFilkSink::write() called on closed writer");
         return bcf_write(outfile_, header_, record) == 0
-                    ? Status::OK() : Status::IOError("bcf_write", filename_);
+                ? Status::OK() : Status::IOError("bcf_write", filename_);
+
     }
 
     virtual Status close() {
@@ -381,7 +392,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     // open output BCF file
     unique_ptr<BCFFileSink> bcf_out;
-    S(BCFFileSink::Open(filename, hdr.get(), bcf_out));
+    S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;
