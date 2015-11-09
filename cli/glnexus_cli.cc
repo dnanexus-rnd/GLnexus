@@ -194,6 +194,11 @@ int main_load(int argc, char *argv[]) {
         }
     }
 
+    if (gvcfs.empty()) {
+        console->warn() << "Nothing to do";
+        return 0;
+    }
+
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
