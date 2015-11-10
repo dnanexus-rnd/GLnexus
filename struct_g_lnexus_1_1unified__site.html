@@ -88,6 +88,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="struct_g_lnexus_1_1unified__site-members.html">List of all members</a>  </div>
   <div class="headertitle">
@@ -103,15 +104,18 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (const
 <tr class="memitem:a029516e34d0bcd0eda5bec60116db620"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a029516e34d0bcd0eda5bec60116db620"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator&lt;</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> &amp;rhs) const noexcept</td></tr>
 <tr class="separator:a029516e34d0bcd0eda5bec60116db620"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a49b928f989e2436b186146fb79337d30"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a49b928f989e2436b186146fb79337d30"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator&lt;=</b> (const <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> &amp;rhs) const noexcept</td></tr>
-<tr class="separator:a49b928f989e2436b186146fb79337d30"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2e7a26c23cd0efc83f1e7dc563cf5220"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2e7a26c23cd0efc83f1e7dc563cf5220"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>unified_site</b> (const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> &amp;pos_) noexcept</td></tr>
 <tr class="separator:a2e7a26c23cd0efc83f1e7dc563cf5220"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a833b9104dc3d9528b01f30069e6892e8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a833b9104dc3d9528b01f30069e6892e8"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>str</b> () const noexcept</td></tr>
-<tr class="separator:a833b9104dc3d9528b01f30069e6892e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e26df63f2ef78d2e4ac867f77b8c832"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2e26df63f2ef78d2e4ac867f77b8c832"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>yaml</b> (const std::vector&lt; std::pair&lt; std::string, size_t &gt; &gt; &amp;contigs, YAML::Emitter &amp;out)</td></tr>
+<tr class="separator:a2e26df63f2ef78d2e4ac867f77b8c832"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a4969375ed742aa61fcb7bb6a96d64a9c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a4969375ed742aa61fcb7bb6a96d64a9c"></a>
+static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>of_yaml</b> (const YAML::Node &amp;yaml, const std::vector&lt; std::pair&lt; std::string, size_t &gt; &gt; &amp;contigs, <a class="el" href="struct_g_lnexus_1_1unified__site.html">unified_site</a> &amp;ans)</td></tr>
+<tr class="separator:a4969375ed742aa61fcb7bb6a96d64a9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -156,8 +160,9 @@ std::vector&lt; float &gt;&#160;</td><td class="memItemRight" valign="bottom"><b
 
 </div>
 </div>
-<hr/>The documentation for this struct was generated from the following file:<ul>
+<hr/>The documentation for this struct was generated from the following files:<ul>
 <li>include/<a class="el" href="types_8h_source.html">types.h</a></li>
+<li>src/types.cc</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->
