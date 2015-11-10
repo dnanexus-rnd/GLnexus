@@ -40,6 +40,70 @@ Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest) {
     return Status::OK();
 }
 
+Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
+                  const range& r, YAML::Emitter& yaml, bool omit_ref=false) {
+    if (!omit_ref && (r.rid < 0 || r.rid >= contigs.size())) {
+        return Status::NotFound("range_yaml: invalid rid", r.str());
+    }
+    yaml << YAML::Flow;
+    yaml << YAML::BeginMap;
+    if (!omit_ref) {
+        yaml << YAML::Key << "ref" << YAML::Value << contigs[r.rid].first;
+    }
+    yaml << YAML::Key << "beg" << YAML::Value << r.beg+1;
+    yaml << YAML::Key << "end" << YAML::Value << r.end;
+    yaml << YAML::EndMap;
+    return Status::OK();
+}
+
+Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
+                          YAML::Emitter& ans) {
+    Status s;
+
+    ans << YAML::BeginMap;
+
+    ans << YAML::Key << "range" << YAML::Value;
+    S(range_yaml(contigs, pos, ans));
+
+    ans << YAML::Key << "alleles";
+    ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (const auto& allele : alleles) {
+        ans << allele;
+    }
+    ans << YAML::EndSeq;
+
+    ans << YAML::Key << "observation_count";
+    ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (auto count : observation_count) {
+        ans << count;
+    }
+    ans << YAML::EndSeq;
+
+    ans << YAML::Key << "unification";
+    ans << YAML::Value << YAML::BeginSeq;
+    // sort unification entries by to, then by range, then by alt
+    vector<pair<allele,int>> u(unification.begin(), unification.end());
+    sort(u.begin(), u.end(),
+         [] (const pair<allele,int>& p1, const pair<allele,int>& p2) {
+            if (p1.second != p2.second) return p1.second < p2.second;
+            if (p1.first.pos != p2.first.pos) return p1.first.pos < p2.first.pos;
+            return p1.first.dna < p2.first.dna;
+         });
+    for (const auto& p : u) {
+        ans << YAML::BeginMap;
+        ans << YAML::Key << "range" << YAML::Value;
+        S(range_yaml(contigs, p.first.pos, ans, true));
+        ans << YAML::Key << "alt";
+        ans << YAML::Value << p.first.dna;
+        ans << YAML::Key << "to";
+        ans << YAML::Value << p.second;
+        ans << YAML::EndMap;
+    }
+    ans << YAML::EndSeq;
+
+    return Status::OK();
+}
+
 Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
                      range& ans, int default_rid = -1) {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("range_of_yaml: " msg)
@@ -80,8 +144,8 @@ Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >&
     #undef V
 }
 
-Status unified_site_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
-                            unified_site& ans) {
+Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
+                             unified_site& ans) {
     Status s;
     #define V(pred,msg) if (!(pred)) return Status::Invalid("unified_site_of_yaml: " msg)
 

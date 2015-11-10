@@ -77,7 +77,7 @@ TEST_CASE("range_of_bcf") {
     REQUIRE(rng.size() == 1);
 }
 
-TEST_CASE("unified_site_of_yaml") {
+TEST_CASE("unified_site::of_yaml") {
     vector<pair<string,size_t>> contigs;
     contigs.push_back(make_pair("16",12345));
     contigs.push_back(make_pair("17",23456));
@@ -144,7 +144,7 @@ unification:
         YAML::Node n = YAML::Load(snp);
 
         unified_site us(range(-1,-1,-1));
-        Status s = unified_site_of_yaml(n, contigs, us);
+        Status s = unified_site::of_yaml(n, contigs, us);
         REQUIRE(s.ok());
         VERIFY_SNP(us);
     }
@@ -153,7 +153,7 @@ unification:
         YAML::Node n = YAML::Load(del);
 
         unified_site us(range(-1,-1,-1));
-        Status s = unified_site_of_yaml(n, contigs, us);
+        Status s = unified_site::of_yaml(n, contigs, us);
         REQUIRE(s.ok());
         VERIFY_DEL(us);
     }
@@ -162,10 +162,10 @@ unification:
         vector<YAML::Node> ns = YAML::LoadAll("---\n" + string(snp) + "\n---\n" + string(del) + "\n...");
         REQUIRE(ns.size() == 2);
         unified_site us(range(-1,-1,-1));
-        Status s = unified_site_of_yaml(ns[0], contigs, us);
+        Status s = unified_site::of_yaml(ns[0], contigs, us);
         REQUIRE(s.ok());
         VERIFY_SNP(us);
-        s = unified_site_of_yaml(ns[1], contigs, us);
+        s = unified_site::of_yaml(ns[1], contigs, us);
         REQUIRE(s.ok());
         VERIFY_DEL(us);
     }
@@ -186,7 +186,7 @@ unification:
         YAML::Node n = YAML::Load(snp_opt);
 
         unified_site us(range(-1,-1,-1));
-        Status s = unified_site_of_yaml(n, contigs, us);
+        Status s = unified_site::of_yaml(n, contigs, us);
         REQUIRE(s.ok());
         VERIFY_SNP(us);
     }
@@ -207,7 +207,7 @@ unification:
         YAML::Node n = YAML::Load(snp_bogus);
 
         unified_site us(range(-1,-1,-1));
-        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
 
         snp_bogus = 1 + R"(
 range: 12345
@@ -222,7 +222,7 @@ unification:
     to: 1
 )";
         n = YAML::Load(snp_bogus);
-        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
     }
 
     SECTION("bogus alleles") {
@@ -238,7 +238,7 @@ unification:
         YAML::Node n = YAML::Load(snp_bogus);
 
         unified_site us(range(-1,-1,-1));
-        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
     }
 
     SECTION("bogus unification") {
@@ -257,7 +257,7 @@ unification:
         YAML::Node n = YAML::Load(snp_bogus);
 
         unified_site us(range(-1,-1,-1));
-        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
 
         snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
@@ -269,6 +269,43 @@ unification:
     to: 0
 )";
         n = YAML::Load(snp_bogus);
-        REQUIRE(unified_site_of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
+    }
+}
+
+TEST_CASE("unified_site::yaml") {
+    vector<pair<string,size_t>> contigs;
+    contigs.push_back(make_pair("16",12345));
+    contigs.push_back(make_pair("17",23456));
+
+    SECTION("roundtrip") {
+        const char* del = 1 + R"(
+range: {ref: '17', beg: 1000, end: 1001}
+alleles: [AG, AC, C]
+observation_count: [100, 50, 1]
+unification:
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: AG
+    to: 0
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: AC
+    to: 1
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: C
+    to: 2
+  - range: {ref: '17', beg: 1001, end: 1001}
+    alt: C
+    to: 1
+)";
+        YAML::Node n = YAML::Load(del);
+        unified_site us(range(-1,-1,-1));
+        REQUIRE(unified_site::of_yaml(n, contigs, us).ok());
+
+        YAML::Emitter yaml;
+        REQUIRE(us.yaml(contigs,yaml).ok());
+        n = YAML::Load(yaml.c_str());
+        unified_site us2(range(-1,-1,-1));
+        REQUIRE(unified_site::of_yaml(n, contigs, us2).ok());
+        REQUIRE(us == us2);
     }
 }

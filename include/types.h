@@ -190,36 +190,25 @@ struct unified_site {
     std::vector<float> observation_count;
     //std::vector<float> genotype_prior;
 
-    bool operator==(const unified_site& rhs) const noexcept{ return pos == rhs.pos && alleles == rhs.alleles && observation_count == rhs.observation_count; }
-    bool operator<(const unified_site& rhs) const noexcept{ return pos < rhs.pos; }
-    bool operator<=(const unified_site& rhs) const noexcept{ return pos <= rhs.pos; }
+    bool operator==(const unified_site& rhs) const noexcept {
+        return pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
+               && observation_count == rhs.observation_count;
+    }
+    bool operator<(const unified_site& rhs) const noexcept{
+        if (pos != rhs.pos) return pos < rhs.pos;
+        if (alleles != rhs.alleles) return alleles < rhs.alleles;
+        if (unification != rhs.unification) return unification < rhs.unification;
+        return observation_count < rhs.observation_count;
+    }
 
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 
-    std::string str() const noexcept {
-        std::ostringstream ans;
-
-        ans << "Unified site: " << pos.str() << "\n";
-
-        ans << "Alleles: ";
-        for (auto& allele : alleles) {
-            ans << allele << " ";
-        }
-        ans << "\n";
-
-        ans << "Observation Count: ";
-        for (auto count : observation_count) {
-            ans << count << " ";
-        }
-        ans << "\n";
-
-        return ans.str();
-    }
+    Status yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
+                YAML::Emitter& out);
+    static Status of_yaml(const YAML::Node& yaml,
+                          const std::vector<std::pair<std::string,size_t> >& contigs,
+                          unified_site& ans);
 };
-
-Status unified_site_of_yaml(const YAML::Node& yaml,
-                            const std::vector<std::pair<std::string,size_t> >& contigs,
-                            unified_site& ans);
 
 struct loss_stats {
     int n_calls_total=0, n_bp_total=0;
