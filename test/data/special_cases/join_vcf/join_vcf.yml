@@ -47,13 +47,19 @@ truth_unified_sites:
       alleles: [AT, ATT, A]
       observation_count: [3, 2, 1]
       unification:
-        - range: {beg: 1000, end: 1002}
+        - range: {beg: 1000, end: 1000}
+          alt: A
+          to: 0
+        - range: {beg: 1000, end: 1001}
           alt: AT
           to: 0
-        - range: {beg: 1000, end: 1002}
+        - range: {beg: 1000, end: 1000}
+          alt: AT
+          to: 1
+        - range: {beg: 1000, end: 1001}
           alt: ATT
           to: 1
-        - range: {beg: 1000, end: 1002}
+        - range: {beg: 1000, end: 1001}
           alt: A
           to: 2
 
