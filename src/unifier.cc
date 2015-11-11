@@ -245,21 +245,10 @@ Status delineate_sites(const discovered_alleles& alleles,
 }
 
 // Given the alleles at a site, collapse the discovered REF alleles to get one
-// reference allele covering the site's range. The ALT alleles come into play
-// in a minor way to properly account for the ref observation count.
-Status unify_ref(const range& pos, const discovered_alleles& refs,
-                 const minimized_alleles& alts, allele& ref, float& obs) {
-    range core(pos);
-    for (const auto& alt : alts) {
-        if (!pos.contains(alt.first.pos)) return Status::Invalid("BUG: unified site doesn't contain all ALT alleles");
-        core.beg = max(core.beg, alt.first.pos.beg);
-        core.end = min(core.end, alt.first.pos.end);
-    }
-    if (core.beg > core.end) return Status::Invalid("BUG: unified site ALT alleles don't all share at least one position");
-
+// reference allele covering the site's range.
+Status unify_ref(const range& pos, const discovered_alleles& refs, allele& ref) {
     ref.pos = pos;
     ref.dna.assign(pos.size(), char(0));
-    obs = 0.0;
 
     for (const auto& ref1 : refs) {
         UNPAIR(ref1, al, info);
@@ -272,12 +261,6 @@ Status unify_ref(const range& pos, const discovered_alleles& refs,
                 }
                 ref.dna[j] = al.dna[i];
             }
-        }
-
-        if (al.pos.overlaps(core)) {
-            // the observation count is the sum of those of the refs that
-            // overlap all alts.
-            obs += info.observation_count;
         }
     }
     if (any_of(ref.dna.begin(), ref.dna.end(), [] (const char c) { return c == 0; })) {
@@ -307,8 +290,7 @@ Status unify_alleles(const range& pos, const discovered_alleles& refs,
 
     // collapse the refs to get the reference allele for this site
     allele ref(pos, "A");
-    float ref_obs;
-    S(unify_ref(pos, refs, alts, ref, ref_obs));
+    S(unify_ref(pos, refs, ref));
 
     // sort the alt alleles by decreasing observation count, then by minimized
     // DNA size, then by minimized position, then lexicographically by DNA
@@ -332,7 +314,10 @@ Status unify_alleles(const range& pos, const discovered_alleles& refs,
     // fill out the unification
     unified_site us(pos);
     us.alleles.push_back(ref.dna);
-    us.observation_count.push_back(ref_obs);
+    // We don't attempt to specify the ref observation count for now. It's
+    // problematic because the observation counts in discovered_alleles omit
+    // nearly all homozygous ref genotypes.
+    us.observation_count.push_back(0.0);
     for (const auto& ref : refs) {
         us.unification[ref.first] = 0;
     }
