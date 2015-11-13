@@ -268,18 +268,26 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     Status s;
 
     // map the BCF's alleles onto the unified alleles
-    vector<int> allele_mapping;
+    vector<int> allele_mapping(record->n_allele, -1);
 
     // reference allele maps if it contains the unified site
     range rng(record);
-    allele_mapping.push_back(rng.contains(site.pos) ? 0 : -1);
+    if (rng.contains(site.pos)) {
+        allele_mapping[0] = 0;
+    }
 
     // map the bcf1_t alt alleles according to unification
-    for (int i = 1; i < record->n_allele; i++) {
-        string al(record->d.allele[i]);
-        if (is_dna(al)) {
-            auto p = site.unification.find(allele(rng, al));
-            allele_mapping.push_back(p != site.unification.end() ? p->second : -1);
+    // this placeholder algorithm can do this only if the record covers
+    // exactly the same reference range as the unified site.
+    if (rng == site.pos) {
+        for (int i = 1; i < record->n_allele; i++) {
+            string al(record->d.allele[i]);
+            if (is_dna(al)) {
+                auto p = site.unification.find(allele(rng, al));
+                if (p != site.unification.end()) {
+                    allele_mapping[i] = p->second;
+                }
+            }
         }
     }
 
