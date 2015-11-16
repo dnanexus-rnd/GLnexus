@@ -33,13 +33,15 @@ script:
   - (.travis/install_valgrind.sh > /tmp/install_valgrind.log 2>&1) || cat /tmp/install_valgrind.log
   - valgrind --suppressions=GLnexus.supp --leak-check=full --error-exitcode=1 ./unit_tests || true
 
-# Encrypted Github credential (using yifei's account)
 env:
   global:
-    - secure: "i/0Zm5ZtBe8oHaRHGBmlXzcaS61VoovEz758LY4GFKl0PncwFfFWAN8Yt2iWBZPLu5hHXudHKNaJc5ORqoqggLYzgDue++6mqL5lQfJbl9Luh/itoi20M9pt+I2dMW+9qLipROH3tTxGSiIVxacRcAbkxMdHz71iiHZ0PViLQ0UyE12ugSqNn81VYUDzgPISc0vs+8I76FGXB7i4Ox1HO2d8OLJwfnzriBXuQyHbLJT4fA1yz53sT+RNc5iTR4/xGA5qfnuGgrjcLZYsjh8bSzjvsYeA3RddIcsjmOhCw/ZvEMIvvqi9oAV//EiO95c8l+GG3U0k/78u7YafROnr901aDXSkS+1KitOT3n9KoQkuDZMpqUGCX30tSBefpnpq8EdxibaUfauhrkf0mNbZepZU18vIGB3h49lGGkBkJ1tR5fw/htnm7hUywXVRkcur/DYqPtsc3aM0HViEGsMplTIEsCYJE/O39Lde1ksJrYQCYp4AAlgmSsrKo0WLydc8gnbfYhxws+NzI2VH5mkr7BCEiK6fG2CIOT0xFJqCQbkhFOKVKyArUBou8bKTAbB7CFZNeMcbUEuVWY5NJ0Gvn4uiYOa47e/P+i8FO/LV+Rcpx8Jabn0E5bL1gRHuMqo7RfdF9B7ape6w2+Qyn2MFkplSfjadVP8mFefMIckYjU4="
+    - secure: "i/0Zm5ZtBe8oHaRHGBmlXzcaS61VoovEz758LY4GFKl0PncwFfFWAN8Yt2iWBZPLu5hHXudHKNaJc5ORqoqggLYzgDue++6mqL5lQfJbl9Luh/itoi20M9pt+I2dMW+9qLipROH3tTxGSiIVxacRcAbkxMdHz71iiHZ0PViLQ0UyE12ugSqNn81VYUDzgPISc0vs+8I76FGXB7i4Ox1HO2d8OLJwfnzriBXuQyHbLJT4fA1yz53sT+RNc5iTR4/xGA5qfnuGgrjcLZYsjh8bSzjvsYeA3RddIcsjmOhCw/ZvEMIvvqi9oAV//EiO95c8l+GG3U0k/78u7YafROnr901aDXSkS+1KitOT3n9KoQkuDZMpqUGCX30tSBefpnpq8EdxibaUfauhrkf0mNbZepZU18vIGB3h49lGGkBkJ1tR5fw/htnm7hUywXVRkcur/DYqPtsc3aM0HViEGsMplTIEsCYJE/O39Lde1ksJrYQCYp4AAlgmSsrKo0WLydc8gnbfYhxws+NzI2VH5mkr7BCEiK6fG2CIOT0xFJqCQbkhFOKVKyArUBou8bKTAbB7CFZNeMcbUEuVWY5NJ0Gvn4uiYOa47e/P+i8FO/LV+Rcpx8Jabn0E5bL1gRHuMqo7RfdF9B7ape6w2+Qyn2MFkplSfjadVP8mFefMIckYjU4=" # Encrypted Github credential (using yifei's account)
+    - secure: "J8yut92zrAcKFAcYFCLUzcYzEalFU+LkTCoMyK1fFt4k+RSM0LwdqvOz1n/SQHHBHW0OiJ2qQ68N8bcvyN7ggaHDfSxZGjBC9/WX1HrUZ7kp2exS/R1iHv20j6gXuy0FHuOGZiEyVq2rjUgtyWqIpwE/nuCLo4P1tqyKSng2ff4Jay41Bjt5FE8BNSLGr1y6I1VjV5lkVb86gbcfKPiaWuvObbTwF4I/pp/d3fjSzvMiZ7P/cT3C2ROpC9NK7UDRgo+qBj057aLyTEuPle0G6LpfnV9eHB+ddGxuXtMyrbDbLR2SCyvOWqlyyWzpzUEafb3v+qL+Oby6JFw/IEPv/Y/Gv8Rz8xEq6Vm1Do58t3kqvi2Puz/cRrZI9IWBuNVJuBJGiAb+BenIMuCdMNAFxMFxO/ENanYRDU3Bo6ZYa4Rin9ROYRyqYsYEU9zRx/Ni/8E2M4MbDXeoPQTx72h+yetzo7IAMIdQOovrLKtUH6+IKitjJKs41oN64syBceNXm3bPEq3FQn1aSMd14kqwUSch0OnMVBzfEE8JXrrOihNzvrPVRHijd4bOYwHtr+vo002xUGwpACaXucQZfSeOYwFJjopG2+1pKuByk4/vItHI3ulArfzxmMLgkmqT9n0Dz0NkCS3NegmBmKd6CsqqWgl6iw9ivvtfWTo88K+ablY=" # GLNEXUS_TEST_PROJECT_ID
+    - secure: "oRCQp7xzW0o3NteAezjgByyChji3oPgPT2ChCSe3trDH2Ebuyo6/rTuT8g0OnyJ+1RGJrdGykJHMJw3k5RxhOpHG6EaZOHY3gKr8pYyf5Jvs7sLFT3e2Td3xAvNig2e4UJ8P0GnXu1VBUUpTt4IctVknGIHhM2kt9QJ7uKZjgEnU/wUpF+JpJFHJQc6PHiDpicjhpYZhrNBtLE2RH0OLL3hvRweVeKsttVbhV5i6arX8d60e9JHbKTmh1QC1WTDfzzcpFGutruztOAZRJ+PUl1eIp82EfbeVatDw2xwN7BMNHjFK5SYD1SwZz/cD0KDlFcPdUk5CJgLKJcLcmjh6baisg4+HpOZHv5hFEk7KdtoWsmoNUqeFJ9PoWT15vwy629bxRYBsFXEDVJ+08siRibos/H9fLs1oW+9rWnmA/cZc9AAjfTtg6IPy2Xtamj1feCKo3qO5gBIa+gQNn2F9wmx4TJ8hPAQDqBw/Ypwz9RMx/8wo4Dq2y+JcWHeOxMNjIi/bHRGhzohaUys/cN4YrTjpPFMnZeK4uCfrKaw020tB+D2JASVyAKx1xPlqAZKbjW7X5p/zxQOfVdVDEVCVQOKS6XInleS5k9qALB1/u7ab3XDc5+A8Y+jaNXlOIoWCqZ73SvFrO8MS6KKCCVgp309BDm0BJ7ssZeahan3ai2E=" # DX_AUTH_TOKEN (mlin)
 
 # After success, report test coverage and update doxygen (master branch)
 after_success:
+  - if [ "$TRAVIS_BRANCH" == "medium-tests" ]; then bash .travis/launch_medium_tests.sh; fi
   - coveralls --include src --include include --gcov-options '\-lp'
   - if [ "$TRAVIS_BRANCH" == "master" ]; then chmod u+x .travis/after_success.sh; .travis/after_success.sh; fi
 
