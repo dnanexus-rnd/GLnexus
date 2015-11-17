@@ -13,7 +13,11 @@
 #include <sys/time.h>
 #include "fcmm.hpp"
 #include "khash.h"
+#include <regex>
 using namespace std;
+
+#define MAX_NUM_CONTIGS_PER_GVCF (1000)
+#define MAX_CONTIG_LEN (10000000000)  // 10^10
 
 namespace GLnexus {
 
@@ -837,7 +841,9 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
 }
 
 // Sanity-check an individual bcf1_t record before ingestion.
-static Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr,
+static Status validate_bcf(BCFBucketRange& rangeHelper,
+                           const vector<int> &contigLenVec,
+                           const bcf_hdr_t *hdr,
                            bcf1_t *bcf,
                            int prev_rid, int prev_pos) {
     // Check that bcf->rlen is calculated correctly based on POS,END if
@@ -874,6 +880,24 @@ static Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr,
                                std::to_string(prev_pos) + " >= " + range(bcf).str());
     }
 
+    // verify record does not go over the length of the contig
+    if (bcf->pos + bcf->rlen > contigLenVec[bcf->rid]) {
+        return Status::Invalid("gVCF record is longer than contig",
+                               range(bcf).str() + " " + to_string(contigLenVec[bcf->rid]));
+    }
+
+    // DNA regular expression for REF and ALT alleles
+    std::regex e ("[ACGTN]+");
+    for (int i=0; i < bcf->n_allele; i++) {
+        const string allele_i(bcf->d.allele[i]);
+        if (allele_i == "<NON_REF>" ||
+            regex_match(allele_i ,e))
+            continue;
+
+        return Status::Invalid("allele is not a recognized DNA sequence ",
+                               allele_i +  " " + range(bcf).str());
+    }
+
     return Status::OK();
 }
 
@@ -885,7 +909,8 @@ static Status vcf_validate_basic_facts(MetadataCache& metadata,
                                        const string& filename,
                                        bcf_hdr_t *hdr,
                                        vcfFile *vcf,
-                                       set<string>& samples_out)
+                                       set<string>& samples_out,
+                                       vector<int> &contigLenVec)
 {
     if (!hdr) return Status::IOError("reading gVCF header", filename);
     if (!gvcf_compatible(metadata, hdr)) {
@@ -908,6 +933,24 @@ static Status vcf_validate_basic_facts(MetadataCache& metadata,
     samples_out.insert(samples.begin(), samples.end());
     if (samples.size() != samples_out.size()) {
         return Status::Invalid("gVCF sample names are not unique", dataset + " (" + filename + ")");
+    }
+
+    // Make sure we don't have too many contigs
+    int ncontigs = 0;
+    const char **contignames = bcf_hdr_seqnames(hdr, &ncontigs);
+    if (ncontigs > MAX_NUM_CONTIGS_PER_GVCF)
+        return Status::Invalid("Too many contigs (", std::to_string(ncontigs) + ")");
+
+    // Check that contigs are not too long. Also, collect the lengths in
+    // a vector.
+    contigLenVec.clear();
+    for (int i = 0; i < ncontigs; i++) {
+        if (hdr->id[BCF_DT_CTG][0].val == nullptr)
+            return Status::Invalid("invalid contig");
+        int contig_len = hdr->id[BCF_DT_CTG][0].val->info[0];
+        if (contig_len > MAX_CONTIG_LEN)
+            return Status::Invalid("contig is too long ", string(contignames[i]) + " " + std::to_string(contig_len));
+        contigLenVec.push_back(contig_len);
     }
 
     return Status::OK();
@@ -948,6 +991,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           KeyValue::DB* db,
                                           const string& dataset,
                                           const string& filename,
+                                          const vector<int> &contigLenVec,
                                           const bcf_hdr_t *hdr,
                                           vcfFile *vcf) {
     Status s;
@@ -964,7 +1008,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         // Make sure a record is not longer than [BCFBucketRange::interval_len].
         // If this is not true, then we need to compensate in the search
         // routine.
-        S(validate_bcf(rangeHelper, hdr, vt.get(), prev_rid, prev_pos));
+        S(validate_bcf(rangeHelper, contigLenVec, hdr, vt.get(), prev_rid, prev_pos));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
@@ -1013,8 +1057,9 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
     if (!vcf) return Status::IOError("opening gVCF file", filename);
     unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
 
+    vector<int> contigLenVec;
     S(vcf_validate_basic_facts(metadata, dataset, filename, hdr.get(), vcf.get(),
-                               samples_out));
+                               samples_out, contigLenVec));
 
     // Atomically verify metadata and prepare
     {
@@ -1042,7 +1087,7 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
     // Note: we are not dealing at all with mid-flight failures
     S(bulk_insert_gvcf_key_values(*body_->rangeHelper, body_->db,
                                   dataset, filename,
-                                  hdr.get(), vcf.get()));
+                                  contigLenVec, hdr.get(), vcf.get()));
 
     // Update metadata atomically, now it will point to all the data
     Status retval = Status::Invalid();
