@@ -201,7 +201,7 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
 
     // some basic sanity checks
     if (contigs.size() > MAX_NUM_CONTIGS_PER_GVCF)
-        return Status::Invalid("Too many contigs (", std::to_string(contigs.size()) + ")");
+        return Status::Invalid("Too many contigs ", std::to_string(contigs.size()));
     for (const auto& p : contigs) {
         size_t contig_len = p.second;
         if (contig_len > MAX_CONTIG_LEN)
@@ -245,9 +245,6 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
         yaml << YAML::EndSeq;
         S(db->put(config, "param", yaml.c_str()));
     }
-
-    // Validate the sanity of the contig set
-
 
     // create * sample set, with version number 0
     KeyValue::CollectionHandle sampleset;
@@ -851,6 +848,7 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
 }
 
 static std::regex dnaRegExp("[ACGTN]+");
+static std::regex nonRefRegExp("<.*>");
 
 // Sanity-check an individual bcf1_t record before ingestion.
 static Status validate_bcf(BCFBucketRange& rangeHelper,
@@ -875,6 +873,9 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
             return Status::Invalid("gVCF record END-POS doesn't match rlen", range(bcf).str());
         }
     } else {
+        if (bcf->d.allele == nullptr) {
+            return Status::Invalid("gVCF allele is null", range(bcf).str());
+        }
         if (bcf->rlen != (int) strlen(bcf->d.allele[0])) {
             return Status::Invalid("gVCF rlen doesn't match strlen(REF) (and no END field)", range(bcf).str());
         }
@@ -900,18 +901,14 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                range(bcf).str() + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    std::regex e ("[ACGTN]+");
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (allele_i[0] == '<') {
-            // This is most likely a <NON_REF> symbol, or equivalent
-            continue;
-        }
-        if (regex_match(allele_i ,dnaRegExp))
+        if (regex_match(allele_i, nonRefRegExp) ||
+            regex_match(allele_i ,dnaRegExp))
             continue;
 
         return Status::Invalid("allele is not a recognized DNA sequence ",
-                               allele_i +  " " + range(bcf).str() + " " + contig_name);
+                               allele_i +  " " + range(bcf).str(contigs));
     }
 
     return Status::OK();

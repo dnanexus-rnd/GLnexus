@@ -1105,3 +1105,45 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
 
     cout << "Compared " << nIter << " range queries between the two iterators" << endl;
 }
+
+
+TEST_CASE("BCFKeyValueData too many contigs") {
+    KeyValueMem::DB db({});
+    std::vector<std::pair<std::string,size_t> > contigs;
+    for (int i=0; i < 1002; ++i) {
+        contigs.push_back(make_pair<string,uint64_t>(to_string(i), 1000000));
+    }
+    Status s = T::InitializeDB(&db, contigs);
+    REQUIRE(s.bad());
+}
+
+TEST_CASE("BCFKeyValueData bad dna") {
+    KeyValueMem::DB db({});
+    auto contigs = {make_pair<string,uint64_t>("A", 1000000)};
+    REQUIRE(T::InitializeDB(&db, contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    // empty allele structure
+    Status s = data->import_gvcf(*cache, "bad", "test/data/bad_dna.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+
+    // bad letter (K)
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_dna2.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+
+    // wrong contig size, does not match DB
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_dna3.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+
+    // empty allele
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_dna4.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+}
