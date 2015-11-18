@@ -188,7 +188,7 @@ TEST_CASE("RocksDB::import_gvcf") {
     Status s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
 
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data).ok());
@@ -238,7 +238,7 @@ TEST_CASE("RocksDB BCF retrieval") {
     Status s = RocksKeyValue::Initialize(dbPath, db);
     REQUIRE(s.ok());
 
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data).ok());
@@ -341,7 +341,7 @@ TEST_CASE("RocksKeyValue prefix mode") {
     Status s = RocksKeyValue::Initialize(dbPath, db, &prefix_spec);
     REQUIRE(s.ok());
 
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(db.get(), data).ok());
