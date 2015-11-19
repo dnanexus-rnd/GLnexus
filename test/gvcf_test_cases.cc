@@ -21,7 +21,7 @@ class GVCFTestCase {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("GVCFTestCase::load_yml: ", msg);
 
     // Root of folder in which GVCFTestCases input files
-    const string INPUT_ROOT_DIR = "test/data/special_cases/";
+    const string INPUT_ROOT_DIR = "test/data/gvcf_test_cases/";
 
     // Name of temp dir to store output
     const string TEMP_DIR = "/tmp/GLnexus/";
@@ -128,7 +128,7 @@ public:
 
     // Constructor takes in the name of the curated case, used
     // for locating input yaml file; by convention, the yaml file is found
-    // at INPUT_ROOT_DIR/<name>/<name>.yml
+    // at INPUT_ROOT_DIR/<name>.yml
     GVCFTestCase(const string _name): name(_name) {
         cout << "====================================" << endl;
         cout << "Start of test for curated case: " << name << endl;
@@ -140,7 +140,7 @@ public:
     Status load_yml() {
         Status s;
 
-        string path = INPUT_ROOT_DIR + name + "/" + name + ".yml";
+        string path = INPUT_ROOT_DIR + name + ".yml";
         YAML::Node yaml = YAML::LoadFile(path);
         V(yaml.IsMap(), "not a map at top level");
 
@@ -276,14 +276,28 @@ TEST_CASE("trim_input") {
     trim_input_case.perform_gvcf_test();
 }
 
-TEST_CASE("join_gvcf") {
-    GVCFTestCase join_gvcf_case("join_gvcf");
-    join_gvcf_case.perform_gvcf_test();
+TEST_CASE("join_gvcfs") {
+    GVCFTestCase join_gvcfs_case("join_gvcfs");
+    join_gvcfs_case.perform_gvcf_test();
+}
+TEST_CASE("join_3_gvcfs") {
+    GVCFTestCase join_3_gvcfs_case("join_3_gvcfs");
+    join_3_gvcfs_case.perform_gvcf_test();
 }
 
-TEST_CASE("join_vcf") {
-    GVCFTestCase join_vcf_case("join_vcf");
-    join_vcf_case.perform_gvcf_test();
+TEST_CASE("join_vcf_gvcf") {
+    GVCFTestCase join_vcf_gvcf_case("join_vcf_gvcf");
+    join_vcf_gvcf_case.perform_gvcf_test();
+}
+
+TEST_CASE("join_gvcf_vcf") {
+    GVCFTestCase join_gvcf_vcf_case("join_gvcf_vcf");
+    join_gvcf_vcf_case.perform_gvcf_test();
+}
+
+TEST_CASE("join_gvcf_vcf_gvcf") {
+    GVCFTestCase join_gvcf_vcf_gvcf_case("join_gvcf_vcf_gvcf");
+    join_gvcf_vcf_gvcf_case.perform_gvcf_test();
 }
 
 TEST_CASE("inconsistent_trim") {
