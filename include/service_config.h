@@ -28,10 +28,15 @@ struct genotyper_config {
     /// Output format (default = bcf), choices = "BCF", "VCF"
     GLnexusOutputFormat output_format = GLnexusOutputFormat::BCF;
 
+    // Should the genotyper write a record describing each call loss?
+    // If true, the output is recorded in YAML format in the
+    // [residuals_file].
+    bool output_residuals = false;
+    std::string residuals_file;
+
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
 };
 
 }
-

@@ -3,10 +3,11 @@
 #include "unifier.h"
 #include "genotyper.h"
 #include <algorithm>
+#include <sstream>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <assert.h>
-#include <sstream>
 #include "ctpl_stl.h"
 
 using namespace std;
@@ -388,6 +389,13 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     unique_ptr<BCFFileSink> bcf_out;
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
+    // open output residuals file
+    std::ofstream residuals_ofs;
+    if (cfg.output_residuals &&
+        !cfg.residuals_file.empty()) {
+        residuals_ofs.open(cfg.residuals_file, std::ofstream::out | std::ofstream::app);
+    }
+
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;
     vector<pair<shared_ptr<bcf1_t>,consolidated_loss>> results(sites.size());
@@ -403,7 +411,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             }
             shared_ptr<bcf1_t> bcf;
             consolidated_loss losses_for_site;
-            Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
+            Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, residuals_ofs, sites[i],
                                       sampleset, sample_names, hdr.get(), bcf, losses_for_site);
             if (ls.bad()) {
                 return ls;
@@ -414,6 +422,12 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         statuses.push_back(move(fut));
     }
     assert(statuses.size() == sites.size());
+
+    // close the residuals file, we are done with it
+    if (cfg.output_residuals &&
+        residuals_ofs.good()) {
+        residuals_ofs.close();
+    }
 
     // Retrieve the resulting BCF records, and write them to the output file,
     // in the given order. Record the first error that occurs, if any, but

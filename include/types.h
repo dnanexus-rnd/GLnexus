@@ -227,7 +227,7 @@ struct unified_site {
     unified_site(const range& pos_) noexcept : pos(pos_) {}
 
     Status yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
-                YAML::Emitter& out);
+                YAML::Emitter& out) const;
     static Status of_yaml(const YAML::Node& yaml,
                           const std::vector<std::pair<std::string,size_t> >& contigs,
                           unified_site& ans);
