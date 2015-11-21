@@ -1,0 +1,66 @@
+readme: |
+  ## Why this is a problematic case
+  The unified site spans multiple GVCF entries (for example, records that are split due to different sequencing depths). Although the input gvcf contain REF calls in those regions, these calls are lost as no single gvcf record covers the entire length of the unified site. (Note: This case is concerned with loss of purely REF calls in the input; loss of calls involving at least 1 ALT allele is considered in case join_vcf).
+
+  ## Overcoming this problem
+  In situations where multiple GVCF (REF) records span a unified site, we need a logic to “join” multiple gvcf records, such that the records span the entire length of the unified site. We then interpret the unified site as a REF call.
+
+  ## Included example
+  A.gvcf = samples with only REF calls
+  B.gvcf; C.gvcf; D.gvcf = samples to suggest unified_site spanning gvcf entries in A
+
+  ## Explanation on included sample
+  Sample A has split gvcf ref entries across the unified site A:1000-1002, which can be joined to give a "correct" call of homozygous ref.
+
+
+input:
+  header : |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	1000	.	T	<NON_REF>	.	.	END=1000	GT:DP:GQ:MIN_DP:PL	0/0:121:41:121:0,42,4038
+        A	1001	.	T	<NON_REF>	.	.	END=1001	GT:DP:GQ:MIN_DP:PL	0/0:123:99:39:0,69,1350
+        A	1002	.	T	<NON_REF>	.	.	END=1015	GT:DP:GQ:MIN_DP:PL	0/0:123:99:39:0,69,1350
+    - B.gvcf: |
+        B
+        A	1000	rs374290353	TTC	T,<NON_REF>	91.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:117,14,0:131:99:129,0,4092,481,4135,4616:70,47,7,7
+    - C.gvcf: |
+        C
+        A	1000	rs374290353	TTC	T,<NON_REF>	194.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:103,15,0:118:99:232,0,3603,542,3649,4191:64,39,11,4
+    - D.gvcf: |
+        D
+        A	1000	rs374290353	TTC	T,<NON_REF>	315.53	.	.	GT:AD:DP:GQ:PL:SB	0/1:103,15,0:118:99:232,0,3603,542,3649,4191:64,39,11,4
+
+truth_unified_sites:
+    - range: {ref: "A", beg: 1000, end: 1002}
+      alleles: [TTC, T]
+      observation_count: [0, 3]
+      unification:
+        - range: {beg: 1000, end: 1002}
+          alt: TTC
+          to: 0
+        - range: {beg: 1000, end: 1002}
+          alt: T
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      A	1000	.	TTC	T	0	.	.	GT:RNC	0/0:..	0/1:..	0/1:..	0/0:..
