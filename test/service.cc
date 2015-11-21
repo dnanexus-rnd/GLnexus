@@ -323,7 +323,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("A"))] == 0);
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("G"))] == 1);
         REQUIRE(sites[0].observation_count.size() == 2);
-        REQUIRE(sites[0].observation_count[0] == 2);
+        REQUIRE(sites[0].observation_count[0] == 0);
         REQUIRE(sites[0].observation_count[1] == 4);
 
         REQUIRE(sites[1].pos == range(0,1001,1002));
@@ -335,7 +335,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 1);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 2);
         REQUIRE(sites[1].observation_count.size() == 3);
-        REQUIRE(sites[1].observation_count[0] == 2);
+        REQUIRE(sites[1].observation_count[0] == 0);
         REQUIRE(sites[1].observation_count[1] == 2);
         REQUIRE(sites[1].observation_count[2] == 2);
 
@@ -346,7 +346,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("CC"))] == 0);
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("AG"))] == 1);
         REQUIRE(sites[2].observation_count.size() == 2);
-        REQUIRE(sites[2].observation_count[0] == 3);
+        REQUIRE(sites[2].observation_count[0] == 0);
         REQUIRE(sites[2].observation_count[1] == 3);
 
         REQUIRE(sites[3].pos == range(0,1100,1101));
@@ -356,7 +356,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("C"))] == 0);
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("A"))] == 1);
         REQUIRE(sites[3].observation_count.size() == 2);
-        REQUIRE(sites[3].observation_count[0] == 3);
+        REQUIRE(sites[3].observation_count[0] == 0);
         REQUIRE(sites[3].observation_count[1] == 3);
 
         REQUIRE(sites[4].pos == range(0,1102,1103));
@@ -366,7 +366,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("C"))] == 0);
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("G"))] == 1);
         REQUIRE(sites[4].observation_count.size() == 2);
-        REQUIRE(sites[4].observation_count[0] == 3);
+        REQUIRE(sites[4].observation_count[0] == 0);
         REQUIRE(sites[4].observation_count[1] == 3);
 
         REQUIRE(sites[5].pos == range(0,1200,1201));
@@ -376,7 +376,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("C"))] == 0);
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("A"))] == 1);
         REQUIRE(sites[5].observation_count.size() == 2);
-        REQUIRE(sites[5].observation_count[0] == 3);
+        REQUIRE(sites[5].observation_count[0] == 0);
         REQUIRE(sites[5].observation_count[1] == 3);
     }
 
@@ -400,7 +400,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("A"))] == 0);
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("G"))] == 1);
         REQUIRE(sites[0].observation_count.size() == 2);
-        REQUIRE(sites[0].observation_count[0] == 6);
+        REQUIRE(sites[0].observation_count[0] == 0);
         REQUIRE(sites[0].observation_count[1] == 6);
 
         REQUIRE(sites[1].pos == range(0,1001,1002));
@@ -414,20 +414,24 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 2);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 3);
         REQUIRE(sites[1].observation_count.size() == 4);
-        REQUIRE(sites[1].observation_count[0] == 2);
+        REQUIRE(sites[1].observation_count[0] == 0);
         REQUIRE(sites[1].observation_count[1] == 6);
         REQUIRE(sites[1].observation_count[2] == 2);
         REQUIRE(sites[1].observation_count[3] == 2);
 
-        REQUIRE(sites[2].pos == range(0,1010,1012));
-        REQUIRE(sites[2].alleles.size() == 2);
-        REQUIRE(sites[2].alleles[0] == "CC");
-        REQUIRE(sites[2].alleles[1] == "AG");
+        REQUIRE(sites[2].pos == range(0,1010,1013));
+        REQUIRE(sites[2].alleles.size() == 3);
+        REQUIRE(sites[2].alleles[0] == "CCC");
+        REQUIRE(sites[2].alleles[1] == "AGC");
+        REQUIRE(sites[2].alleles[2] == "AGA");
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("CC"))] == 0);
+        REQUIRE(sites[2].unification[allele(range(0,1010,1013),string("CCC"))] == 0);
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("AG"))] == 1);
-        REQUIRE(sites[2].observation_count.size() == 2);
-        REQUIRE(sites[2].observation_count[0] == 3);
+        REQUIRE(sites[2].unification[allele(range(0,1010,1013),string("AGA"))] == 2);
+        REQUIRE(sites[2].observation_count.size() == 3);
+        REQUIRE(sites[2].observation_count[0] == 0);
         REQUIRE(sites[2].observation_count[1] == 3);
+        REQUIRE(sites[2].observation_count[2] == 2);
 
         REQUIRE(sites[3].pos == range(0,1100,1101));
         REQUIRE(sites[3].alleles.size() == 2);
@@ -436,7 +440,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("C"))] == 0);
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("A"))] == 1);
         REQUIRE(sites[3].observation_count.size() == 2);
-        REQUIRE(sites[3].observation_count[0] == 3);
+        REQUIRE(sites[3].observation_count[0] == 0);
         REQUIRE(sites[3].observation_count[1] == 3);
 
         REQUIRE(sites[4].pos == range(0,1102,1103));
@@ -446,7 +450,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("C"))] == 0);
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("G"))] == 1);
         REQUIRE(sites[4].observation_count.size() == 2);
-        REQUIRE(sites[4].observation_count[0] == 3);
+        REQUIRE(sites[4].observation_count[0] == 0);
         REQUIRE(sites[4].observation_count[1] == 3);
 
         REQUIRE(sites[5].pos == range(0,1200,1201));
@@ -456,7 +460,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("C"))] == 0);
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("A"))] == 1);
         REQUIRE(sites[5].observation_count.size() == 2);
-        REQUIRE(sites[5].observation_count[0] == 3);
+        REQUIRE(sites[5].observation_count[0] == 0);
         REQUIRE(sites[5].observation_count[1] == 3);
 
         // An allele from trio2 that would collapse sites[3] and sites[4] was
@@ -518,9 +522,11 @@ TEST_CASE("genotyper with ref changes") {
     REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
     REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
 
-    REQUIRE(record->n_allele == 2);
-    REQUIRE(string(record->d.allele[0]) == "ATG");
-    REQUIRE(string(record->d.allele[1]) == "ATGTG");
+    REQUIRE(record->n_allele == 4);
+    REQUIRE(string(record->d.allele[0]) == "ATGTGTG");
+    REQUIRE(string(record->d.allele[1]) == "ATGTGTGTG");
+    REQUIRE(string(record->d.allele[2]) == "ATGTG");
+    REQUIRE(string(record->d.allele[3]) == "A");
 
     int *gt = nullptr, gtsz = 0;
     int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
@@ -528,14 +534,14 @@ TEST_CASE("genotyper with ref changes") {
 
     // Because the REF has changed in JOINT_A, both ALT alleles
     // should be lost instead of being interpreted as is
-    REQUIRE(bcf_gt_is_missing(gt[0]));
-    REQUIRE(bcf_gt_is_missing(gt[1]));
-    REQUIRE(bcf_gt_allele(gt[2]) == 0);
-    REQUIRE(bcf_gt_allele(gt[3]) == 1);
-    REQUIRE(bcf_gt_allele(gt[4]) == 0);
-    REQUIRE(bcf_gt_allele(gt[5]) == 1);
-    REQUIRE(bcf_gt_allele(gt[6]) == 0);
-    REQUIRE(bcf_gt_allele(gt[7]) == 1);
+    REQUIRE(bcf_gt_allele(gt[0]) == 3); // 2 and 3 should be flipped here...
+    REQUIRE(bcf_gt_allele(gt[1]) == 2);
+    REQUIRE(bcf_gt_is_missing(gt[2]));
+    REQUIRE(bcf_gt_is_missing(gt[3]));
+    REQUIRE(bcf_gt_is_missing(gt[4]));
+    REQUIRE(bcf_gt_is_missing(gt[5]));
+    REQUIRE(bcf_gt_is_missing(gt[6]));
+    REQUIRE(bcf_gt_is_missing(gt[7]));
 }
 
 TEST_CASE("genotyper placeholder") {
@@ -549,6 +555,39 @@ TEST_CASE("genotyper placeholder") {
     discovered_alleles als;
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
+
+    SECTION("simulate I/O errors") {
+        s = Service::Start(*data, *data, svc);
+        REQUIRE(s.ok());
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+        REQUIRE(s.ok());
+        vector<unified_site> sites;
+        s = unified_sites(als, sites);
+        REQUIRE(s.ok());
+
+        unique_ptr<SimFailBCFData> faildata;
+        bool worked = false;
+
+        for (size_t fail_every = 1; fail_every < 100; fail_every++) {
+            s = SimFailBCFData::Open(*data, fail_every, faildata);
+            REQUIRE(s.ok());
+
+            s = Service::Start(*data, *faildata, svc);
+            REQUIRE(s.ok());
+
+            consolidated_loss losses;
+            s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
+            if (faildata->failed_once()) {
+                worked = true;
+                REQUIRE(s == StatusCode::IO_ERROR);
+                REQUIRE(s.str() == "IOError: SIM");
+            } else {
+                REQUIRE(s.ok());
+            }
+        }
+
+        REQUIRE(worked);
+    }
 
     SECTION("discover_alleles_trio1") {
         s = svc->discover_alleles("discover_alleles_trio1", range(0, 0, 1000000), als);
@@ -759,24 +798,25 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
         REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
 
-        REQUIRE(record->n_allele == 2);
-        REQUIRE(string(record->d.allele[0]) == "CC");
-        REQUIRE(string(record->d.allele[1]) == "AG");
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "CCC");
+        REQUIRE(string(record->d.allele[1]) == "AGC");
+        REQUIRE(string(record->d.allele[2]) == "AGA");
 
         nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
         REQUIRE(nGT == 12);
-        REQUIRE(bcf_gt_allele(gt[0]) == 0);
-        REQUIRE(bcf_gt_allele(gt[1]) == 1);
-        REQUIRE(bcf_gt_allele(gt[2]) == 0);
-        REQUIRE(bcf_gt_allele(gt[3]) == 1);
-        REQUIRE(bcf_gt_allele(gt[4]) == 0);
-        REQUIRE(bcf_gt_allele(gt[5]) == 1);
+        REQUIRE(bcf_gt_is_missing(gt[0]));
+        REQUIRE(bcf_gt_is_missing(gt[1]));
+        REQUIRE(bcf_gt_is_missing(gt[2]));
+        REQUIRE(bcf_gt_is_missing(gt[3]));
+        REQUIRE(bcf_gt_is_missing(gt[4]));
+        REQUIRE(bcf_gt_is_missing(gt[5]));
         REQUIRE(bcf_gt_allele(gt[6]) == 0);
         REQUIRE(bcf_gt_allele(gt[7]) == 0);
         REQUIRE(bcf_gt_allele(gt[8]) == 0);
-        REQUIRE(bcf_gt_is_missing(gt[9]));
+        REQUIRE(bcf_gt_allele(gt[9]) == 2);
         REQUIRE(bcf_gt_allele(gt[10]) == 0);
-        REQUIRE(bcf_gt_is_missing(gt[11]));
+        REQUIRE(bcf_gt_allele(gt[11]) == 2);
 
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
         REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
@@ -863,20 +903,20 @@ TEST_CASE("genotyper placeholder") {
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
         loss_stats loss_ch = loss1->second;
-        REQUIRE(loss_ch.n_no_calls_total == 0);
-        REQUIRE(loss_ch.n_bp_lost == 0);
+        REQUIRE(loss_ch.n_no_calls_total == 2);
+        REQUIRE(loss_ch.n_bp_lost == 4);
 
         auto loss2 = losses.find("trio1.fa");
         REQUIRE(loss2 != losses.end());
         loss_stats loss_fa = loss2->second;
-        REQUIRE(loss_fa.n_no_calls_total == 0);
-        REQUIRE(loss_fa.n_bp_lost == 0);
+        REQUIRE(loss_fa.n_no_calls_total == 2);
+        REQUIRE(loss_fa.n_bp_lost == 4);
 
         auto loss3 = losses.find("trio1.mo");
         REQUIRE(loss3 != losses.end());
         loss_stats loss_mo = loss3->second;
-        REQUIRE(loss_mo.n_no_calls_total == 0);
-        REQUIRE(loss_mo.n_bp_lost == 0);
+        REQUIRE(loss_mo.n_no_calls_total == 2);
+        REQUIRE(loss_mo.n_bp_lost == 4);
 
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
@@ -884,18 +924,18 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(loss_ch2.n_no_calls_total == 2);
         REQUIRE(loss_ch2.n_bp_lost == 0);
 
-        int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
+        int expected_loss_bp = sites[3].pos.size() + sites[4].pos.size();
 
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 5);
+        REQUIRE(loss_fa2.n_no_calls_total == 4);
         REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 5);
+        REQUIRE(loss_mo2.n_no_calls_total == 4);
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
     }
 
@@ -963,18 +1003,19 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
         REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
 
-        REQUIRE(record->n_allele == 2);
-        REQUIRE(string(record->d.allele[0]) == "CC");
-        REQUIRE(string(record->d.allele[1]) == "AG");
+        REQUIRE(record->n_allele == 3);
+        REQUIRE(string(record->d.allele[0]) == "CCC");
+        REQUIRE(string(record->d.allele[1]) == "AGC");
+        REQUIRE(string(record->d.allele[2]) == "AGA");
 
         nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt, &gtsz);
         REQUIRE(nGT == 6);
         REQUIRE(bcf_gt_allele(gt[0]) == 0);
         REQUIRE(bcf_gt_allele(gt[1]) == 0);
         REQUIRE(bcf_gt_allele(gt[2]) == 0);
-        REQUIRE(bcf_gt_is_missing(gt[3]));
+        REQUIRE(bcf_gt_allele(gt[3]) == 2);
         REQUIRE(bcf_gt_allele(gt[4]) == 0);
-        REQUIRE(bcf_gt_is_missing(gt[5]));
+        REQUIRE(bcf_gt_allele(gt[5]) == 2);
 
         REQUIRE(bcf_read(vcf.get(), hdr.get(), record.get()) == 0);
         REQUIRE(bcf_unpack(record.get(), BCF_UN_ALL) == 0);
@@ -1014,18 +1055,18 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(loss_ch2.n_no_calls_total == 2);
         REQUIRE(loss_ch2.n_bp_lost == 0);
 
-        int expected_loss_bp = sites[2].pos.size() + sites[3].pos.size() + sites[4].pos.size();
+        int expected_loss_bp = sites[3].pos.size() + sites[4].pos.size();
 
         auto loss5 = losses.find("trio2.fa");
         REQUIRE(loss5 != losses.end());
         loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 5);
+        REQUIRE(loss_fa2.n_no_calls_total == 4);
         REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
 
         auto loss6 = losses.find("trio2.mo");
         REQUIRE(loss6 != losses.end());
         loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 5);
+        REQUIRE(loss_mo2.n_no_calls_total == 4);
         REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
 
         free(gt);
@@ -1046,44 +1087,12 @@ TEST_CASE("genotyper placeholder") {
 
         vector<unified_site> sites;
         s = unified_sites(als, sites);
+        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
         REQUIRE(sites[0].pos.rid == 0);
         REQUIRE(sites[sites.size()-1].pos.rid == 1);
-    }
-
-    SECTION("simulate I/O errors") {
-        s = Service::Start(*data, *data, svc);
-        REQUIRE(s.ok());
-        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
-        REQUIRE(s.ok());
-        vector<unified_site> sites;
-        s = unified_sites(als, sites);
-        REQUIRE(s.ok());
-
-        unique_ptr<SimFailBCFData> faildata;
-        bool worked = false;
-
-        for (size_t fail_every = 1; fail_every < 100; fail_every++) {
-            s = SimFailBCFData::Open(*data, fail_every, faildata);
-            REQUIRE(s.ok());
-
-            s = Service::Start(*data, *faildata, svc);
-            REQUIRE(s.ok());
-
-            consolidated_loss losses;
-            s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
-            if (faildata->failed_once()) {
-                worked = true;
-                REQUIRE(s == StatusCode::IO_ERROR);
-                REQUIRE(s.str() == "IOError: SIM");
-            } else {
-                REQUIRE(s.ok());
-            }
-        }
-
-        REQUIRE(worked);
     }
 }
 

@@ -862,6 +862,9 @@ static Status validate_bcf(BCFBucketRange& rangeHelper, const bcf_hdr_t *hdr,
         }
     }
 
+    // TODO: verify there's at least one ALT allele, and that non-symbolic
+    // alleles are valid DNA, and each differ from the REF allele
+
     if (bcf->rlen > rangeHelper.interval_len) {
         return Status::Invalid("gVCF has record that is longer than ",
                                std::to_string(rangeHelper.interval_len));

@@ -1,8 +1,14 @@
 #include "types.h"
+#include <algorithm>
 
 using namespace std;
 
 namespace GLnexus {
+
+bool is_dna(const string& str) {
+    return all_of(str.begin(), str.end(),
+                  [](char ch) { return ch == 'A' || ch == 'C' || ch == 'G' || ch == 'T' || ch =='N'; });
+}
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
 // using the sum of their observation_counts

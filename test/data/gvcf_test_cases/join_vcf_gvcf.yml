@@ -1,0 +1,74 @@
+readme: |
+  ## Why this is a problematic case
+  The unified site coincides with an input vcf record, but contains a novel INDEL (typically DEL) that is not represented by the input vcf record. Reference padding around the input alleles is needed in order to represent the DEL that is present in the unified site.
+
+  ## Overcoming this problem
+  We need a logic to reference pad the input vcf record and fetch the appropriate (g)vcf records associated with the padded region to generate joined alleles that can be then used to map to discovered ALT alleles by querying the unification map.
+
+  ## Included example
+  A.gvcf = samples with vcf entries that does not fully span unified site
+  B.gvcf; C.gvcf; D.gvcf = samples to suggest unified_site spanning "larger" unified site
+
+  ## Explanation on included sample
+  The unified site is of range A:1000-1001, which spans the original vcf entry in A.gvcf as well as the next gvcf entry to the right
+
+
+input:
+  header : |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	1000	rs35253111	A	AT,<NON_REF>	229.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:13,13,0:26:99:267,0,209,305,251,556:0,13,0,13
+        A	1001	.	T	<NON_REF>	.	.	END=1038	GT:DP:GQ:MIN_DP:PL	0/0:44:0:44:0,0,710
+    - B.gvcf: |
+        B
+        A	1000	.	AT	A,<NON_REF>	131.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:21,10,0:31:99:169,0,448,232,478,710:3,18,1,9
+    - C.gvcf: |
+        C
+        A	1000	.	AT	A,ATT,<NON_REF>	278.73	.	.	GT:AD:DP:GQ:PL:SB	0/2:7,3,16,0:26:99:317,325,708,0,99,132,338,486,160,498:1,6,0,16
+    - D.gvcf: |
+        D
+        A	998	.	G	<NON_REF>	.	.	END=1038	GT:DP:GQ:MIN_DP:PL	0/0:25:57:24:0,57,855
+
+truth_unified_sites:
+    - range: {ref: "A", beg: 1000, end: 1001}
+      alleles: [AT, ATT, A]
+      observation_count: [0, 2, 1]
+      unification:
+        - range: {beg: 1000, end: 1000}
+          alt: A
+          to: 0
+        - range: {beg: 1000, end: 1001}
+          alt: AT
+          to: 0
+        - range: {beg: 1000, end: 1000}
+          alt: AT
+          to: 1
+        - range: {beg: 1000, end: 1001}
+          alt: ATT
+          to: 1
+        - range: {beg: 1000, end: 1001}
+          alt: A
+          to: 2
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      A	1000	.	AT	ATT,A	0	.	.	GT:RNC	0/1:..	0/2:..	0/1:..	0/0:..
