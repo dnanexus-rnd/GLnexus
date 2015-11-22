@@ -77,6 +77,150 @@ TEST_CASE("range_of_bcf") {
     REQUIRE(rng.size() == 1);
 }
 
+TEST_CASE("discovered_alleles_of_yaml") {
+    vector<pair<string,size_t>> contigs;
+    contigs.push_back(make_pair("16",12345));
+    contigs.push_back(make_pair("17",23456));
+
+    const char* da_yaml = 1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  observation_count: 100
+- range: {ref: '17', beg: 100, end: 100}
+  dna: G
+  is_ref: false
+  observation_count: 10.5
+)";
+
+    #define VERIFY_DA(dal) \
+        REQUIRE((dal).size() == 2); \
+        REQUIRE((dal).find(allele(range(1, 99, 100),"A")) != (dal).end()); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"A")].is_ref == true); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"A")].observation_count == 100); \
+        REQUIRE((dal).find(allele(range(1, 99, 100),"G")) != (dal).end()); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"G")].is_ref == false); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"G")].observation_count == 10.5);
+
+    SECTION("basic") {
+        YAML::Node n = YAML::Load(da_yaml);
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.ok());
+        VERIFY_DA(dal);
+    }
+
+    SECTION("bogus range") {
+        YAML::Node n = YAML::Load(1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  observation_count: 100
+- range: {ref: 'bogus', beg: 100, end: 100}
+  dna: G
+  is_ref: false
+  observation_count: 10.5
+)");
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+
+        n = YAML::Load(1 + R"(
+- dna: A
+  is_ref: true
+  observation_count: 100
+)");
+
+        s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+
+        n = YAML::Load(1 + R"(
+- range: 123
+  dna: A
+  is_ref: true
+  observation_count: 100
+)");
+
+        s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+    }
+
+    SECTION("bogus DNA") {
+        YAML::Node n = YAML::Load(1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  observation_count: 100
+- range: {ref: '17', beg: 100, end: 100}
+  dna: BOGUS
+  is_ref: false
+  observation_count: 10.5
+)");
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+    }
+
+    SECTION("bogus observation_count") {
+        YAML::Node n = YAML::Load(1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  observation_count: 100
+- range: {ref: '17', beg: 100, end: 100}
+  dna: G
+  is_ref: false
+  observation_count: [x]
+)");
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+    }
+
+    SECTION("duplicates") {
+        string dup = string(da_yaml) + string(da_yaml);
+        YAML::Node n = YAML::Load(dup.c_str());
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+    }
+}
+
+TEST_CASE("yaml_of_discovered_alleles") {
+    vector<pair<string,size_t>> contigs;
+    contigs.push_back(make_pair("16",12345));
+    contigs.push_back(make_pair("17",23456));
+
+    SECTION("roundtrip") {
+        const char* da_yaml = 1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  observation_count: 100
+- range: {ref: '17', beg: 100, end: 100}
+  dna: G
+  is_ref: false
+  observation_count: 10.5
+)";
+
+        YAML::Node n = YAML::Load(da_yaml);
+        discovered_alleles dal;
+        REQUIRE(discovered_alleles_of_yaml(n, contigs, dal).ok());
+
+        YAML::Emitter yaml;
+        REQUIRE(yaml_of_discovered_alleles(dal, contigs, yaml).ok());
+        n = YAML::Load(yaml.c_str());
+        discovered_alleles dal2;
+        REQUIRE(discovered_alleles_of_yaml(n, contigs, dal2).ok());
+        REQUIRE(dal == dal2);
+    }
+}
+
 TEST_CASE("unified_site::of_yaml") {
     vector<pair<string,size_t>> contigs;
     contigs.push_back(make_pair("16",12345));

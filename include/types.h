@@ -171,9 +171,17 @@ struct allele {
 struct discovered_allele_info {
     bool is_ref;
     float observation_count;
+
+    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && observation_count == rhs.observation_count; }
 };
 using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);
+Status yaml_of_discovered_alleles(const discovered_alleles&,
+                                  const std::vector<std::pair<std::string,size_t> >&,
+                                  YAML::Emitter&);
+Status discovered_alleles_of_yaml(const YAML::Node&,
+                                  const std::vector<std::pair<std::string,size_t> >&,
+                                  discovered_alleles&);
 
 struct unified_site {
     range pos;

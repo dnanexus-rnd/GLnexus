@@ -62,6 +62,115 @@ Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
     return Status::OK();
 }
 
+Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
+                     range& ans, int default_rid = -1) {
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("range_of_yaml: " msg)
+
+    V(yaml.IsMap(), "not a map at top level");
+
+    int rid;
+    const auto n_ref = yaml["ref"];
+    if (n_ref) {
+        V(n_ref.IsScalar(), "invalid 'ref' field");
+        const string& ref = n_ref.Scalar();
+        for (rid=0; rid < contigs.size(); rid++) {
+            if (ref == contigs[rid].first) {
+                break;
+            }
+        }
+        if (rid == contigs.size()) {
+            return Status::Invalid("range_of_yaml: unknown contig", ref);
+        }
+    } else if (default_rid >= 0) {
+        rid = default_rid;
+    } else {
+        return Status::Invalid("range_of_yaml: missing 'ref' field");
+    }
+
+    const auto n_beg = yaml["beg"];
+    V(n_beg && n_beg.IsScalar(), "missing/invalid 'beg' field");
+    int beg = n_beg.as<int>()-1;
+
+    const auto n_end = yaml["end"];
+    V(n_end && n_end.IsScalar(), "missing/invalid 'end' field");
+    int end = n_end.as<int>();
+
+    V(beg >= 1 && end >= beg, "invalid beg/end coordinates");
+
+    ans = range(rid, beg, end);
+    return Status::OK();
+    #undef V
+}
+
+Status yaml_of_discovered_alleles(const discovered_alleles& dal,
+                                  const std::vector<std::pair<std::string,size_t> >& contigs,
+                                  YAML::Emitter& out) {
+    Status s;
+
+    out << YAML::BeginSeq;
+    for (const auto& p : dal) {
+        out << YAML::BeginMap;
+
+        out << YAML::Key << "range" << YAML::Value;
+        S(range_yaml(contigs, p.first.pos, out));
+        out << YAML::Key << "dna"
+            << YAML::Value << p.first.dna;
+        out << YAML::Key << "is_ref"
+            << YAML::Value << p.second.is_ref;
+        out << YAML::Key << "observation_count"
+            << YAML::Value << p.second.observation_count;
+
+        out << YAML::EndMap;
+    }
+    out << YAML::EndSeq;
+
+    return Status::OK();
+}
+
+Status discovered_alleles_of_yaml(const YAML::Node& yaml,
+                                  const std::vector<std::pair<std::string,size_t> >& contigs,
+                                  discovered_alleles& ans) {
+    Status s;
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("discovered_alleles_of_yaml: " msg)
+
+    V(yaml.IsSequence(), "not a sequence at top level");
+    ans.clear();
+    for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
+        V(p->IsMap(), "invalid entry");
+
+        range rng(-1,-1,-1);
+        const auto n_range = (*p)["range"];
+        V(n_range, "missing 'range' field in entry");
+        S(range_of_yaml(n_range, contigs, rng));
+        #define VR(pred,msg) if (!(pred)) return Status::Invalid("discovered_alleles_of_yaml: " msg, rng.str(contigs))
+
+        const auto n_dna = (*p)["dna"];
+        VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
+        const string& dna = n_dna.Scalar();
+        VR(dna.size() > 0, "empty 'dna' in entry");
+        VR(is_dna(dna), "invalid allele DNA");
+        allele al(rng, dna);
+
+        discovered_allele_info ai;
+        const auto n_is_ref = (*p)["is_ref"];
+        VR(n_is_ref && n_is_ref.IsScalar(), "missing/invalid 'is_ref' field in entry");
+        ai.is_ref = n_is_ref.as<bool>();
+
+        const auto n_observation_count = (*p)["observation_count"];
+        VR(n_observation_count && n_observation_count.IsScalar(), "missing/invalid 'observation_count' field in entry");
+        ai.observation_count = n_observation_count.as<float>();
+        VR(std::isfinite(ai.observation_count) && !std::isnan(ai.observation_count), "invalid 'observation_count' field in entry");
+
+        VR(ans.find(al) == ans.end(), "duplicate alleles");
+        ans[al] = ai;
+        #undef VR
+    }
+    V(ans.size() >= 1, "not enough alleles");
+
+    #undef V
+    return Status::OK();
+}
+
 Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
                           YAML::Emitter& ans) {
     Status s;
@@ -108,46 +217,6 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     ans << YAML::EndSeq;
 
     return Status::OK();
-}
-
-Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
-                     range& ans, int default_rid = -1) {
-    #define V(pred,msg) if (!(pred)) return Status::Invalid("range_of_yaml: " msg)
-
-    V(yaml.IsMap(), "not a map at top level");
-
-    int rid;
-    const auto n_ref = yaml["ref"];
-    if (n_ref) {
-        V(n_ref.IsScalar(), "invalid 'ref' field");
-        const string& ref = n_ref.Scalar();
-        for (rid=0; rid < contigs.size(); rid++) {
-            if (ref == contigs[rid].first) {
-                break;
-            }
-        }
-        if (rid == contigs.size()) {
-            return Status::Invalid("range_of_yaml: unknown contig", ref);
-        }
-    } else if (default_rid >= 0) {
-        rid = default_rid;
-    } else {
-        return Status::Invalid("range_of_yaml: missing 'ref' field");
-    }
-
-    const auto n_beg = yaml["beg"];
-    V(n_beg && n_beg.IsScalar(), "missing/invalid 'beg' field");
-    int beg = n_beg.as<int>()-1;
-
-    const auto n_end = yaml["end"];
-    V(n_end && n_end.IsScalar(), "missing/invalid 'end' field");
-    int end = n_end.as<int>();
-
-    V(beg >= 1 && end >= beg, "invalid beg/end coordinates");
-
-    ans = range(rid, beg, end);
-    return Status::OK();
-    #undef V
 }
 
 Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
@@ -210,6 +279,8 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     }
     VR(ans.observation_count.size() == ans.alleles.size(), "observation_count list has wrong length");
 
+    #undef V
+    #undef VR
     return Status::OK();
 }
 
