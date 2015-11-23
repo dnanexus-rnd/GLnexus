@@ -8,7 +8,6 @@
 #include <memory>
 #include "types.h"
 #include "data.h"
-#include "service_config.h"
 
 namespace GLnexus {
 

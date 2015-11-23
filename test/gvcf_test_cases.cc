@@ -2,7 +2,6 @@
 #include <fstream>
 #include "service.h"
 #include "types.h"
-#include "service_config.h"
 #include "utils.cc"
 #include "catch.hpp"
 #include "sys/stat.h"

@@ -654,7 +654,7 @@ TEST_CASE("genotype residuals") {
     REQUIRE(s.ok());
 
     vector<unified_site> sites;
-    s = unified_sites(als, sites);
+    s = unified_sites(unifier_config(), als, sites);
     REQUIRE(s.ok());
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
