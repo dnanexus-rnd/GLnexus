@@ -342,6 +342,9 @@ struct StatsRangeQuery {
     }
 };
 
+struct unifier_config {
+};
+
 enum class GLnexusOutputFormat {
     /// Compressed bcf (default option)
     BCF,

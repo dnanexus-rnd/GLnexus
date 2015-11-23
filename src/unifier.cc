@@ -341,7 +341,9 @@ Status unify_alleles(const range& pos, const discovered_alleles& refs,
     // discovered_alleles will suffice.
 }
 
-Status unified_sites(const discovered_alleles& alleles, vector<unified_site>& ans) {
+Status unified_sites(const unifier_config& cfg,
+                     const discovered_alleles& alleles,
+                     vector<unified_site>& ans) {
     Status s;
 
     map<range,pair<discovered_alleles,minimized_alleles>> sites;

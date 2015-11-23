@@ -204,7 +204,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(s.ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -281,7 +281,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(s.ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -397,7 +397,7 @@ TEST_CASE("genotyper placeholder") {
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         unique_ptr<SimFailBCFData> faildata;
@@ -431,7 +431,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(s.ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         consolidated_loss losses;
@@ -495,7 +495,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(merge_discovered_alleles(als1, als).ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         cout << s.str() << endl;
         REQUIRE(s.ok());
 

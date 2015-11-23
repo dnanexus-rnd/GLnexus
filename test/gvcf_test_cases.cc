@@ -244,7 +244,7 @@ public:
         Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), als);
         REQUIRE(s.ok());
 
-        s =unified_sites(als, sites);
+        s =unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
