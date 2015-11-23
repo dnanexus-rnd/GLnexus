@@ -343,6 +343,9 @@ struct StatsRangeQuery {
 };
 
 struct unifier_config {
+    /// Maximum number of alleles per unified site; excess rare alleles will
+    /// be pruned. If zero, then no specific limit is enforced.
+    size_t max_alleles_per_site = 0;
 };
 
 enum class GLnexusOutputFormat {

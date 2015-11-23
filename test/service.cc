@@ -189,7 +189,7 @@ TEST_CASE("service::discover_alleles gVCF") {
     }
 }
 
-TEST_CASE("unified_sites placeholder") {
+TEST_CASE("unified_sites") {
     unique_ptr<VCFData> data;
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());

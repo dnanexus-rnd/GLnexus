@@ -283,8 +283,9 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
 
 /// Unify the alleles at one site. The given ALT alleles must all share at
 /// least one position in common.
-Status unify_alleles(const range& pos, const discovered_alleles& refs,
-                     const minimized_alleles& alts, unified_site& ans) {
+Status unify_alleles(const unifier_config& cfg, const range& pos,
+                     const discovered_alleles& refs, const minimized_alleles& alts,
+                     unified_site& ans) {
     Status s;
 
     // collapse the refs to get the reference allele for this site
@@ -306,9 +307,22 @@ Status unify_alleles(const range& pos, const discovered_alleles& refs,
             return p1.first.dna < p2.first.dna;
          });
 
-    // TODO: truncate valts to some configurable max # of alleles...
-    // Out of fairness, we should also prune all alleles with the same
-    // observation count as the first truncated one.
+    // enforce max_alleles_per_site. NB, valts does not include the ref
+    // allele, so we're truncating valts to cfg.max_alleles_per_site-1
+    if (cfg.max_alleles_per_site > 1 && valts.size() >= cfg.max_alleles_per_site) {
+        // Out of fairness, we also prune alt alleles with the same
+        // observation count as the first truncated one, except we always need
+        // to keep at least one alt allele of course.
+        unsigned int trunc0 = 1, trunc1 = 1;
+        for (; trunc1 < cfg.max_alleles_per_site; trunc1++) {
+            assert(valts[trunc0].second.observation_count >= valts[trunc1].second.observation_count);
+            while(valts[trunc0].second.observation_count > valts[trunc1].second.observation_count)
+                trunc0++;
+        }
+        // TODO: should we do something with the additional pruned alleles?
+        valts.assign(valts.begin(), valts.begin()+trunc0);
+        assert(valts.size() < cfg.max_alleles_per_site);
+    }
 
     // fill out the unification
     unified_site us(pos);
@@ -354,7 +368,7 @@ Status unified_sites(const unifier_config& cfg,
         UNPAIR(site, pos, site_alleles);
         UNPAIR(site_alleles, ref_alleles, alt_alleles);
         unified_site us(pos);
-        S(unify_alleles(pos, ref_alleles, alt_alleles, us));
+        S(unify_alleles(cfg, pos, ref_alleles, alt_alleles, us));
         ans.push_back(us);
     }
     return Status::OK();
