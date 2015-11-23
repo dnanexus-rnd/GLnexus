@@ -236,7 +236,7 @@ TEST_CASE("BCFKeyValueData initialization") {
 
 TEST_CASE("BCFKeyValueData::import_gvcf") {
     KeyValueMem::DB db({});
-    vector<pair<string,uint64_t>> contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    vector<pair<string,uint64_t>> contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
@@ -457,7 +457,7 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
 
 TEST_CASE("BCFKeyValueData BCF retrieval") {
     KeyValueMem::DB db({});
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
@@ -466,6 +466,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
     set<string> samples_imported;
 
     Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
+    cout << s.str() << endl;
     REQUIRE(s.ok());
 
     SECTION("dataset_header") {
@@ -557,7 +558,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
     for (int ilen : intervals) {
         //cout << "interval_len=" << ilen << endl;
         KeyValueMem::DB db({});
-        auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+        auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
 
         // Buckets of size 9 break the ranges [1005 -- 1010] and [3004 -- 3006]
         // in two.
@@ -648,7 +649,7 @@ TEST_CASE("BCFData::sampleset_range") {
     // returns iterators over 100kbp slices.
 
     KeyValueMem::DB db({});
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
@@ -812,7 +813,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     // This tests the optimized bucket-based range slicing in BCFKeyValueData
 
     KeyValueMem::DB db({});
-    auto contigs = {make_pair<string,uint64_t>("21", 1000000)};
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
     REQUIRE(T::InitializeDB(&db, contigs, 25000).ok());
     unique_ptr<T> data;
     REQUIRE(T::Open(&db, data).ok());
@@ -1062,7 +1063,7 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     // This tests the optimized bucket-based range slicing in BCFKeyValueData
     int nRegions = 13;
     int nIter = 10;
-    int lenChrom = 1000000;
+    int lenChrom = 48129895;
 
     KeyValueMem::DB db({});
     auto contigs = {make_pair<string,uint64_t>("21", lenChrom)};
@@ -1103,4 +1104,46 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     }
 
     cout << "Compared " << nIter << " range queries between the two iterators" << endl;
+}
+
+
+TEST_CASE("BCFKeyValueData too many contigs") {
+    KeyValueMem::DB db({});
+    std::vector<std::pair<std::string,size_t> > contigs;
+    for (int i=0; i < 1002; ++i) {
+        contigs.push_back(make_pair<string,uint64_t>(to_string(i), 1000000));
+    }
+    Status s = T::InitializeDB(&db, contigs);
+    REQUIRE(s.bad());
+}
+
+TEST_CASE("BCFKeyValueData bad dna") {
+    KeyValueMem::DB db({});
+    auto contigs = {make_pair<string,uint64_t>("A", 1000000)};
+    REQUIRE(T::InitializeDB(&db, contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    // empty allele structure
+    Status s = data->import_gvcf(*cache, "bad", "test/data/bad_dna.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+
+    // bad letter (K)
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_dna2.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+
+    // wrong contig size, does not match DB
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_dna3.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
+
+    // empty allele
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_dna4.gvcf", samples_imported);
+    cout << s.str() << endl;
+    REQUIRE(s.bad());
 }
