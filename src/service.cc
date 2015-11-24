@@ -2,6 +2,7 @@
 #include "data.h"
 #include "unifier.h"
 #include "genotyper.h"
+#include "residuals.h"
 #include <algorithm>
 #include <sstream>
 #include <fstream>
@@ -374,6 +375,15 @@ public:
     }
 };
 
+// Figure out if there were any losses reported for this site
+static bool any_losses(consolidated_loss &losses_for_site) {
+    for (auto ls_pair : losses_for_site) {
+        loss_stats &ls = ls_pair.second;
+        if (ls.n_calls_lost > 0) return true;
+    }
+    return false;
+}
+
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples;
@@ -389,11 +399,14 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     unique_ptr<BCFFileSink> bcf_out;
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
-    // open output residuals file
-    std::ofstream residuals_ofs;
+    // set up the residuals file if requested
+    unique_ptr<Residuals> residuals = nullptr;
     if (cfg.output_residuals &&
         !cfg.residuals_file.empty()) {
-        residuals_ofs.open(cfg.residuals_file, std::ofstream::out | std::ofstream::app);
+        s = Residuals::Open(cfg.residuals_file, *(body_->metadata_), body_->data_,
+                            sampleset, sample_names, residuals);
+        if (s.bad())
+            return Status::Invalid("Problem opening the residuals file ", cfg.residuals_file);
     }
 
     // Enqueue processing of each site as a task on the thread pool.
@@ -411,7 +424,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             }
             shared_ptr<bcf1_t> bcf;
             consolidated_loss losses_for_site;
-            Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, residuals_ofs, sites[i],
+            Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
                                       sampleset, sample_names, hdr.get(), bcf, losses_for_site);
             if (ls.bad()) {
                 return ls;
@@ -422,12 +435,6 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         statuses.push_back(move(fut));
     }
     assert(statuses.size() == sites.size());
-
-    // close the residuals file, we are done with it
-    if (cfg.output_residuals &&
-        residuals_ofs.good()) {
-        residuals_ofs.close();
-    }
 
     // Retrieve the resulting BCF records, and write them to the output file,
     // in the given order. Record the first error that occurs, if any, but
@@ -449,6 +456,15 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             s = bcf_out->write(bcf_i.get());
             if (s.bad()) {
                 abort = true;
+            }
+
+            if (residuals != nullptr &&
+                any_losses(losses_for_site)) {
+                // write out a residuals loss record
+                s = residuals->write_record(sites[i], hdr.get(), bcf_i.get());
+                if (s.bad()) {
+                    abort = true;
+                }
             }
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort

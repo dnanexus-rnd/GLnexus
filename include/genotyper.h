@@ -10,7 +10,7 @@
 namespace GLnexus {
 
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data,
-                     std::ofstream &residuals_ofs, const unified_site& site,
+                     const unified_site& site,
                      const std::string& sampleset, const std::vector<std::string>& samples,
                      const bcf_hdr_t* hdr, std::shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site);
 

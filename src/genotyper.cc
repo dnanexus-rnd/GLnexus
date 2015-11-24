@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <algorithm>
-#include "residuals.h"
 #include "genotyper.h"
 
 using namespace std;
@@ -349,18 +348,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 }
 
 
-// Check if we lost a call during genotyping, compard with the original
-// records
-static bool is_loss(LossTrackers &loss_trackers) {
-    for (const auto &tracker : loss_trackers) {
-        if (tracker.is_loss())
-            return true;
-    }
-    return false;
-}
-
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data,
-                     ofstream &residuals_ofs, const unified_site& site,
+                     const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans,
                      consolidated_loss& losses_for_site) {
@@ -489,15 +478,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         losses.insert(make_pair(sample_name,loss));
     }
     merge_loss_stats(losses, losses_for_site);
-
-    if (!cfg.output_residuals ||
-        !is_loss(loss_trackers))
-        return Status::OK();
-
-    // There was a loss, create a residuals record.
-    // We are ignoring errors that arise in the residuals routine, these
-    // are non critical.
-    s = write_residuals_record(residuals_ofs, cache, data, site, sampleset, samples, hdr, ans);
     return Status::OK();
 }
 

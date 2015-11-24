@@ -641,3 +641,27 @@ TEST_CASE("gVCF genotyper") {
     }
 }
 
+TEST_CASE("genotype residuals") {
+    unique_ptr<VCFData> data;
+    Status s = VCFData::Open({"joint_A.gvcf", "joint_B.gvcf", "joint_C.gvcf", "joint_D.gvcf"}, data);
+    REQUIRE(s.ok());
+    unique_ptr<Service> svc;
+    s = Service::Start(*data, *data, svc);
+    REQUIRE(s.ok());
+
+    discovered_alleles als;
+    s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+    REQUIRE(s.ok());
+
+    vector<unified_site> sites;
+    s = unified_sites(als, sites);
+    REQUIRE(s.ok());
+
+    const string tfn("/tmp/GLnexus_unit_tests.bcf");
+    consolidated_loss losses;
+    genotyper_config cfg;
+    cfg.output_residuals = true;
+    cfg.residuals_file = string("/tmp/residuals.yml");
+    s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
+    REQUIRE(s.ok());
+}
