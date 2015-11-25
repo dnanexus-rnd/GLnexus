@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <algorithm>
-#include "residuals.h"
 #include <kstring.h>
 #include <vcf.h>
+#include "residuals.h"
 
 using namespace std;
 
@@ -11,13 +11,11 @@ namespace GLnexus {
 // convert a BCF record into a string
 static shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf) {
     kstring_t kstr;
-    //memset((void)&kstr, 0, sizeof(kstring_t));
-    kstr.l = 0; // I -think- this is a safe way to initialize a kstring_t
-    kstr.m = 0;
-    kstr.s = NULL;
-
+    memset((void*)&kstr, 0, sizeof(kstring_t));
     vcf_format(hdr, bcf, &kstr);
     auto retval = make_shared<string>(kstr.s, kstr.l);
+    if (retval->length() > 0)
+        retval->erase(retval->find_last_not_of(" \n\r\t")+1); // get rid of extra spaces at the end
 
     // cleanup
     if (kstr.s != NULL)
@@ -26,31 +24,60 @@ static shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf
     return retval;
 }
 
+static bool is_file_exist(const string &fileName) {
+    std::ifstream infile(fileName);
+    return infile.good();
+}
+
+// return the list of samples in this dataset, in the format
+// of one string, with a comma as a delimiter.
+static string samples_from_dataset(const bcf_hdr_t *hdr) {
+    vector<string> samples;
+
+    int nsamples = bcf_hdr_nsamples(hdr);
+    for (int i=0; i < nsamples; i++) {
+        auto sample_name = string(bcf_hdr_int2id(hdr, BCF_DT_SAMPLE, i));
+        samples.push_back(sample_name);
+    }
+
+    return std::accumulate(samples.begin(), samples.end(), std::string(),
+                    [](const std::string& a, const std::string& b) -> std::string {
+                        return a + (a.length() > 0 ? "," : "") + b;
+                    } );
+}
+
 // destructor
 Residuals::~Residuals() {
     // close the residuals file
     ofs_.close();
 }
 
-
 Status Residuals::Open(std::string filename,
                        const MetadataCache& cache, BCFData& data,
                        const std::string& sampleset, const std::vector<std::string>& samples,
                        unique_ptr<Residuals> &ans) {
     ans = make_unique<Residuals>(filename, cache, data, sampleset, samples);
+    if (is_file_exist(filename)) {
+        remove(filename.c_str());
+    }
     ans->ofs_.open(filename, std::ofstream::out | std::ofstream::app);
     return Status::OK();
 }
 
 
-Status Residuals::write_record_(const unified_site& site,
-                                const bcf_hdr_t *gl_hdr,
-                                bcf1_t *gl_call) {
+Status Residuals::write_record(const unified_site& site,
+                               const bcf_hdr_t *gl_hdr,
+                               const bcf1_t *gl_call) {
     Status s;
+    YAML::Emitter out;
 
-    // write the original bcf records
-    ofs_ << "- original BCF records" << endl;
+    out << YAML::BeginMap;
 
+    // write the original records
+    out << YAML::Key << "input";
+    out << YAML::BeginMap;
+    out << YAML::Key << "body";
+    out << YAML::BeginSeq;
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     S(data_.sampleset_range(cache_, sampleset_, site.pos,
@@ -75,33 +102,33 @@ Status Residuals::write_record_(const unified_site& site,
             records.insert(records.end(), these_records.begin(), these_records.end());
         }
 
-        ofs_ << "   - dataset: " << dataset << endl;
         for (auto rec : records) {
-            ofs_ << "     " << bcf1_to_string(dataset_header.get(), rec.get()) << endl;
+            out << YAML::BeginMap;
+            out << YAML::Key << dataset;
+            string samples = samples_from_dataset(dataset_header.get());
+            out << YAML::Literal << samples + "\n" + *(bcf1_to_string(dataset_header.get(), rec.get()));
+            out << YAML::EndMap;
         }
     }
+    out << YAML::EndSeq;
+    out << YAML::EndMap;
 
     // write the unified site
-    ofs_ << "- unified site" << endl;
+    out << YAML::Key << "unified_site";
     const auto& contigs = cache_.contigs();
-    YAML::Emitter yaml_out;
-    S(site.yaml(contigs, yaml_out));
-    ofs_ << yaml_out.c_str();
+    S(site.yaml(contigs, out));
+
 
     // write the output bcf, the calls that GLnexus made.
-    ofs_ << "- GLnexus call(s)" << endl;
-    ofs_ <<  bcf1_to_string(gl_hdr, gl_call) << endl;
+    out << YAML::Key << "output_vcf";
+    out << YAML::Literal << *(bcf1_to_string(gl_hdr, gl_call));
 
-    // separator between calls
+    out << YAML::EndMap;
+
+    // Emit YAML format
+    ofs_ << out.c_str() << endl;
     ofs_ << endl;
     return Status::OK();
-}
-
-Status Residuals::write_record(const unified_site& site,
-                               const bcf_hdr_t *gl_hdr,
-                               bcf1_t *gl_call) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return write_record_(site, gl_hdr, gl_call);
 }
 
 }

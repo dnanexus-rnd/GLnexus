@@ -216,6 +216,7 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     }
     ans << YAML::EndSeq;
 
+    ans << YAML::EndMap;
     return Status::OK();
 }
 

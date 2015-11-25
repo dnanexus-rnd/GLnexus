@@ -1088,7 +1088,9 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     REQUIRE(s.ok());
 
     // split the range [0 ... 1000000] into [nRegions] areas.
-    //
+    // Limit the range to the first million bases, because that
+    // is where the interesting stuff lies.
+    lenChrom = 1000000;
     for (int i = 0; i < nIter; i++) {
         int beg = genRandDouble(nRegions) * lenChrom;
         int end = genRandDouble(nRegions) * lenChrom;

@@ -20,11 +20,6 @@ private:
     const std::string& sampleset_;
     const std::vector<std::string>& samples_;
 
-    // non lock safe version
-    Status write_record_(const unified_site& site,
-                         const bcf_hdr_t *gl_hdr,
-                         bcf1_t *gl_call);
-
 public:
     // constructor
     Residuals(std::string filename,
@@ -44,10 +39,10 @@ public:
 
     // Write a record describing a loss
     //
-    // note: this function is called from multiple threads.
+    // Note: this function is not thread safe.
     Status write_record(const unified_site& site,
                         const bcf_hdr_t *gl_hdr,
-                        bcf1_t *gl_call);
+                        const bcf1_t *gl_call);
 };
 
 } // namespace GLnexus
