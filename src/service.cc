@@ -235,7 +235,6 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     if (s.bad()) {
         return s;
     }
-
     return discovered_alleles_refcheck(ans, body_->metadata_->contigs());
 }
 

@@ -1,0 +1,81 @@
+readme: |
+  This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites). The test includes 1 unified site which requries joining of 2 gvcf records
+  NA12989.gvcf is an artificially generated file for suggesting desired unified sites.
+  This test expects genotyping with a depth cutoff of >12
+
+input:
+  header : |-
+    ##fileformat=VCFv4.1
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+    ##FILTER=<ID=LowQual,Description="Low quality">
+    ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+    ##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+    ##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+    ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
+    ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+    ##contig=<ID=21,length=48129895>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - NA12878.gvcf: |
+        NA12878
+        21	10009462	.	T	<NON_REF>	.	.	END=10009463	GT:DP:GQ:MIN_DP:PL	0/0:14:36:13:0,36,540
+        21	10009464	.	TA	T,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009466	.	A	<NON_REF>	.	.	END=10009466	GT:DP:GQ:MIN_DP:PL	0/0:13:0:13:0,0,342
+        21	10009467	.	A	<NON_REF>	.	.	END=10009468	GT:DP:GQ:MIN_DP:PL	0/0:12:36:12:0,36,410
+        21	10009469	.	A	<NON_REF>	.	.	END=10009471	GT:DP:GQ:MIN_DP:PL	0/0:13:39:13:0,39,453
+    - NA12879.gvcf: |
+        NA12879
+        21	10009462	.	A	<NON_REF>	.	.	END=10009465	GT:DP:GQ:MIN_DP:PL	0/0:13:0:13:0,0,342
+        21	10009466	.	A	G,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:20,2,0:22:16:16,0,240,46,246,292:1,9,1,1
+        21	10009467	.	A	C,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:20,2,0:22:16:16,0,240,46,246,292:1,9,1,1
+
+truth_unified_sites:
+    - range: {ref: "21", beg: 10009464, end: 10009465}
+      alleles: [TA, T]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009464, end: 10009465}
+          alt: TA
+          to: 0
+        - range: {beg: 10009464, end: 10009465}
+          alt: T
+          to: 1
+    - range: {ref: "21", beg: 10009466, end: 10009466}
+      alleles: [A, G]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009466, end: 10009466}
+          alt: A
+          to: 0
+        - range: {beg: 10009466, end: 10009466}
+          alt: G
+          to: 1
+    - range: {ref: "21", beg: 10009467, end: 10009467}
+      alleles: [A, C]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009467, end: 10009467}
+          alt: A
+          to: 0
+        - range: {beg: 10009467, end: 10009467}
+          alt: C
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##contig=<ID=21,length=48129895>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
+      21	10009464	.	TA	T	0	.	.	GT:RNC	./.:MM	0/0:..
+      21	10009466	.	A	G	0	.	.	GT:RNC	0/0:..	0/.:.M
+      21	10009467	.	A	C	0	.	.	GT:RNC	./.:MM	0/.:.M

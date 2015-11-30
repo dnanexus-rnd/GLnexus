@@ -1,6 +1,0 @@
-##fileformat=VCFv4.2
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##FILTER=<ID=PASS,Description="All filters passed">
-##contig=<ID=A,length=1000000>
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	JOINT_D
-A	1000	.	ATG	ATGTG,A	.	PASS	.	GT	0/1

@@ -166,6 +166,12 @@ struct allele {
     /// Order is by pos and then allele.
     bool operator<(const allele& rhs) const noexcept { return pos < rhs.pos || (pos == rhs.pos && dna < rhs.dna); }
     bool operator<=(const allele& rhs) const noexcept { return *this < rhs || *this == rhs; }
+
+    std::string str() const {
+        std::ostringstream os;
+        os << pos.str() << "(" << dna << ")";
+        return os.str();
+    }
 };
 
 struct discovered_allele_info {
@@ -173,6 +179,12 @@ struct discovered_allele_info {
     float observation_count;
 
     bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && observation_count == rhs.observation_count; }
+
+    std::string str() const {
+        std::ostringstream os;
+        os << "[ is_ref: " << std::boolalpha << is_ref << " observation count: " << std::setprecision(1) << observation_count << "]";
+        return os.str();
+    }
 };
 using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);
