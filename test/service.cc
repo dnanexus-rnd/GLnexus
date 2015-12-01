@@ -643,7 +643,7 @@ TEST_CASE("gVCF genotyper") {
 
 TEST_CASE("genotype residuals") {
     unique_ptr<VCFData> data;
-    Status s = VCFData::Open({"joint_A.gvcf", "joint_B.gvcf", "joint_C.gvcf", "joint_D.gvcf"}, data);
+    Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
     s = Service::Start(*data, *data, svc);

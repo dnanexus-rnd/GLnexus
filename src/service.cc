@@ -466,7 +466,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         // always retrieve the result BCF record, if any, to ensure we'll free
         // the memory it takes ASAP
         shared_ptr<bcf1_t> bcf_i = move(std::get<0>(results[i]));
-        assert(!results[i].first);
+        assert(std::get<0>(results[i]) == nullptr);
         consolidated_loss losses_for_site = move(std::get<1>(results[i]));
         shared_ptr<string> residual_rec =  std::get<2>(results[i]);
 
