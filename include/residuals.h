@@ -1,7 +1,6 @@
 #ifndef GLNEXUS_RESIDUALS_H
 #define GLNEXUS_RESIDUALS_H
 
-#include <mutex>
 #include <fstream>
 #include <memory>
 #include "data.h"
@@ -12,9 +11,6 @@ namespace GLnexus {
 
 class Residuals {
 private:
-    std::string filename_; // file where to store the residual calls
-    std::mutex mutex_;
-    std::ofstream ofs_;
     const MetadataCache& cache_;
     BCFData& data_;
     const std::string& sampleset_;
@@ -22,27 +18,25 @@ private:
 
 public:
     // constructor
-    Residuals(std::string filename,
-              const MetadataCache& cache, BCFData& data,
+    Residuals(const MetadataCache& cache, BCFData& data,
               const std::string& sampleset, const std::vector<std::string>& samples) :
-        filename_(filename), cache_(cache), data_(data), sampleset_(sampleset), samples_(samples)
+        cache_(cache), data_(data), sampleset_(sampleset), samples_(samples)
         {}
 
     // destructor
     ~Residuals();
 
     // Create a Residuals object
-    static Status Open(std::string filename,
-                       const MetadataCache& cache, BCFData& data,
+    static Status Open(const MetadataCache& cache, BCFData& data,
                        const std::string& sampleset, const std::vector<std::string>& samples,
                        std::unique_ptr<Residuals> &ans);
 
-    // Write a record describing a loss
-    //
-    // Note: this function is not thread safe.
-    Status write_record(const unified_site& site,
-                        const bcf_hdr_t *gl_hdr,
-                        const bcf1_t *gl_call);
+    // Create a YAML node describing a loss. The node
+    // is formatted as a string for simplicity.
+    Status gen_record(const unified_site& site,
+                      const bcf_hdr_t *gl_hdr,
+                      const bcf1_t *gl_call,
+                      std::string &ynode);
 };
 
 } // namespace GLnexus

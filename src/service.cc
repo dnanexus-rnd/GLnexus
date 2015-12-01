@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <assert.h>
+#include <tuple>
 #include "ctpl_stl.h"
 
 using namespace std;
@@ -384,6 +385,11 @@ static bool any_losses(consolidated_loss &losses_for_site) {
     return false;
 }
 
+static bool is_file_exist(const string &fileName) {
+    std::ifstream infile(fileName);
+    return infile.good();
+}
+
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples;
@@ -400,18 +406,20 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
     // set up the residuals file if requested
+    std::ofstream residuals_ofs;
     unique_ptr<Residuals> residuals = nullptr;
     if (cfg.output_residuals &&
         !cfg.residuals_file.empty()) {
-        s = Residuals::Open(cfg.residuals_file, *(body_->metadata_), body_->data_,
-                            sampleset, sample_names, residuals);
-        if (s.bad())
-            return Status::Invalid("Problem opening the residuals file ", cfg.residuals_file);
+        S(Residuals::Open(*(body_->metadata_), body_->data_, sampleset, sample_names, residuals));
+        if (is_file_exist(cfg.residuals_file)) {
+            remove(cfg.residuals_file.c_str());
+        }
+        residuals_ofs.open(cfg.residuals_file, std::ofstream::out | std::ofstream::app);
     }
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;
-    vector<pair<shared_ptr<bcf1_t>,consolidated_loss>> results(sites.size());
+    vector<tuple<shared_ptr<bcf1_t>,consolidated_loss,shared_ptr<string>>> results(sites.size());
     // ^^^ results to be filled by side-effect in the individual tasks below.
     // We assume that by virtue of preallocating, no mutex is necessary to
     // use it as follows because writes and reads of individual elements are
@@ -429,7 +437,19 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             if (ls.bad()) {
                 return ls;
             }
-            results[i] = make_pair(move(bcf),losses_for_site);
+
+            shared_ptr<string> residual_rec = nullptr;
+            if (residuals != nullptr &&
+                any_losses(losses_for_site)) {
+                // create a residuals loss record
+                residual_rec = make_shared<string>();
+                s = residuals->gen_record(sites[i], hdr.get(), bcf.get(), *residual_rec);
+                if (s.bad()) {
+                    abort = true;
+                }
+            }
+
+            results[i] = make_tuple(move(bcf), losses_for_site, residual_rec);
             return ls;
         });
         statuses.push_back(move(fut));
@@ -445,9 +465,10 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         Status s_i(statuses[i].get());
         // always retrieve the result BCF record, if any, to ensure we'll free
         // the memory it takes ASAP
-        shared_ptr<bcf1_t> bcf_i = move(results[i].first);
+        shared_ptr<bcf1_t> bcf_i = move(std::get<0>(results[i]));
         assert(!results[i].first);
-        consolidated_loss losses_for_site = move(results[i].second);
+        consolidated_loss losses_for_site = move(std::get<1>(results[i]));
+        shared_ptr<string> residual_rec =  std::get<2>(results[i]);
 
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
@@ -457,14 +478,9 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             if (s.bad()) {
                 abort = true;
             }
-
-            if (residuals != nullptr &&
-                any_losses(losses_for_site)) {
-                // write out a residuals loss record
-                s = residuals->write_record(sites[i], hdr.get(), bcf_i.get());
-                if (s.bad()) {
-                    abort = true;
-                }
+            if (residual_rec != nullptr) {
+                residuals_ofs << "---" << endl;
+                residuals_ofs << *residual_rec << endl;
             }
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort
@@ -475,6 +491,11 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     if (s.bad()) {
         return s;
     }
+
+    if (residuals != nullptr) {
+        residuals_ofs.close();
+    }
+
     // TODO: for very large sample sets, bucket cache-friendliness might be
     // improved by genotyping in grid squares of N>1 sites and M>1 samples
 

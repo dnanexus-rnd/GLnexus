@@ -24,11 +24,6 @@ static shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf
     return retval;
 }
 
-static bool is_file_exist(const string &fileName) {
-    std::ifstream infile(fileName);
-    return infile.good();
-}
-
 // return the list of samples in this dataset, in the format
 // of one string, with a comma as a delimiter.
 static string samples_from_dataset(const bcf_hdr_t *hdr) {
@@ -47,27 +42,20 @@ static string samples_from_dataset(const bcf_hdr_t *hdr) {
 }
 
 // destructor
-Residuals::~Residuals() {
-    // close the residuals file
-    ofs_.close();
-}
+Residuals::~Residuals() {}
 
-Status Residuals::Open(std::string filename,
-                       const MetadataCache& cache, BCFData& data,
+Status Residuals::Open(const MetadataCache& cache, BCFData& data,
                        const std::string& sampleset, const std::vector<std::string>& samples,
                        unique_ptr<Residuals> &ans) {
-    ans = make_unique<Residuals>(filename, cache, data, sampleset, samples);
-    if (is_file_exist(filename)) {
-        remove(filename.c_str());
-    }
-    ans->ofs_.open(filename, std::ofstream::out | std::ofstream::app);
+    ans = make_unique<Residuals>(cache, data, sampleset, samples);
     return Status::OK();
 }
 
 
-Status Residuals::write_record(const unified_site& site,
-                               const bcf_hdr_t *gl_hdr,
-                               const bcf1_t *gl_call) {
+Status Residuals::gen_record(const unified_site& site,
+                             const bcf_hdr_t *gl_hdr,
+                             const bcf1_t *gl_call,
+                             std::string &ynode) {
     Status s;
     YAML::Emitter out;
 
@@ -126,8 +114,7 @@ Status Residuals::write_record(const unified_site& site,
     out << YAML::EndMap;
 
     // Emit YAML format
-    ofs_ << out.c_str() << endl;
-    ofs_ << endl;
+    ynode = string(out.c_str());
     return Status::OK();
 }
 
