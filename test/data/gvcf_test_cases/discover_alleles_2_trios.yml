@@ -1,0 +1,77 @@
+readme: |
+  This is a straight-forward test case for testing of discover_alleles as a service.
+
+
+input:
+  header : |-
+    ##fileformat=VCFv4.2
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##contig=<ID=A,length=1000000>
+    ##contig=<ID=B,length=1000000>
+    ##contig=<ID=C,length=1000000>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - discover_alleles_trio1.vcf: |
+        trio1.fa	trio1.mo	trio1.ch
+        A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	1/1
+        A	1002	.	C	G,T	.	PASS	.	GT	0/0	1/1	2/2
+        A	1011	.	CC	AG	.	PASS	.	GT	0/1	0/1	0/1
+        A	1101	.	C	A	.	PASS	.	GT	0/1	0/1	0/1
+        A	1103	.	C	G	.	PASS	.	GT	0/1	0/1	0/1
+        A	1201	.	C	A	.	PASS	.	GT	0/1	0/1	0/1
+        B	1001	.	A	AA	.	PASS	.	GT	1/1	0/1	0/1
+        B	1002	.	C	G	.	PASS	.	GT	1/1	1/1	1/1
+        B	1011	.	CC	AG	.	PASS	.	GT	0/1	0/1	0/1
+        B	1017	.	A	AG	.	PASS	.	GT	0/1	0/1	1/1
+        C	1001	.	A	G	.	PASS	.	GT	0/1	0/1	1/1
+    - discover_alleles_trio2.vcf: |
+        trio2.fa	trio2.mo	trio2.ch
+        A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	0/0
+        A	1002	.	C	A	.	PASS	.	GT	1/1	1/1	1/1
+        A	1011	.	CCC	AGA	.	PASS	.	GT	0/1	0/1	0/0
+        A	1101	.	CCC	AAA	.	PASS	.	GT	0/1	0/1	0/0
+        B	1002	.	CCCCCCCCCCCCCCC	AAAAAAAAAAAAAAA	.	PASS	.	GT	0/0	1/1	1/0
+        C	1001	.	G	A	.	PASS	.	GT	0/1	0/1	1/1
+
+truth_discovered_alleles:
+    - range: {ref: 'A', beg: 1001, end: 1001}
+      dna: 'A'
+      is_ref: true
+      observation_count: 6
+    - range: {ref: 'A', beg: 1001, end: 1001}
+      dna: 'G'
+      is_ref: false
+      observation_count: 6
+    - range: {ref: 'A', beg: 1002, end: 1002}
+      dna: 'C'
+      is_ref: true
+      observation_count: 2
+    - range: {ref: 'A', beg: 1002, end: 1002}
+      dna: 'A'
+      is_ref: false
+      observation_count: 6
+    - range: {ref: 'A', beg: 1002, end: 1002}
+      dna: 'G'
+      is_ref: false
+      observation_count: 2
+    - range: {ref: 'A', beg: 1002, end: 1002}
+      dna: 'T'
+      is_ref: false
+      observation_count: 2
+    - range: {ref: 'A', beg: 1011, end: 1012}
+      dna: 'CC'
+      is_ref: true
+      observation_count: 3
+    - range: {ref: 'A', beg: 1011, end: 1012}
+      dna: 'AG'
+      is_ref: false
+      observation_count: 3
+    - range: {ref: 'A', beg: 1011, end: 1013}
+      dna: 'CCC'
+      is_ref: true
+      observation_count: 4
+    - range: {ref: 'A', beg: 1011, end: 1013}
+      dna: 'AGA'
+      is_ref: false
+      observation_count: 2

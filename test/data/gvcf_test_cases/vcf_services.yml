@@ -1,0 +1,131 @@
+readme: |
+  This is a gvcf testing of the unify_sites service.
+
+input:
+  header : |-
+    ##fileformat=VCFv4.2
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##contig=<ID=A,length=1000000>
+    ##contig=<ID=B,length=1000000>
+    ##contig=<ID=C,length=1000000>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - discover_alleles_trio1.vcf: |
+        trio1.fa	trio1.mo	trio1.ch
+        A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	1/1
+        A	1002	.	C	G,T	.	PASS	.	GT	0/0	1/1	2/2
+        A	1011	.	CC	AG	.	PASS	.	GT	0/1	0/1	0/1
+        A	1101	.	C	A	.	PASS	.	GT	0/1	0/1	0/1
+        A	1103	.	C	G	.	PASS	.	GT	0/1	0/1	0/1
+        A	1201	.	C	A	.	PASS	.	GT	0/1	0/1	0/1
+        B	1001	.	A	AA	.	PASS	.	GT	1/1	0/1	0/1
+        B	1002	.	C	G	.	PASS	.	GT	1/1	1/1	1/1
+        B	1011	.	CC	AG	.	PASS	.	GT	0/1	0/1	0/1
+        B	1017	.	A	AG	.	PASS	.	GT	0/1	0/1	1/1
+        C	1001	.	A	G	.	PASS	.	GT	0/1	0/1	1/1
+    - discover_alleles_trio2.vcf: |
+        trio2.fa	trio2.mo	trio2.ch
+        A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	0/0
+        A	1002	.	C	A	.	PASS	.	GT	1/1	1/1	1/1
+        A	1011	.	CCC	AGA	.	PASS	.	GT	0/1	0/1	0/0
+        A	1101	.	CCC	AAA	.	PASS	.	GT	0/1	0/1	0/0
+        B	1002	.	CCCCCCCCCCCCCCC	AAAAAAAAAAAAAAA	.	PASS	.	GT	0/0	1/1	1/0
+        C	1001	.	G	A	.	PASS	.	GT	0/1	0/1	1/1
+
+truth_unified_sites:
+    - range: {ref: "A", beg: 1001, end: 1001}
+      alleles: [A, G]
+      observation_count: [0, 6]
+      unification:
+        - range: {beg: 1001, end: 1001}
+          alt: A
+          to: 0
+        - range: {beg: 1001, end: 1001}
+          alt: G
+          to: 1
+    - range: {ref: "A", beg: 1002, end: 1002}
+      alleles: [C, A, G, T]
+      observation_count: [0, 6, 2, 2]
+      unification:
+        - range: {beg: 1002, end: 1002}
+          alt: C
+          to: 0
+        - range: {beg: 1002, end: 1002}
+          alt: A
+          to: 1
+        - range: {beg: 1002, end: 1002}
+          alt: G
+          to: 2
+        - range: {beg: 1002, end: 1002}
+          alt: T
+          to: 3
+    - range: {ref: "A", beg: 1011, end: 1013}
+      alleles: [CCC, AGC, AGA]
+      observation_count: [0, 3, 2]
+      unification:
+        - range: {beg: 1011, end: 1012}
+          alt: CC
+          to: 0
+        - range: {beg: 1011, end: 1013}
+          alt: CCC
+          to: 0
+        - range: {beg: 1011, end: 1012}
+          alt: AG
+          to: 1
+        - range: {beg: 1011, end: 1013}
+          alt: AGA
+          to: 2
+    - range: {ref: "A", beg: 1101, end: 1101}
+      alleles: [C, A]
+      observation_count: [0, 3]
+      unification:
+        - range: {beg: 1101, end: 1101}
+          alt: C
+          to: 0
+        - range: {beg: 1101, end: 1103}
+          alt: CCC
+          to: 0
+        - range: {beg: 1101, end: 1101}
+          alt: A
+          to: 1
+    - range: {ref: "A", beg: 1103, end: 1103}
+      alleles: [C, G]
+      observation_count: [0, 3]
+      unification:
+        - range: {beg: 1101, end: 1103}
+          alt: CCC
+          to: 0
+        - range: {beg: 1103, end: 1103}
+          alt: C
+          to: 0
+        - range: {beg: 1103, end: 1103}
+          alt: G
+          to: 1
+    - range: {ref: "A", beg: 1201, end: 1201}
+      alleles: [C, A]
+      observation_count: [0, 3]
+      unification:
+        - range: {beg: 1201, end: 1201}
+          alt: C
+          to: 0
+        - range: {beg: 1201, end: 1201}
+          alt: A
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##contig=<ID=A,length=1000000>
+      ##contig=<ID=B,length=1000000>
+      ##contig=<ID=C,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	trio1.ch	trio1.fa	trio1.mo	trio2.ch	trio2.fa	trio2.mo
+      A	1001	.	A	G	0	.	.	GT:RNC	1/1:..	0/1:..	0/1:..	0/0:..	0/1:..	0/1:..
+      A	1002	.	C	A,G,T	0	.	.	GT:RNC	3/3:..	0/0:..	2/2:..	1/1:..	1/1:..	1/1:..
+      A	1011	.	CCC	AGC,AGA	0	.	.	GT:RNC	./.:LL	./.:LL	./.:LL	0/0:..	0/2:..	0/2:..
+      A	1101	.	C	A	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	0/0:..	0/.:.L	0/.:.L
+      A	1103	.	C	G	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	0/0:..	0/.:.L	0/.:.L
+      A	1201	.	C	A	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	./.:MM	./.:MM	./.:MM

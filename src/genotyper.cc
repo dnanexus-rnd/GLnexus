@@ -315,7 +315,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                     !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
                     auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
                     assert(al >= 0 && al < record->n_allele);                  \
-                    if (depth->sufficient(ij.second, al)) {                    \
+                    if (depth->sufficient(ij.first, al)) {                    \
                         if (allele_mapping[al] >= 0) {                         \
                             genotypes[2*ij.second+(ofs)] =                     \
                                 one_call(bcf_gt_unphased(allele_mapping[al]),  \

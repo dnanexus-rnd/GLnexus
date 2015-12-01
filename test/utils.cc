@@ -87,7 +87,6 @@ public:
                 sample_datasets[sample] = dataset;
             }
         }
-
         ans.reset(new VCFData());
         ans->datasets_ = move(datasets);
         ans->sample_datasets_ = sample_datasets;
