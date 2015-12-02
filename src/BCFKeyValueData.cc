@@ -853,47 +853,49 @@ static std::regex nonRefRegExp("<.*>");
 // Sanity-check an individual bcf1_t record before ingestion.
 static Status validate_bcf(BCFBucketRange& rangeHelper,
                            const std::vector<std::pair<std::string,size_t> >&contigs,
+                           const std::string& filename,
                            const bcf_hdr_t *hdr,
                            bcf1_t *bcf,
                            int prev_rid, int prev_pos) {
+    if (bcf_unpack(bcf, BCF_UN_ALL) != 0) {
+        return Status::Invalid("corrupt input file (bcf_unpack failed)",
+                               filename + " " + range(bcf).str(contigs));
+    }
+
     // Check that bcf->rlen is calculated correctly based on POS,END if
     // available or POS,strlen(REF) otherwise
     bcf_info_t *info = bcf_get_info(hdr, bcf, "END");
     if (info) {
         if (info->type != BCF_BT_INT8 && info->type != BCF_BT_INT16 && info->type != BCF_BT_INT32) {
-            return Status::Invalid("gVCF record's END field has unexpected type", range(bcf).str());
+            return Status::Invalid("gVCF record's END field has unexpected type", filename + " " + range(bcf).str(contigs));
         }
         if (info->len != 1) {
-            return Status::Invalid("gVCF record has multiple END fields", range(bcf).str());
+            return Status::Invalid("gVCF record has multiple END fields", filename + " " + range(bcf).str(contigs));
         }
         if (info->v1.i < bcf->pos) {
-            return Status::Invalid("gVCF record has END < POS", range(bcf).str());
+            return Status::Invalid("gVCF record has END < POS", filename + " " + range(bcf).str(contigs));
         }
         if (info->v1.i - bcf->pos != bcf->rlen) {
-            return Status::Invalid("gVCF record END-POS doesn't match rlen", range(bcf).str());
+            return Status::Invalid("gVCF record END-POS doesn't match rlen", filename + " " + range(bcf).str(contigs));
         }
     } else {
         if (bcf->d.allele == nullptr) {
-            return Status::Invalid("gVCF allele is null", range(bcf).str());
+            return Status::Invalid("gVCF allele is null", filename + " " + range(bcf).str(contigs));
         }
         if (bcf->rlen != (int) strlen(bcf->d.allele[0])) {
-            return Status::Invalid("gVCF rlen doesn't match strlen(REF) (and no END field)", range(bcf).str());
+            return Status::Invalid("gVCF rlen doesn't match strlen(REF) (and no END field)", filename + " " + range(bcf).str(contigs));
         }
     }
 
-    // TODO: verify there's at least one ALT allele, and that non-symbolic
-    // alleles are valid DNA, and each differ from the REF allele
-
     if (bcf->rlen > rangeHelper.interval_len) {
-        return Status::Invalid("gVCF has record that is longer than ",
-                               std::to_string(rangeHelper.interval_len));
+        return Status::Invalid("gVCF contains record above maximum length", filename);
     }
 
     // verify record ordering is monotonically increasing within a contig
     if (prev_rid == bcf->rid &&
         prev_pos >= bcf->pos) {
         return Status::Invalid("gVCF record ordering is wrong ",
-                               std::to_string(prev_pos) + " >= " + range(bcf).str());
+                               filename + " " + std::to_string(prev_pos) + " >= " + range(bcf).str(contigs));
     }
 
     // verify record does not go over the length of the contig
@@ -901,7 +903,7 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     size_t contig_len = contigs[bcf->rid].second;
     if (bcf->pos + bcf->rlen > contig_len) {
         return Status::Invalid("gVCF record is longer than contig ",
-                               range(bcf).str() + " " + to_string(contig_len) + " " + contig_name);
+                               filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
     for (int i=0; i < bcf->n_allele; i++) {
@@ -911,8 +913,12 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
             continue;
 
         return Status::Invalid("allele is not a recognized DNA sequence ",
-                               allele_i +  " " + range(bcf).str(contigs));
+                               filename + " " + allele_i +  " " + range(bcf).str(contigs));
     }
+
+    // TODO: verify there's at least one ALT allele, and that each ALT allele
+    // differs from the REF allele, and that the expected FORMAT fields are
+    // present for each sample declared in the header (e.g. GT, AD, GL)
 
     return Status::OK();
 }
@@ -1005,7 +1011,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         // Make sure a record is not longer than [BCFBucketRange::interval_len].
         // If this is not true, then we need to compensate in the search
         // routine.
-        S(validate_bcf(rangeHelper, metadata.contigs(), hdr, vt.get(), prev_rid, prev_pos));
+        S(validate_bcf(rangeHelper, metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
@@ -1121,7 +1127,7 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
 
         retval = wb->commit();
         if (retval.ok()) {
-            body_->sample_count++;
+            body_->sample_count += samples_out.size();
         }
     }
 

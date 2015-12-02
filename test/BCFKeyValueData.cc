@@ -353,6 +353,47 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(sampleset == sampleset2);
     }
 
+    SECTION("multi-sample datasets") {
+        db.wipe();
+        contigs = {make_pair<string,uint64_t>("A", 1000000),
+                   make_pair<string,uint64_t>("B", 1000000),
+                   make_pair<string,uint64_t>("C", 1000000)};
+        REQUIRE(T::InitializeDB(&db, contigs).ok());
+        REQUIRE(T::Open(&db, data).ok());
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+
+        Status s = data->import_gvcf(*cache, "1", "test/data/discover_alleles_trio1.vcf", samples_imported);
+        cout << s.str() << endl;
+        REQUIRE(s.ok());
+        REQUIRE(samples_imported.size() == 3);
+
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 3);
+
+        string sampleset;
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        shared_ptr<const set<string>> all;
+        s = cache->sampleset_samples(sampleset, all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 3);
+
+        s = data->import_gvcf(*cache, "2", "test/data/discover_alleles_trio2.vcf", samples_imported);
+        REQUIRE(s.ok());
+        REQUIRE(samples_imported.size() == 3);
+
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 6);
+
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        s = cache->sampleset_samples(sampleset, all);
+        REQUIRE(s.ok());
+        REQUIRE(all->size() == 6);
+    }
+
     SECTION("new_sampleset") {
         Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
         REQUIRE(s.ok());
