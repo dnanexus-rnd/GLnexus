@@ -19,6 +19,15 @@ TEST_CASE("unifier max_alleles_per_site") {
     unifier_config cfg;
     vector<unified_site> sites;
 
+    SECTION("0") {
+        // No limit on # of max alleles
+        Status s = unified_sites(cfg, dal, sites);
+        REQUIRE(s.ok());
+        REQUIRE(sites.size() == 1);
+        REQUIRE(sites[0].alleles.size() == 6);
+        REQUIRE(sites[0].alleles[5] == "GC");
+    }
+
     SECTION("5") {
         cfg.max_alleles_per_site = 5;
         Status s = unified_sites(cfg, dal, sites);
