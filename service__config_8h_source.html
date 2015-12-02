@@ -110,13 +110,18 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;</div>
 <div class="line"><a name="l00029"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257">   29</a></span>&#160;    GLnexusOutputFormat <a class="code" href="struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257">output_format</a> = GLnexusOutputFormat::BCF;</div>
 <div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    <a class="code" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a>() = <span class="keywordflow">default</span>;</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    <a class="code" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a>(GLnexusOutputFormat _output_format) : <a class="code" href="struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257">output_format</a>(_output_format) {}</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;};</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;}</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    <span class="comment">// Should the genotyper write a record describing each call loss?</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    <span class="comment">// If true, the output is recorded in YAML format in the</span></div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    <span class="comment">// [residuals_file].</span></div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    <span class="keywordtype">bool</span> output_residuals = <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    std::string residuals_file = <span class="stringliteral">&quot;/tmp/residuals.yml&quot;</span>;</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;</div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;    <a class="code" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a>() = <span class="keywordflow">default</span>;</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    <a class="code" href="struct_g_lnexus_1_1genotyper__config.html">genotyper_config</a>(GLnexusOutputFormat _output_format) : <a class="code" href="struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257">output_format</a>(_output_format) {}</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;};</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;}</div>
 <div class="ttc" id="struct_g_lnexus_1_1genotyper__config_html_a62168f1049be4d6506cfe27415c8c257"><div class="ttname"><a href="struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257">GLnexus::genotyper_config::output_format</a></div><div class="ttdeci">GLnexusOutputFormat output_format</div><div class="ttdoc">Output format (default = bcf), choices = "BCF", "VCF". </div><div class="ttdef"><b>Definition:</b> service_config.h:29</div></div>
 <div class="ttc" id="struct_g_lnexus_1_1genotyper__config_html_a71cc0d0a145034fdd893a28e9cae240a"><div class="ttname"><a href="struct_g_lnexus_1_1genotyper__config.html#a71cc0d0a145034fdd893a28e9cae240a">GLnexus::genotyper_config::ref_dp_format</a></div><div class="ttdeci">std::string ref_dp_format</div><div class="ttdoc">FORMAT field to consult for reference depth in gVCF reference records. </div><div class="ttdef"><b>Definition:</b> service_config.h:26</div></div>
 <div class="ttc" id="struct_g_lnexus_1_1genotyper__config_html"><div class="ttname"><a href="struct_g_lnexus_1_1genotyper__config.html">GLnexus::genotyper_config</a></div><div class="ttdef"><b>Definition:</b> service_config.h:15</div></div>

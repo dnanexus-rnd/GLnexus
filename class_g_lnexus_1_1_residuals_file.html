@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.7"/>
-<title>GLnexus: GLnexus::LossTracker Class Reference</title>
+<title>GLnexus: GLnexus::ResidualsFile Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -82,45 +82,37 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1_loss_tracker.html">LossTracker</a></li>  </ul>
+<li class="navelem"><b>GLnexus</b></li><li class="navelem"><a class="el" href="class_g_lnexus_1_1_residuals_file.html">ResidualsFile</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
-<a href="class_g_lnexus_1_1_loss_tracker-members.html">List of all members</a>  </div>
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="class_g_lnexus_1_1_residuals_file-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">GLnexus::LossTracker Class Reference</div>  </div>
+<div class="title">GLnexus::ResidualsFile Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
-Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a5d84d2ae82eb8c15418d95f147123481"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5d84d2ae82eb8c15418d95f147123481"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>LossTracker</b> (const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> rng_) noexcept</td></tr>
-<tr class="separator:a5d84d2ae82eb8c15418d95f147123481"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a258c7fef3d7213cc688e1ea847bbcdf8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a258c7fef3d7213cc688e1ea847bbcdf8"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>add_call_for_site</b> (const <a class="el" href="struct_g_lnexus_1_1range.html">range</a> call, int n_calls, bool is_gvcf) noexcept</td></tr>
-<tr class="separator:a258c7fef3d7213cc688e1ea847bbcdf8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a692b9c6ad543c7878dfebb4d63514e09"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a692b9c6ad543c7878dfebb4d63514e09"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>finalize_loss_for_site</b> (int n_no_calls) noexcept</td></tr>
-<tr class="separator:a692b9c6ad543c7878dfebb4d63514e09"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6b357f859999be76925bc49275c5fa2a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6b357f859999be76925bc49275c5fa2a"></a>
-<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>get</b> (<a class="el" href="struct_g_lnexus_1_1loss__stats.html">loss_stats</a> &amp;ans) const noexcept</td></tr>
-<tr class="separator:a6b357f859999be76925bc49275c5fa2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8c85716f38c9ac4f4c297954a1e34bac"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8c85716f38c9ac4f4c297954a1e34bac"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>is_loss</b> () const noexcept</td></tr>
-<tr class="separator:a8c85716f38c9ac4f4c297954a1e34bac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2f11c8d09cba3d74710e22564f377f94"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2f11c8d09cba3d74710e22564f377f94"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>ResidualsFile</b> (std::string filename)</td></tr>
+<tr class="separator:a2f11c8d09cba3d74710e22564f377f94"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9acfa214580fa0c7f733d43b99911642"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a9acfa214580fa0c7f733d43b99911642"></a>
+<a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>write_record</b> (std::string &amp;rec)</td></tr>
+<tr class="separator:a9acfa214580fa0c7f733d43b99911642"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:aa6dc223e3b9da37b61efc89c938e9fd4"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa6dc223e3b9da37b61efc89c938e9fd4"></a>
+static <a class="el" href="class_g_lnexus_1_1_status.html">Status</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Open</b> (std::string filename, std::unique_ptr&lt; <a class="el" href="class_g_lnexus_1_1_residuals_file.html">ResidualsFile</a> &gt; &amp;ans)</td></tr>
+<tr class="separator:aa6dc223e3b9da37b61efc89c938e9fd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>include/<a class="el" href="genotyper_8h_source.html">genotyper.h</a></li>
-<li>src/genotyper.cc</li>
+<li>include/<a class="el" href="residuals_8h_source.html">residuals.h</a></li>
+<li>src/residuals.cc</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->
