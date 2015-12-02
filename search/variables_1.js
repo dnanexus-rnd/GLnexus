@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['max_5falleles_5fper_5fsite',['max_alleles_per_site',['../struct_g_lnexus_1_1unifier__config.html#a15cab1a99c23fe34cdc8c7d45b6f2e5a',1,'GLnexus::unifier_config']]]
+  ['output_5fformat',['output_format',['../struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257',1,'GLnexus::genotyper_config']]]
 ];

@@ -93,69 +93,70 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &quot;data.h&quot;</span></div>
 <div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#include &quot;types.h&quot;</span></div>
 <div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#include &lt;memory&gt;</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;</div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;</div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;Status genotype_site(<span class="keyword">const</span> genotyper_config&amp; cfg, MetadataCache&amp; cache, BCFData&amp; data, <span class="keyword">const</span> unified_site&amp; site,</div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;                     <span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> std::vector&lt;std::string&gt;&amp; samples,</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;                     <span class="keyword">const</span> bcf_hdr_t* hdr, std::shared_ptr&lt;bcf1_t&gt;&amp; ans, consolidated_loss&amp; losses_for_site);</div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="comment">// LossTracker handles the low-level housekeeping of loss accounting for a</span></div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="comment">// single unified_site and a single sample. Computation in this class assumes a</span></div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="comment">// diploid genome.</span></div>
-<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="comment">// The get() function returns the computed loss as a loss_stats for higher</span></div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="comment">// level record keeping.</span></div>
-<div class="line"><a name="l00019"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_loss_tracker.html">   19</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_loss_tracker.html">LossTracker</a> {</div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;</div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;    <span class="comment">// Simple wrapper struct to store information about an original call</span></div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;    <span class="comment">// for a unified site, used bfor computation of loss</span></div>
-<div class="line"><a name="l00024"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">   24</a></span>&#160;    <span class="keyword">struct </span><a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a> {</div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;        <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>(<a class="code" href="struct_g_lnexus_1_1range.html">range</a> pos_, <span class="keywordtype">bool</span> is_gvcf_) : pos(pos_), is_gvcf(is_gvcf_) {}</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;        <a class="code" href="struct_g_lnexus_1_1range.html">range</a> pos;</div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;        <span class="keywordtype">bool</span> is_gvcf;</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;        <span class="keywordtype">bool</span> operator==(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>&amp; rhs) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> pos == rhs.pos &amp;&amp; is_gvcf == rhs.is_gvcf; }</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;        <span class="keywordtype">bool</span> operator&lt;(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>&amp; rhs) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> pos &lt; rhs.pos; }</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;        <span class="keywordtype">bool</span> operator&lt;=(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>&amp; rhs) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> pos &lt;= rhs.pos; }</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    };</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    <span class="comment">// Constructor</span></div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;    <a class="code" href="class_g_lnexus_1_1_loss_tracker.html">LossTracker</a>(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a> rng_) noexcept : rng(rng_) {}</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> add_call_for_site(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a> call, <span class="keywordtype">int</span> n_calls, <span class="keywordtype">bool</span> is_gvcf) noexcept;</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> finalize_loss_for_site(<span class="keywordtype">int</span> n_no_calls) noexcept;</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <span class="keyword">get</span>(<a class="code" href="struct_g_lnexus_1_1loss__stats.html">loss_stats</a>&amp; ans) <span class="keyword">const</span> noexcept;</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;    <span class="comment">// Range of joint-called unified_site being considered</span></div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html">range</a> rng;</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;    <span class="comment">// Original calls (identified by effective range within site) and</span></div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;    <span class="comment">// count of calls. Calls which are different in the bcf record but</span></div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;    <span class="comment">// share the same effective range within the site will be collapsed</span></div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;    <span class="comment">// into the same key.</span></div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    std::map&lt;orig_call, int&gt; orig_calls_for_site;</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;    <span class="keywordtype">int</span> n_calls_total=0, n_bp_total=0;</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keywordtype">int</span> n_gvcf_calls_total=0, n_gvcf_bp_total=0;</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keywordtype">int</span> n_calls_lost=0, n_bp_lost=0;</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <span class="keywordtype">int</span> n_gvcf_calls_lost=0, n_gvcf_bp_lost=0;</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    <span class="keywordtype">int</span> n_no_calls_total = 0;</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    <span class="keywordtype">bool</span> is_finalized = <span class="keyword">false</span>;</div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;};</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="keyword">using</span> LossTrackers = std::vector&lt;LossTracker&gt;;</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;} <span class="comment">// namespace GLnexus</span></div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="ttc" id="struct_g_lnexus_1_1_loss_tracker_1_1orig__call_html"><div class="ttname"><a href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">GLnexus::LossTracker::orig_call</a></div><div class="ttdef"><b>Definition:</b> genotyper.h:24</div></div>
-<div class="ttc" id="struct_g_lnexus_1_1range_html"><div class="ttname"><a href="struct_g_lnexus_1_1range.html">GLnexus::range</a></div><div class="ttdoc">Genomic range (chromosome id, begin coordinate, end coordinate) </div><div class="ttdef"><b>Definition:</b> types.h:98</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:29</div></div>
-<div class="ttc" id="struct_g_lnexus_1_1loss__stats_html"><div class="ttname"><a href="struct_g_lnexus_1_1loss__stats.html">GLnexus::loss_stats</a></div><div class="ttdef"><b>Definition:</b> types.h:235</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_loss_tracker_html"><div class="ttname"><a href="class_g_lnexus_1_1_loss_tracker.html">GLnexus::LossTracker</a></div><div class="ttdef"><b>Definition:</b> genotyper.h:19</div></div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="preprocessor">#include &quot;service_config.h&quot;</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;</div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;</div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;Status genotype_site(<span class="keyword">const</span> genotyper_config&amp; cfg, MetadataCache&amp; cache, BCFData&amp; data, <span class="keyword">const</span> unified_site&amp; site,</div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;                     <span class="keyword">const</span> std::string&amp; sampleset, <span class="keyword">const</span> std::vector&lt;std::string&gt;&amp; samples,</div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;                     <span class="keyword">const</span> bcf_hdr_t* hdr, std::shared_ptr&lt;bcf1_t&gt;&amp; ans, consolidated_loss&amp; losses_for_site);</div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;</div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="comment">// LossTracker handles the low-level housekeeping of loss accounting for a</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="comment">// single unified_site and a single sample. Computation in this class assumes a</span></div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="comment">// diploid genome.</span></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="comment">// The get() function returns the computed loss as a loss_stats for higher</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="comment">// level record keeping.</span></div>
+<div class="line"><a name="l00020"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_loss_tracker.html">   20</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_loss_tracker.html">LossTracker</a> {</div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;    <span class="comment">// Simple wrapper struct to store information about an original call</span></div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    <span class="comment">// for a unified site, used bfor computation of loss</span></div>
+<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">   25</a></span>&#160;    <span class="keyword">struct </span><a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a> {</div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;        <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>(<a class="code" href="struct_g_lnexus_1_1range.html">range</a> pos_, <span class="keywordtype">bool</span> is_gvcf_) : pos(pos_), is_gvcf(is_gvcf_) {}</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;        <a class="code" href="struct_g_lnexus_1_1range.html">range</a> pos;</div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;        <span class="keywordtype">bool</span> is_gvcf;</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;        <span class="keywordtype">bool</span> operator==(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>&amp; rhs) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> pos == rhs.pos &amp;&amp; is_gvcf == rhs.is_gvcf; }</div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;        <span class="keywordtype">bool</span> operator&lt;(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>&amp; rhs) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> pos &lt; rhs.pos; }</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;        <span class="keywordtype">bool</span> operator&lt;=(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">orig_call</a>&amp; rhs) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> pos &lt;= rhs.pos; }</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    };</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;    <span class="comment">// Constructor</span></div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;    <a class="code" href="class_g_lnexus_1_1_loss_tracker.html">LossTracker</a>(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a> rng_) noexcept : rng(rng_) {}</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> add_call_for_site(<span class="keyword">const</span> <a class="code" href="struct_g_lnexus_1_1range.html">range</a> call, <span class="keywordtype">int</span> n_calls, <span class="keywordtype">bool</span> is_gvcf) noexcept;</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> finalize_loss_for_site(<span class="keywordtype">int</span> n_no_calls) noexcept;</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html">Status</a> <span class="keyword">get</span>(<a class="code" href="struct_g_lnexus_1_1loss__stats.html">loss_stats</a>&amp; ans) <span class="keyword">const</span> noexcept;</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;    <span class="comment">// Range of joint-called unified_site being considered</span></div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html">range</a> rng;</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;    <span class="comment">// Original calls (identified by effective range within site) and</span></div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;    <span class="comment">// count of calls. Calls which are different in the bcf record but</span></div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;    <span class="comment">// share the same effective range within the site will be collapsed</span></div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    <span class="comment">// into the same key.</span></div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    std::map&lt;orig_call, int&gt; orig_calls_for_site;</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keywordtype">int</span> n_calls_total=0, n_bp_total=0;</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keywordtype">int</span> n_gvcf_calls_total=0, n_gvcf_bp_total=0;</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <span class="keywordtype">int</span> n_calls_lost=0, n_bp_lost=0;</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    <span class="keywordtype">int</span> n_gvcf_calls_lost=0, n_gvcf_bp_lost=0;</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    <span class="keywordtype">int</span> n_no_calls_total = 0;</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;    <span class="keywordtype">bool</span> is_finalized = <span class="keyword">false</span>;</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;};</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="keyword">using</span> LossTrackers = std::vector&lt;LossTracker&gt;;</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;} <span class="comment">// namespace GLnexus</span></div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="ttc" id="struct_g_lnexus_1_1_loss_tracker_1_1orig__call_html"><div class="ttname"><a href="struct_g_lnexus_1_1_loss_tracker_1_1orig__call.html">GLnexus::LossTracker::orig_call</a></div><div class="ttdef"><b>Definition:</b> genotyper.h:25</div></div>
+<div class="ttc" id="struct_g_lnexus_1_1range_html"><div class="ttname"><a href="struct_g_lnexus_1_1range.html">GLnexus::range</a></div><div class="ttdoc">Genomic range (chromosome id, begin coordinate, end coordinate) </div><div class="ttdef"><b>Definition:</b> types.h:99</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:30</div></div>
+<div class="ttc" id="struct_g_lnexus_1_1loss__stats_html"><div class="ttname"><a href="struct_g_lnexus_1_1loss__stats.html">GLnexus::loss_stats</a></div><div class="ttdef"><b>Definition:</b> types.h:236</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_loss_tracker_html"><div class="ttname"><a href="class_g_lnexus_1_1_loss_tracker.html">GLnexus::LossTracker</a></div><div class="ttdef"><b>Definition:</b> genotyper.h:20</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

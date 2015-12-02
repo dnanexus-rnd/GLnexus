@@ -87,360 +87,337 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="title">types.h</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="preprocessor">#pragma once</span></div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;</div>
-<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="preprocessor">#include &lt;string&gt;</span></div>
-<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &lt;vector&gt;</span></div>
-<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#include &lt;map&gt;</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#include &lt;set&gt;</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="preprocessor">#include &lt;memory&gt;</span></div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="preprocessor">#include &lt;stdexcept&gt;</span></div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="preprocessor">#include &lt;sstream&gt;</span></div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="preprocessor">#include &lt;iomanip&gt;</span></div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="preprocessor">#include &lt;iostream&gt;</span></div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor">#include &lt;assert.h&gt;</span></div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="preprocessor">#include &lt;vcf.h&gt;</span></div>
-<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &lt;mutex&gt;</span></div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor">#include &quot;yaml-cpp/yaml.h&quot;</span></div>
-<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;</div>
-<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="preprocessor">#define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;</span></div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt; <span class="keyword">inline</span> <span class="keywordtype">void</span> ignore_retval(T) {}</div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;</div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="keyword">enum class</span> StatusCode { OK, FAILURE, INVALID, NOT_FOUND, EXISTS, IO_ERROR, NOT_IMPLEMENTED };</div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;</div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;</div>
-<div class="line"><a name="l00029"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_status.html">   29</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_status.html">Status</a> {</div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    StatusCode code_;</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span> *msg_;</div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    std::unique_ptr&lt;std::string&gt; noun_;</div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;</div>
-<div class="line"><a name="l00039"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">   39</a></span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">Status</a>(StatusCode code = StatusCode::OK, <span class="keyword">const</span> <span class="keywordtype">char</span>* msg = <span class="keyword">nullptr</span>) noexcept</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        : code_(code), msg_(msg) {}</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;</div>
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="preprocessor">#ifndef GLNEXUS_TYPES_H</span></div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="preprocessor">#define GLNEXUS_TYPES_H</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;</div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor">#include &lt;string&gt;</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#include &lt;map&gt;</span></div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="preprocessor">#include &lt;set&gt;</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="preprocessor">#include &lt;memory&gt;</span></div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="preprocessor">#include &lt;stdexcept&gt;</span></div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="preprocessor">#include &lt;sstream&gt;</span></div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="preprocessor">#include &lt;iomanip&gt;</span></div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor">#include &lt;iostream&gt;</span></div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="preprocessor">#include &lt;assert.h&gt;</span></div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &lt;vcf.h&gt;</span></div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor">#include &lt;mutex&gt;</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#include &quot;yaml-cpp/yaml.h&quot;</span></div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;</div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor">#define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt; <span class="keyword">inline</span> <span class="keywordtype">void</span> ignore_retval(T) {}</div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;</div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="keyword">namespace </span>GLnexus {</div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;</div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="keyword">enum class</span> StatusCode { OK, FAILURE, INVALID, NOT_FOUND, EXISTS, IO_ERROR, NOT_IMPLEMENTED };</div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;</div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
+<div class="line"><a name="l00030"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_status.html">   30</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_g_lnexus_1_1_status.html">Status</a> {</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    StatusCode code_;</div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">char</span> *msg_;</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    std::unique_ptr&lt;std::string&gt; noun_;</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
+<div class="line"><a name="l00040"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">   40</a></span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">Status</a>(StatusCode code = StatusCode::OK, <span class="keyword">const</span> <span class="keywordtype">char</span>* msg = <span class="keyword">nullptr</span>) noexcept</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        : code_(code), msg_(msg) {}</div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;</div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;</div>
-<div class="line"><a name="l00047"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e">   47</a></span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e">Status</a>(StatusCode code, <span class="keyword">const</span> <span class="keywordtype">char</span>* msg, <span class="keyword">const</span> std::string&amp; noun)</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;        : code_(code), msg_(msg) {</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;        noun_ = std::make_unique&lt;std::string&gt;(noun);</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    }</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;    <span class="keywordtype">bool</span> ok() const noexcept { <span class="keywordflow">return</span> code_ == StatusCode::OK; }</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keywordtype">bool</span> bad() const noexcept { <span class="keywordflow">return</span> !ok(); }</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keyword">operator</span> StatusCode() const noexcept { <span class="keywordflow">return</span> code_; }</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <span class="keyword">operator</span> int() const noexcept { <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(code_); }</div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">Status</a> OK() noexcept { <span class="keywordflow">return</span> <a class="code" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">Status</a>(StatusCode::OK); }</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;</div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="preprocessor">    #define STATUS_SUGAR(nm,code) \</span></div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="preprocessor">        static Status nm(const char* msg = nullptr) noexcept { return Status(code, msg); } \</span></div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="preprocessor">        static Status nm(const char *msg, const std::string&amp; noun) { return Status(code, msg, noun); }</span></div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;</div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;    STATUS_SUGAR(Failure,StatusCode::FAILURE)</div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    STATUS_SUGAR(Invalid,StatusCode::INVALID)</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    STATUS_SUGAR(NotFound,StatusCode::NOT_FOUND)</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;    STATUS_SUGAR(Exists,StatusCode::EXISTS)</div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;    STATUS_SUGAR(IOError,StatusCode::IO_ERROR)</div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;    STATUS_SUGAR(NotImplemented,StatusCode::NOT_IMPLEMENTED)</div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;</div>
-<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;    std::<span class="keywordtype">string</span> str()<span class="keyword"> const </span>{</div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;        std::ostringstream ans;</div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;        <span class="keywordflow">switch</span> (code_) {</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;            <span class="keywordflow">case</span> StatusCode::OK: ans &lt;&lt; <span class="stringliteral">&quot;OK&quot;</span>; <span class="keywordflow">break</span>;</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;            <span class="keywordflow">case</span> StatusCode::INVALID: ans &lt;&lt; <span class="stringliteral">&quot;Invalid&quot;</span>; <span class="keywordflow">break</span>;</div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;            <span class="keywordflow">case</span> StatusCode::NOT_FOUND: ans &lt;&lt; <span class="stringliteral">&quot;NotFound&quot;</span>; <span class="keywordflow">break</span>;</div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;            <span class="keywordflow">case</span> StatusCode::EXISTS: ans &lt;&lt; <span class="stringliteral">&quot;Exists&quot;</span>; <span class="keywordflow">break</span>;</div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;            <span class="keywordflow">case</span> StatusCode::IO_ERROR: ans &lt;&lt; <span class="stringliteral">&quot;IOError&quot;</span>; <span class="keywordflow">break</span>;</div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;            <span class="keywordflow">case</span> StatusCode::NOT_IMPLEMENTED: ans &lt;&lt; <span class="stringliteral">&quot;NotImplemented&quot;</span>; <span class="keywordflow">break</span>;</div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;            <span class="keywordflow">default</span>: ans &lt;&lt; <span class="stringliteral">&quot;Failure&quot;</span>;</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;        }</div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        <span class="keywordflow">if</span> (msg_) {</div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;            ans &lt;&lt; <span class="stringliteral">&quot;: &quot;</span> &lt;&lt; msg_;</div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;            <span class="keywordflow">if</span> (noun_) {</div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;                ans &lt;&lt; <span class="stringliteral">&quot; (&quot;</span> &lt;&lt; *noun_ &lt;&lt; <span class="stringliteral">&quot;)&quot;</span>;</div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;            }</div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;        }</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        <span class="keywordflow">return</span> ans.str();</div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;    }</div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;};</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;<span class="comment">// Convenience macro for re-raising a bad status when no recovery/cleanup is needed</span></div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="preprocessor">#define S(st) s = st; if (s.bad()) return s;</span></div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;</div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;<span class="keywordtype">bool</span> is_dna(<span class="keyword">const</span> std::string&amp;);</div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;</div>
-<div class="line"><a name="l00098"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1range.html">   98</a></span>&#160;<span class="keyword">struct </span><a class="code" href="struct_g_lnexus_1_1range.html">range</a> {</div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;    <span class="keywordtype">int</span> rid=-1, beg=-1, end=-1;</div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;</div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html">range</a>(<span class="keywordtype">int</span> rid_, <span class="keywordtype">int</span> beg_, <span class="keywordtype">int</span> end_) noexcept : rid(rid_), beg(beg_), end(end_) {</div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;        <span class="keywordflow">if</span> (beg_ &gt; end_) {</div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;            <span class="keywordflow">throw</span> std::invalid_argument(<span class="stringliteral">&quot;invalid range (beginning &gt; end)&quot;</span>);</div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;        }</div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;    }</div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;</div>
-<div class="line"><a name="l00111"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">  111</a></span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">range</a>(<span class="keyword">const</span> bcf1_t* bcf) noexcept {</div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;        assert(bcf != <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;        rid = bcf-&gt;rid;</div>
-<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;        beg = bcf-&gt;pos;</div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;        end = bcf-&gt;pos+bcf-&gt;rlen;</div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;    }</div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;</div>
-<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html">range</a>(<span class="keyword">const</span> std::shared_ptr&lt;const bcf1_t&gt;&amp; bcf) noexcept : <a class="code" href="struct_g_lnexus_1_1range.html">range</a>(bcf.get()) {}</div>
-<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;</div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;    <span class="keywordtype">size_t</span> size() const noexcept { <span class="keywordflow">return</span> end-beg; }</div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;</div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;    <span class="keywordtype">bool</span> operator==(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> rid == r.rid &amp;&amp; beg == r.beg &amp;&amp; end == r.end; }</div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;    <span class="keywordtype">bool</span> operator!=(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> !(*<span class="keyword">this</span> == r); }</div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;    <span class="keywordtype">bool</span> operator&lt;(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept {</div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;        <span class="keywordflow">return</span> rid &lt; r.rid || (rid == r.rid &amp;&amp; (beg &lt; r.beg || (beg == r.beg &amp;&amp; end &lt; r.end)));</div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;    }</div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;    <span class="keywordtype">bool</span> operator&lt;=(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> *<span class="keyword">this</span> &lt; r || *<span class="keyword">this</span> == r; }</div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;</div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;    <span class="keywordtype">bool</span> overlaps(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> rid == r.rid &amp;&amp; end &gt; r.beg &amp;&amp; beg &lt; r.end; }</div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;    <span class="keywordtype">bool</span> within(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> rid == r.rid &amp;&amp; beg &gt;= r.beg &amp;&amp; end &lt;= r.end; }</div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;    <span class="keywordtype">bool</span> contains(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> r.within(*<span class="keyword">this</span>); }</div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;</div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;    std::unique_ptr&lt;range&gt; intersect(<span class="keyword">const</span> range&amp; r)<span class="keyword"> const </span>{</div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;        <span class="keywordflow">if</span> (!overlaps(r)) <span class="keywordflow">return</span> <span class="keyword">nullptr</span>;</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;        <span class="keywordflow">return</span> std::make_unique&lt;range&gt;(rid, std::max(beg,r.beg), std::min(end,r.end));</div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;    }</div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;</div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;    std::string str(<span class="keyword">const</span> std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp; contigs)<span class="keyword"> const </span>{</div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;        std::ostringstream os;</div>
-<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;        <span class="keywordflow">if</span> (rid &gt;= 0 &amp;&amp; rid &lt; (<span class="keywordtype">int</span>)contigs.size()) {</div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;            os &lt;&lt; std::get&lt;0&gt;(contigs[rid]);</div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;        } <span class="keywordflow">else</span> {</div>
-<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;            os &lt;&lt; &#39;&lt;&#39; &lt;&lt; rid &lt;&lt; &#39;&gt;<span class="stringliteral">&#39;;</span></div>
-<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;<span class="stringliteral">        }</span></div>
-<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;<span class="stringliteral">        os &lt;&lt; &#39;</span>:<span class="stringliteral">&#39; &lt;&lt; (beg+1) &lt;&lt; &#39;</span>-<span class="stringliteral">&#39; &lt;&lt; end;</span></div>
-<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;<span class="stringliteral">        return os.str();</span></div>
-<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;<span class="stringliteral">    std::string str() const {</span></div>
-<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;<span class="stringliteral">        return str({});</span></div>
-<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00153"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1allele.html">  153</a></span>&#160;<span class="stringliteral">struct allele {</span></div>
-<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;<span class="stringliteral">    range pos;</span></div>
-<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;<span class="stringliteral">    std::string dna;</span></div>
-<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;<span class="stringliteral">    allele(const range&amp; pos_, const std::string&amp; dna_) : pos(pos_), dna(dna_) {</span></div>
-<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;<span class="stringliteral">        // Note; dna.size() may not equal pos.size(), for indel alleles</span></div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;<span class="stringliteral">        if (!is_dna(dna)) throw std::invalid_argument(&quot;allele(): invalid DNA &quot; + dna);</span></div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00163"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1allele.html#a13bd87c795881dc10e76c26bc667476d">  163</a></span>&#160;<span class="stringliteral">    bool operator==(const allele&amp; rhs) const noexcept { return pos == rhs.pos &amp;&amp; dna == rhs.dna; }</span></div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00166"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1allele.html#ae1e92b090fc3aa8a6b60465875340ef1">  166</a></span>&#160;<span class="stringliteral">    bool operator&lt;(const allele&amp; rhs) const noexcept { return pos &lt; rhs.pos || (pos == rhs.pos &amp;&amp; dna &lt; rhs.dna); }</span></div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;<span class="stringliteral">    bool operator&lt;=(const allele&amp; rhs) const noexcept { return *this &lt; rhs || *this == rhs; }</span></div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;<span class="stringliteral">    std::string str() const {</span></div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;<span class="stringliteral">        std::ostringstream os;</span></div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;<span class="stringliteral">        os &lt;&lt; pos.str() &lt;&lt; &quot;(&quot; &lt;&lt; dna &lt;&lt; &quot;)&quot;;</span></div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;<span class="stringliteral">        return os.str();</span></div>
-<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00176"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1discovered__allele__info.html">  176</a></span>&#160;<span class="stringliteral">struct discovered_allele_info {</span></div>
-<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;<span class="stringliteral">    bool is_ref;</span></div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;<span class="stringliteral">    float observation_count;</span></div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;<span class="stringliteral">    bool operator==(const discovered_allele_info&amp; rhs) const noexcept { return is_ref == rhs.is_ref &amp;&amp; observation_count == rhs.observation_count; }</span></div>
-<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;<span class="stringliteral">    std::string str() const {</span></div>
-<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;<span class="stringliteral">        std::ostringstream os;</span></div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;<span class="stringliteral">        os &lt;&lt; &quot;[ is_ref: &quot; &lt;&lt; std::boolalpha &lt;&lt; is_ref &lt;&lt; &quot; observation count: &quot; &lt;&lt; std::setprecision(1) &lt;&lt; observation_count &lt;&lt; &quot;]&quot;;</span></div>
-<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;<span class="stringliteral">        return os.str();</span></div>
-<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;<span class="stringliteral">using discovered_alleles = std::map&lt;allele,discovered_allele_info&gt;;</span></div>
-<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;<span class="stringliteral">Status merge_discovered_alleles(const discovered_alleles&amp; src, discovered_alleles&amp; dest);</span></div>
-<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;<span class="stringliteral">Status yaml_of_discovered_alleles(const discovered_alleles&amp;,</span></div>
-<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;<span class="stringliteral">                                  const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp;,</span></div>
-<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;<span class="stringliteral">                                  YAML::Emitter&amp;);</span></div>
-<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;<span class="stringliteral">Status discovered_alleles_of_yaml(const YAML::Node&amp;,</span></div>
-<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;<span class="stringliteral">                                  const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp;,</span></div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;<span class="stringliteral">                                  discovered_alleles&amp;);</span></div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00197"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unified__site.html">  197</a></span>&#160;<span class="stringliteral">struct unified_site {</span></div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;<span class="stringliteral">    range pos;</span></div>
-<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
+<div class="line"><a name="l00048"></a><span class="lineno"><a class="line" href="class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e">   48</a></span>&#160;    <a class="code" href="class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e">Status</a>(StatusCode code, <span class="keyword">const</span> <span class="keywordtype">char</span>* msg, <span class="keyword">const</span> std::string&amp; noun)</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;        : code_(code), msg_(msg) {</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;        noun_ = std::make_unique&lt;std::string&gt;(noun);</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    }</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keywordtype">bool</span> ok() const noexcept { <span class="keywordflow">return</span> code_ == StatusCode::OK; }</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keywordtype">bool</span> bad() const noexcept { <span class="keywordflow">return</span> !ok(); }</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <span class="keyword">operator</span> StatusCode() const noexcept { <span class="keywordflow">return</span> code_; }</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    <span class="keyword">operator</span> int() const noexcept { <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span><span class="keywordtype">int</span><span class="keyword">&gt;</span>(code_); }</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">Status</a> OK() noexcept { <span class="keywordflow">return</span> <a class="code" href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">Status</a>(StatusCode::OK); }</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="preprocessor">    #define STATUS_SUGAR(nm,code) \</span></div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="preprocessor">        static Status nm(const char* msg = nullptr) noexcept { return Status(code, msg); } \</span></div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="preprocessor">        static Status nm(const char *msg, const std::string&amp; noun) { return Status(code, msg, noun); }</span></div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;    STATUS_SUGAR(Failure,StatusCode::FAILURE)</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    STATUS_SUGAR(Invalid,StatusCode::INVALID)</div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;    STATUS_SUGAR(NotFound,StatusCode::NOT_FOUND)</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;    STATUS_SUGAR(Exists,StatusCode::EXISTS)</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;    STATUS_SUGAR(IOError,StatusCode::IO_ERROR)</div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;    STATUS_SUGAR(NotImplemented,StatusCode::NOT_IMPLEMENTED)</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;    std::<span class="keywordtype">string</span> str()<span class="keyword"> const </span>{</div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;        std::ostringstream ans;</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        <span class="keywordflow">switch</span> (code_) {</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;            <span class="keywordflow">case</span> StatusCode::OK: ans &lt;&lt; <span class="stringliteral">&quot;OK&quot;</span>; <span class="keywordflow">break</span>;</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;            <span class="keywordflow">case</span> StatusCode::INVALID: ans &lt;&lt; <span class="stringliteral">&quot;Invalid&quot;</span>; <span class="keywordflow">break</span>;</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;            <span class="keywordflow">case</span> StatusCode::NOT_FOUND: ans &lt;&lt; <span class="stringliteral">&quot;NotFound&quot;</span>; <span class="keywordflow">break</span>;</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;            <span class="keywordflow">case</span> StatusCode::EXISTS: ans &lt;&lt; <span class="stringliteral">&quot;Exists&quot;</span>; <span class="keywordflow">break</span>;</div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;            <span class="keywordflow">case</span> StatusCode::IO_ERROR: ans &lt;&lt; <span class="stringliteral">&quot;IOError&quot;</span>; <span class="keywordflow">break</span>;</div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;            <span class="keywordflow">case</span> StatusCode::NOT_IMPLEMENTED: ans &lt;&lt; <span class="stringliteral">&quot;NotImplemented&quot;</span>; <span class="keywordflow">break</span>;</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;            <span class="keywordflow">default</span>: ans &lt;&lt; <span class="stringliteral">&quot;Failure&quot;</span>;</div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        }</div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        <span class="keywordflow">if</span> (msg_) {</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;            ans &lt;&lt; <span class="stringliteral">&quot;: &quot;</span> &lt;&lt; msg_;</div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;            <span class="keywordflow">if</span> (noun_) {</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;                ans &lt;&lt; <span class="stringliteral">&quot; (&quot;</span> &lt;&lt; *noun_ &lt;&lt; <span class="stringliteral">&quot;)&quot;</span>;</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;            }</div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        }</div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;        <span class="keywordflow">return</span> ans.str();</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;    }</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;};</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;</div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="comment">// Convenience macro for re-raising a bad status when no recovery/cleanup is needed</span></div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;<span class="preprocessor">#define S(st) s = st; if (s.bad()) return s;</span></div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;</div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="keywordtype">bool</span> is_dna(<span class="keyword">const</span> std::string&amp;);</div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;</div>
+<div class="line"><a name="l00099"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1range.html">   99</a></span>&#160;<span class="keyword">struct </span><a class="code" href="struct_g_lnexus_1_1range.html">range</a> {</div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;    <span class="keywordtype">int</span> rid=-1, beg=-1, end=-1;</div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;</div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html">range</a>(<span class="keywordtype">int</span> rid_, <span class="keywordtype">int</span> beg_, <span class="keywordtype">int</span> end_) noexcept : rid(rid_), beg(beg_), end(end_) {</div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;        <span class="keywordflow">if</span> (beg_ &gt; end_) {</div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;            <span class="keywordflow">throw</span> std::invalid_argument(<span class="stringliteral">&quot;invalid range (beginning &gt; end)&quot;</span>);</div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;        }</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;    }</div>
+<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;</div>
+<div class="line"><a name="l00112"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">  112</a></span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">range</a>(<span class="keyword">const</span> bcf1_t* bcf) noexcept {</div>
+<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;        assert(bcf != <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;        rid = bcf-&gt;rid;</div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;        beg = bcf-&gt;pos;</div>
+<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;        end = bcf-&gt;pos+bcf-&gt;rlen;</div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;    }</div>
+<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;</div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;    <a class="code" href="struct_g_lnexus_1_1range.html">range</a>(<span class="keyword">const</span> std::shared_ptr&lt;const bcf1_t&gt;&amp; bcf) noexcept : <a class="code" href="struct_g_lnexus_1_1range.html">range</a>(bcf.get()) {}</div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;</div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;    <span class="keywordtype">size_t</span> size() const noexcept { <span class="keywordflow">return</span> end-beg; }</div>
+<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;</div>
+<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;    <span class="keywordtype">bool</span> operator==(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> rid == r.rid &amp;&amp; beg == r.beg &amp;&amp; end == r.end; }</div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;    <span class="keywordtype">bool</span> operator!=(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> !(*<span class="keyword">this</span> == r); }</div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;    <span class="keywordtype">bool</span> operator&lt;(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept {</div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;        <span class="keywordflow">return</span> rid &lt; r.rid || (rid == r.rid &amp;&amp; (beg &lt; r.beg || (beg == r.beg &amp;&amp; end &lt; r.end)));</div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;    }</div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;    <span class="keywordtype">bool</span> operator&lt;=(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> *<span class="keyword">this</span> &lt; r || *<span class="keyword">this</span> == r; }</div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;</div>
+<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;    <span class="keywordtype">bool</span> overlaps(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> rid == r.rid &amp;&amp; end &gt; r.beg &amp;&amp; beg &lt; r.end; }</div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;    <span class="keywordtype">bool</span> within(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> rid == r.rid &amp;&amp; beg &gt;= r.beg &amp;&amp; end &lt;= r.end; }</div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;    <span class="keywordtype">bool</span> contains(<span class="keyword">const</span> range&amp; r) <span class="keyword">const</span> noexcept { <span class="keywordflow">return</span> r.within(*<span class="keyword">this</span>); }</div>
+<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;</div>
+<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;    std::unique_ptr&lt;range&gt; intersect(<span class="keyword">const</span> range&amp; r)<span class="keyword"> const </span>{</div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;        <span class="keywordflow">if</span> (!overlaps(r)) <span class="keywordflow">return</span> <span class="keyword">nullptr</span>;</div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;        <span class="keywordflow">return</span> std::make_unique&lt;range&gt;(rid, std::max(beg,r.beg), std::min(end,r.end));</div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;    }</div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;</div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;    std::string str(<span class="keyword">const</span> std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp; contigs)<span class="keyword"> const </span>{</div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;        std::ostringstream os;</div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;        <span class="keywordflow">if</span> (rid &gt;= 0 &amp;&amp; rid &lt; (<span class="keywordtype">int</span>)contigs.size()) {</div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;            os &lt;&lt; std::get&lt;0&gt;(contigs[rid]);</div>
+<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;        } <span class="keywordflow">else</span> {</div>
+<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;            os &lt;&lt; &#39;&lt;&#39; &lt;&lt; rid &lt;&lt; &#39;&gt;<span class="stringliteral">&#39;;</span></div>
+<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;<span class="stringliteral">        }</span></div>
+<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;<span class="stringliteral">        os &lt;&lt; &#39;</span>:<span class="stringliteral">&#39; &lt;&lt; (beg+1) &lt;&lt; &#39;</span>-<span class="stringliteral">&#39; &lt;&lt; end;</span></div>
+<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="stringliteral">        return os.str();</span></div>
+<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;<span class="stringliteral">    std::string str() const {</span></div>
+<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;<span class="stringliteral">        return str({});</span></div>
+<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;<span class="stringliteral">};</span></div>
+<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00154"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1allele.html">  154</a></span>&#160;<span class="stringliteral">struct allele {</span></div>
+<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;<span class="stringliteral">    range pos;</span></div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;<span class="stringliteral">    std::string dna;</span></div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;<span class="stringliteral">    allele(const range&amp; pos_, const std::string&amp; dna_) : pos(pos_), dna(dna_) {</span></div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;<span class="stringliteral">        // Note; dna.size() may not equal pos.size(), for indel alleles</span></div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;<span class="stringliteral">        if (!is_dna(dna)) throw std::invalid_argument(&quot;allele(): invalid DNA &quot; + dna);</span></div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00164"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1allele.html#a13bd87c795881dc10e76c26bc667476d">  164</a></span>&#160;<span class="stringliteral">    bool operator==(const allele&amp; rhs) const noexcept { return pos == rhs.pos &amp;&amp; dna == rhs.dna; }</span></div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00167"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1allele.html#ae1e92b090fc3aa8a6b60465875340ef1">  167</a></span>&#160;<span class="stringliteral">    bool operator&lt;(const allele&amp; rhs) const noexcept { return pos &lt; rhs.pos || (pos == rhs.pos &amp;&amp; dna &lt; rhs.dna); }</span></div>
+<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;<span class="stringliteral">    bool operator&lt;=(const allele&amp; rhs) const noexcept { return *this &lt; rhs || *this == rhs; }</span></div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;<span class="stringliteral">    std::string str() const {</span></div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;<span class="stringliteral">        std::ostringstream os;</span></div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;<span class="stringliteral">        os &lt;&lt; pos.str() &lt;&lt; &quot;(&quot; &lt;&lt; dna &lt;&lt; &quot;)&quot;;</span></div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;<span class="stringliteral">        return os.str();</span></div>
+<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;<span class="stringliteral">};</span></div>
+<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00177"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1discovered__allele__info.html">  177</a></span>&#160;<span class="stringliteral">struct discovered_allele_info {</span></div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;<span class="stringliteral">    bool is_ref;</span></div>
+<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;<span class="stringliteral">    float observation_count;</span></div>
+<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;<span class="stringliteral">    bool operator==(const discovered_allele_info&amp; rhs) const noexcept { return is_ref == rhs.is_ref &amp;&amp; observation_count == rhs.observation_count; }</span></div>
+<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;<span class="stringliteral">    std::string str() const {</span></div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;<span class="stringliteral">        std::ostringstream os;</span></div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;<span class="stringliteral">        os &lt;&lt; &quot;[ is_ref: &quot; &lt;&lt; std::boolalpha &lt;&lt; is_ref &lt;&lt; &quot; observation count: &quot; &lt;&lt; std::setprecision(1) &lt;&lt; observation_count &lt;&lt; &quot;]&quot;;</span></div>
+<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;<span class="stringliteral">        return os.str();</span></div>
+<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;<span class="stringliteral">};</span></div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;<span class="stringliteral">using discovered_alleles = std::map&lt;allele,discovered_allele_info&gt;;</span></div>
+<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;<span class="stringliteral">Status merge_discovered_alleles(const discovered_alleles&amp; src, discovered_alleles&amp; dest);</span></div>
+<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;<span class="stringliteral">Status yaml_of_discovered_alleles(const discovered_alleles&amp;,</span></div>
+<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;<span class="stringliteral">                                  const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp;,</span></div>
+<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;<span class="stringliteral">                                  YAML::Emitter&amp;);</span></div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;<span class="stringliteral">Status discovered_alleles_of_yaml(const YAML::Node&amp;,</span></div>
+<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;<span class="stringliteral">                                  const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp;,</span></div>
+<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;<span class="stringliteral">                                  discovered_alleles&amp;);</span></div>
+<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00198"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unified__site.html">  198</a></span>&#160;<span class="stringliteral">struct unified_site {</span></div>
+<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;<span class="stringliteral">    range pos;</span></div>
 <div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00205"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unified__site.html#a3373044af07a0fb304380d5c6ad289af">  205</a></span>&#160;<span class="stringliteral">    std::vector&lt;std::string&gt; alleles;</span></div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00206"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unified__site.html#a3373044af07a0fb304380d5c6ad289af">  206</a></span>&#160;<span class="stringliteral">    std::vector&lt;std::string&gt; alleles;</span></div>
 <div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00210"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unified__site.html#aeae2f10a9c1a38833dc970969e629bd6">  210</a></span>&#160;<span class="stringliteral">    std::map&lt;allele,int&gt; unification;</span></div>
-<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;<span class="stringliteral">    std::vector&lt;float&gt; observation_count;</span></div>
-<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;<span class="stringliteral">    //std::vector&lt;float&gt; genotype_prior;</span></div>
-<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;<span class="stringliteral">    bool operator==(const unified_site&amp; rhs) const noexcept {</span></div>
-<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;<span class="stringliteral">        return pos == rhs.pos &amp;&amp; alleles == rhs.alleles &amp;&amp; unification == rhs.unification</span></div>
-<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;<span class="stringliteral">               &amp;&amp; observation_count == rhs.observation_count;</span></div>
-<div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;<span class="stringliteral">    bool operator&lt;(const unified_site&amp; rhs) const noexcept{</span></div>
-<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160;<span class="stringliteral">        if (pos != rhs.pos) return pos &lt; rhs.pos;</span></div>
-<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;<span class="stringliteral">        if (alleles != rhs.alleles) return alleles &lt; rhs.alleles;</span></div>
-<div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160;<span class="stringliteral">        if (unification != rhs.unification) return unification &lt; rhs.unification;</span></div>
-<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;<span class="stringliteral">        return observation_count &lt; rhs.observation_count;</span></div>
-<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;<span class="stringliteral">    unified_site(const range&amp; pos_) noexcept : pos(pos_) {}</span></div>
-<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;<span class="stringliteral">    Status yaml(const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp; contigs,</span></div>
-<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;<span class="stringliteral">                YAML::Emitter&amp; out);</span></div>
-<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;<span class="stringliteral">    static Status of_yaml(const YAML::Node&amp; yaml,</span></div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;<span class="stringliteral">                          const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp; contigs,</span></div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;<span class="stringliteral">                          unified_site&amp; ans);</span></div>
-<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00235"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1loss__stats.html">  235</a></span>&#160;<span class="stringliteral">struct loss_stats {</span></div>
-<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;<span class="stringliteral">    int n_calls_total=0, n_bp_total=0;</span></div>
-<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;<span class="stringliteral">    int n_gvcf_calls_total=0, n_gvcf_bp_total=0;</span></div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;<span class="stringliteral">    int n_no_calls_total = 0;</span></div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;<span class="stringliteral">    // captures loss of both vcf entries and gvcf entries</span></div>
-<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;<span class="stringliteral">    int n_calls_lost=0, n_bp_lost=0;</span></div>
-<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;<span class="stringliteral">    // loss specific to gvcf entries</span></div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;<span class="stringliteral">    int n_gvcf_calls_lost=0, n_gvcf_bp_lost=0;</span></div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;<span class="stringliteral">    // Merges another loss_stats and increment the count</span></div>
-<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;<span class="stringliteral">    // variables accordingly</span></div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;<span class="stringliteral">    void operator+=(const loss_stats&amp; loss) {</span></div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;<span class="stringliteral">        n_calls_total += loss.n_calls_total;</span></div>
-<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;<span class="stringliteral">        n_bp_total += loss.n_bp_total;</span></div>
-<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;<span class="stringliteral">        n_gvcf_calls_total += loss.n_gvcf_calls_total;</span></div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;<span class="stringliteral">        n_gvcf_bp_total += loss.n_gvcf_bp_total;</span></div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;<span class="stringliteral">        n_calls_lost += loss.n_calls_lost;</span></div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;<span class="stringliteral">        n_bp_lost += loss.n_bp_lost;</span></div>
-<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;<span class="stringliteral">        n_gvcf_calls_lost += loss.n_gvcf_calls_lost;</span></div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;<span class="stringliteral">        n_gvcf_bp_lost += loss.n_gvcf_bp_lost;</span></div>
-<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;<span class="stringliteral">        n_no_calls_total += loss.n_no_calls_total;</span></div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;<span class="stringliteral">    std::string str() const noexcept {</span></div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;<span class="stringliteral">        std::ostringstream ans;</span></div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;<span class="stringliteral">        ans &lt;&lt; n_no_calls_total &lt;&lt; &quot; no call(s).\n&quot;;</span></div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;<span class="stringliteral">        // stop here if no no calls</span></div>
-<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;<span class="stringliteral">        if (!n_no_calls_total)</span></div>
-<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;<span class="stringliteral">            return ans.str();</span></div>
-<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;This is made up of a loss of &quot; &lt;&lt; n_calls_lost &lt;&lt; &quot; original call(s) which cover &quot; &lt;&lt; n_bp_lost &lt;&lt; &quot; bp.\n&quot;;</span></div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;The loss is &quot; &lt;&lt;  std::setprecision(3) &lt;&lt; prop_calls_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_calls_total &lt;&lt; &quot; calls; or &quot; &lt;&lt; prop_bp_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_bp_total &lt;&lt; &quot; bp processed from the original dataset(s).\n&quot;;</span></div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;Looking at gvcf entries, there is a loss of &quot; &lt;&lt; n_gvcf_calls_lost &lt;&lt; &quot; call(s) which cover &quot; &lt;&lt; n_gvcf_bp_lost &lt;&lt; &quot; bp.\n&quot;;</span></div>
-<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;The loss is &quot; &lt;&lt; prop_gvcf_calls_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_gvcf_calls_total &lt;&lt; &quot; calls; or &quot; &lt;&lt; prop_gvcf_bp_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_gvcf_bp_total &lt;&lt; &quot; bp of gvcf entries processed.\n&quot;;</span></div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00211"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unified__site.html#aeae2f10a9c1a38833dc970969e629bd6">  211</a></span>&#160;<span class="stringliteral">    std::map&lt;allele,int&gt; unification;</span></div>
+<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;<span class="stringliteral">    std::vector&lt;float&gt; observation_count;</span></div>
+<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;<span class="stringliteral">    //std::vector&lt;float&gt; genotype_prior;</span></div>
+<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;<span class="stringliteral">    bool operator==(const unified_site&amp; rhs) const noexcept {</span></div>
+<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;<span class="stringliteral">        return pos == rhs.pos &amp;&amp; alleles == rhs.alleles &amp;&amp; unification == rhs.unification</span></div>
+<div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;<span class="stringliteral">               &amp;&amp; observation_count == rhs.observation_count;</span></div>
+<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160;<span class="stringliteral">    bool operator&lt;(const unified_site&amp; rhs) const noexcept{</span></div>
+<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;<span class="stringliteral">        if (pos != rhs.pos) return pos &lt; rhs.pos;</span></div>
+<div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160;<span class="stringliteral">        if (alleles != rhs.alleles) return alleles &lt; rhs.alleles;</span></div>
+<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;<span class="stringliteral">        if (unification != rhs.unification) return unification &lt; rhs.unification;</span></div>
+<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;<span class="stringliteral">        return observation_count &lt; rhs.observation_count;</span></div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;<span class="stringliteral">    unified_site(const range&amp; pos_) noexcept : pos(pos_) {}</span></div>
+<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;<span class="stringliteral">    Status yaml(const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp; contigs,</span></div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;<span class="stringliteral">                YAML::Emitter&amp; out);</span></div>
+<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;<span class="stringliteral">    static Status of_yaml(const YAML::Node&amp; yaml,</span></div>
+<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;<span class="stringliteral">                          const std::vector&lt;std::pair&lt;std::string,size_t&gt; &gt;&amp; contigs,</span></div>
+<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;<span class="stringliteral">                          unified_site&amp; ans);</span></div>
+<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;<span class="stringliteral">};</span></div>
+<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00236"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1loss__stats.html">  236</a></span>&#160;<span class="stringliteral">struct loss_stats {</span></div>
+<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;<span class="stringliteral">    int n_calls_total=0, n_bp_total=0;</span></div>
+<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;<span class="stringliteral">    int n_gvcf_calls_total=0, n_gvcf_bp_total=0;</span></div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;<span class="stringliteral">    int n_no_calls_total = 0;</span></div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;<span class="stringliteral">    // captures loss of both vcf entries and gvcf entries</span></div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;<span class="stringliteral">    int n_calls_lost=0, n_bp_lost=0;</span></div>
+<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;<span class="stringliteral">    // loss specific to gvcf entries</span></div>
+<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;<span class="stringliteral">    int n_gvcf_calls_lost=0, n_gvcf_bp_lost=0;</span></div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;<span class="stringliteral">    // Merges another loss_stats and increment the count</span></div>
+<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;<span class="stringliteral">    // variables accordingly</span></div>
+<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;<span class="stringliteral">    void operator+=(const loss_stats&amp; loss) {</span></div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;<span class="stringliteral">        n_calls_total += loss.n_calls_total;</span></div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;<span class="stringliteral">        n_bp_total += loss.n_bp_total;</span></div>
+<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;<span class="stringliteral">        n_gvcf_calls_total += loss.n_gvcf_calls_total;</span></div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;<span class="stringliteral">        n_gvcf_bp_total += loss.n_gvcf_bp_total;</span></div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;<span class="stringliteral">        n_calls_lost += loss.n_calls_lost;</span></div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;<span class="stringliteral">        n_bp_lost += loss.n_bp_lost;</span></div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;<span class="stringliteral">        n_gvcf_calls_lost += loss.n_gvcf_calls_lost;</span></div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;<span class="stringliteral">        n_gvcf_bp_lost += loss.n_gvcf_bp_lost;</span></div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;<span class="stringliteral">        n_no_calls_total += loss.n_no_calls_total;</span></div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;<span class="stringliteral">    std::string str() const noexcept {</span></div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;<span class="stringliteral">        std::ostringstream ans;</span></div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;<span class="stringliteral">        ans &lt;&lt; n_no_calls_total &lt;&lt; &quot; no call(s).\n&quot;;</span></div>
+<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;<span class="stringliteral">        // stop here if no no calls</span></div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;<span class="stringliteral">        if (!n_no_calls_total)</span></div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;<span class="stringliteral">            return ans.str();</span></div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;This is made up of a loss of &quot; &lt;&lt; n_calls_lost &lt;&lt; &quot; original call(s) which cover &quot; &lt;&lt; n_bp_lost &lt;&lt; &quot; bp.\n&quot;;</span></div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;The loss is &quot; &lt;&lt;  std::setprecision(3) &lt;&lt; prop_calls_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_calls_total &lt;&lt; &quot; calls; or &quot; &lt;&lt; prop_bp_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_bp_total &lt;&lt; &quot; bp processed from the original dataset(s).\n&quot;;</span></div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;Looking at gvcf entries, there is a loss of &quot; &lt;&lt; n_gvcf_calls_lost &lt;&lt; &quot; call(s) which cover &quot; &lt;&lt; n_gvcf_bp_lost &lt;&lt; &quot; bp.\n&quot;;</span></div>
+<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;<span class="stringliteral">        ans &lt;&lt; &quot;The loss is &quot; &lt;&lt; prop_gvcf_calls_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_gvcf_calls_total &lt;&lt; &quot; calls; or &quot; &lt;&lt; prop_gvcf_bp_lost() &lt;&lt; &quot;% of &quot; &lt;&lt; n_gvcf_bp_total &lt;&lt; &quot; bp of gvcf entries processed.\n&quot;;</span></div>
 <div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;<span class="stringliteral">        return ans.str();</span></div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;<span class="stringliteral">    // Returns proportion of calls lost as a percentage</span></div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;<span class="stringliteral">    float prop_calls_lost() const noexcept {</span></div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;<span class="stringliteral">        if (!n_calls_total) return 0;</span></div>
-<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;<span class="stringliteral">        return n_calls_lost / (float) n_calls_total * 100;</span></div>
-<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;<span class="stringliteral">    // Returns proportion of bp coverage lost as a percentage</span></div>
-<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;<span class="stringliteral">    float prop_bp_lost() const noexcept {</span></div>
-<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;<span class="stringliteral">        if (!n_bp_total) return 0;</span></div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;<span class="stringliteral">        return n_bp_lost / (float) n_bp_total * 100;</span></div>
-<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;<span class="stringliteral">    // Returns proportion of gvcf bp coverage lost as a percentage</span></div>
-<div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160;<span class="stringliteral">    float prop_gvcf_bp_lost() const noexcept {</span></div>
-<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;<span class="stringliteral">        if (!n_gvcf_bp_total) return 0;</span></div>
-<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;<span class="stringliteral">        return n_gvcf_bp_lost / (float) n_gvcf_bp_total * 100;</span></div>
-<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;<span class="stringliteral">    // Returns proportion of gvcf calls lost as a percentage</span></div>
-<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;<span class="stringliteral">    float prop_gvcf_calls_lost() const noexcept {</span></div>
-<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;<span class="stringliteral">        if (!n_gvcf_calls_total) return 0;</span></div>
-<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;<span class="stringliteral">        return n_gvcf_calls_lost / (float) n_gvcf_calls_total * 100;</span></div>
-<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;<span class="stringliteral">// per-sample loss_stats</span></div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;<span class="stringliteral">using consolidated_loss = std::map&lt;std::string, loss_stats&gt;;</span></div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;<span class="stringliteral">Status merge_loss_stats(const consolidated_loss&amp; src, consolidated_loss&amp; dest);</span></div>
-<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;<span class="stringliteral">// Statistics collected during range queries</span></div>
-<div class="line"><a name="l00313"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1_stats_range_query.html">  313</a></span>&#160;<span class="stringliteral">struct StatsRangeQuery {</span></div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;<span class="stringliteral">    int64_t nBCFRecordsRead;    // how many BCF records were read from the DB</span></div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;<span class="stringliteral">    int64_t nBCFRecordsInRange; // how many were in the requested range</span></div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;<span class="stringliteral">    // constructor</span></div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;<span class="stringliteral">    StatsRangeQuery() {</span></div>
-<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;<span class="stringliteral">        nBCFRecordsRead = 0;</span></div>
-<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;<span class="stringliteral">        nBCFRecordsInRange = 0;</span></div>
-<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;<span class="stringliteral">    // copy constructor</span></div>
-<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;<span class="stringliteral">    StatsRangeQuery(const StatsRangeQuery &amp;srq) {</span></div>
-<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;<span class="stringliteral">        nBCFRecordsRead = srq.nBCFRecordsRead;</span></div>
-<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;<span class="stringliteral">        nBCFRecordsInRange = srq.nBCFRecordsInRange;</span></div>
-<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;<span class="stringliteral">    // Addition</span></div>
-<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;<span class="stringliteral">    StatsRangeQuery&amp; operator+=(const StatsRangeQuery&amp; srq) {</span></div>
-<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;<span class="stringliteral">        nBCFRecordsRead += srq.nBCFRecordsRead;</span></div>
-<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;<span class="stringliteral">        nBCFRecordsInRange += srq.nBCFRecordsInRange;</span></div>
-<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;<span class="stringliteral">        return *this;</span></div>
-<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;<span class="stringliteral">    // return a human readable string</span></div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;<span class="stringliteral">    std::string str() {</span></div>
-<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;<span class="stringliteral">        std::ostringstream os;</span></div>
-<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;<span class="stringliteral">        os &lt;&lt; &quot;Num BCF records read &quot; &lt;&lt; std::to_string(nBCFRecordsRead)</span></div>
-<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;<span class="stringliteral">           &lt;&lt; &quot;  query hits &quot; &lt;&lt; std::to_string(nBCFRecordsInRange);</span></div>
-<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;<span class="stringliteral">        return os.str();</span></div>
-<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;<span class="stringliteral">    }</span></div>
-<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00345"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unifier__config.html">  345</a></span>&#160;<span class="stringliteral">struct unifier_config {</span></div>
-<div class="line"><a name="l00348"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1unifier__config.html#a15cab1a99c23fe34cdc8c7d45b6f2e5a">  348</a></span>&#160;<span class="stringliteral">    size_t max_alleles_per_site = 0;</span></div>
-<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;<span class="stringliteral">enum class GLnexusOutputFormat {</span></div>
-<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;<span class="stringliteral">    BCF,</span></div>
-<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;<span class="stringliteral">    VCF,</span></div>
-<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00358"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html">  358</a></span>&#160;<span class="stringliteral">struct genotyper_config {</span></div>
-<div class="line"><a name="l00360"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html#a99811beeefbe17ed9b9f93b1ba727188">  360</a></span>&#160;<span class="stringliteral">    size_t required_dp = 0;</span></div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00363"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html#a01446a8db9ee429978d55ca14dbc6346">  363</a></span>&#160;<span class="stringliteral">    std::string allele_dp_format = &quot;AD&quot;;</span></div>
-<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00366"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html#ae5105c6c4c3e1417f8f1b41324931560">  366</a></span>&#160;<span class="stringliteral">    std::string ref_symbolic_allele = &quot;&lt;NON_REF&gt;&quot;;</span></div>
-<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00369"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html#a71cc0d0a145034fdd893a28e9cae240a">  369</a></span>&#160;<span class="stringliteral">    std::string ref_dp_format = &quot;MIN_DP&quot;;</span></div>
-<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00372"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1genotyper__config.html#a62168f1049be4d6506cfe27415c8c257">  372</a></span>&#160;<span class="stringliteral">    GLnexusOutputFormat output_format = GLnexusOutputFormat::BCF;</span></div>
-<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;<span class="stringliteral">    genotyper_config() = default;</span></div>
-<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;<span class="stringliteral">    genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}</span></div>
-<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;<span class="stringliteral">};</span></div>
-<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160;<span class="stringliteral"></span></div>
-<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160;<span class="stringliteral">} //namespace GLnexus</span></div>
-<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160;<span class="stringliteral"></span></div>
-<div class="ttc" id="struct_g_lnexus_1_1range_html"><div class="ttname"><a href="struct_g_lnexus_1_1range.html">GLnexus::range</a></div><div class="ttdoc">Genomic range (chromosome id, begin coordinate, end coordinate) </div><div class="ttdef"><b>Definition:</b> types.h:98</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_status_html_a69dfdcf0c8dd43a077df43fa34478e71"><div class="ttname"><a href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">GLnexus::Status::Status</a></div><div class="ttdeci">Status(StatusCode code=StatusCode::OK, const char *msg=nullptr) noexcept</div><div class="ttdoc">Default Status constructor. </div><div class="ttdef"><b>Definition:</b> types.h:39</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:29</div></div>
-<div class="ttc" id="struct_g_lnexus_1_1range_html_aeb8e939494ae3abf0de39d5630697467"><div class="ttname"><a href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">GLnexus::range::range</a></div><div class="ttdeci">range(const bcf1_t *bcf) noexcept</div><div class="ttdef"><b>Definition:</b> types.h:111</div></div>
-<div class="ttc" id="class_g_lnexus_1_1_status_html_a579b468687fe1aa8009741282f31128e"><div class="ttname"><a href="class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e">GLnexus::Status::Status</a></div><div class="ttdeci">Status(StatusCode code, const char *msg, const std::string &amp;noun)</div><div class="ttdoc">Extended Status constructor. </div><div class="ttdef"><b>Definition:</b> types.h:47</div></div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;<span class="stringliteral">        return ans.str();</span></div>
+<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;<span class="stringliteral">    // Returns proportion of calls lost as a percentage</span></div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;<span class="stringliteral">    float prop_calls_lost() const noexcept {</span></div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;<span class="stringliteral">        if (!n_calls_total) return 0;</span></div>
+<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;<span class="stringliteral">        return n_calls_lost / (float) n_calls_total * 100;</span></div>
+<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;<span class="stringliteral">    // Returns proportion of bp coverage lost as a percentage</span></div>
+<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;<span class="stringliteral">    float prop_bp_lost() const noexcept {</span></div>
+<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;<span class="stringliteral">        if (!n_bp_total) return 0;</span></div>
+<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;<span class="stringliteral">        return n_bp_lost / (float) n_bp_total * 100;</span></div>
+<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160;<span class="stringliteral">    // Returns proportion of gvcf bp coverage lost as a percentage</span></div>
+<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;<span class="stringliteral">    float prop_gvcf_bp_lost() const noexcept {</span></div>
+<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;<span class="stringliteral">        if (!n_gvcf_bp_total) return 0;</span></div>
+<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;<span class="stringliteral">        return n_gvcf_bp_lost / (float) n_gvcf_bp_total * 100;</span></div>
+<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;<span class="stringliteral">    // Returns proportion of gvcf calls lost as a percentage</span></div>
+<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;<span class="stringliteral">    float prop_gvcf_calls_lost() const noexcept {</span></div>
+<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;<span class="stringliteral">        if (!n_gvcf_calls_total) return 0;</span></div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;<span class="stringliteral">        return n_gvcf_calls_lost / (float) n_gvcf_calls_total * 100;</span></div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;<span class="stringliteral">};</span></div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;<span class="stringliteral">// per-sample loss_stats</span></div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;<span class="stringliteral">using consolidated_loss = std::map&lt;std::string, loss_stats&gt;;</span></div>
+<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;<span class="stringliteral">Status merge_loss_stats(const consolidated_loss&amp; src, consolidated_loss&amp; dest);</span></div>
+<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;<span class="stringliteral">// Statistics collected during range queries</span></div>
+<div class="line"><a name="l00314"></a><span class="lineno"><a class="line" href="struct_g_lnexus_1_1_stats_range_query.html">  314</a></span>&#160;<span class="stringliteral">struct StatsRangeQuery {</span></div>
+<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;<span class="stringliteral">    int64_t nBCFRecordsRead;    // how many BCF records were read from the DB</span></div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;<span class="stringliteral">    int64_t nBCFRecordsInRange; // how many were in the requested range</span></div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;<span class="stringliteral">    // constructor</span></div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;<span class="stringliteral">    StatsRangeQuery() {</span></div>
+<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;<span class="stringliteral">        nBCFRecordsRead = 0;</span></div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;<span class="stringliteral">        nBCFRecordsInRange = 0;</span></div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;<span class="stringliteral">    // copy constructor</span></div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;<span class="stringliteral">    StatsRangeQuery(const StatsRangeQuery &amp;srq) {</span></div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;<span class="stringliteral">        nBCFRecordsRead = srq.nBCFRecordsRead;</span></div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;<span class="stringliteral">        nBCFRecordsInRange = srq.nBCFRecordsInRange;</span></div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;<span class="stringliteral">    // Addition</span></div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;<span class="stringliteral">    StatsRangeQuery&amp; operator+=(const StatsRangeQuery&amp; srq) {</span></div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;<span class="stringliteral">        nBCFRecordsRead += srq.nBCFRecordsRead;</span></div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;<span class="stringliteral">        nBCFRecordsInRange += srq.nBCFRecordsInRange;</span></div>
+<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;<span class="stringliteral">        return *this;</span></div>
+<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;<span class="stringliteral">    // return a human readable string</span></div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;<span class="stringliteral">    std::string str() {</span></div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;<span class="stringliteral">        std::ostringstream os;</span></div>
+<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;<span class="stringliteral">        os &lt;&lt; &quot;Num BCF records read &quot; &lt;&lt; std::to_string(nBCFRecordsRead)</span></div>
+<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;<span class="stringliteral">           &lt;&lt; &quot;  query hits &quot; &lt;&lt; std::to_string(nBCFRecordsInRange);</span></div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;<span class="stringliteral">        return os.str();</span></div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;<span class="stringliteral">    }</span></div>
+<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;<span class="stringliteral">};</span></div>
+<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;<span class="stringliteral">} //namespace GLnexus</span></div>
+<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;<span class="stringliteral"></span></div>
+<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;<span class="stringliteral">#endif</span></div>
+<div class="ttc" id="struct_g_lnexus_1_1range_html"><div class="ttname"><a href="struct_g_lnexus_1_1range.html">GLnexus::range</a></div><div class="ttdoc">Genomic range (chromosome id, begin coordinate, end coordinate) </div><div class="ttdef"><b>Definition:</b> types.h:99</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_status_html_a69dfdcf0c8dd43a077df43fa34478e71"><div class="ttname"><a href="class_g_lnexus_1_1_status.html#a69dfdcf0c8dd43a077df43fa34478e71">GLnexus::Status::Status</a></div><div class="ttdeci">Status(StatusCode code=StatusCode::OK, const char *msg=nullptr) noexcept</div><div class="ttdoc">Default Status constructor. </div><div class="ttdef"><b>Definition:</b> types.h:40</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_status_html"><div class="ttname"><a href="class_g_lnexus_1_1_status.html">GLnexus::Status</a></div><div class="ttdoc">Function status (return) codes. </div><div class="ttdef"><b>Definition:</b> types.h:30</div></div>
+<div class="ttc" id="struct_g_lnexus_1_1range_html_aeb8e939494ae3abf0de39d5630697467"><div class="ttname"><a href="struct_g_lnexus_1_1range.html#aeb8e939494ae3abf0de39d5630697467">GLnexus::range::range</a></div><div class="ttdeci">range(const bcf1_t *bcf) noexcept</div><div class="ttdef"><b>Definition:</b> types.h:112</div></div>
+<div class="ttc" id="class_g_lnexus_1_1_status_html_a579b468687fe1aa8009741282f31128e"><div class="ttname"><a href="class_g_lnexus_1_1_status.html#a579b468687fe1aa8009741282f31128e">GLnexus::Status::Status</a></div><div class="ttdeci">Status(StatusCode code, const char *msg, const std::string &amp;noun)</div><div class="ttdoc">Extended Status constructor. </div><div class="ttdef"><b>Definition:</b> types.h:48</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
