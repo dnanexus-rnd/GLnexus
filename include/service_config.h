@@ -32,7 +32,7 @@ struct genotyper_config {
     // If true, the output is recorded in YAML format in the
     // [residuals_file].
     bool output_residuals = false;
-    std::string residuals_file;
+    std::string residuals_file = "/tmp/residuals.yml";
 
     genotyper_config() = default;
 

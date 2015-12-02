@@ -661,7 +661,6 @@ TEST_CASE("genotype residuals") {
     consolidated_loss losses;
     genotyper_config cfg;
     cfg.output_residuals = true;
-    cfg.residuals_file = string("/tmp/residuals.yml");
     s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
     REQUIRE(s.ok());
 }

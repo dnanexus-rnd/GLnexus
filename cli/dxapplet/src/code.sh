@@ -89,8 +89,14 @@ main() {
             sudo perf record -F $recordFreq -a -g &
         fi
 
+        residuals_flag=""
+        if [[ "$residuals" == "true" ]]; then
+            # generate a file with residual calls
+            residuals_flag="--residuals"
+        fi
+
         mkdir -p out/vcf
-        time glnexus_cli genotype GLnexus.db --bed ranges.bed \
+        time glnexus_cli genotype GLnexus.db --bed ranges.bed $residuals_flag \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
 
         if [ "$enable_perf" == "1" ]; then
