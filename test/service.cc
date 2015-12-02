@@ -663,4 +663,12 @@ TEST_CASE("genotype residuals") {
     cfg.output_residuals = true;
     s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
     REQUIRE(s.ok());
+
+    // verify that the residuals file is in correct yaml format
+    YAML::Node resFile = YAML::LoadFile(cfg.residuals_file);
+    REQUIRE(resFile.size() == 3);
+
+    // It seems that a list of documents split by --- symbols
+    // are parsed as a yaml map.
+    REQUIRE(resFile.IsMap());
 }

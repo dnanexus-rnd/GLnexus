@@ -410,8 +410,7 @@ void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
-         << "command line, you can pass a three-column BED file using --bed FILENAME." << endl
-         << "In order to get a details report on missed calls, add the --residuals flag." << endl
+         << "command line, you can pass a three-column BED file using --bed FILENAME."
          << endl;
 }
 
@@ -423,13 +422,12 @@ int main_genotype(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
-        {"residuals", no_argument, 0, 'r'},
         {"bed", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
-    bool residuals = false;
+
     int c;
     optind = 2; // force optind past command positional argument
     while (-1 != (c = getopt_long(argc, argv, "h",
@@ -441,9 +439,6 @@ int main_genotype(int argc, char *argv[]) {
                     cerr <<  "invalid BED filename" << endl;
                     return 1;
                 }
-                break;
-            case 'r':
-                residuals = true;
                 break;
             case 'h':
             case '?':
@@ -564,10 +559,8 @@ int main_genotype(int argc, char *argv[]) {
             console->info() << "unified to " << sites.size() << " sites";
 
             GLnexus::consolidated_loss losses;
-            GLnexus::genotyper_config genoCfg;
-            genoCfg.output_residuals = residuals;
             H("genotype sites",
-              svc->genotype_sites(genoCfg, sampleset, sites, string("-"), losses));
+              svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-"), losses));
             console->info("genotyping complete!");
 
             if (losses.size() < 100) {

@@ -54,12 +54,6 @@
       "class": "boolean",
       "default": false,
       "optional": true
-    },
-    {
-      "name": "residuals",
-      "class": "boolean",
-      "default": false,
-      "optional": true
     }
   ],
   "outputSpec": [
