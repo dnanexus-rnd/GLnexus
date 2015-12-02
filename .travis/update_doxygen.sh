@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+# Install current version of doxygen
+sudo add-apt-repository -y ppa:libreoffice/ppa
+sudo apt-get -qq update && apt-get -qq install -y doxygen
+
 # Prepare for pushing documentation
 mkdir html
 cd html

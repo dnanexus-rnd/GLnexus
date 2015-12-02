@@ -1,13 +1,9 @@
 #!/bin/bash -e
 
 # PPAs
-sudo add-apt-repository -y ppa:libreoffice/ppa # doxygen
 sudo add-apt-repository -y ppa:nathan-renniewaldock/ppa # lz4
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test # gcc 4.9
 sudo apt-get -qq update
-
-# Install current version of doxygen
-sudo apt-get -qq install -y doxygen
 
 # The lz4 library requires a special repository
 sudo apt-get -qq install -y liblz4-dev
@@ -21,5 +17,3 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
 # Install boost for use in yaml-cpp
 sudo apt-get -qq install -y libboost1.55-dev
 
-# Install cpp-coveralls
-sudo pip install cpp-coveralls
