@@ -118,4 +118,38 @@ Status Residuals::gen_record(const unified_site& site,
     return Status::OK();
 }
 
+// destructor
+ResidualsFile::~ResidualsFile() {
+    ofs_.close();
+}
+
+
+static bool is_file_exist(const string &fileName) {
+    std::ifstream infile(fileName);
+    return infile.good();
+}
+
+Status ResidualsFile::Open(std::string filename,
+                                  std::unique_ptr<ResidualsFile> &ans) {
+    ans = make_unique<ResidualsFile>(filename);
+
+    if (is_file_exist(filename)) {
+        int rc = remove(filename.c_str());
+        if (rc != 0)
+            return Status::Invalid("Residuals file cannot be removed ", filename);
+    }
+    ans->ofs_.open(filename, std::ofstream::out | std::ofstream::app);
+    return Status::OK();
+}
+
+Status ResidualsFile::write_record(std::string &rec) {
+    if (!ofs_.good())
+        return Status::Invalid("File cannot be written to ", filename_);
+
+    ofs_ << "---" << endl;
+    ofs_ << rec << endl;
+    ofs_ << endl;
+    return Status::OK();
+}
+
 }

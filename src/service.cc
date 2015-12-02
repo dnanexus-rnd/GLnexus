@@ -385,11 +385,6 @@ static bool any_losses(consolidated_loss &losses_for_site) {
     return false;
 }
 
-static bool is_file_exist(const string &fileName) {
-    std::ifstream infile(fileName);
-    return infile.good();
-}
-
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
     Status s;
     shared_ptr<const set<string>> samples;
@@ -405,16 +400,13 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     unique_ptr<BCFFileSink> bcf_out;
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
-    // set up the residuals file if requested
-    std::ofstream residuals_ofs;
+    // set up the residuals file
     unique_ptr<Residuals> residuals = nullptr;
+    unique_ptr<ResidualsFile> residualsFile = nullptr;
     if (cfg.output_residuals &&
         !cfg.residuals_file.empty()) {
         S(Residuals::Open(*(body_->metadata_), body_->data_, sampleset, sample_names, residuals));
-        if (is_file_exist(cfg.residuals_file)) {
-            remove(cfg.residuals_file.c_str());
-        }
-        residuals_ofs.open(cfg.residuals_file, std::ofstream::out | std::ofstream::app);
+        S(ResidualsFile::Open(cfg.residuals_file, residualsFile));
     }
 
     // Enqueue processing of each site as a task on the thread pool.
@@ -479,8 +471,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 abort = true;
             }
             if (residual_rec != nullptr) {
-                residuals_ofs << "---" << endl;
-                residuals_ofs << *residual_rec << endl;
+                // We have a residuals record, write it to disk.
+                residualsFile->write_record(*residual_rec);
             }
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort
@@ -490,10 +482,6 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     }
     if (s.bad()) {
         return s;
-    }
-
-    if (residuals != nullptr) {
-        residuals_ofs.close();
     }
 
     // TODO: for very large sample sets, bucket cache-friendliness might be

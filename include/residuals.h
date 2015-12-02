@@ -39,5 +39,23 @@ public:
                       std::string &ynode);
 };
 
+class ResidualsFile {
+private:
+    std::string filename_;
+    std::ofstream ofs_;
+
+public:
+    // constructor
+    ResidualsFile(std::string filename) : filename_(filename) {}
+
+    // destructor
+    ~ResidualsFile();
+
+    static Status Open(std::string filename, std::unique_ptr<ResidualsFile> &ans);
+
+    // write a YAML record to the end of the file, as an element in a top-level sequence.
+    Status write_record(std::string &rec);
+};
+
 } // namespace GLnexus
 #endif
