@@ -3,12 +3,14 @@
 
 #include "data.h"
 #include "types.h"
+#include <fstream>
 #include <memory>
 #include "service_config.h"
 
 namespace GLnexus {
 
-Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
+Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data,
+                     const unified_site& site,
                      const std::string& sampleset, const std::vector<std::string>& samples,
                      const bcf_hdr_t* hdr, std::shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site);
 
@@ -39,6 +41,11 @@ public:
     Status add_call_for_site(const range call, int n_calls, bool is_gvcf) noexcept;
     Status finalize_loss_for_site(int n_no_calls) noexcept;
     Status get(loss_stats& ans) const noexcept;
+
+    // Did we lose calls on this site?
+    bool is_loss() const noexcept {
+        return n_calls_lost > 0;
+    }
 
 private:
     // Range of joint-called unified_site being considered

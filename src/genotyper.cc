@@ -347,10 +347,13 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
-Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
+
+Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data,
+                     const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
-                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site) {
-	Status s;
+                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans,
+                     consolidated_loss& losses_for_site) {
+    Status s;
 
     // Initialize a vector for the unified genotype calls for each sample,
     // starting with everything missing. We'll then loop through BCF records
@@ -475,7 +478,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         losses.insert(make_pair(sample_name,loss));
     }
     merge_loss_stats(losses, losses_for_site);
-
     return Status::OK();
 }
 

@@ -172,7 +172,7 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
 }
 
 Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
-                          YAML::Emitter& ans) {
+                          YAML::Emitter& ans) const {
     Status s;
 
     ans << YAML::BeginMap;
@@ -216,6 +216,7 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     }
     ans << YAML::EndSeq;
 
+    ans << YAML::EndMap;
     return Status::OK();
 }
 

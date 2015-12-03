@@ -205,6 +205,22 @@ static Status bcf_raw_read_header(const char* buf,
     return Status::OK();
 }
 
+// convert a BCF record into a string
+shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf) {
+    kstring_t kstr;
+    memset((void*)&kstr, 0, sizeof(kstring_t));
+    vcf_format(hdr, bcf, &kstr);
+    auto retval = make_shared<string>(kstr.s, kstr.l);
+    if (retval->length() > 0)
+        retval->erase(retval->find_last_not_of(" \n\r\t")+1); // get rid of extra spaces at the end
+
+    // cleanup
+    if (kstr.s != NULL)
+        free(kstr.s);
+
+    return retval;
+}
+
 
 int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
 
