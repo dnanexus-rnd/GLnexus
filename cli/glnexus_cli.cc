@@ -561,7 +561,7 @@ int main_genotype(int argc, char *argv[]) {
             console->info() << "discovered " << alleles.size() << " alleles";
 
             vector<GLnexus::unified_site> sites;
-            H("unify sites", GLnexus::unified_sites(alleles, sites));
+            H("unify sites", GLnexus::unified_sites(GLnexus::unifier_config(), alleles, sites));
             console->info() << "unified to " << sites.size() << " sites";
 
             GLnexus::consolidated_loss losses;

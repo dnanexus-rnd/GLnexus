@@ -189,7 +189,7 @@ TEST_CASE("service::discover_alleles gVCF") {
     }
 }
 
-TEST_CASE("unified_sites placeholder") {
+TEST_CASE("unified_sites") {
     unique_ptr<VCFData> data;
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
@@ -204,7 +204,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(s.ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -281,7 +281,7 @@ TEST_CASE("unified_sites placeholder") {
         REQUIRE(s.ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -397,7 +397,7 @@ TEST_CASE("genotyper placeholder") {
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         unique_ptr<SimFailBCFData> faildata;
@@ -431,7 +431,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(s.ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         consolidated_loss losses;
@@ -495,7 +495,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(merge_discovered_alleles(als1, als).ok());
 
         vector<unified_site> sites;
-        s = unified_sites(als, sites);
+        s = unified_sites(unifier_config(), als, sites);
         cout << s.str() << endl;
         REQUIRE(s.ok());
 
@@ -654,7 +654,7 @@ TEST_CASE("genotype residuals") {
     REQUIRE(s.ok());
 
     vector<unified_site> sites;
-    s = unified_sites(als, sites);
+    s = unified_sites(unifier_config(), als, sites);
     REQUIRE(s.ok());
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");

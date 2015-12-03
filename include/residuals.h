@@ -5,7 +5,6 @@
 #include <memory>
 #include "data.h"
 #include "types.h"
-#include "service_config.h"
 
 namespace GLnexus {
 

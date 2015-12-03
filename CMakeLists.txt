@@ -221,7 +221,8 @@ if (test)
                  test/gvcf_test_cases.cc
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc
-                 test/compare_iter.cc)
+                 test/compare_iter.cc
+                 test/unifier.cc)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts rt snappy z bz2 lz4 rt libyaml-cpp)
 
