@@ -30,6 +30,9 @@ Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
                              int &ans);
 
 
+// convert a BCF record into a string
+std::shared_ptr<std::string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf);
+
 /*
   Write the BCF record directly to a memory location. This function is
   unsafe, it assumes that the caller allocated sufficient space, by

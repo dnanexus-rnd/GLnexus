@@ -166,6 +166,7 @@ add_library(glnexus
             include/service.h src/service.cc
             include/unifier.h src/unifier.cc
             include/genotyper.h src/genotyper.cc
+            include/residuals.h src/residuals.cc
             include/KeyValue.h src/KeyValue.cc
             include/BCFSerialize.h src/BCFSerialize.cc
             include/BCFKeyValueData.h src/BCFKeyValueData.cc

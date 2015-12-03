@@ -1129,7 +1129,9 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     REQUIRE(s.ok());
 
     // split the range [0 ... 1000000] into [nRegions] areas.
-    //
+    // Limit the range to the first million bases, because that
+    // is where the interesting stuff lies.
+    lenChrom = 1000000;
     for (int i = 0; i < nIter; i++) {
         int beg = genRandDouble(nRegions) * lenChrom;
         int end = genRandDouble(nRegions) * lenChrom;
@@ -1144,7 +1146,16 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
         }
     }
 
-    cout << "Compared " << nIter << " range queries between the two iterators" << endl;
+    // Add one global comparison
+    range rng(0, 0, lenChrom);
+    int rc = compare_query(*data, *cache, sampleset, rng);
+    switch (rc) {
+    case 1: break; // comparison succeeded
+    case 0: REQUIRE(false); // ERROR
+    case -1: break;  // Query used too much memory, continue
+    }
+
+    cout << "Compared " << (nIter+1) << " range queries between the two iterators" << endl;
 }
 
 

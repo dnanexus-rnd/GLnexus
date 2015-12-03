@@ -641,3 +641,34 @@ TEST_CASE("gVCF genotyper") {
     }
 }
 
+TEST_CASE("genotype residuals") {
+    unique_ptr<VCFData> data;
+    Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
+    REQUIRE(s.ok());
+    unique_ptr<Service> svc;
+    s = Service::Start(*data, *data, svc);
+    REQUIRE(s.ok());
+
+    discovered_alleles als;
+    s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+    REQUIRE(s.ok());
+
+    vector<unified_site> sites;
+    s = unified_sites(als, sites);
+    REQUIRE(s.ok());
+
+    const string tfn("/tmp/GLnexus_unit_tests.bcf");
+    consolidated_loss losses;
+    genotyper_config cfg;
+    cfg.output_residuals = true;
+    s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
+    REQUIRE(s.ok());
+
+    // verify that the residuals file is in correct yaml format
+    YAML::Node resFile = YAML::LoadFile(tfn + ".residuals.yml");
+    REQUIRE(resFile.size() == 3);
+
+    // It seems that a list of documents split by --- symbols
+    // are parsed as a yaml map.
+    REQUIRE(resFile.IsMap());
+}
