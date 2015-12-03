@@ -54,6 +54,12 @@
       "class": "boolean",
       "default": false,
       "optional": true
+    },
+    {
+      "name": "residuals",
+      "class": "boolean",
+      "default": false,
+      "optional": true
     }
   ],
   "outputSpec": [
@@ -76,6 +82,11 @@
     {
       "name": "perf",
       "class": "array:file",
+      "optional": true
+    },
+    {
+      "name": "residuals",
+      "class": "file",
       "optional": true
     }
   ],

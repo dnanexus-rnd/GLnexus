@@ -89,9 +89,21 @@ main() {
             sudo perf record -F $recordFreq -a -g &
         fi
 
+        residuals_flag=""
+        if [[ $residuals == "true" ]]; then
+            residuals_flag="--residuals"
+        fi
+
         mkdir -p out/vcf
-        time glnexus_cli genotype GLnexus.db --bed ranges.bed \
+        time glnexus_cli genotype GLnexus.db $residuals_flag --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
+
+        # we are writing the generated VCF to stdout, so the residuals will
+        # be placed in a default location.
+        if [ -f /tmp/residuals.yml ]; then
+            mkdir -p out/residuals/
+            mv /tmp/residuals.yml out/residuals/
+        fi
 
         if [ "$enable_perf" == "1" ]; then
             sudo killall perf
