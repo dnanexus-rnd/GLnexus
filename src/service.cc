@@ -403,7 +403,14 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // set up the residuals file
     unique_ptr<Residuals> residuals = nullptr;
     unique_ptr<ResidualsFile> residualsFile = nullptr;
-    string res_filename = filename + ".residuals.yml";
+    string res_filename;
+    if (filename != "-" && filename.find(".") > 0) {
+        int lastindex = filename.find_last_of(".");
+        string rawname = filename.substr(0, lastindex);
+        res_filename = rawname + ".residuals.yml";
+    } else {
+        res_filename = "/tmp/residuals.yml";
+    }
     if (cfg.output_residuals) {
         S(Residuals::Open(*(body_->metadata_), body_->data_, sampleset, sample_names, residuals));
         S(ResidualsFile::Open(res_filename, residualsFile));
