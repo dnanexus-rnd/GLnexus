@@ -665,7 +665,7 @@ TEST_CASE("genotype residuals") {
     REQUIRE(s.ok());
 
     // verify that the residuals file is in correct yaml format
-    YAML::Node resFile = YAML::LoadFile(cfg.residuals_file);
+    YAML::Node resFile = YAML::LoadFile(tfn + ".residuals.yml");
     REQUIRE(resFile.size() == 3);
 
     // It seems that a list of documents split by --- symbols

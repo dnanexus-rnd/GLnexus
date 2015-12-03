@@ -2,30 +2,23 @@
 #include <algorithm>
 #include <kstring.h>
 #include <vcf.h>
+#include "BCFSerialize.h"
 #include "residuals.h"
 
 using namespace std;
 
 namespace GLnexus {
 
-// convert a BCF record into a string
-static shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf) {
-    kstring_t kstr;
-    memset((void*)&kstr, 0, sizeof(kstring_t));
-    vcf_format(hdr, bcf, &kstr);
-    auto retval = make_shared<string>(kstr.s, kstr.l);
-    if (retval->length() > 0)
-        retval->erase(retval->find_last_not_of(" \n\r\t")+1); // get rid of extra spaces at the end
-
-    // cleanup
-    if (kstr.s != NULL)
-        free(kstr.s);
-
-    return retval;
+static string concat(const std::vector<std::string>& samples) {
+    return std::accumulate(samples.begin(), samples.end(), std::string(),
+                    [](const std::string& a, const std::string& b) -> std::string {
+                        return a + (a.length() > 0 ? "\t" : "") + b;
+                    } );
 }
 
+
 // return the list of samples in this dataset, in the format
-// of one string, with a comma as a delimiter.
+// of one string, with a tab as a delimiter. This matches BCF headers.
 static string samples_from_dataset(const bcf_hdr_t *hdr) {
     vector<string> samples;
 
@@ -35,10 +28,7 @@ static string samples_from_dataset(const bcf_hdr_t *hdr) {
         samples.push_back(sample_name);
     }
 
-    return std::accumulate(samples.begin(), samples.end(), std::string(),
-                    [](const std::string& a, const std::string& b) -> std::string {
-                        return a + (a.length() > 0 ? "," : "") + b;
-                    } );
+    return concat(samples);
 }
 
 // destructor
@@ -84,7 +74,7 @@ Status Residuals::gen_record(const unified_site& site,
             vector<shared_ptr<bcf1_t>> these_records;
             S(iter->next(this_dataset, dataset_header, these_records));
             if (dataset != this_dataset) {
-                return Status::Failure("genotype_site: iterator returned unexpected dataset",
+                return Status::Failure("residuals: iterator returned unexpected dataset",
                                        this_dataset + " instead of " + dataset);
             }
             records.insert(records.end(), these_records.begin(), these_records.end());
@@ -93,8 +83,7 @@ Status Residuals::gen_record(const unified_site& site,
         for (auto rec : records) {
             out << YAML::BeginMap;
             out << YAML::Key << dataset;
-            string samples = samples_from_dataset(dataset_header.get());
-            out << YAML::Literal << samples + "\n" + *(bcf1_to_string(dataset_header.get(), rec.get()));
+            out << YAML::Literal << samples_from_dataset(dataset_header.get()) + "\n" + *(bcf1_to_string(dataset_header.get(), rec.get()));
             out << YAML::EndMap;
         }
     }
@@ -107,9 +96,9 @@ Status Residuals::gen_record(const unified_site& site,
     S(site.yaml(contigs, out));
 
 
-    // write the output bcf, the calls that GLnexus made.
+    // write the output bcf, the calls that GLnexus made. Also, add the samples matching the calls.
     out << YAML::Key << "output_vcf";
-    out << YAML::Literal << *(bcf1_to_string(gl_hdr, gl_call));
+    out << YAML::Literal << concat(samples_) + "\n" + *(bcf1_to_string(gl_hdr, gl_call));
 
     out << YAML::EndMap;
 
@@ -120,6 +109,9 @@ Status Residuals::gen_record(const unified_site& site,
 
 // destructor
 ResidualsFile::~ResidualsFile() {
+    // write EOF marker
+    ofs_ << "..." << endl;
+
     ofs_.close();
 }
 
@@ -134,11 +126,15 @@ Status ResidualsFile::Open(std::string filename,
     ans = make_unique<ResidualsFile>(filename);
 
     if (is_file_exist(filename)) {
+        // Erase the existing file, it is a result of a previous run.
+        // This avoids confusing results of old runs, with the current run, in case of failure.
         int rc = remove(filename.c_str());
         if (rc != 0)
             return Status::Invalid("Residuals file cannot be removed ", filename);
     }
     ans->ofs_.open(filename, std::ofstream::out | std::ofstream::app);
+    if (ans->ofs_.fail())
+        return Status::Invalid("Error opening file for append", filename);
     return Status::OK();
 }
 

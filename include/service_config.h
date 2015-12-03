@@ -30,9 +30,8 @@ struct genotyper_config {
 
     // Should the genotyper write a record describing each call loss?
     // If true, the output is recorded in YAML format in the
-    // [residuals_file].
+    // a file named [BCF/VCF output file].residuals.yml
     bool output_residuals = false;
-    std::string residuals_file = "/tmp/residuals.yml";
 
     genotyper_config() = default;
 

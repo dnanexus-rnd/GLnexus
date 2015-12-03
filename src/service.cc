@@ -403,10 +403,10 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // set up the residuals file
     unique_ptr<Residuals> residuals = nullptr;
     unique_ptr<ResidualsFile> residualsFile = nullptr;
-    if (cfg.output_residuals &&
-        !cfg.residuals_file.empty()) {
+    string res_filename = filename + ".residuals.yml";
+    if (cfg.output_residuals) {
         S(Residuals::Open(*(body_->metadata_), body_->data_, sampleset, sample_names, residuals));
-        S(ResidualsFile::Open(cfg.residuals_file, residualsFile));
+        S(ResidualsFile::Open(res_filename, residualsFile));
     }
 
     // Enqueue processing of each site as a task on the thread pool.
@@ -435,9 +435,9 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 any_losses(losses_for_site)) {
                 // create a residuals loss record
                 residual_rec = make_shared<string>();
-                s = residuals->gen_record(sites[i], hdr.get(), bcf.get(), *residual_rec);
-                if (s.bad()) {
-                    abort = true;
+                ls = residuals->gen_record(sites[i], hdr.get(), bcf.get(), *residual_rec);
+                if (ls.bad()) {
+                    return ls;
                 }
             }
 
@@ -470,7 +470,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             if (s.bad()) {
                 abort = true;
             }
-            if (residual_rec != nullptr) {
+            else if (residual_rec != nullptr) {
                 // We have a residuals record, write it to disk.
                 residualsFile->write_record(*residual_rec);
             }
