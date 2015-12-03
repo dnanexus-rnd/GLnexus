@@ -116,25 +116,15 @@ ResidualsFile::~ResidualsFile() {
 }
 
 
-static bool is_file_exist(const string &fileName) {
-    std::ifstream infile(fileName);
-    return infile.good();
-}
-
 Status ResidualsFile::Open(std::string filename,
                                   std::unique_ptr<ResidualsFile> &ans) {
     ans = make_unique<ResidualsFile>(filename);
 
-    if (is_file_exist(filename)) {
-        // Erase the existing file, it is a result of a previous run.
-        // This avoids confusing results of old runs, with the current run, in case of failure.
-        int rc = remove(filename.c_str());
-        if (rc != 0)
-            return Status::Invalid("Residuals file cannot be removed ", filename);
-    }
-    ans->ofs_.open(filename, std::ofstream::out | std::ofstream::app);
+    // Note: we open in truncate mode, to erase the existing file, if any.
+    // This avoids confusing results of old runs, with the current run, in case of failure.
+    ans->ofs_.open(filename, std::ofstream::out | std::ofstream::trunc);
     if (ans->ofs_.fail())
-        return Status::Invalid("Error opening file for append", filename);
+        return Status::Invalid("Error opening file for truncate ", filename);
     return Status::OK();
 }
 

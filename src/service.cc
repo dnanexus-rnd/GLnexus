@@ -460,7 +460,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         shared_ptr<bcf1_t> bcf_i = move(std::get<0>(results[i]));
         assert(std::get<0>(results[i]) == nullptr);
         consolidated_loss losses_for_site = move(std::get<1>(results[i]));
-        shared_ptr<string> residual_rec =  std::get<2>(results[i]);
+        shared_ptr<string> residual_rec =  move(std::get<2>(results[i]));
+        assert(std::get<2>(results[i]) == nullptr);
 
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
@@ -472,7 +473,10 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             }
             else if (residual_rec != nullptr) {
                 // We have a residuals record, write it to disk.
-                residualsFile->write_record(*residual_rec);
+                s = residualsFile->write_record(*residual_rec);
+                if (s.bad()) {
+                    abort = true;
+                }
             }
         } else if (s.ok() && s_i.bad()) {
             // record the first error, and tell remaining tasks to abort
