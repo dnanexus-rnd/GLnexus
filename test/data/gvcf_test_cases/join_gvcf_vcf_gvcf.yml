@@ -76,4 +76,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	999	.	AT	ATTT,A	0	.	.	GT:RNC	0/1:..	0/2:..	0/1:..	0/0:..
+      A	999	.	ATG	ATCG,A	0	.	.	GT:RNC	0/1:..	0/2:..	0/1:..	0/0:..

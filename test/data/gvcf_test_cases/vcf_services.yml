@@ -1,5 +1,5 @@
 readme: |
-  This is a gvcf testing of the unify_sites service.
+  This is a gvcf testing of the unify_sites service. It involves a case where the unified site is longer than the vcf record. This site is callable assuming that bases not in a vcf record are treated as REF.
 
 input:
   header : |-
@@ -125,7 +125,7 @@ truth_output_vcf:
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	trio1.ch	trio1.fa	trio1.mo	trio2.ch	trio2.fa	trio2.mo
       A	1001	.	A	G	0	.	.	GT:RNC	1/1:..	0/1:..	0/1:..	0/0:..	0/1:..	0/1:..
       A	1002	.	C	A,G,T	0	.	.	GT:RNC	3/3:..	0/0:..	2/2:..	1/1:..	1/1:..	1/1:..
-      A	1011	.	CCC	AGC,AGA	0	.	.	GT:RNC	./.:LL	./.:LL	./.:LL	0/0:..	0/2:..	0/2:..
+      A	1011	.	CCC	AGC,AGA	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	0/0:..	0/2:..	0/2:..
       A	1101	.	C	A	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	0/0:..	0/.:.L	0/.:.L
       A	1103	.	C	G	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	0/0:..	0/.:.L	0/.:.L
       A	1201	.	C	A	0	.	.	GT:RNC	0/1:..	0/1:..	0/1:..	./.:MM	./.:MM	./.:MM
