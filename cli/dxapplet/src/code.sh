@@ -90,7 +90,7 @@ main() {
         fi
 
         residuals_flag=""
-        if [ -n $residuals ]; then
+        if [[ $residuals == "true" ]]; then
             residuals_flag="--residuals"
         fi
 
