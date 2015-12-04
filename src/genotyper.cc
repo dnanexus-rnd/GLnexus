@@ -199,18 +199,21 @@ Status LossTracker::get(loss_stats& ans) const noexcept {
 
 // Update the loss_stats data structure with call information for
 // original calls associated with a unified site
-static Status update_orig_calls_for_loss(const genotyper_config& cfg, bcf1_t* record, int n_bcf_samples, int* gt, const map<int,int>& sample_mapping, LossTrackers& losses_for_site) {
-    range rng(record);
-    Status s;
+static Status update_orig_calls_for_loss(const genotyper_config& cfg, const vector<shared_ptr<bcf1_t>>& records, int n_bcf_samples, const bcf_hdr_t* dataset_header, const map<int,int>& sample_mapping, LossTrackers& losses_for_site) {
+    for (auto& record: records) {
+        Status s;
+        range rng(record);
+        int *gt = nullptr, gtsz = 0;
+        int nGT = bcf_get_genotypes(dataset_header, record.get(), &gt, &gtsz);
 
-    for (int i = 0; i < n_bcf_samples; i++) {
-        int sample_ind = sample_mapping.at(i);
-        auto& loss = losses_for_site[sample_ind];
+        for (int i = 0; i < n_bcf_samples; i++) {
+            int sample_ind = sample_mapping.at(i);
+            auto& loss = losses_for_site[sample_ind];
 
-        int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
-        loss.add_call_for_site(rng, n_calls, is_gvcf_ref_record(cfg, record));
+            int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
+            loss.add_call_for_site(rng, n_calls, is_gvcf_ref_record(cfg, record.get()));
+        }
     }
-
     return Status::OK();
 }
 
@@ -279,9 +282,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     assert(nGT == 2*n_bcf_samples);
     assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
-    // update loss statistics for this bcf record
-    update_orig_calls_for_loss(cfg, record, n_bcf_samples, gt, sample_mapping, losses_for_site);
-    // and the depth of coverage info
+    // Update the depth of coverage info
     unique_ptr<AlleleDepthHelper> depth;
     S(AlleleDepthHelper::Open(cfg, dataset, dataset_header, record, depth));
 
@@ -391,7 +392,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             }
         }
 
-        // TODO: Lift update_orig_calls_for_loss to here instead of translate_genotype for accurate accounting
+        update_orig_calls_for_loss(cfg, records, bcf_nsamples, dataset_header.get(), sample_mapping, loss_trackers);
 
         if (records.size() > 1) {
             // Multiple source bcf overlapping with site
@@ -412,15 +413,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 // perform translate_genotype due to setup from unifier
                 S(translate_genotypes(cfg, site, dataset, dataset_header.get(), non_gvcf_records[0].get(),
                                   sample_mapping, genotypes, genotyped, loss_trackers));
-            } else {
-                // Multiple variant records in this range.
-                // We cannot assert genotypes for this case due to phase issues.
-                // Tentatively, we let translate_genotypes handle this case,
-                // which will render the site as a lost call due to multiple records.
-                for (auto& record: records) {
-                     S(translate_genotypes(cfg, site, dataset, dataset_header.get(), record.get(),
-                                  sample_mapping, genotypes, genotyped, loss_trackers));
-                }
             }
         } else if (records.size() == 1){
             // A single source bcf overlapping with site
