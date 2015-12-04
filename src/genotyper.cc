@@ -282,7 +282,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     if (rng == site.pos) {
         for (int i = 1; i < record->n_allele; i++) {
             string al(record->d.allele[i]);
-            if (is_dna(al)) {
+            if (regex_match(al, regex_dna)) {
                 auto p = site.unification.find(allele(rng, al));
                 if (p != site.unification.end()) {
                     allele_mapping[i] = p->second;

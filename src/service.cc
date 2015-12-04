@@ -111,7 +111,7 @@ static Status discover_alleles_thread(const set<string>& samples,
                 if (obs_counts[i] > 0.0) { // TODO: threshold for soft estimates
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-                    if (aldna.size() > 0 && is_dna(aldna)) {
+                    if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
                         discovered_allele_info ai = { false, obs_counts[i] };
                         dsals.insert(make_pair(allele(rng, aldna), ai));
                         any_alt = true;
@@ -122,7 +122,7 @@ static Status discover_alleles_thread(const set<string>& samples,
             // create an entry for the ref allele, if we discovered at least one alt allele.
             string refdna(record->d.allele[0]);
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
-            if (refdna.size() > 0 && is_dna(refdna)) {
+            if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
                 if (any_alt) {
                     discovered_allele_info ai = { true, obs_counts[0] };
                     dsals.insert(make_pair(allele(rng, refdna), ai));

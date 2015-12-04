@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <vcf.h>
 #include <mutex>
+#include <regex>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 // suppressed warnings due to use of deprecated auto_ptr in yaml-cpp
@@ -95,8 +96,8 @@ public:
 // Convenience macro for re-raising a bad status when no recovery/cleanup is needed
 #define S(st) s = st; if (s.bad()) return s;
 
-/// [AGCTN]+
-bool is_dna(const std::string&);
+/// common regular expressions
+extern std::regex regex_dna, regex_id;
 
 /// Genomic range (chromosome id, begin coordinate, end coordinate)
 struct range {
@@ -160,7 +161,7 @@ struct allele {
 
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
-        if (!is_dna(dna)) throw std::invalid_argument("allele(): invalid DNA " + dna);
+        if (!std::regex_match(dna, regex_dna)) throw std::invalid_argument("allele(): invalid DNA " + dna);
     }
 
     /// Equality is based on identity of position and allele

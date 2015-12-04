@@ -428,7 +428,11 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = data->new_sampleset(*cache, "x", set<string>{"HX0001","HX0002"});
         REQUIRE(s == StatusCode::EXISTS);
 
-        // TODO: test invalid sample set names
+        // invalid sample set names
+        s = data->new_sampleset(*cache, "", set<string>{"HX0001","HX0002"});
+        REQUIRE(s == StatusCode::INVALID);
+        s = data->new_sampleset(*cache, "$", set<string>{"HX0001","HX0002"});
+        REQUIRE(s == StatusCode::INVALID);
     }
 
     SECTION("incompatible contigs") {
@@ -1169,7 +1173,7 @@ TEST_CASE("BCFKeyValueData too many contigs") {
     REQUIRE(s.bad());
 }
 
-TEST_CASE("BCFKeyValueData bad dna") {
+TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
     KeyValueMem::DB db({});
     auto contigs = {make_pair<string,uint64_t>("A", 1000000)};
     REQUIRE(T::InitializeDB(&db, contigs).ok());
@@ -1198,4 +1202,17 @@ TEST_CASE("BCFKeyValueData bad dna") {
     s = data->import_gvcf(*cache, "bad", "test/data/bad_dna4.gvcf", samples_imported);
     cout << s.str() << endl;
     REQUIRE(s.bad());
+
+    // bad sample name
+    s = data->import_gvcf(*cache, "bad", "test/data/bad_sample.gvcf", samples_imported);
+    REQUIRE(s.bad());
+    REQUIRE(s.str().find("sample name") != string::npos);
+
+    // bad data set name
+    s = data->import_gvcf(*cache, "bad/", "test/data/bad_sample.gvcf", samples_imported);
+    REQUIRE(s.bad());
+    REQUIRE(s.str().find("data set name") != string::npos);
+    s = data->import_gvcf(*cache, "", "test/data/bad_sample.gvcf", samples_imported);
+    REQUIRE(s.bad());
+    REQUIRE(s.str().find("data set name") != string::npos);
 }

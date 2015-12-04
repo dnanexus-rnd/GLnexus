@@ -459,7 +459,9 @@ Status BCFKeyValueData::all_samples_sampleset(string& ans) {
 Status BCFKeyValueData::new_sampleset(MetadataCache& metadata,
                                       const string& sampleset,
                                       const set<string>& samples) {
-    // TODO: validation regexp for sampleset
+    if (!regex_match(sampleset, regex_id)) {
+        return Status::Invalid("BCFKeyValueData::new_sampleset: invalid sample set name");
+    }
     if (samples.empty()) {
         return Status::Invalid("BCFKeyValueData::new_sampleset: no samples provided");
     }
@@ -847,8 +849,8 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
     return true;
 }
 
-static std::regex dnaRegExp("[ACGTN]+");
-static std::regex nonRefRegExp("<.*>");
+// regex for a VCF symbolic allele
+static std::regex regex_symbolic_allele("<.*>");
 
 // Sanity-check an individual bcf1_t record before ingestion.
 static Status validate_bcf(BCFBucketRange& rangeHelper,
@@ -908,8 +910,7 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
 
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (regex_match(allele_i, nonRefRegExp) ||
-            regex_match(allele_i ,dnaRegExp))
+        if (regex_match(allele_i, regex_dna) || regex_match(allele_i, regex_symbolic_allele))
             continue;
 
         return Status::Invalid("allele is not a recognized DNA sequence ",
@@ -945,8 +946,8 @@ static Status vcf_validate_basic_facts(MetadataCache& metadata,
     }
     for (unsigned i = 0; i < n; i++) {
         string sample(bcf_hdr_int2id(hdr, BCF_DT_SAMPLE, i));
-        if (sample.size() == 0) {
-            return Status::Invalid("gVCF contains empty sample name", dataset + " (" + filename + ")");
+        if (!regex_match(sample, regex_id)) {
+            return Status::Invalid("gVCF contains invalid sample name", dataset + " (" + filename + ")" + " " + sample);
         }
         samples.push_back(move(sample));
     }
@@ -1140,6 +1141,11 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
                                     const string& filename,
                                     set<string>& samples_out) {
     samples_out.clear(); // hygiene
+
+    if (!regex_match(dataset, regex_id)) {
+        return Status::Invalid("BCFKeyValueData::import_gvcf: invalid data set name", dataset);
+    }
+
     Status s = import_gvcf_inner(body_.get(),
                                  metadata,
                                  dataset,
