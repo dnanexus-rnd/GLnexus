@@ -426,7 +426,7 @@ TEST_CASE("genotyper placeholder") {
 
     SECTION("2 trios") {
         // Test retained for validation of loss tracking
-        // genotyping test moved to gvcf_test_cases/gvcf_services.ymp
+        // genotyping test moved to gvcf_test_cases/gvcf_services.yml
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
 
@@ -445,20 +445,20 @@ TEST_CASE("genotyper placeholder") {
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
         loss_stats loss_ch = loss1->second;
-        REQUIRE(loss_ch.n_no_calls_total == 2);
-        REQUIRE(loss_ch.n_bp_lost == 4);
+        REQUIRE(loss_ch.n_no_calls_total == 0);
+        REQUIRE(loss_ch.n_bp_lost == 0);
 
         auto loss2 = losses.find("trio1.fa");
         REQUIRE(loss2 != losses.end());
         loss_stats loss_fa = loss2->second;
-        REQUIRE(loss_fa.n_no_calls_total == 2);
-        REQUIRE(loss_fa.n_bp_lost == 4);
+        REQUIRE(loss_fa.n_no_calls_total == 0);
+        REQUIRE(loss_fa.n_bp_lost == 0);
 
         auto loss3 = losses.find("trio1.mo");
         REQUIRE(loss3 != losses.end());
         loss_stats loss_mo = loss3->second;
-        REQUIRE(loss_mo.n_no_calls_total == 2);
-        REQUIRE(loss_mo.n_bp_lost == 4);
+        REQUIRE(loss_mo.n_no_calls_total == 0);
+        REQUIRE(loss_mo.n_bp_lost == 0);
 
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());
@@ -557,11 +557,11 @@ TEST_CASE("gVCF genotyper") {
         auto loss = losses.find("NA12878");
         REQUIRE(loss != losses.end());
         loss_stats loss_na = loss->second;
-        REQUIRE(loss_na.n_no_calls_total == 2);
-        REQUIRE(loss_na.n_bp_lost == 4);
-        REQUIRE(loss_na.n_calls_lost == 4);
-        REQUIRE(loss_na.n_gvcf_calls_lost == 4);
-        REQUIRE(loss_na.n_gvcf_bp_lost == 4);
+        REQUIRE(loss_na.n_no_calls_total == 0);
+        REQUIRE(loss_na.n_bp_lost == 0);
+        REQUIRE(loss_na.n_calls_lost == 0);
+        REQUIRE(loss_na.n_gvcf_calls_lost == 0);
+        REQUIRE(loss_na.n_gvcf_bp_lost == 0);
     }
 
     SECTION("require depth > 12") {
