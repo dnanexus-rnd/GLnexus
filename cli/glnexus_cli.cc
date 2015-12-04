@@ -410,7 +410,8 @@ void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
-         << "command line, you can pass a three-column BED file using --bed FILENAME."
+         << "command line, you can pass a three-column BED file using --bed FILENAME." << endl
+         << "In order to create a detailed report of missed called, use the --residuals option."
          << endl;
 }
 
@@ -422,11 +423,13 @@ int main_genotype(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"residuals", no_argument, 0, 'r'},
         {"bed", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
+    bool residuals = false;
 
     int c;
     optind = 2; // force optind past command positional argument
@@ -439,6 +442,9 @@ int main_genotype(int argc, char *argv[]) {
                     cerr <<  "invalid BED filename" << endl;
                     return 1;
                 }
+                break;
+            case 'r':
+                residuals = true;
                 break;
             case 'h':
             case '?':
@@ -555,12 +561,15 @@ int main_genotype(int argc, char *argv[]) {
             console->info() << "discovered " << alleles.size() << " alleles";
 
             vector<GLnexus::unified_site> sites;
-            H("unify sites", GLnexus::unified_sites(alleles, sites));
+            H("unify sites", GLnexus::unified_sites(GLnexus::unifier_config(), alleles, sites));
             console->info() << "unified to " << sites.size() << " sites";
 
             GLnexus::consolidated_loss losses;
+            GLnexus::genotyper_config genoCfg = GLnexus::genotyper_config();
+            genoCfg.output_residuals = residuals;
+
             H("genotype sites",
-              svc->genotype_sites(GLnexus::genotyper_config(), sampleset, sites, string("-"), losses));
+              svc->genotype_sites(genoCfg, sampleset, sites, string("-"), losses));
             console->info("genotyping complete!");
 
             if (losses.size() < 100) {

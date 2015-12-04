@@ -2,7 +2,6 @@
 #include <fstream>
 #include "service.h"
 #include "types.h"
-#include "service_config.h"
 #include "utils.cc"
 #include "catch.hpp"
 #include "sys/stat.h"
@@ -245,7 +244,7 @@ public:
         Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), als);
         REQUIRE(s.ok());
 
-        s =unified_sites(als, sites);
+        s =unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));

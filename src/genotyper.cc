@@ -407,6 +407,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 S(translate_genotypes(cfg, site, dataset, dataset_header.get(), records[0].get(),
                                   sample_mapping, genotypes, genotyped, loss_trackers));
             } else if (non_gvcf_records.size() == 1) {
+                // this region contains a single variant record and >=1 gvcf
+                // confidence records. We can use the variant record to accurately
+                // perform translate_genotype due to setup from unifier
                 S(translate_genotypes(cfg, site, dataset, dataset_header.get(), non_gvcf_records[0].get(),
                                   sample_mapping, genotypes, genotyped, loss_trackers));
             } else {
