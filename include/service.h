@@ -11,16 +11,21 @@
 
 namespace GLnexus {
 
+struct service_config {
+    size_t threads = 0;
+};
+
 class Service {
     // pImpl idiom
     struct body;
     std::unique_ptr<body> body_;
 
-    Service(BCFData& data);
+    Service(const service_config& cfg, BCFData& data);
     Service(const Service&) = delete;
 
 public:
-    static Status Start(Metadata& metadata, BCFData& data, std::unique_ptr<Service>& svc);
+    static Status Start(const service_config& cfg, Metadata& metadata, BCFData& data,
+                        std::unique_ptr<Service>& svc);
     ~Service();
 
 

@@ -410,8 +410,11 @@ void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
-         << "command line, you can pass a three-column BED file using --bed FILENAME." << endl
-         << "In order to create a detailed report of missed called, use the --residuals option."
+         << "command line, you can provide a three-column BED file using --bed." << endl
+         << "Options:" << endl
+         << "  --residuals, -r      generate detailed residuals output file" << endl
+         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+         << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
 }
 
@@ -425,15 +428,17 @@ int main_genotype(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"residuals", no_argument, 0, 'r'},
         {"bed", required_argument, 0, 'b'},
+        {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
     bool residuals = false;
+    size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "h",
+    while (-1 != (c = getopt_long(argc, argv, "hrb:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -445,6 +450,10 @@ int main_genotype(int argc, char *argv[]) {
                 break;
             case 'r':
                 residuals = true;
+                break;
+            case 't':
+                threads = strtoul(optarg, nullptr, 10);
+                console->info() << "pooling " << threads << " threads for genotyping";
                 break;
             case 'h':
             case '?':
@@ -544,8 +553,10 @@ int main_genotype(int argc, char *argv[]) {
 
         {
             // start service, discover alleles, unify sites, genotype sites
+            GLnexus::service_config svccfg;
+            svccfg.threads = threads;
             unique_ptr<GLnexus::Service> svc;
-            H("start GLnexus service", GLnexus::Service::Start(*data, *data, svc));
+            H("start GLnexus service", GLnexus::Service::Start(svccfg, *data, *data, svc));
 
             string sampleset;
             H("list all samples", data->all_samples_sampleset(sampleset));

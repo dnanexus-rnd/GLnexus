@@ -95,7 +95,7 @@ main() {
         fi
 
         mkdir -p out/vcf
-        time glnexus_cli genotype GLnexus.db $residuals_flag --bed ranges.bed \
+        time glnexus_cli genotype GLnexus.db $residuals_flag -t $(expr 2 \* $(nproc)) --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
 
         # we are writing the generated VCF to stdout, so the residuals will

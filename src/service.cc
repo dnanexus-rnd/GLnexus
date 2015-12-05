@@ -18,6 +18,7 @@ namespace GLnexus{
 
 // pImpl idiom
 struct Service::body {
+    service_config cfg_;
     BCFData& data_;
     std::unique_ptr<MetadataCache> metadata_;
 
@@ -31,16 +32,21 @@ struct Service::body {
     body(BCFData& data) : data_(data) {}
 };
 
-Service::Service(BCFData& data) {
+Service::Service(const service_config& cfg, BCFData& data) {
     body_ = make_unique<Service::body>(data);
-    body_->threadpool_.resize(thread::hardware_concurrency());
-    body_->metapool_.resize(thread::hardware_concurrency());
+    body_->cfg_ = cfg;
+    if (body_->cfg_.threads == 0) {
+        body_->cfg_.threads = thread::hardware_concurrency();
+    }
+    body_->threadpool_.resize(body_->cfg_.threads);
+    body_->metapool_.resize(body_->cfg_.threads);
 }
 
 Service::~Service() = default;
 
-Status Service::Start(Metadata& metadata, BCFData& data, unique_ptr<Service>& svc) {
-    svc.reset(new Service(data));
+Status Service::Start(const service_config& cfg, Metadata& metadata, BCFData& data,
+                      unique_ptr<Service>& svc) {
+    svc.reset(new Service(cfg, data));
     return MetadataCache::Start(metadata, svc->body_->metadata_);
 }
 

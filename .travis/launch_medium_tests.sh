@@ -20,7 +20,7 @@ dx run :/Attic/travis/GLnexus \
     -i gvcf_tar=:/Fake/gvcfs1024.tar -i bed_ranges_to_genotype=:/vcr_b37.bed \
     -i iter_compare=true \
     --name "GLnexus medium tests ${GIT_REVISION}" \
-    --folder :/Attic/travis --instance-type mem1_ssd2_x16 --priority normal -y
+    --folder :/Attic/travis --instance-type mem1_ssd2_x8 --priority normal -y
 
 # We don't wait for completion because typical runs are liable to take longer
 # than the travis time limit. You have to look in GLNEXUS_TEST_PROJECT_ID to
