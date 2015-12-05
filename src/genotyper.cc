@@ -352,7 +352,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                      const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans,
-                     consolidated_loss& losses_for_site) {
+                     consolidated_loss& losses_for_site,
+                     atomic<bool>* ext_abort) {
     Status s;
 
     // Initialize a vector for the unified genotype calls for each sample,
@@ -376,6 +377,10 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // for each pertinent dataset
     for (const auto& dataset : *datasets) {
+        if (ext_abort && *ext_abort) {
+            return Status::Aborted();
+        }
+
         // load BCF records overlapping the site by "merging" the iterators
         shared_ptr<const bcf_hdr_t> dataset_header;
         vector<vector<shared_ptr<bcf1_t>>> recordss(iterators.size());

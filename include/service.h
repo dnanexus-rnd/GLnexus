@@ -38,7 +38,14 @@ public:
     /// estimate of the allele frequency. The discovered alleles may be
     /// overlapping; the set is generally used as input to allele
     /// "unification"
-    Status discover_alleles(const std::string& sampleset, const range& pos, discovered_alleles& ans);
+    ///
+    /// If the abort flag is non-null, then from time to time the algorithm
+    /// checks its contents; if it finds the flag set (presumably by some
+    /// other thread), then it will cleanly shut down and return status
+    /// ABORTED.
+    Status discover_alleles(const std::string& sampleset, const range& pos,
+                            discovered_alleles& ans,
+                            std::atomic<bool>* abort = nullptr);
 
     /// Discover all the alleles contained within each of the given disjoint
     /// ranges. Uses multithreading such that this may be preferable to
@@ -46,10 +53,14 @@ public:
     /// target capture regions). However, attention should be paid to the
     /// anticipated size of the results.
     Status discover_alleles(const std::string& sampleset, const std::vector<range>& ranges,
-                            std::vector<discovered_alleles>& ans);
+                            std::vector<discovered_alleles>& ans,
+                            std::atomic<bool>* abort = nullptr);
 
     /// Genotype a set of samples at the given sites, producing a BCF file.
-    Status genotype_sites(const genotyper_config& cfg, const std::string& sampleset, const std::vector<unified_site>& sites, const std::string& filename, consolidated_loss& dlosses);
+    Status genotype_sites(const genotyper_config& cfg, const std::string& sampleset,
+                          const std::vector<unified_site>& sites,
+                          const std::string& filename, consolidated_loss& dlosses,
+                          std::atomic<bool>* abort = nullptr);
 };
 
 }

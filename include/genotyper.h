@@ -11,7 +11,8 @@ namespace GLnexus {
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data,
                      const unified_site& site,
                      const std::string& sampleset, const std::vector<std::string>& samples,
-                     const bcf_hdr_t* hdr, std::shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site);
+                     const bcf_hdr_t* hdr, std::shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
+                     std::atomic<bool>* abort = nullptr);
 
 // LossTracker handles the low-level housekeeping of loss accounting for a
 // single unified_site and a single sample. Computation in this class assumes a

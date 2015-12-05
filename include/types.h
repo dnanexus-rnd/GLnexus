@@ -13,6 +13,7 @@
 #include <vcf.h>
 #include <mutex>
 #include <regex>
+#include <atomic>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 // suppressed warnings due to use of deprecated auto_ptr in yaml-cpp
@@ -24,7 +25,16 @@ template<typename T> inline void ignore_retval(T) {}
 
 namespace GLnexus {
 
-enum class StatusCode { OK, FAILURE, INVALID, NOT_FOUND, EXISTS, IO_ERROR, NOT_IMPLEMENTED };
+enum class StatusCode {
+    OK,
+    FAILURE,           // unspecified failure
+    INVALID,           // invalid input/data
+    NOT_FOUND,
+    EXISTS,            // conflict with something that already exists
+    IO_ERROR,
+    NOT_IMPLEMENTED,
+    ABORTED            // aborted per external request to do so
+};
 
 /// Function status (return) codes.
 
@@ -71,6 +81,7 @@ public:
     STATUS_SUGAR(Exists,StatusCode::EXISTS)
     STATUS_SUGAR(IOError,StatusCode::IO_ERROR)
     STATUS_SUGAR(NotImplemented,StatusCode::NOT_IMPLEMENTED)
+    STATUS_SUGAR(Aborted,StatusCode::ABORTED)
 
     std::string str() const {
         std::ostringstream ans;
@@ -81,6 +92,7 @@ public:
             case StatusCode::EXISTS: ans << "Exists"; break;
             case StatusCode::IO_ERROR: ans << "IOError"; break;
             case StatusCode::NOT_IMPLEMENTED: ans << "NotImplemented"; break;
+            case StatusCode::ABORTED: ans << "Aborted"; break;
             default: ans << "Failure";
         }
         if (msg_) {
