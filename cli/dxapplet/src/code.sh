@@ -35,14 +35,6 @@ main() {
         git clone https://github.com/brendangregg/FlameGraph
     fi
 
-    # install dependencies
-    sudo rm -f /etc/apt/apt.conf.d/99dnanexus
-    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-    sudo apt-get -qq update
-    sudo apt-get -qq install -y gcc-4.9 g++-4.9 liblz4-dev
-    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 100 \
-                             --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
-
     # download inputs
     dx-download-all-inputs --parallel --except gvcf_tar --except existing_db
     mkdir -p in/gvcf
