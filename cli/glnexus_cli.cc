@@ -122,7 +122,8 @@ void help_load(const char* prog) {
          << "the gVCF filename. It can be overridden with --dataset if loading only one gVCF." << endl
          << "If the final argument is - then gVCF filenames are read from standard input." << endl
          << "Options:" << endl
-         << "  --delete, -X    delete each gVCF file immediately after successful load" << endl
+         << "  --delete, -X       delete each gVCF file immediately after successful load" << endl
+         << "  --threads N, -t N  override thread pool size (default: nproc)" << endl
          << endl;
 }
 
@@ -136,15 +137,17 @@ int main_load(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"dataset", required_argument, 0, 'd'},
         {"and-delete", no_argument, 0, 'X'},
+        {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     string dataset;
     bool and_delete = false;
+    size_t threads = std::thread::hardware_concurrency();
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hd:",
+    while (-1 != (c = getopt_long(argc, argv, "hd:Xt:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'd':
@@ -157,6 +160,10 @@ int main_load(int argc, char *argv[]) {
 
             case 'X':
                 and_delete = true;
+                break;
+
+            case 't':
+                threads = strtoul(optarg, nullptr, 10);
                 break;
 
             case 'h':
@@ -214,7 +221,7 @@ int main_load(int argc, char *argv[]) {
 
             console->info() << "Beginning bulk load.";
 
-            ctpl::thread_pool threadpool(thread::hardware_concurrency());
+            ctpl::thread_pool threadpool(threads);
             vector<future<GLnexus::Status>> statuses;
             set<string> datasets_loaded;
             set<string> samples_loaded;
