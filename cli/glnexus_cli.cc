@@ -39,6 +39,8 @@ void help_init(const char* prog) {
          << "Initializes a new GLnexus database in the specified directory; the parent directory" << endl
          << "must exist but the directory itself must not. The exemplar gVCF file is used to set" << endl
          << "the contigs in the database configuration; it is NOT loaded into the database."
+         << "Options:" << endl
+         << "  --bucket-size, -b N  gVCF bucket size (default 30,000bp)" << endl
          << endl;
 }
 
@@ -50,14 +52,25 @@ int main_init(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"bucket-size", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
+    size_t bucket_size = 30000;
+
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "h",
+    while (-1 != (c = getopt_long(argc, argv, "hb:",
                                   long_options, nullptr))) {
         switch (c) {
+            case 'b':
+                bucket_size = strtoul(optarg, nullptr, 10);
+                if (bucket_size == 0 || bucket_size > 1000000000) {
+                    cerr << "bucket size should be in (1,1e9]" << endl;
+                    return 1;
+                }
+                break;
+
             case 'h':
             case '?':
                 help_init(argv[0]);
@@ -103,10 +116,11 @@ int main_init(int argc, char *argv[]) {
     // create and initialize the database
     unique_ptr<GLnexus::KeyValue::DB> db;
     H("create database", GLnexus::RocksKeyValue::Initialize(dbpath, db, GLnexus_prefix_spec()));
-    H("initialize database", GLnexus::BCFKeyValueData::InitializeDB(db.get(), contigs));
+    H("initialize database", GLnexus::BCFKeyValueData::InitializeDB(db.get(), contigs, bucket_size));
 
     // report success
     cout << "Initialized GLnexus database in " << dbpath << endl
+         << "bucket size: " << bucket_size << endl
          << "contigs:";
     for (const auto& contig : contigs) {
         cout << " " << contig.first;

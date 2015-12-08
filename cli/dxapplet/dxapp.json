@@ -18,6 +18,11 @@
       "patterns": ["*.tar"]
     },
     {
+      "name": "bucket_size",
+      "class": "int",
+      "optional": true
+    },
+    {
       "name": "existing_db",
       "class": "file",
       "type": "GLnexus_db",
