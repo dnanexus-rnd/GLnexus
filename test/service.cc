@@ -445,20 +445,20 @@ TEST_CASE("genotyper placeholder") {
         auto loss1 = losses.find("trio1.ch");
         REQUIRE(loss1 != losses.end());
         loss_stats loss_ch = loss1->second;
-        REQUIRE(loss_ch.n_no_calls_total == 0);
-        REQUIRE(loss_ch.n_bp_lost == 0);
+        REQUIRE(loss_ch.n_no_calls_total == 2);
+        REQUIRE(loss_ch.n_bp_lost == 4);
 
         auto loss2 = losses.find("trio1.fa");
         REQUIRE(loss2 != losses.end());
         loss_stats loss_fa = loss2->second;
-        REQUIRE(loss_fa.n_no_calls_total == 0);
-        REQUIRE(loss_fa.n_bp_lost == 0);
+        REQUIRE(loss_fa.n_no_calls_total == 2);
+        REQUIRE(loss_fa.n_bp_lost == 4);
 
         auto loss3 = losses.find("trio1.mo");
         REQUIRE(loss3 != losses.end());
         loss_stats loss_mo = loss3->second;
-        REQUIRE(loss_mo.n_no_calls_total == 0);
-        REQUIRE(loss_mo.n_bp_lost == 0);
+        REQUIRE(loss_mo.n_no_calls_total == 2);
+        REQUIRE(loss_mo.n_bp_lost == 4);
 
         auto loss4 = losses.find("trio2.ch");
         REQUIRE(loss4 != losses.end());

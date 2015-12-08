@@ -134,9 +134,36 @@ struct range {
     bool within(const range& r) const noexcept { return rid == r.rid && beg >= r.beg && end <= r.end; }
     bool contains(const range& r) const noexcept { return r.within(*this); }
 
+    bool spanned_by(std::vector<range>& record_rngs) const noexcept {
+        // Return false trivially when empty range given
+        if (record_rngs.empty()) return false;
+
+        std::vector<range> merged_ranges;
+        merge_ranges(record_rngs, merged_ranges);
+
+        for (auto& rng : merged_ranges) {
+            if (rng.contains(*this)) return true;
+        }
+
+        return false;
+    }
+
+    bool contiguous(const range& r) const noexcept { return rid == r.rid && (r.beg == end || r.end == beg); }
+    bool contigous_or_overlap(const range& r) const noexcept { return r.overlaps(*this) || r.contiguous(*this); }
+
     std::unique_ptr<range> intersect(const range& r) const {
         if (!overlaps(r)) return nullptr;
         return std::make_unique<range>(rid, std::max(beg,r.beg), std::min(end,r.end));
+    }
+
+    bool merge_contiguous(const range& r) {
+        // Return false if the range to merge is not contiguous
+        if (!contigous_or_overlap(r)) return false;
+
+        // Return true with edited range
+        beg = std::min(beg, r.beg);
+        end = std::max(end, r.end);
+        return true;
     }
 
     std::string str(const std::vector<std::pair<std::string,size_t> >& contigs) const {
@@ -151,6 +178,23 @@ struct range {
     }
     std::string str() const {
         return str({});
+    }
+
+private:
+    Status merge_ranges(std::vector<range>& ranges, std::vector<range>& ans) const noexcept {
+        std::sort(ranges.begin(), ranges.end());
+        assert(! ranges.empty());
+        range curr = ranges[0];
+        for (auto& rng : ranges) {
+
+            // Discontinuous region, start as a new range
+            if(!curr.merge_contiguous(rng)) {
+                ans.push_back(curr);
+                curr = rng;
+            }
+        }
+        ans.push_back(curr);
+        return Status::OK();
     }
 };
 
@@ -191,6 +235,7 @@ struct discovered_allele_info {
 };
 using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);
+
 Status yaml_of_discovered_alleles(const discovered_alleles&,
                                   const std::vector<std::pair<std::string,size_t> >&,
                                   YAML::Emitter&);

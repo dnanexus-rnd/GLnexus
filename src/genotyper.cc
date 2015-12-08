@@ -97,6 +97,12 @@ public:
             return v_.get()[sample*n_allele_+allele] >= cfg_.required_dp;
         }
     }
+
+    // Whether there is sufficient gvcf_ref coverage for sample i
+    // returns true if record is not a gvcf confidence record
+    bool sufficient_gvcf_ref(size_t sample) {
+        return (!is_g_ || v_.get()[sample] >= cfg_.required_dp);
+    }
 };
 
 
@@ -247,7 +253,7 @@ static Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, const ve
 static Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
                                   const string& dataset, const bcf_hdr_t* dataset_header,
                                   bcf1_t* record, const map<int,int>& sample_mapping,
-                                  vector<one_call>& genotypes, vector<bool>& genotyped,
+                                  vector<one_call>& genotypes, vector<bool>& genotyped, const vector<bool>& failed_ref_depth,
                                   LossTrackers& losses_for_site) {
     assert(genotyped.size() > 0);
     assert(genotypes.size() == 2*genotyped.size());
@@ -297,7 +303,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                     !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
                     auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
                     assert(al >= 0 && al < record->n_allele);                  \
-                    if (depth->sufficient(ij.first, al)) {                    \
+                    if (depth->sufficient(ij.first, al) && !failed_ref_depth[ij.second]) {                    \
                         if (allele_mapping[al] >= 0) {                         \
                             genotypes[2*ij.second+(ofs)] =                     \
                                 one_call(bcf_gt_unphased(allele_mapping[al]),  \
@@ -324,6 +330,65 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
     if (gt) {
         free(gt);
+    }
+
+    return Status::OK();
+}
+
+Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
+                       const vector<shared_ptr<bcf1_t>>& records, const string& dataset,
+                       const bcf_hdr_t* hdr, int bcf_nsamples,
+                       const map<int, int>& sample_mapping, vector<one_call>& genotypes,
+                       vector<bool>& failed_ref_depth, vector<shared_ptr<bcf1_t>>& ans) {
+
+
+    // The ans vector should be empty when passed in
+    assert(ans.empty());
+
+    Status s;
+    unique_ptr<AlleleDepthHelper> depth;
+
+    // To track the total range covered by the records
+    vector<range> record_rngs;
+    for (auto& record: records) {
+        record_rngs.push_back(range(record.get()));
+        S(AlleleDepthHelper::Open(cfg, dataset, hdr, record.get(), depth));
+
+        for (int i=0; i<bcf_nsamples; i++) {
+            // TODO: Consider support for hom ref records
+            if (!depth->sufficient_gvcf_ref(i)) {
+                failed_ref_depth[sample_mapping.at(i)] = true;
+            }
+        }
+    }
+
+    // records do not span the site, return ans as empty
+    if (!site.pos.spanned_by(record_rngs)) {
+        return Status::OK();
+    }
+
+    // continue to find representative record if records span site
+    vector<shared_ptr<bcf1_t>> non_gvcf_records;
+    copy_if(records.begin(), records.end(), back_inserter(non_gvcf_records), [&cfg](auto& record) {return !is_gvcf_ref_record(cfg, record.get()); });
+
+    if (non_gvcf_records.size() == 0) {
+        // All records spanning site are gvcf, we can use any gvcf record
+        // as the representative, and translate_genotype will interpret  site
+        // as wholly REF
+        ans.push_back(records[0]);
+    } else  if (non_gvcf_records.size() == 1) {
+        // If there is only 1 non_gvcf (ie vcf variant) record, this record
+        // should be used as a representative record for this site
+        ans.push_back(non_gvcf_records[0]);
+    } else {
+        // If there are multiple variant vcf records, we cannot effectively
+        // handle genotyping due to phase assertions, so we return an empty
+        // vector as the representative record.
+        // Update genotype vector's RNC to loss for all samples in this dataset
+        for (int i = 0; i < bcf_nsamples; i++) {
+            genotypes[sample_mapping.at(i)*2].RNC = NoCallReason::LostAllele;
+            genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::LostAllele;
+        }
     }
 
     return Status::OK();
@@ -394,31 +459,14 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
         update_orig_calls_for_loss(cfg, records, bcf_nsamples, dataset_header.get(), sample_mapping, loss_trackers);
 
-        if (records.size() > 1) {
-            // Multiple source bcf overlapping with site
-            // We need to "join" these records
+        vector<bool> failed_ref_depth(bcf_nsamples, false);
+        vector<shared_ptr<bcf1_t>> rep_records;
+        find_rep_record(cfg, site, records, dataset, dataset_header.get(), bcf_nsamples, sample_mapping, genotypes, failed_ref_depth, rep_records);
 
-            // We first find the number of non-gvcf entries in these records
-            vector<shared_ptr<bcf1_t>> non_gvcf_records;
-            copy_if(records.begin(), records.end(), back_inserter(non_gvcf_records), [&cfg](auto& record) {return !is_gvcf_ref_record(cfg, record.get()); });
-
-            if (non_gvcf_records.size() == 0) {
-                // this region is all gvcf records, we can interpret it as REF
-                // by passing it any gvcf REF record
-                S(translate_genotypes(cfg, site, dataset, dataset_header.get(), records[0].get(),
-                                  sample_mapping, genotypes, genotyped, loss_trackers));
-            } else if (non_gvcf_records.size() == 1) {
-                // this region contains a single variant record and >=1 gvcf
-                // confidence records. We can use the variant record to accurately
-                // perform translate_genotype due to setup from unifier
-                S(translate_genotypes(cfg, site, dataset, dataset_header.get(), non_gvcf_records[0].get(),
-                                  sample_mapping, genotypes, genotyped, loss_trackers));
-            }
-        } else if (records.size() == 1){
-            // A single source bcf overlapping with site
-            // can be directly translated by translate_genotypes
-            S(translate_genotypes(cfg, site, dataset, dataset_header.get(), records[0].get(),
-                                  sample_mapping, genotypes, genotyped, loss_trackers));
+        assert(rep_records.size() < 2);
+        if (rep_records.size()) {
+            S(translate_genotypes(cfg, site, dataset, dataset_header.get(), rep_records[0].get(),
+                                  sample_mapping, genotypes, genotyped, failed_ref_depth, loss_trackers));
         }
     }
 

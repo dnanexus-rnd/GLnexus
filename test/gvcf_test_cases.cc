@@ -509,5 +509,27 @@ TEST_CASE("services test: gVCF file services test depth9") {
     cfg.required_dp = 10;
 
     gvcf_services_case.perform_gvcf_test(cfg);
-    // TODO consider normalizing half-calls so that the missing allele is always first (or second)
+}
+
+TEST_CASE("join record logic test: basic") {
+    GVCFTestCase join_record_case("join_records_basic");
+    join_record_case.perform_gvcf_test();
+}
+TEST_CASE("join record logic test: incomplete span") {
+    GVCFTestCase join_record_case("join_records_incomplete_span");
+    join_record_case.perform_gvcf_test();
+}
+
+TEST_CASE("join record logic test: unjoinable (multiple variant records)") {
+    GVCFTestCase join_record_case("join_records_unjoinable");
+    join_record_case.perform_gvcf_test();
+}
+
+TEST_CASE("join record logic test: insufficient ref depth") {
+    GVCFTestCase join_record_case("join_records_insufficient_ref_depth");
+
+    genotyper_config cfg(GLnexusOutputFormat::VCF);
+    cfg.required_dp = 13;
+
+    join_record_case.perform_gvcf_test(cfg);
 }
