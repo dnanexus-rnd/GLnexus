@@ -335,6 +335,30 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
+/// Given a set of records overlapping a site, we find the
+/// "representative record(s)" for a given site. The representative
+/// record(s) found are returned via the ans vector. This function also
+/// modifies 2 genotyper substrates: failed_ref_depth and genotypes.
+/// Failed_ref_depth tracks the ref-records for a given sample has failed
+/// the minimal depth requirements (if any).
+/// Modifications to genotypes vector is explained below
+/// The representative record(s) are expected to be passed into translate_genotypes for genotyping
+/// =====================================================
+/// Pre conditions:
+/// ans should be an empty vector when passed into the function, otherwise an invalid status will be raised
+/// ======================================================
+/// Expected behaviors:
+/// No records given
+///      Empty ans is returned, no modification to genotypes and failed_ref_depth vectors
+/// Records do not span the entire range of site
+///      Empty ans is returned, failed_ref_depth updated accordingly, no change to genotypes
+/// Records span entire range, and consist of all gvcf records
+///      ans contains the first gvcf record passed, failed_ref_depth updated accordingly, no change to genotypes
+/// Records span entire range, and consist of exactly 1 vcf variant record
+///      ans contains the 1 vcf variant record, failed_ref_depth updated accordingly, no change to genotypes
+/// Records span entire range, and consists of >1 vcf variant record
+///      Empty ans is returned, failed_ref_depth updated accordingly, genotypes for all samples in this dataset are updated to be lost calls with RNC=LostAllele
+
 Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
                        const vector<shared_ptr<bcf1_t>>& records, const string& dataset,
                        const bcf_hdr_t* hdr, int bcf_nsamples,
@@ -343,7 +367,9 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
 
 
     // The ans vector should be empty when passed in
-    assert(ans.empty());
+    if(!ans.empty()) {
+        return Status::Invalid("find_rep_record: A non-empty ans vector was given.");
+    }
 
     Status s;
     unique_ptr<AlleleDepthHelper> depth;
@@ -475,6 +501,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
     }
 
+    // Clean up emission order of alleles
     for(size_t i=0; i < samples.size(); i++) {
         if(genotypes[2*i] > genotypes[2*i + 1]) {
             swap(genotypes[2*i], genotypes[2*i+1]);
