@@ -1,14 +1,14 @@
 #include "types.h"
 #include <algorithm>
+#include <regex>
 
 using namespace std;
 
 namespace GLnexus {
 
-bool is_dna(const string& str) {
-    return all_of(str.begin(), str.end(),
-                  [](char ch) { return ch == 'A' || ch == 'C' || ch == 'G' || ch == 'T' || ch =='N'; });
-}
+regex regex_dna     ("[ACGTN]+")
+    , regex_id      ("[-_a-zA-Z0-9\\.]{1,100}")
+    ;
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
 // using the sum of their observation_counts
@@ -149,7 +149,7 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
         VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
         const string& dna = n_dna.Scalar();
         VR(dna.size() > 0, "empty 'dna' in entry");
-        VR(is_dna(dna), "invalid allele DNA");
+        VR(regex_match(dna, regex_dna), "invalid allele DNA");
         allele al(rng, dna);
 
         discovered_allele_info ai;

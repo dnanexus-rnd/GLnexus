@@ -18,6 +18,8 @@ Other dependencies (should be set up automatically by CMake):
 * [htslib](https://github.com/samtools/htslib)
 * [rocksdb](https://github.com/facebook/rocksdb)
 * [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+* [CTPL](https://github.com/vit-vit/CTPL)
+* [fcmm](https://github.com/giacomodrago/fcmm)
 * [Catch](https://github.com/philsquared/Catch) test framework
 
 ### Developer documentation

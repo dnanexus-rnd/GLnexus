@@ -184,7 +184,7 @@ public:
         REQUIRE(s.ok());
         s = data->contigs(contigs);
 
-        s = Service::Start(*data, *data, svc);
+        s = Service::Start(service_config(), *data, *data, svc);
         REQUIRE(s.ok());
 
         // parse discovered_site if test_dsals is set to true

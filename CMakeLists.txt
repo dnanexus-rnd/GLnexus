@@ -179,6 +179,8 @@ add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_library(libglnexus ALIAS glnexus)
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
@@ -196,7 +198,7 @@ install(TARGETS playground DESTINATION bin)
 if (test)
 
   ExternalProject_Add(catch
-    URL https://github.com/philsquared/Catch/archive/master.zip
+    URL https://github.com/philsquared/Catch/archive/v1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""

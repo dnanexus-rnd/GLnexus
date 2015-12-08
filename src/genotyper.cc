@@ -273,7 +273,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     // exactly the same reference range as the unified site.
     for (int i = 1; i < record->n_allele; i++) {
         string al(record->d.allele[i]);
-        if (is_dna(al)) {
+        if (regex_match(al, regex_dna)) {
             auto p = site.unification.find(allele(rng, al));
             if (p != site.unification.end()) {
                 allele_mapping[i] = p->second;
@@ -396,7 +396,8 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
 
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
-                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site) {
+                     const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
+                     atomic<bool>* ext_abort) {
 	Status s;
 
     // Initialize a vector for the unified genotype calls for each sample,
@@ -420,6 +421,10 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // for each pertinent dataset
     for (const auto& dataset : *datasets) {
+        if (ext_abort && *ext_abort) {
+            return Status::Aborted();
+        }
+
         // load BCF records overlapping the site by "merging" the iterators
         shared_ptr<const bcf_hdr_t> dataset_header;
         vector<vector<shared_ptr<bcf1_t>>> recordss(iterators.size());
@@ -533,7 +538,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         losses.insert(make_pair(sample_name,loss));
     }
     merge_loss_stats(losses, losses_for_site);
-
     return Status::OK();
 }
 

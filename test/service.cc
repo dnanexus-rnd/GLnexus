@@ -49,7 +49,7 @@ TEST_CASE("service::discover_alleles") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(*data, *data, svc);
+    s = Service::Start(service_config(), *data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -102,7 +102,7 @@ TEST_CASE("service::discover_alleles") {
             s = SimFailBCFData::Open(*data, fail_every, faildata);
             REQUIRE(s.ok());
 
-            s = Service::Start(*data, *faildata, svc);
+            s = Service::Start(service_config(), *data, *faildata, svc);
             REQUIRE(s.ok());
 
             s = svc->discover_alleles("<ALL>", range(0, 0, 1099), als);
@@ -126,7 +126,7 @@ TEST_CASE("service::discover_alleles") {
             s = SimFailBCFData::Open(*data, fail_every, faildata);
             REQUIRE(s.ok());
 
-            s = Service::Start(*data, *faildata, svc);
+            s = Service::Start(service_config(), *data, *faildata, svc);
             REQUIRE(s.ok());
 
             vector<range> ranges;
@@ -156,7 +156,7 @@ TEST_CASE("service::discover_alleles gVCF") {
     cout << s.str() << endl;
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(*data, *data, svc);
+    s = Service::Start(service_config(), *data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -194,7 +194,7 @@ TEST_CASE("unified_sites") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(*data, *data, svc);
+    s = Service::Start(service_config(), *data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -384,7 +384,7 @@ TEST_CASE("genotyper placeholder") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(*data, *data, svc);
+    s = Service::Start(service_config(), *data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -392,7 +392,7 @@ TEST_CASE("genotyper placeholder") {
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
 
     SECTION("simulate I/O errors") {
-        s = Service::Start(*data, *data, svc);
+        s = Service::Start(service_config(), *data, *data, svc);
         REQUIRE(s.ok());
         s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
         REQUIRE(s.ok());
@@ -407,7 +407,7 @@ TEST_CASE("genotyper placeholder") {
             s = SimFailBCFData::Open(*data, fail_every, faildata);
             REQUIRE(s.ok());
 
-            s = Service::Start(*data, *faildata, svc);
+            s = Service::Start(service_config(), *data, *faildata, svc);
             REQUIRE(s.ok());
 
             consolidated_loss losses;
@@ -511,7 +511,7 @@ TEST_CASE("gVCF genotyper") {
     Status s = VCFData::Open({"NA12878D_HiSeqX.21.10009462-10009469.gvcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(*data, *data, svc);
+    s = Service::Start(service_config(), *data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;
@@ -646,7 +646,7 @@ TEST_CASE("genotype residuals") {
     Status s = VCFData::Open({"discover_alleles_trio1.vcf", "discover_alleles_trio2.vcf"}, data);
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
-    s = Service::Start(*data, *data, svc);
+    s = Service::Start(service_config(), *data, *data, svc);
     REQUIRE(s.ok());
 
     discovered_alleles als;

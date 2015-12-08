@@ -18,6 +18,7 @@ namespace GLnexus{
 
 // pImpl idiom
 struct Service::body {
+    service_config cfg_;
     BCFData& data_;
     std::unique_ptr<MetadataCache> metadata_;
 
@@ -31,16 +32,21 @@ struct Service::body {
     body(BCFData& data) : data_(data) {}
 };
 
-Service::Service(BCFData& data) {
+Service::Service(const service_config& cfg, BCFData& data) {
     body_ = make_unique<Service::body>(data);
-    body_->threadpool_.resize(thread::hardware_concurrency());
-    body_->metapool_.resize(thread::hardware_concurrency());
+    body_->cfg_ = cfg;
+    if (body_->cfg_.threads == 0) {
+        body_->cfg_.threads = thread::hardware_concurrency();
+    }
+    body_->threadpool_.resize(body_->cfg_.threads);
+    body_->metapool_.resize(body_->cfg_.threads);
 }
 
 Service::~Service() = default;
 
-Status Service::Start(Metadata& metadata, BCFData& data, unique_ptr<Service>& svc) {
-    svc.reset(new Service(data));
+Status Service::Start(const service_config& cfg, Metadata& metadata, BCFData& data,
+                      unique_ptr<Service>& svc) {
+    svc.reset(new Service(cfg, data));
     return MetadataCache::Start(metadata, svc->body_->metadata_);
 }
 
@@ -111,7 +117,7 @@ static Status discover_alleles_thread(const set<string>& samples,
                 if (obs_counts[i] > 0.0) { // TODO: threshold for soft estimates
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-                    if (aldna.size() > 0 && is_dna(aldna)) {
+                    if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
                         discovered_allele_info ai = { false, obs_counts[i] };
                         dsals.insert(make_pair(allele(rng, aldna), ai));
                         any_alt = true;
@@ -122,7 +128,7 @@ static Status discover_alleles_thread(const set<string>& samples,
             // create an entry for the ref allele, if we discovered at least one alt allele.
             string refdna(record->d.allele[0]);
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
-            if (refdna.size() > 0 && is_dna(refdna)) {
+            if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
                 if (any_alt) {
                     discovered_allele_info ai = { true, obs_counts[0] };
                     dsals.insert(make_pair(allele(rng, refdna), ai));
@@ -179,7 +185,8 @@ static Status discovered_alleles_refcheck(const discovered_alleles& als,
     return Status::OK();
 }
 
-Status Service::discover_alleles(const string& sampleset, const range& pos, discovered_alleles& ans) {
+Status Service::discover_alleles(const string& sampleset, const range& pos,
+                                 discovered_alleles& ans, atomic<bool>* ext_abort) {
     // Find the data sets containing the samples in the sample set.
     shared_ptr<const set<string>> samples, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
@@ -200,8 +207,9 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
     for (const auto& iterator : iterators) {
         RangeBCFIterator* raw_iter = iterator.get();
         auto fut = body_->threadpool_.push([&, i, raw_iter](int tid){
-            if (abort) {
-                return Status::Invalid();
+            if (abort || (ext_abort && *ext_abort)) {
+                abort = true;
+                return Status::Aborted();
             }
 
             discovered_alleles dsals;
@@ -242,7 +250,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos, disc
 }
 
 Status Service::discover_alleles(const string& sampleset, const vector<range>& ranges,
-                                 vector<discovered_alleles>& ans) {
+                                 vector<discovered_alleles>& ans, atomic<bool>* ext_abort) {
     atomic<bool> abort(false);
     vector<future<Status>> statuses;
     vector<discovered_alleles> results(ranges.size());
@@ -250,12 +258,13 @@ Status Service::discover_alleles(const string& sampleset, const vector<range>& r
     size_t i = 0;
     for (const auto& range : ranges) {
         auto fut = body_->metapool_.push([&, i, range](int tid){
-            if (abort) {
-                return Status::Invalid();
+            if (abort || (ext_abort && *ext_abort)) {
+                abort = true;
+                return Status::Aborted();
             }
 
             discovered_alleles dsals;
-            Status ls = discover_alleles(sampleset, range, dsals);
+            Status ls = discover_alleles(sampleset, range, dsals, &abort);
             results[i] = move(dsals);
             return ls;
         });
@@ -385,7 +394,10 @@ static bool any_losses(consolidated_loss &losses_for_site) {
     return false;
 }
 
-Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset, const vector<unified_site>& sites, const string& filename, consolidated_loss& dlosses) {
+Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset,
+                               const vector<unified_site>& sites,
+                               const string& filename, consolidated_loss& dlosses,
+                               atomic<bool>* ext_abort) {
     Status s;
     shared_ptr<const set<string>> samples;
     S(body_->metadata_->sampleset_samples(sampleset, samples));
@@ -426,13 +438,15 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     atomic<bool> abort(false);
     for (size_t i = 0; i < sites.size(); i++) {
         auto fut = body_->threadpool_.push([&, i](int tid){
-            if (abort) {
-                return Status::Invalid();
+            if (abort || (ext_abort && *ext_abort)) {
+                abort = true;
+                return Status::Aborted();
             }
             shared_ptr<bcf1_t> bcf;
             consolidated_loss losses_for_site;
             Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
-                                      sampleset, sample_names, hdr.get(), bcf, losses_for_site);
+                                      sampleset, sample_names, hdr.get(), bcf, losses_for_site,
+                                      &abort);
             if (ls.bad()) {
                 return ls;
             }

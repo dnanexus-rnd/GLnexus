@@ -35,14 +35,6 @@ main() {
         git clone https://github.com/brendangregg/FlameGraph
     fi
 
-    # install dependencies
-    sudo rm -f /etc/apt/apt.conf.d/99dnanexus
-    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-    sudo apt-get -qq update
-    sudo apt-get -qq install -y gcc-4.9 g++-4.9 liblz4-dev
-    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 100 \
-                             --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
-
     # download inputs
     dx-download-all-inputs --parallel --except gvcf_tar --except existing_db
     mkdir -p in/gvcf
@@ -95,7 +87,7 @@ main() {
         fi
 
         mkdir -p out/vcf
-        time glnexus_cli genotype GLnexus.db $residuals_flag --bed ranges.bed \
+        time glnexus_cli genotype GLnexus.db $residuals_flag -t $(expr 2 \* $(nproc)) --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
 
         # we are writing the generated VCF to stdout, so the residuals will
