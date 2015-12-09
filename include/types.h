@@ -147,12 +147,23 @@ struct range {
     bool within(const range& r) const noexcept { return rid == r.rid && beg >= r.beg && end <= r.end; }
     bool contains(const range& r) const noexcept { return r.within(*this); }
 
-    bool spanned_by(std::vector<range>& record_rngs) const noexcept {
+    bool spanned_by(const std::vector<range>& record_rngs) const noexcept {
         // Return false trivially when empty range given
         if (record_rngs.empty()) return false;
 
+        std::vector<range> ranges(record_rngs);
         std::vector<range> merged_ranges;
-        merge_ranges(record_rngs, merged_ranges);
+
+        std::sort(ranges.begin(), ranges.end());
+        range curr = ranges[0];
+        for (auto& rng : ranges) {
+            // Discontinuous region, start as a new range
+            if(!curr.merge_contiguous(rng)) {
+                merged_ranges.push_back(curr);
+                curr = rng;
+            }
+        }
+        merged_ranges.push_back(curr);
 
         for (auto& rng : merged_ranges) {
             if (rng.contains(*this)) return true;
@@ -191,23 +202,6 @@ struct range {
     }
     std::string str() const {
         return str({});
-    }
-
-private:
-    Status merge_ranges(std::vector<range>& ranges, std::vector<range>& ans) const noexcept {
-        std::sort(ranges.begin(), ranges.end());
-        assert(! ranges.empty());
-        range curr = ranges[0];
-        for (auto& rng : ranges) {
-
-            // Discontinuous region, start as a new range
-            if(!curr.merge_contiguous(rng)) {
-                ans.push_back(curr);
-                curr = rng;
-            }
-        }
-        ans.push_back(curr);
-        return Status::OK();
     }
 };
 
