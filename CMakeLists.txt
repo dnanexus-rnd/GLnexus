@@ -59,9 +59,10 @@ MARK_AS_ADVANCED(
 project(GLnexus)
 
 ExternalProject_Add(htslib
-    URL https://github.com/dnanexus/htslib/archive/3c8ae031.zip
+    URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
+    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -O3 -march=ivybridge/" Makefile
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j8
     INSTALL_COMMAND ""
@@ -80,7 +81,7 @@ ExternalProject_Add(rocksdb
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make -j8 OPT="-DNDEBUG -O2" static_lib
+    BUILD_COMMAND PORTABLE=1 make -j8 OPT="-DNDEBUG -O3 -march=ivybridge" static_lib
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
   )
@@ -95,9 +96,9 @@ set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
 ExternalProject_Add(yaml-cpp
     URL https://github.com/jbeder/yaml-cpp/archive/release-0.5.2.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-    CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF .
+    CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-march=ivybridge" .
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make -j8 OPT="-DNDEBUG -O2"
+    BUILD_COMMAND make -j8
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
   )
@@ -150,7 +151,8 @@ include_directories(${SPDLOG_INCLUDE_DIR})
 
 execute_process(COMMAND git describe --tags --long --dirty --always
                 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto -march=ivybridge")
+set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 
 ################################
 # Normal Libraries & Executables
@@ -179,7 +181,7 @@ add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_library(libglnexus ALIAS glnexus)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
 
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)

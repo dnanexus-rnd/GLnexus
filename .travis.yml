@@ -29,7 +29,7 @@ script:
   - cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests
   - |
       if [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then
-        valgrind --suppressions=GLnexus.supp --leak-check=full --error-exitcode=1 ./unit_tests
+        valgrind --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests
       fi
 
 env:

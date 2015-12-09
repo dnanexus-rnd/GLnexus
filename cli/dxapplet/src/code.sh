@@ -48,7 +48,11 @@ main() {
     if [ -n "$existing_db" ]; then
         dx cat "$existing_db" | tar x
     else
-        glnexus_cli init GLnexus.db $(find in/gvcf -type f | head -n 1)
+        bucket_size_arg=""
+        if [ -n "$bucket_size" ]; then
+            bucket_size_arg="--bucket-size $bucket_size"
+        fi
+        glnexus_cli init $bucket_size_arg GLnexus.db $(find in/gvcf -type f | head -n 1)
     fi
 
     # load gVCFs

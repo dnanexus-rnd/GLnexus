@@ -299,9 +299,10 @@ Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans)
     for (auto item : param) {
         if (item.first == "interval_len") {
             interval_len = item.second;
-            if (interval_len <= 0)
-                return Status::Invalid("bad interval length ", std::to_string(interval_len));
         }
+    }
+    if (interval_len <= 0) {
+        return Status::Invalid("Corrupt database; bad interval length ", std::to_string(interval_len));
     }
 
     ans->body_->rangeHelper = make_unique<BCFBucketRange>(interval_len);
