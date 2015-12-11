@@ -1,15 +1,28 @@
 {
    malloc_usable_size1
    Memcheck:Addr8
+   ...
    fun:*usable_size
+   ...
 }
 {
    malloc_usable_size2
    Memcheck:Value8
+   ...
    fun:*usable_size
+   ...
 }
 {
    malloc_usable_size3
    Memcheck:Cond
+   ...
    fun:*usable_size
+   ...
+}
+{
+	jemalloc_cond
+	Memcheck:Cond
+	...
+	obj:*libjemalloc*
+	...
 }
