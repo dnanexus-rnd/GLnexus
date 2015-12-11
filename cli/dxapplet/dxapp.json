@@ -96,7 +96,7 @@
     "execDepends": [{"name": "liblz4-dev"}],
     "systemRequirements": {
       "main": {
-        "instanceType": "mem1_ssd2_x2"
+        "instanceType": "mem1_ssd1_x2"
       }
     },
     "distribution": "Ubuntu",
