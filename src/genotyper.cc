@@ -4,12 +4,14 @@
 
 using namespace std;
 
-// Here we implement a placeholder algorithm for genotyping individual samples
-// at unified sites. It's merely capable of substituting in hard genotype
-// calls for exactly matching alleles from our gVCF input data (with some
-// simple filters on depth of coverage). It does not handle genotype
-// likelihoods or reference base padding. Also it assumes diploid.
-
+// Here we implement a v1 early algorithm for genotyping individual samples
+// at unified sites. It's currently capable of substituting in hard genotype
+// calls for exactly matching alleles from our gVCF input data, with reference
+// padding using neighboring gvcf reference records (where necessary). It does
+// not handle joining of multiple variant records within a single site.
+// Basic filtering based on coverage is supported.
+// It does not handle genotype likelihoods, or carry over other fields besides
+// GT (and RNC for accountability). Also it assumes diploid.
 namespace GLnexus {
 
 /// Determine whether the given record is a gVCF reference confidence record
@@ -98,7 +100,7 @@ public:
         }
     }
 
-    // Whether there is sufficient ref coverage, expect ref coverate
+    // Whether there is sufficient ref coverage, expect depth
     // passed in to be < 0 if the representative record had no reference
     // region
     bool sufficient_ref(size_t depth) {
@@ -234,6 +236,8 @@ static Status update_orig_calls_for_loss(const genotyper_config& cfg, const vect
             int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
             loss.add_call_for_site(rng, n_calls, is_gvcf_ref_record(cfg, record.get()));
         }
+
+        free(gt);
     }
     return Status::OK();
 }
@@ -283,7 +287,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     }
 
     // map the bcf1_t alt alleles according to unification
-    // checking for vlaid dna regex match
+    // checking for valid dna regex match
     for (int i = 1; i < record->n_allele; i++) {
         string al(record->d.allele[i]);
         if (regex_match(al, regex_dna)) {
@@ -391,10 +395,15 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
             int ref_depth = depth->get_gvcf_depth(i);
             int mapped_sample = sample_mapping.at(i);
             assert(mapped_sample < min_ref_depth.size());
-            if (min_ref_depth[mapped_sample] < 0) {
-                min_ref_depth[mapped_sample] = ref_depth;
-            } else {
-                min_ref_depth[mapped_sample] = min(min_ref_depth[mapped_sample], ref_depth);
+
+            // relevant gvcf confidence record
+             if (ref_depth >= 0) {
+                if (min_ref_depth[mapped_sample] < 0) {
+                    min_ref_depth[mapped_sample] = ref_depth;
+                } else {
+                    min_ref_depth[mapped_sample] = min(min_ref_depth[mapped_sample], ref_depth);
+                }
+
             }
         }
     }
@@ -441,9 +450,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // starting with everything missing. We'll then loop through BCF records
     // overlapping this site and fill in the genotypes as we encounter them.
     vector<one_call> genotypes(2*samples.size());
-    // Also remember which samples we've already seen a genotype call for, in
-    // case we encounter multiple BCF records from the sample
-    vector<bool> genotyped(samples.size(), false);
 
     LossTrackers loss_trackers;
     for (const auto& sample : samples) {
