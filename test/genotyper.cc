@@ -5,6 +5,21 @@
 using namespace std;
 using namespace GLnexus;
 
+TEST_CASE("One_call_ordering") {
+
+    SECTION("Numerical calls") {
+        one_call call1=one_call(1, NoCallReason::N_A);
+        one_call call2=one_call(2, NoCallReason::N_A);
+        REQUIRE(call2 > call1);
+    }
+
+    SECTION("No call"){
+        one_call call1 = one_call();
+        one_call call2 = one_call(0, NoCallReason::N_A);
+        REQUIRE(call2 < call1);
+    }
+
+}
 
 TEST_CASE("LossTracker_full_overlap") {
     unified_site site = unified_site(range(0, 1, 1000));

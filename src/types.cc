@@ -46,6 +46,7 @@ Status merge_loss_stats(const consolidated_loss& src, consolidated_loss& dest) {
     return Status::OK();
 }
 
+
 Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
                   const range& r, YAML::Emitter& yaml, bool omit_ref=false) {
     if (!omit_ref && (r.rid < 0 || r.rid >= contigs.size())) {

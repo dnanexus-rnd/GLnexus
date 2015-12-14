@@ -20,6 +20,16 @@ using discovered_allele = pair<allele,discovered_allele_info>;
 struct minimized_allele_info {
     set<allele> originals;
     float observation_count = 0.0;
+
+    string str() const {
+        ostringstream os;
+        os << "Minimized from originals: " << endl;
+        for (auto& al : originals) {
+            os << "  " << al.str() << endl;
+        }
+        os << "Observation count: " << observation_count << endl;
+        return os.str();
+    }
 };
 using minimized_alleles = map<allele,minimized_allele_info>;
 using minimized_allele = pair<allele,minimized_allele_info>;
@@ -140,8 +150,6 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
 // valued by frequency, and alleles not sharing at least one reference
 // position in common conflict.)
 auto prune_alleles(const minimized_alleles& alleles, minimized_alleles& pruned) {
-    assert(partition<minimized_alleles>(alleles).size() == 1);
-
     // Sort the alleles by decreasing observation_count.
     vector<minimized_allele> valleles(alleles.begin(), alleles.end());
     sort(valleles.begin(), valleles.end(),
