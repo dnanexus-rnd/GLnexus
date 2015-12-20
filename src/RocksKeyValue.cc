@@ -397,13 +397,7 @@ public:
     }
 
     ~DB() override {
-        if (mode_ != OpenMode::READ_ONLY) {
-            // Flush
-            db_->SyncWAL();
-            for (const auto& p : coll2handle_) {
-                db_->Flush(rocksdb::FlushOptions(), p.second);
-            }
-        }
+        flush();
         if (mode_ == OpenMode::BULK_LOAD) {
             // Wait for compactions to converge. Specifically, wait until
             // there's no more than one background compaction running.
@@ -501,6 +495,17 @@ public:
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
         rocksdb::Status s = db_->Put(write_options_, coll, key, value);
         return convertStatus(s);
+    }
+
+    Status flush() override {
+        if (mode_ != OpenMode::READ_ONLY) {
+            Status s;
+            S(convertStatus(db_->SyncWAL()));
+            for (const auto& p : coll2handle_) {
+                S(convertStatus(db_->Flush(rocksdb::FlushOptions(), p.second)));
+            }
+        }
+        return Status::OK();
     }
 };
 

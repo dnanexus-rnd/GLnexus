@@ -306,6 +306,7 @@ int main_load(int argc, char *argv[]) {
         }
     }
 
+    H("final database flush", db->flush());
     console->info() << "Bulk load complete; awaiting convergence of database compactions.";
     db.reset();
     console->info() << "Compactions complete!";
