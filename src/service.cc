@@ -140,6 +140,7 @@ static Status discover_alleles_thread(const set<string>& samples,
             }
         }
         S(merge_discovered_alleles(dsals, final_dsals));
+        records.clear();
     }
 
     if (s != StatusCode::NOT_FOUND) {

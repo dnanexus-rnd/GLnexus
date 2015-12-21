@@ -567,6 +567,8 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db,
 
 
 // Parse the records and extract those overlapping the query range
+// Assumptions: the bucket contains records only from the same reference
+// contig as the query, and these records are sorted by increasing beg.
 static Status scan_bucket(
     const string &dataset,
     const pair<const char*, size_t>& data,
@@ -576,30 +578,39 @@ static Status scan_bucket(
     vector<shared_ptr<bcf1_t> >& records)
 {
     Status s;
-    unique_ptr<BCFScanner> scanner;
-    S(BCFScanner::Open(data.first, data.second, scanner));
+    BCFScanner scanner(data.first, data.second);
+    range cur_range(-1,-1,-1);
+    #ifndef NDEBUG
+    range last_range(-1,-1,-1);
+    #endif
 
-    // statistics counter for BCF records
-    while (scanner->valid()) {
-        srq.nBCFRecordsRead++;
-        bool flag;
-        S(scanner->overlaps(query, flag));
+    while (scanner.valid()) {
+        srq.nBCFRecordsRead++; // statistics counter for BCF records
+        S(scanner.read_range(cur_range));
+        assert(cur_range.rid == query.rid);
+        assert(last_range <= cur_range);
 
-        if (flag) {
+        if (cur_range.overlaps(query)) {
             shared_ptr<bcf1_t> vt;
-            S(scanner->read(vt));
+            S(scanner.read(vt));
             if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
                 return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
                                        dataset + "@" + query.str());
             }
             records.push_back(vt);
+        } else if (cur_range.beg >= query.end) {
+            // We can quit the scan at this point since the bucket's remaining
+            // records all begin past the end of the query range.
+            break;
         }
-        S(scanner->next());
+        S(scanner.next());
+
+        #ifndef NDEBUG
+        last_range = cur_range;
+        #endif
     }
 
-    if (!s.ok())
-        return s;
-    return Status::OK();
+    return s;
 }
 
 // Search all the buckets that may hold records within the query range. The tricky

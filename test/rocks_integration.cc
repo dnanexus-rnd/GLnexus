@@ -302,7 +302,7 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(records.size() == 2);
         std::shared_ptr<StatsRangeQuery> srq = data->getRangeStats();
         //cout << srq->str() << endl;
-        REQUIRE(srq->nBCFRecordsRead == 10);
+        REQUIRE(srq->nBCFRecordsRead == 9);
         REQUIRE(srq->nBCFRecordsInRange == 7);
 
         REQUIRE(records[0]->pos == 10009463);

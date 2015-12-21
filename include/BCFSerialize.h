@@ -6,10 +6,6 @@
 namespace GLnexus {
 // Classes for serializing BCF structures to/from RAM
 
-// Checks that the offset [x] is no larger than [y].
-// Return OK status if x <= y, Invalid otherwise.
-Status range_check(int x, size_t y, const char *errmsg);
-
 // The following three functions, prefixed with bcf_raw, are copied
 // and modified from the htslib sources. They are used to read/write
 // uncompressed BCF records from/to memory. They are declared for
@@ -73,14 +69,12 @@ class BCFScanner {
     size_t bufsz_;
     int current_ = 0;
 
-    BCFScanner(const char* buf, size_t bufsz);
  public:
     /// Reads BCF records from a memory buffer (without the header). Allows peeking, and
     /// checking if a record overlaps a range, prior to fully opening the BCF record.
     /// The idea is to save the expensive unpack operation for records that the caller
     /// wishes to skip.
-    static Status Open(const char* buf, size_t bufsz, std::unique_ptr<BCFScanner>& ans);
-
+    BCFScanner(const char* buf, size_t bufsz);
     ~BCFScanner();
 
     // check if the cursor is inside the buffer. If true, you can
@@ -90,10 +84,10 @@ class BCFScanner {
     // move the cursor to the next record
     Status next();
 
-    // check if the current record overlaps a range
-    Status overlaps(const range &rng, bool &ans);
+    // efficiently read just the range of the current record
+    Status read_range(range& ans);
 
-    // read the current record, return a BCF
+    // read the current record into a bcf1_t, which is NOT unpacked.
     Status read(std::shared_ptr<bcf1_t>& ans);
 
     /// Reads a BCF header from a memory buffer

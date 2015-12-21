@@ -39,15 +39,16 @@ using namespace std;
 
 namespace GLnexus {
 
-Status range_check(int x, size_t y, const char* errmsg) {
-    if (x <= y) return Status::OK();
-    string msg = string(errmsg) + ", memory range check failed. Reading offset ";
-    msg += to_string(x) + " in buffer of length ";
-    msg += std::to_string(y);
-    return Status::Invalid(msg.c_str());
-}
+// sugar for memory bounds-checking during BCF deserialization
+#define BOUNDS_CHECK(desired, limit, errmsg) \
+    {if ((desired) > (limit)) { \
+        string msg = string(errmsg) + ". Reading offset "; \
+        msg += to_string(desired) + " in buffer of length "; \
+        msg += std::to_string(limit); \
+        return Status::Invalid("Failed memory bounds check", msg.c_str()); \
+    }}
 
-// Ccalculate the amount of bytes it would take to pack this bcf1 record.
+// Calculate the amount of bytes it would take to pack this bcf1 record.
 int bcf_raw_calc_packed_len(bcf1_t *v)
 {
     return 32 + v->shared.l + v->indiv.l;
@@ -94,17 +95,16 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr) {
 */
 Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
                              int &ans) {
-    Status s;
     int loc = 0;
     uint32_t x[8];
 
-    S(range_check(start + 32, len, "reading header of BCF record"));
+    BOUNDS_CHECK(start + 32, len, "reading header of BCF record");
     memcpy(x, &buf[start + loc], 32);
     loc += 32;
     assert(x[0] > 0);
     x[0] -= 24; // to exclude six 32-bit integers
 
-    S(range_check(start + loc + x[0] + x[1], len, "reading BCF record"));
+    BOUNDS_CHECK(start + loc + x[0] + x[1], len, "reading BCF record");
     ks_resize(&v->shared, x[0]);
     ks_resize(&v->indiv, x[1]);
     memcpy(v, (char*)&x[2], 16);
@@ -127,8 +127,7 @@ Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
 
 // Calculate the total length of a record, without unpacking it.
 Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &ans) {
-    Status s;
-    S(range_check(start + 32, len, "calculating the length of a BCF record"));
+    BOUNDS_CHECK(start + 32, len, "calculating BCF record length");
 
     uint32_t *x = (uint32_t*) &buf[start];
     assert(x[0] > 0);
@@ -136,19 +135,16 @@ Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &an
     return Status::OK();
 }
 
-// Check if the record that starts at memory address [addr] overlaps
-// the range [rng]. The trick is to do this without unpacking the record.
-Status bcf_raw_overlap(const char *buf, int start, size_t len, const range &rng,
-                       bool &ans) {
-    ans = false; // extra sanitation
-    Status s;
-    S(range_check(start + 32, len, "checking BCF overlap"));
+// Get the range of the serialized BCF record starting at memory address
+// [buf+start], without deserializing the whole record.
+Status bcf_raw_range(const char *buf, int start, size_t len, range& ans) {
+    BOUNDS_CHECK(start + 32, len, "reading BCF record range");
 
     uint32_t *x = (uint32_t*) &buf[start];
     uint32_t rid = x[2];
     uint32_t beg = x[3];
     uint32_t rlen = x[4];
-    ans = range(rid, beg, beg + rlen).overlaps(rng);
+    ans = range(rid, beg, beg + rlen);
     return Status::OK();
 }
 
@@ -312,13 +308,6 @@ BCFScanner::BCFScanner(const char* buf, size_t bufsz) :
     buf_(buf), bufsz_(bufsz)
 {}
 
-Status BCFScanner::Open(const char* buf,
-                       size_t bufsz,
-                       unique_ptr<BCFScanner>& ans) {
-    ans.reset(new BCFScanner(buf, bufsz));
-    return Status::OK();
-}
-
 BCFScanner::~BCFScanner() {
     buf_ = nullptr;
     bufsz_ = 0;
@@ -331,11 +320,11 @@ bool BCFScanner::valid() {
 
  // move the cursor to the next record
 Status BCFScanner::next() {
-    Status s;
+    Status s = Status::OK();
     uint32_t reclen = 0;
     S(bcf_raw_calc_rec_len(buf_, current_, bufsz_, reclen));
     current_ += reclen;
-    return Status::OK();
+    return s;
 }
 
 Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
@@ -346,9 +335,8 @@ Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
     return bcf_raw_read_from_mem(buf_, current_, bufsz_, ans.get(), reclen);
 }
 
-// check if the current record overlaps a range
-Status BCFScanner::overlaps(const range &rng, bool &ans) {
-    return bcf_raw_overlap(buf_, current_, bufsz_, rng, ans);
+Status BCFScanner::read_range(range& ans) {
+    return bcf_raw_range(buf_, current_, bufsz_, ans);
 }
 
 /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
