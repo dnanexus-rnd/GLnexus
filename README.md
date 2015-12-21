@@ -2,13 +2,13 @@
 **From DNAnexus R&D: a scalable datastore for population genome sequencing, with on-demand joint genotyping.**
 (GL, genotype likelihood)
 
-This is an early-stage R&D project we're developing openly. The code doesn't yet do anything useful! There's a [wiki project roadmap](https://github.com/dnanexus-rnd/GLnexus/wiki), which should be read in the spirit of "plans are worthless, but planning is insdispensable."
+This is an early-stage R&D project we're developing openly. The code doesn't yet do anything useful! There's a [wiki project roadmap](https://github.com/dnanexus-rnd/GLnexus/wiki), which should be read in the spirit of "plans are worthless, but planning is indispensable."
 
 ### Build & run tests
 
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
-First [install gcc 4.9](http://askubuntu.com/a/581497), `cmake`, `libjemalloc-dev`, `libboost-dev`, `libzip-dev`, `libsnappy-dev`, `liblz4-dev`, `libbz2-dev`. Then:
+First [install gcc 4.9](http://askubuntu.com/a/581497), `cmake` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `liblz4-dev` `libbz2-dev`. Then:
 
 ```
 cmake -Dtest=ON . && make && ./unit_tests
@@ -37,22 +37,25 @@ Evolving developer documentation can be found on the [project github page](http:
 * Avoid elaborate templated class hierarchies
 
 
-### How to do performance profiling
+### Performance profiling
 
-In order to do performance profiling on the code, you need
-to compile it with special c++ flags. This can be done as follows:
+The code has some hooks for performance profiling using
+[`perf`](https://en.wikipedia.org/wiki/Perf_(Linux)) and
+[FlameGraph](http://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html). To
+make the profile as detailed as possible, the code should be compiled in
+`Profile` mode like so:
+
 ```
-cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Profile .
+cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Profile . && make
 ```
 
-Running the glnexus_cli applet produces several outputs, one of which
-is a file called ```genotype.stacks```. It contains a list of common
-call stacks executed by the glnexus code, download it to your
-local machine. To manipulate this file, please install the FlameGraphs
-package. Here is an example for generating an SVG graph from the run results:
+To profile performance within the DNAnexus applet, change `CMAKE_BUILD_TYPE`
+to `Profile` in `cli/dxapplet/Makefile`, rebuild the applet, and run it as
+usual plus `-i enable_perf=true`. This produces an output file
+```genotype.stacks``` containing sampling observation counts for common call
+stacks. To generate an SVG visualization with FlameGraph:
 
 ```
 git clone https://github.com/brendangregg/FlameGraph
-grep glnexus genotype.stacks > X
-FlameGraph/flamegraph.pl --minwidth 0.5 X > genotype.svg
+FlameGraph/flamegraph.pl <(grep glnexus genotype.stacks) > genotype.svg
 ```

@@ -10,22 +10,10 @@ main() {
     dstat -cmdn 10 &
 
     # install the perf utility
-    if [ "$enable_perf" == "1" ]; then
-        ubuntu_release=$(lsb_release -r | cut -f 2)
-
-        case "$ubuntu_release" in
-            "12.04")
-                linux_version=`uname -r`
-                sudo apt-get -y install linux-tools-${linux_version}
-                sudo apt-get -y install linux-tools
-                ;;
-            "14.04")
-                sudo apt-get -y install linux-tools-common linux-tools-generic
-                ;;
-            *)
-                echo "Error, ubuntu release is not 12.04 or 14.04, can't install perf"
-                exit 1
-        esac
+    if [ "$enable_perf" == "true" ]; then
+        # install linux-tools for the current kernel version
+        linux_version=`uname -r`
+        sudo apt-get -y -qq install "linux-tools-${linux_version}"
 
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
@@ -80,7 +68,7 @@ main() {
 
     # genotype the ranges
     if [ "$(cat ranges.bed | wc -l)" -gt "0" ]; then
-        if [ "$enable_perf" == "1" ]; then
+        if [ "$enable_perf" == "true" ]; then
             mkdir -p out/perf
             sudo perf record -F $recordFreq -a -g &
         fi
@@ -101,12 +89,11 @@ main() {
             mv /tmp/residuals.yml out/residuals/
         fi
 
-        if [ "$enable_perf" == "1" ]; then
+        if [ "$enable_perf" == "true" ]; then
             sudo killall perf
             sudo chmod 644 perf.data
             perf script > perf_genotype
             FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
-            mv out/perf/genotype.stacks out/perf/genotype.stacks.${range}
             /bin/rm -f perf.data
         fi
     fi

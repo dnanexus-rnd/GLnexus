@@ -34,11 +34,11 @@ MARK_AS_ADVANCED(
 
 # Compilation for performance profiling
 SET(CMAKE_CXX_FLAGS_PROFILE
-    "-ggdb -DNDEBUG -fno-omit-frame-pointer"
+    "-ggdb -O3 -DNDEBUG -fno-omit-frame-pointer"
     CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_C_FLAGS_PROFILE
-    "-ggdb -DNDEBUG -fno-omit-frame-pointer"
+    "-ggdb -O3 -DNDEBUG -fno-omit-frame-pointer"
     CACHE STRING "Flags used by the C compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_EXE_LINKER_FLAGS_PROFILE

@@ -50,8 +50,8 @@
     },
     {
       "name": "enable_perf",
-      "class": "int",
-      "default": 0,
+      "class": "boolean",
+      "default": false,
       "optional": true
     },
     {
@@ -106,6 +106,9 @@
     },
     "distribution": "Ubuntu",
     "release": "14.04"
+  },
+  "access": {
+    "network": ["*"]
   },
   "authorizedUsers": []
 }
