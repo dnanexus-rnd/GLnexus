@@ -58,6 +58,8 @@ MARK_AS_ADVANCED(
 # Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
 project(GLnexus)
 
+# After build, double-check external/src/htslib-stamp/htslib-build-out.log
+# to make sure CFLAGS were set as expected
 ExternalProject_Add(htslib
     URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
@@ -67,6 +69,7 @@ ExternalProject_Add(htslib
     BUILD_COMMAND make -j8
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
+    LOG_BUILD ON
   )
 ExternalProject_Get_Property(htslib source_dir)
 set(HTSLIB_INCLUDE_DIR ${source_dir}/htslib)
@@ -76,14 +79,32 @@ add_library(libhts STATIC IMPORTED)
 set(LIBHTS_A ${binary_dir}/libhts.a)
 set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 
+# Warning: it's dangerously easy to mess with the RocksDB external project
+# configuration below and silently get a librocksdb.a compiled without
+# optimizations, or targeting an instruction set that's too old or too new.
+#
+# Here are some checks to perform after any adjustment:
+# 1. Verify AVX is used:
+#      objdump -d external/src/rocksdb/librocksdb.a | grep vzeroupper | wc -l
+# 2. Verify Haswell-and-newer instructions are NOT used:
+#      objdump -d external/src/rocksdb/librocksdb.a | grep shlx
+# 3. Verify accelerated CRC32 is used:
+#      objdump -d external/src/rocksdb/librocksdb.a | grep crc32q
+# 4. Verify compiler optimizations performed:
+#      (TODO better heuristics needed)
+#      a) check external/src/rocksdb-stamp/rocksdb-build-out.log to see
+#         compiler invocations with -O3
+#      b) go through perf/FlameGraph profiling flow and check that no
+#         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
     URL https://github.com/facebook/rocksdb/archive/rocksdb-3.13.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND PORTABLE=1 make -j8 OPT="-DNDEBUG -O3 -march=ivybridge" static_lib
+    BUILD_COMMAND bash -c "export PORTABLE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -D__SSE4_2__' && make -n static_lib && make -j8 static_lib"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
+    LOG_BUILD ON
   )
 ExternalProject_Get_Property(rocksdb source_dir)
 set(ROCKSDB_INCLUDE_DIR ${source_dir}/include)
@@ -93,14 +114,17 @@ add_library(librocksdb STATIC IMPORTED)
 set(LIBROCKSDB_A ${binary_dir}/librocksdb.a)
 set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
 
+# After build, double-check external/src/yaml-cpp-stamp/yaml-cpp-build-out.log
+# to make sure CFLAGS were set as expected
 ExternalProject_Add(yaml-cpp
     URL https://github.com/jbeder/yaml-cpp/archive/release-0.5.2.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-    CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-march=ivybridge" .
+    CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-march=ivybridge .
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make -j8
+    BUILD_COMMAND bash -c "make -n && make -j8"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
+    LOG_BUILD ON
   )
 ExternalProject_Get_Property(yaml-cpp source_dir)
 set(YAML_CPP_INCLUDE_DIR ${source_dir}/include)
