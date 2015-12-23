@@ -141,7 +141,7 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
 
     opts.access_hint_on_compaction_start = rocksdb::Options::AccessHint::SEQUENTIAL;
-    // TODO: try setting compaction_readahead_size added in rocksdb D45123
+    opts.compaction_readahead_size = 16 << 20;
 
     if (mode == OpenMode::BULK_LOAD) {
         opts.disableDataSync = true;

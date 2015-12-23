@@ -64,9 +64,9 @@ ExternalProject_Add(htslib
     URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
-    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -O3 -march=ivybridge/" Makefile
+    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -g -O3 -march=ivybridge/" Makefile
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make -j8
+    BUILD_COMMAND bash -c "make -n && make -j8"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
@@ -97,7 +97,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/rocksdb-3.13.1.zip
+    URL https://github.com/facebook/rocksdb/archive/rocksdb-4.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
