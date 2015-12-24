@@ -192,7 +192,7 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
         memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
     }
     std::cout << "memlen=" << memlen << std::endl;
-    char *buf = (char*) malloc(memlen);
+    char *buf = (char*) calloc(1, memlen);
     REQUIRE(buf != NULL);
 
     int loc = 0;
@@ -334,7 +334,7 @@ TEST_CASE("Ensure uncompressed BCF encoding remains consistent") {
         for (const auto& rec : records) {
             memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
         }
-        buf = (char*) malloc(memlen);
+        buf = (char*) calloc(1, memlen);
         REQUIRE(buf != NULL);
 
         int loc = 0;

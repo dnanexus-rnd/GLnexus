@@ -850,15 +850,22 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
 
     int ncontigs = 0;
     const char **contignames = bcf_hdr_seqnames(hdr, &ncontigs);
+    bool ans = true;
 
-    if (((uint)ncontigs) != contigs.size()) return false;
-
-    for (int i = 0; i < ncontigs; i++) {
-        if (string(contignames[i]) != contigs[i].first) return false;
-        if (hdr->id[BCF_DT_CTG][i].val->info[0] != contigs[i].second) return false;
+    if (((uint)ncontigs) != contigs.size()) {
+        ans = false;
+    } else {
+        for (int i = 0; i < ncontigs; i++) {
+            if (string(contignames[i]) != contigs[i].first || 
+                hdr->id[BCF_DT_CTG][i].val->info[0] != contigs[i].second) {
+                ans = false;
+                break;
+            }
+        }
     }
 
-    return true;
+    free(contignames);
+    return ans;
 }
 
 // regex for a VCF symbolic allele
