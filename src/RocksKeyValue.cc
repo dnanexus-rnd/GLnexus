@@ -75,9 +75,9 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
                               rocksdb::ColumnFamilyOptions& opts) {
     // universal compaction, 1GiB memtable budget
     opts.OptimizeUniversalStyleCompaction(1<<30);
-    opts.num_levels = 5;
-    opts.target_file_size_base = 1<<30;
-    opts.level0_file_num_compaction_trigger = 10;
+    opts.num_levels = 4;
+    opts.target_file_size_base = 16 * size_t(1<<30);
+    opts.level0_file_num_compaction_trigger = 8;
 
     opts.compaction_options_universal.compression_size_percent = -1;
     opts.compaction_options_universal.allow_trivial_move = true;
@@ -94,7 +94,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
     bbto.block_size = 64 * 1024;
-    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 4, 6);
+    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 6);
 
     if (prefix_length) {
         // prefix-based hash indexing for this column family
@@ -110,10 +110,11 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
         // skiplist. The vector has faster insertion but much slower lookup.
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
-        // Increase memtable size
-        opts.write_buffer_size = totalRAM() / 4;
-        opts.max_write_buffer_number = 3;
+        // Increase memtable size (and shrink block cache to compensate)
+        opts.write_buffer_size = totalRAM() / 3;
+        opts.max_write_buffer_number = 2;
         opts.min_write_buffer_number_to_merge = 1;
+        bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 10, 6);
 
         // Never slowdown ingest since we'll wait for compaction to converge
         // at the end of the bulk load operation
@@ -135,7 +136,7 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     // increase parallelism
     opts.enable_thread_tracking = true;
     opts.max_background_compactions = std::min(std::thread::hardware_concurrency(),
-                                               mode == OpenMode::BULK_LOAD ? 16U : 3U);
+                                               mode == OpenMode::BULK_LOAD ? 8U : 3U);
     opts.max_background_flushes = std::min(std::thread::hardware_concurrency(), 4U);
     opts.env->SetBackgroundThreads(opts.max_background_compactions, rocksdb::Env::LOW);
     opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
