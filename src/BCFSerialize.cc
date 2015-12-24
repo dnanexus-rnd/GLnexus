@@ -92,6 +92,9 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr) {
     The original prototype is:
          int bcf_read1_core(BGZF *fp, bcf1_t *v)
     The original routine reads from a file, not from memory.
+
+    If v is being reused (rather than a newly allocated bcf1_t) then the
+    caller should first sanitize it with bcf_clear1 as in bcf_read1_core.
 */
 Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
                              int &ans) {
@@ -328,7 +331,10 @@ Status BCFScanner::next() {
 }
 
 Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
-    if (!ans) {
+    if (ans) {
+        // sanitation as in bcf_read1_core
+        bcf_clear1(ans.get());
+    } else {
         ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
     }
     int reclen;

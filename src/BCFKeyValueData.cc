@@ -593,8 +593,8 @@ static Status scan_bucket(
         if (cur_range.overlaps(query)) {
             shared_ptr<bcf1_t> vt;
             S(scanner.read(vt));
-            if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0) {
-                return Status::IOError("BCFKeyValueData::dataset_bcf bcf_unpack",
+            if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
+                return Status::IOError("BCFKeyValueData bcf_unpack",
                                        dataset + "@" + query.str());
             }
             records.push_back(vt);
@@ -871,8 +871,8 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                            const bcf_hdr_t *hdr,
                            bcf1_t *bcf,
                            int prev_rid, int prev_pos) {
-    if (bcf_unpack(bcf, BCF_UN_ALL) != 0) {
-        return Status::Invalid("corrupt input file (bcf_unpack failed)",
+    if (bcf_unpack(bcf, BCF_UN_ALL) != 0 || bcf->errcode != 0) {
+        return Status::Invalid("invalid VCF record (corrupt format, or undeclared info/format fields)",
                                filename + " " + range(bcf).str(contigs));
     }
 
