@@ -80,10 +80,15 @@ Status Residuals::gen_record(const unified_site& site,
             records.insert(records.end(), these_records.begin(), these_records.end());
         }
 
-        for (auto rec : records) {
+        if (records.size()) {
+            ostringstream records_text;
+            records_text << samples_from_dataset(dataset_header.get());
+            for (const auto& rec : records) {
+                records_text << "\n" << *(bcf1_to_string(dataset_header.get(), rec.get()));
+            }
             out << YAML::BeginMap;
             out << YAML::Key << dataset;
-            out << YAML::Literal << samples_from_dataset(dataset_header.get()) + "\n" + *(bcf1_to_string(dataset_header.get(), rec.get()));
+            out << YAML::Value << YAML::Literal << records_text.str();
             out << YAML::EndMap;
         }
     }
