@@ -48,18 +48,20 @@ Status Residuals::gen_record(const unified_site& site,
                              std::string &ynode) {
     Status s;
     YAML::Emitter out;
-
     out << YAML::BeginMap;
-
-    // write the original records
     out << YAML::Key << "input";
     out << YAML::BeginMap;
     out << YAML::Key << "body";
     out << YAML::BeginSeq;
+
+    // fetch the original records
+    range pos = site.pos;
+    if (pos.beg > 0) pos.beg--;
+    pos.end++; // pad the query +/- 1bp to show context
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
-    S(data_.sampleset_range(cache_, sampleset_, site.pos,
-                           samples2, datasets, iterators));
+    S(data_.sampleset_range(cache_, sampleset_, pos,
+                            samples2, datasets, iterators));
     assert(samples_.size() == samples2->size());
 
     // for each pertinent dataset
