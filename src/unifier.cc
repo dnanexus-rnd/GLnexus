@@ -34,6 +34,19 @@ struct minimized_allele_info {
 using minimized_alleles = map<allele,minimized_allele_info>;
 using minimized_allele = pair<allele,minimized_allele_info>;
 
+// Defines an ordering on minimized alleles used in a couple places below.
+// They're ordered by decreasing observation count, then by increasing (ALT)
+// DNA size, then by range, then lexicographically by DNA sequence.
+bool minimized_allele_lt(const minimized_allele& p1, const minimized_allele& p2) {
+    if (p2.second.observation_count != p1.second.observation_count)
+        return p2.second.observation_count < p1.second.observation_count;
+    if (p1.first.dna.size() != p2.first.dna.size())
+        return p1.first.dna.size() < p2.first.dna.size();
+    if (p1.first.pos != p2.first.pos)
+        return p1.first.pos < p2.first.pos;
+    return p1.first.dna < p2.first.dna;
+}
+
 /// Minimize an ALT allele by trimming bases equal to the reference from
 /// either end. This assumes indel alleles are already left-aligned.
 Status minimize_allele(const allele& ref, allele& alt) {
@@ -150,12 +163,9 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
 // valued by frequency, and alleles not sharing at least one reference
 // position in common conflict.)
 auto prune_alleles(const minimized_alleles& alleles, minimized_alleles& pruned) {
-    // Sort the alleles by decreasing observation_count.
+    // sort the alt alleles by decreasing observation count (+ some tiebreakers)
     vector<minimized_allele> valleles(alleles.begin(), alleles.end());
-    sort(valleles.begin(), valleles.end(),
-         [] (const minimized_allele& p1, const minimized_allele& p2) {
-           return p2.second.observation_count < p1.second.observation_count;
-         });
+    sort(valleles.begin(), valleles.end(), minimized_allele_lt);
 
     // Build the sites by considering each alt allele in that order, and
     // accepting or rejecting it as follows. If the allele overlaps exactly
@@ -300,20 +310,9 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     allele ref(pos, "A");
     S(unify_ref(pos, refs, ref));
 
-    // sort the alt alleles by decreasing observation count, then by minimized
-    // DNA size, then by minimized position, then lexicographically by DNA
+    // sort the alt alleles by decreasing observation count (+ some tiebreakers)
     vector<minimized_allele> valts(alts.begin(), alts.end());
-    sort(valts.begin(), valts.end(),
-         [] (const minimized_allele& p1, const minimized_allele& p2) {
-            assert (p1.first.pos.overlaps(p2.first.pos));
-            if (p2.second.observation_count != p1.second.observation_count)
-                return p2.second.observation_count < p1.second.observation_count;
-            if (p1.first.dna.size() != p2.first.dna.size())
-                return p1.first.dna.size() < p2.first.dna.size();
-            if (p1.first.pos != p2.first.pos)
-                return p1.first.pos < p2.first.pos;
-            return p1.first.dna < p2.first.dna;
-         });
+    sort(valts.begin(), valts.end(), minimized_allele_lt);
 
     // enforce max_alleles_per_site. NB, valts does not include the ref
     // allele, so we're truncating valts to cfg.max_alleles_per_site-1
