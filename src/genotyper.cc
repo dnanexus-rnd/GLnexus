@@ -228,6 +228,7 @@ static Status update_orig_calls_for_loss(const genotyper_config& cfg, const vect
         range rng(record);
         int *gt = nullptr, gtsz = 0;
         int nGT = bcf_get_genotypes(dataset_header, record.get(), &gt, &gtsz);
+        if (!gt || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::update_orig_calls_for_loss bcf_get_genotypes");
 
         for (int i = 0; i < n_bcf_samples; i++) {
             int sample_ind = sample_mapping.at(i);
@@ -302,7 +303,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     int *gt = nullptr, gtsz = 0;
     int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
     int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
-    assert(nGT == 2*n_bcf_samples);
+    if (!gt || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
     assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
     // Update the depth of coverage info
