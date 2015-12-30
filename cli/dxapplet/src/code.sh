@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# http://stackoverflow.com/a/17841619
+function join { local IFS="$1"; shift; echo "$*"; }
+
 main() {
     set -ex -o pipefail
 
@@ -51,7 +54,12 @@ main() {
     fi
 
     # load gVCFs
-    cat all_gvcfs.txt | time glnexus_cli load --and-delete GLnexus.db -
+    ranges_to_load_arg=""
+    if [ -n "$ranges_to_load" ]; then
+        ranges_to_load_arg=$(join , "${ranges_to_load[@]}")
+        ranges_to_load_arg="--range $ranges_to_load_arg"
+    fi
+    cat all_gvcfs.txt | time glnexus_cli load $ranges_to_load_arg --and-delete GLnexus.db -
     ls -lh GLnexus.db
     mkdir -p out/db_load_log
     cp GLnexus.db/LOG "out/db_load_log/${output_name}.LOG"

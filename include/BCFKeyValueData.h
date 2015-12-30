@@ -64,13 +64,48 @@ public:
                                 std::shared_ptr<const std::set<std::string>>& datasets,
                                 std::vector<std::unique_ptr<RangeBCFIterator>>& iterators);
 
+    struct import_result {
+        std::set<std::string> samples;
+        unsigned int records = 0;
+        unsigned int buckets = 0;
+
+        import_result& add_bucket(unsigned int bucket_records, const range& bucket_range) {
+            records += bucket_records;
+            buckets++;
+            return *this;
+        }
+
+        import_result& operator+=(const import_result& rhs) {
+            #ifndef NDEBUG
+            size_t sz0 = samples.size();
+            #endif
+            samples.insert(rhs.samples.begin(), rhs.samples.end());
+            assert(samples.size() == sz0+rhs.samples.size());
+            records += rhs.records;
+            buckets += rhs.buckets;
+            return *this;
+        }
+    };
+
     /// Import a new data set (a gVCF file, possibly containing multiple samples).
     /// The data set name must be unique.
     /// The sample names in the data set (gVCF column names) must be unique.
     /// All samples are immediately added to the sample set "*"
+    /// If range_filter is nonempty, then import only records overlapping one
+    /// of those ranges.
     Status import_gvcf(MetadataCache& metadata, const std::string& dataset,
                        const std::string& filename,
-                       std::set<std::string>& samples);
+                       const std::set<range>& range_filter,
+                       import_result& rslt);
+
+    Status import_gvcf(MetadataCache& metadata, const std::string& dataset,
+                       const std::string& filename,
+                       std::set<std::string>& samples_imported) {
+        import_result rslt;
+        Status s = import_gvcf(metadata, dataset, filename, {}, rslt);
+        samples_imported = move(rslt.samples);
+        return s;
+    }
 };
 
 /// Get the bucket key prefix length for the bcf collection. This is used with

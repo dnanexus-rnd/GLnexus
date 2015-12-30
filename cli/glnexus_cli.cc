@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <getopt.h>
+#include <regex>
+#include <sstream>
 #include "vcf.h"
 #include "hfile.h"
 #include "service.h"
@@ -130,14 +132,66 @@ int main_init(int argc, char *argv[]) {
     return 0;
 }
 
+// Parse a range like chr1:1000-2000. The item can also just be the name of a
+// contig, in which case it gets mapped to the contig's full length.
+bool parse_range(const vector<pair<string,size_t> >& contigs,
+                 const string& range_txt, GLnexus::range& ans) {
+    static regex re_range("([^:]+):([0-9,]+)-([0-9,]+)");
+
+    string contig = range_txt;
+    size_t beg=1, end=0;
+
+    smatch sm;
+    if (regex_match(range_txt, sm, re_range)) {
+        assert(sm.size() == 4);
+        contig = sm[1];
+        string sbeg = sm[2], send = sm[3];
+        sbeg.erase(std::remove(sbeg.begin(), sbeg.end(), ','), sbeg.end());
+        send.erase(std::remove(send.begin(), send.end(), ','), send.end());
+        beg = strtoul(sbeg.c_str(), nullptr, 10);
+        end = strtoul(send.c_str(), nullptr, 10);
+    }
+
+    int rid=0;
+    while (rid < contigs.size() && contig != contigs[rid].first) rid++;
+    if (rid >= contigs.size()) {
+        return false;
+    }
+    end = end>0 ? end : contigs[rid].second;
+    if (beg < 1 || beg >= end) {
+        return false;
+    }
+    ans = GLnexus::range(rid, beg-1, end);
+    return true;
+}
+
+// parse a comma-separated list of ranges
+bool parse_ranges(const vector<pair<string,size_t> >& contigs,
+                  const string& ranges, vector<GLnexus::range>& ans) {
+    ans.clear();
+
+    string item;
+    stringstream ss(ranges);
+    while (std::getline(ss, item, ',')) {
+        GLnexus::range range(-1,-1,-1);
+        if (!parse_range(contigs, item, range)) {
+            return false;
+        }
+        ans.push_back(range);
+    }
+
+    return true;
+}
+
 void help_load(const char* prog) {
     cerr << "usage: " << prog << " load [options] /db/path sample.gvcf[.gz] [sample2.gvcf[.gz] ...]" << endl
          << "Loads gVCF file(s) into an existing database. The data set name will be derived from" << endl
          << "the gVCF filename. It can be overridden with --dataset if loading only one gVCF." << endl
          << "If the final argument is - then gVCF filenames are read from standard input." << endl
          << "Options:" << endl
-         << "  --delete, -X       delete each gVCF file immediately after successful load" << endl
-         << "  --threads N, -t N  override thread pool size (default: nproc)" << endl
+         << "  --range, -r chr1,chr2:1000-2000  load only records overlapping a given range" << endl
+         << "  --delete, -X                     delete each gVCF file immediately after successful load" << endl
+         << "  --threads N, -t N                override thread pool size (default: nproc)" << endl
          << endl;
 }
 
@@ -150,18 +204,19 @@ int main_load(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"dataset", required_argument, 0, 'd'},
+        {"range", required_argument, 0, 'r'},
         {"and-delete", no_argument, 0, 'X'},
         {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
-    string dataset;
+    string dataset, ranges_txt;
     bool and_delete = false;
     size_t threads = std::thread::hardware_concurrency();
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hd:Xt:",
+    while (-1 != (c = getopt_long(argc, argv, "hd:r:Xt:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'd':
@@ -170,6 +225,10 @@ int main_load(int argc, char *argv[]) {
                     cerr <<  "invalid --dataset" << endl;
                     return 1;
                 }
+                break;
+
+            case 'r':
+                ranges_txt = string(optarg);
                 break;
 
             case 'X':
@@ -232,13 +291,29 @@ int main_load(int argc, char *argv[]) {
         {
             unique_ptr<GLnexus::MetadataCache> metadata;
             H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
+            const auto& contigs = metadata->contigs();
 
-            console->info() << "Beginning bulk load.";
+            set<GLnexus::range> ranges;
+            if (!ranges_txt.empty()) {
+                vector<GLnexus::range> vranges;
+                if (!parse_ranges(contigs, ranges_txt, vranges) || vranges.empty()) {
+                    console->error() << "empty, invalid, or out-of-bound range(s): " << ranges_txt;
+                    return 1;
+                }
+                ranges.insert(vranges.begin(), vranges.end());
+                ostringstream ss;
+                for (const auto& rng : ranges) {
+                    ss << " " << rng.str(contigs);
+                }
+                console->info() << "Beginning bulk load of records overlapping:" << ss.str();
+            } else {
+                console->info() << "Beginning bulk load with no range filter.";
+            }
 
             ctpl::thread_pool threadpool(threads);
             vector<future<GLnexus::Status>> statuses;
             set<string> datasets_loaded;
-            set<string> samples_loaded;
+            GLnexus::BCFKeyValueData::import_result stats;
             mutex mu;
 
             // load the gVCFs on the thread pool
@@ -253,15 +328,16 @@ int main_load(int argc, char *argv[]) {
                     }
                 }
 
+
                 auto fut = threadpool.push([&, gvcf, dataset](int tid){
-                    set<string> samples;
-                    GLnexus::Status ls = data->import_gvcf(*metadata, dataset, gvcf, samples);
+                    GLnexus::BCFKeyValueData::import_result rslt;
+                    GLnexus::Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
                     if (ls.ok()) {
                         if (and_delete && unlink(gvcf.c_str())) {
                             console->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
                         }
                         lock_guard<mutex> lock(mu);
-                        samples_loaded.insert(samples.begin(), samples.end());
+                        stats += rslt;
                         datasets_loaded.insert(dataset);
                         size_t n = datasets_loaded.size();
                         if (n % 100 == 0) {
@@ -285,7 +361,9 @@ int main_load(int argc, char *argv[]) {
 
             // report results
             console->info() << "Loaded " << datasets_loaded.size() << " datasets with "
-                            << samples_loaded.size() << " samples.";
+                            << stats.samples.size() << " samples; "
+                            << stats.records << " BCF records in "
+                            << stats.buckets << " buckets.";
 
             // call all_samples_sampleset to create the sample set including
             // the newly loaded ones. By doing this now we make it possible
@@ -315,7 +393,7 @@ int main_load(int argc, char *argv[]) {
 }
 
 void help_dump(const char* prog) {
-    cerr << "usage: " << prog << " dump [options] /db/path chrom 1234 2345" << endl
+    cerr << "usage: " << prog << " dump [options] /db/path chrom:1234-2345" << endl
          << "Dump all gVCF records in the database overlapping the given range. The positions"
          << "are one-based, inclusive."
          << endl;
@@ -348,14 +426,12 @@ int main_dump(int argc, char *argv[]) {
         }
     }
 
-    if (optind != argc-4) {
+    if (optind != argc-2) {
         help_dump(argv[0]);
         return 1;
     }
     string dbpath(argv[optind]);
-    string rname(argv[optind+1]);
-    string beg_txt(argv[optind+2]);
-    string end_txt(argv[optind+3]);
+    string range_txt(argv[optind+1]);
 
     // open the database
     unique_ptr<GLnexus::KeyValue::DB> db;
@@ -370,28 +446,11 @@ int main_dump(int argc, char *argv[]) {
             unique_ptr<GLnexus::MetadataCache> metadata;
             H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
 
-            // resolve the user-supplied contig name to rid
+            // parse desired range
             const auto& contigs = metadata->contigs();
-            int rid = 0;
-            for(; rid<contigs.size(); rid++) {
-                if (contigs[rid].first == rname) {
-                    break;
-                }
-            }
-            if (rid == contigs.size()) {
-                cerr << "Unknown contig " << rname << endl
-                     << "Known contigs:";
-                for (const auto& p : contigs) {
-                    cerr << " " << p.first;
-                }
-                cerr << endl;
-                return 1;
-            }
-            // parse positions
-            GLnexus::range query(rid, strtol(beg_txt.c_str(), nullptr, 10)-1,
-                                      strtol(end_txt.c_str(), nullptr, 10));
-            if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
-                cerr << "Invalid query range" << endl;
+            GLnexus::range query(-1,-1,-1);
+            if (!parse_range(contigs, range_txt, query)) {
+                cerr << "Invalid range: " << range_txt << endl;
                 return 1;
             }
 
@@ -429,7 +488,7 @@ int main_dump(int argc, char *argv[]) {
 }
 
 void help_genotype(const char* prog) {
-    cerr << "usage: " << prog << " genotype [options] /db/path chrom 1234 2345" << endl
+    cerr << "usage: " << prog << " genotype [options] /db/path chrom:1234-2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
          << "command line, you can provide a three-column BED file using --bed." << endl
@@ -493,17 +552,15 @@ int main_genotype(int argc, char *argv[]) {
         return 1;
     }
     string dbpath(argv[optind]);
-    string rname, beg_txt, end_txt;
+    string range_txt;
 
     if (bedfilename.empty()) {
-        if (optind != argc-4) {
+        if (optind != argc-2) {
             help_genotype(argv[0]);
             return 1;
         }
 
-        rname = argv[optind+1];
-        beg_txt = argv[optind+2];
-        end_txt = argv[optind+3];
+        range_txt = argv[optind+1];
     } else {
         if (optind != argc-1) {
             help_genotype(argv[0]);
@@ -528,19 +585,15 @@ int main_genotype(int argc, char *argv[]) {
         vector<GLnexus::range> ranges;
         if (bedfilename.empty()) {
             // single range from the command line
-            int rid = 0;
-            for(; rid<contigs.size(); rid++)
-                if (contigs[rid].first == rname)
-                    break;
-            if (rid == contigs.size()) {
-                console->error() << "Unknown contig " << rname;
+            GLnexus::range range(-1,-1,-1);
+            if (!parse_range(contigs, range_txt, range)) {
+                console->error() << "Invalid range: " << range_txt;
                 return 1;
             }
-            ranges.push_back(GLnexus::range(rid,
-                                            strtol(beg_txt.c_str(), nullptr, 10)-1,
-                                            strtol(end_txt.c_str(), nullptr, 10)));
+            ranges.push_back(range);
         } else {
             // read BED file
+            string rname, beg_txt, end_txt;
             ifstream bedfile(bedfilename);
             while (bedfile >> rname >> beg_txt >> end_txt) {
                 int rid = 0;

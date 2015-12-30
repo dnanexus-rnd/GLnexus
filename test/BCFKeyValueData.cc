@@ -275,6 +275,8 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
     SECTION("NA12878D_HiSeqX.21.10009462-10009469.gvcf") {
         Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
         REQUIRE(s.ok());
+        REQUIRE(samples_imported.size() == 1);
+        REQUIRE(*(samples_imported.begin()) == "NA12878");
 
         REQUIRE(cache->sample_count(ct).ok());
         REQUIRE(ct == 1);
@@ -396,6 +398,24 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         s = cache->sampleset_samples(sampleset, all);
         REQUIRE(s.ok());
         REQUIRE(all->size() == 6);
+    }
+
+    SECTION("range filter") {
+        db.wipe();
+        contigs = {make_pair<string,uint64_t>("A", 1000000),
+                   make_pair<string,uint64_t>("B", 1000000),
+                   make_pair<string,uint64_t>("C", 1000000)};
+        REQUIRE(T::InitializeDB(&db, contigs).ok());
+        REQUIRE(T::Open(&db, data).ok());
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+
+        BCFKeyValueData::import_result rslt;
+        Status s = data->import_gvcf(*cache, "1", "test/data/discover_alleles_trio1.vcf",
+                                     {range(1, 1000, 1010), range(2, 0, 1000000000)}, rslt);
+        cout << s.str() << endl;
+        REQUIRE(s.ok());
+        REQUIRE(rslt.samples == (set<string>({"trio1.fa", "trio1.mo", "trio1.ch"})));
+        REQUIRE(rslt.records == 3);
     }
 
     SECTION("new_sampleset") {

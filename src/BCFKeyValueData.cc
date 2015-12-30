@@ -1015,8 +1015,10 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           KeyValue::DB* db,
                                           const string& dataset,
                                           const string& filename,
+                                          const set<range>& range_filter,
                                           const bcf_hdr_t *hdr,
-                                          vcfFile *vcf) {
+                                          vcfFile *vcf,
+                                          BCFKeyValueData::import_result& rslt) {
     Status s;
     unique_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
@@ -1028,6 +1030,16 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     for(c = bcf_read(vcf, hdr, vt.get());
         c == 0;
         c = bcf_read(vcf, hdr, vt.get())) {
+        range vt_rng(vt.get());
+        if (!range_filter.empty()) {
+            // Test range filter if applicable. It would be nice to use a
+            // tabix index instead.
+            if (all_of(range_filter.begin(), range_filter.end(),
+                       [&vt_rng](const range& r) { return !r.overlaps(vt_rng); })) {
+                continue;
+            }
+        }
+
         // Make sure a record is not longer than [BCFBucketRange::interval_len].
         // If this is not true, then we need to compensate in the search
         // routine.
@@ -1036,8 +1048,10 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket to DB
-            if (writer != nullptr && writer->get_num_entries() > 0)
+            if (writer != nullptr && writer->get_num_entries() > 0) {
                 S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket));
+                rslt.add_bucket(writer->get_num_entries(), bucket);
+            }
 
             // start a new in-memory chunk
             writer = nullptr;
@@ -1056,6 +1070,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     // close last bucket
     if (writer != nullptr && writer->get_num_entries() > 0) {
         S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket));
+        rslt.add_bucket(writer->get_num_entries(), bucket);
     }
     writer = nullptr;  // clear the memory state
     return Status::OK();
@@ -1073,7 +1088,8 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
                                 MetadataCache& metadata,
                                 const string& dataset,
                                 const string& filename,
-                                set<string>& samples_out) {
+                                const set<range>& range_filter,
+                                BCFKeyValueData::import_result& rslt) {
     Status s;
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(filename.c_str(), "r"),
                                                [](vcfFile* f) { bcf_close(f); });
@@ -1081,35 +1097,35 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
     unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
 
     S(vcf_validate_basic_facts(metadata, dataset, filename, hdr.get(), vcf.get(),
-                               samples_out));
+                               rslt.samples));
 
     // Atomically verify metadata and prepare
     {
         std::lock_guard<std::mutex> lock(body_->mutex);
 
         // verify uniqueness of data set and samples
-        S(verify_dataset_and_samples(body_, metadata, dataset, filename, samples_out));
+        S(verify_dataset_and_samples(body_, metadata, dataset, filename, rslt.samples));
 
         // Make sure dataset and samples are not being added by another thread/user
         if (body_->amd.datasets.count(dataset) > 0)
             return Status::Exists("data set is currently being added",
                                   dataset + " (" + filename + ")");
 
-        for (const auto& sample : samples_out)
+        for (const auto& sample : rslt.samples)
             if (body_->amd.samples.count(sample) > 0)
                 return Status::Exists("sample is currently being added",
                                       sample + " (" + filename + ")");
 
         // Add to active MD
-        body_->amd.add(dataset, samples_out);
+        body_->amd.add(dataset, rslt.samples);
     }
 
     // bulk insert, non atomic
     //
     // Note: we are not dealing at all with mid-flight failures
     S(bulk_insert_gvcf_key_values(*body_->rangeHelper, metadata, body_->db,
-                                  dataset, filename,
-                                  hdr.get(), vcf.get()));
+                                  dataset, filename, range_filter,
+                                  hdr.get(), vcf.get(), rslt));
 
     // Update metadata atomically, now it will point to all the data
     Status retval = Status::Invalid();
@@ -1132,7 +1148,7 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
         unique_ptr<KeyValue::WriteBatch> wb;
         S(body_->db->begin_writes(wb));
         S(wb->put(coll_header, dataset, hdr_data));
-        for (const auto& sample : samples_out) {
+        for (const auto& sample : rslt.samples) {
             // place an entry for this sample in the special "*" sample set
             S(wb->put(coll_sample_dataset, sample, dataset));
             string key = "*" + string(1,'\0') + sample;
@@ -1143,11 +1159,11 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
         S(wb->put(coll_sampleset, "*", to_string(version+1)));
 
         // Remove from active metadata
-        body_->amd.erase(dataset, samples_out);
+        body_->amd.erase(dataset, rslt.samples);
 
         retval = wb->commit();
         if (retval.ok()) {
-            body_->sample_count += samples_out.size();
+            body_->sample_count += rslt.samples.size();
         }
     }
 
@@ -1158,8 +1174,9 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
 Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
                                     const string& dataset,
                                     const string& filename,
-                                    set<string>& samples_out) {
-    samples_out.clear(); // hygiene
+                                    const set<range>& range_filter,
+                                    import_result& rslt) {
+    rslt = import_result(); // hygiene
 
     if (!regex_match(dataset, regex_id)) {
         return Status::Invalid("BCFKeyValueData::import_gvcf: invalid data set name", dataset);
@@ -1169,12 +1186,13 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
                                  metadata,
                                  dataset,
                                  filename,
-                                 samples_out);
+                                 range_filter,
+                                 rslt);
 
     if (!s.ok()) {
         // We had a failure, remove from the active metadata
         std::lock_guard<std::mutex> lock(mutex);
-        body_->amd.erase(dataset, samples_out);
+        body_->amd.erase(dataset, rslt.samples);
     }
 
     return s;

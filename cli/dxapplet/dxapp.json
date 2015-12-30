@@ -18,6 +18,11 @@
       "patterns": ["*.tar"]
     },
     {
+      "name": "ranges_to_load",
+      "class": "array:string",
+      "optional": true
+    },
+    {
       "name": "bucket_size",
       "class": "int",
       "optional": true
