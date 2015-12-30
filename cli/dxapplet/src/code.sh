@@ -23,12 +23,19 @@ main() {
         git clone https://github.com/brendangregg/FlameGraph
     fi
 
-    # download inputs
+    # download inputs.
+    # TODO: it would be nice to overlap the staging of the input gVCFs with
+    # the bulk load, by streaming the filenames into glnexus_cli as they're
+    # staged.
+    mkdir -p "in/gvcf" "in/gvcf_tar"
     dx-download-all-inputs --parallel --except gvcf_tar --except existing_db
-    mkdir -p in/gvcf
-    if [ -n "$gvcf_tar" ]; then
-        dx cat "$gvcf_tar" | tar x -C in/gvcf --strip-components=1
-    fi
+    for tar_dxlink in "${gvcf_tar[@]}"
+    do
+        tar_dxid=$(dx-jobutil-parse-link --no-project "$tar_dxlink")
+        dn="in/gvcf/${tar_dxid}"
+        mkdir -p "$dn"
+        dx cat "$tar_dxid" | tar x -C "$dn" --strip-components=1
+    done
     find in/gvcf -type f > all_gvcfs.txt
     wc -l all_gvcfs.txt
 

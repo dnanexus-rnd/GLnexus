@@ -13,7 +13,7 @@
     },
     {
       "name": "gvcf_tar",
-      "class": "file",
+      "class": "array:file",
       "optional": true,
       "patterns": ["*.tar"]
     },
