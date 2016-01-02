@@ -411,6 +411,53 @@ enum class GLnexusOutputFormat {
     /// Uncompressed vcf (for ease of comparison in small cases)
     VCF,
 };
+
+enum class RetainedFieldType {
+    INT,
+    FLOAT,
+};
+
+enum class FieldCombinationMethod {
+    MIN,
+    MAX,
+};
+
+enum class RetainedFieldNumber {
+    // In vcf specification, corresponds to Number=<numeric>
+    BASIC,
+
+    // In vcf specification, corresponds to Number=A
+    ALT,
+
+    // In vcf specification, corresponds to Number=G
+    GENOTYPE
+};
+
+struct retained_format_field {
+    // Original names for this lifted-over field, found in input gvcf
+    // Acepts a vector as confidence records and vcf records may use
+    // different field names for similar 'semantic' information
+    std::vector<std::string> orig_names;
+
+    // name of the field to be used in output
+    std::string name;
+
+    // description of format field to be inserted into header
+    std::string description;
+
+    RetainedFieldType type;
+
+    RetainedFieldNumber number;
+
+    // Applicable when number ==BASIC
+    int count;
+
+    FieldCombinationMethod combi_method;
+
+    retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
+        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0) : orig_names(orig_names_), name(name_), type(type_), combi_method(combi_method_), number(number_), count(count_) {}
+};
+
 struct genotyper_config {
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
@@ -432,10 +479,13 @@ struct genotyper_config {
     /// Output format (default = bcf), choices = "BCF", "VCF"
     GLnexusOutputFormat output_format = GLnexusOutputFormat::BCF;
 
+    // FORMAT fields from the original gvcfs to be lifted over to the output
+    std::vector<retained_format_field> liftover_fields;
+
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
 };
 
-} //namespace GLnexus
 
+} //namespace GLnexus

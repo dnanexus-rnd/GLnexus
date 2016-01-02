@@ -20,6 +20,178 @@ static bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record
     return record->n_allele == 2 && string(record->d.allele[1]) == cfg.ref_symbolic_allele;
 }
 
+class IFormatFieldHelper {
+
+public:
+
+    // basic information for the retained field
+     retained_format_field field_info;
+
+
+    // Expected number of samples in output bcf record
+    int n_samples;
+
+    // Expected number of values per sample
+    int count;
+
+     IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
+
+     IFormatFieldHelper() = default;
+
+     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record, const map<int, int>& sample_mapping) = 0;
+
+     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
+
+     virtual ~IFormatFieldHelper() = default;
+
+};
+
+template <class T>
+class FormatFieldHelper : public IFormatFieldHelper {
+
+    // A vector of length n_samples, where each element
+    // is a vector consisting of format field value from
+    // record(s) related to the given sample
+    vector<vector<T>> format_v;
+
+    // Combination function to handle combining multiple format values
+    // from multiple records
+    T (*combine_f) (vector<T>);
+
+    static T max_element_wrapper(vector<T> v) {
+        return (*max_element(v.begin(), v.end()));
+    }
+
+    static T min_element_wrapper(vector<T> v) {
+        return (*min_element(v.begin(), v.end()));
+    }
+
+    // Overloaded wrapper function to call bcf_get_format of the correct
+    // format field type
+    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v, int* vsz) {
+        return bcf_get_format_int32(dataset_header, record, field_name, v, vsz);
+    }
+    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v, int* vsz) {
+        return bcf_get_format_float(dataset_header, record, field_name, v, vsz);
+    }
+
+    Status combine_format_data(vector<T>& ans) {
+        if( any_of(format_v.begin(), format_v.end(), [](vector<T> v){return v.empty();})) {
+            return Status::Invalid("genotyper: one or more sample has missing FORMAT field for the intended output field", field_info.name);
+        }
+
+        assert(format_v.size() == n_samples * count);
+
+        for (auto& format_one : format_v) {
+            ans.push_back(combine_f(format_one));
+        }
+
+        return Status::OK();
+    }
+
+
+public:
+
+    FormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
+
+        switch (field_info.combi_method) {
+            case FieldCombinationMethod::MIN:
+                combine_f = FormatFieldHelper::min_element_wrapper;
+                break;
+            case FieldCombinationMethod::MAX:
+                combine_f = FormatFieldHelper::max_element_wrapper;
+                break;
+        }
+
+        for (int i=0; i<n_samples_ * count_; i++){
+            // We keep 1 vector for each eventual output value
+            // So if every sample contains X values (in vcf specification, Number=X), then we keep X vectors per sample.
+            format_v.push_back(vector<T>());
+        }
+    }
+
+    virtual ~FormatFieldHelper() = default;
+
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record, const map<int, int>& sample_mapping) {
+        bool found = false;
+        for (auto& field_name : field_info.orig_names) {
+            T *v = nullptr;
+            int vsz = 0;
+
+            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v, &vsz);
+
+            // raise error if there's a failed get due to type mismatch
+            if (rv == -2) {
+                if (v) free(v);
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << field_name << ")";
+                return Status::Invalid("genotyper: getting format field errored with type mismatch", errmsg.str());
+            }
+            // don't raise error if get failed due to tag missing in record or
+            // in vcf header; continue to look with other possible field names
+
+            if (rv >= 0) {
+                found = true;
+                if (rv != record->n_sample * count) {
+                // For this field, we expect count values per sample
+                // so get_format should return count * record->n_sample values
+                    if (v) free(v);
+                    ostringstream errmsg;
+                    errmsg << dataset << " " << range(record).str() << "(" << field_name << ")";
+                    return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
+                } // close rv != record->n_sample * count
+
+                for (int i=0; i<record->n_sample; i++) {
+                    int mapped_ind = sample_mapping.at(i);
+                    for (int j=0; j<count; j++) {
+                        int out_ind = mapped_ind * count + j;
+                        int in_ind = i * count + j;
+                        assert(out_ind < format_v.size());
+                        assert(in_ind < vsz);
+                        format_v[out_ind].push_back(v[in_ind]);
+                    } // close for j loop
+                } // close for i loop
+            } // close rv >= 0
+            free(v);
+        }
+
+        if (!found) {
+            return Status::Invalid("genotyper: could not fetch any FORMAT field for the intended output field", field_info.name);
+        }
+
+        return Status::OK();
+    }
+
+    Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) {
+        Status s;
+        vector<T> ans;
+        s = combine_format_data(ans);
+        if (!s.ok()) {
+            // TODO: Combine function failed; currently ignore error, do not
+            // update this field, and move on. More intelligent error handling?
+            return Status::OK();
+        }
+        int retval  = 0;
+        switch (field_info.type) {
+            case RetainedFieldType::INT:
+                retval = bcf_update_format_int32(hdr, record, field_info.name.c_str(), ans.data(), n_samples * count);
+                break;
+            case RetainedFieldType::FLOAT:
+                retval = bcf_update_format_float(hdr, record, field_info.name.c_str(), ans.data(), n_samples * count);
+                break;
+            default:
+                return Status::Invalid("genotyper: Unexpected RetainedFieldType when executing update_record_format.");
+        }
+        if (retval != 0) {
+            return Status::Failure("genotyper: failed to update record format when executing update_record_format.");
+        }
+        return Status::OK();
+    }
+
+
+};
+
+
 // Helper class for keeping track of the per-allele depth of coverage info in
 // a bcf1_t record. There are a couple different cases to handle, depending on
 // whether we're looking at a gVCF reference confidence record or a "regular"
@@ -310,6 +482,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     unique_ptr<AlleleDepthHelper> depth;
     S(AlleleDepthHelper::Open(cfg, dataset, dataset_header, record, depth));
 
+    //unique_ptr<
     // for each shared sample, record the genotype call.
     for (const auto& ij : sample_mapping) {
         assert(2*ij.first < nGT);
@@ -457,6 +630,29 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         loss_trackers.push_back(LossTracker(site.pos));
     }
 
+    vector<unique_ptr<IFormatFieldHelper>> format_helpers;
+    for (const auto& format_field_info : cfg.liftover_fields) {
+        int format_sz = samples.size();
+        if (format_field_info.number == RetainedFieldNumber::BASIC) {
+            format_sz *= format_field_info.count;
+        } else if (format_field_info.number == RetainedFieldNumber::ALT) {
+            // site.alleles.size() gives # alleles incl. REF
+            format_sz *= (site.alleles.size() - 1);
+        }
+        switch (format_field_info.type) {
+            case RetainedFieldType::INT:
+            {
+                format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new FormatFieldHelper<int32_t>(format_field_info, samples.size(), format_field_info.count)));
+                break;
+            }
+            case RetainedFieldType::FLOAT:
+            {
+                format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new FormatFieldHelper<float>(format_field_info, samples.size(), format_field_info.count)));
+                break;
+            }
+        }
+    }
+
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     S(data.sampleset_range(cache, sampleset, site.pos,
@@ -514,6 +710,15 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
         // non-empty rep_record
         if (rep_record) {
+
+            // Populate FORMAT fields to be lifted over
+            for (auto& format_helper : format_helpers) {
+                for (auto& record : records){
+                    format_helper->add_record_data(dataset, dataset_header.get(), record.get(), sample_mapping);
+                }
+            }
+
+            // Perform genotyping
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), rep_record.get(),
                                   sample_mapping, genotypes, min_ref_depth, loss_trackers));
         }
@@ -531,6 +736,14 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     ans->pos = site.pos.beg;
     ans->rlen = site.pos.end - site.pos.beg;
     ans->qual = 0;
+
+    // Lifted-over FORMAT fields (non-genotype based)
+    // TODO: It seems like the update command screw up the
+    // alleles (REF, ALT) fields, quick fix: update the format
+    // before updating the alleles, but KIV bug fix.
+    for (auto& format_helper : format_helpers) {
+        S(format_helper->update_record_format(hdr, ans.get()));
+    }
 
     // alleles
     vector<const char*> c_alleles;
@@ -583,6 +796,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         losses.insert(make_pair(sample_name,loss));
     }
     merge_loss_stats(losses, losses_for_site);
+
     return Status::OK();
 }
 

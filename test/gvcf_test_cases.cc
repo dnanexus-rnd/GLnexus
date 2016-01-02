@@ -33,6 +33,12 @@ class GVCFTestCase {
     // Limit verbosity, prevent reprinting of the case header
     bool has_printed_header = false;
 
+    // Format fields to validate
+    vector<string> validated_formats;
+
+    // Info fields to validate
+    vector<string> validated_infos;
+
     // Name of curated case
     string name;
 
@@ -154,7 +160,15 @@ public:
     // at INPUT_ROOT_DIR/<name>.yml
     GVCFTestCase(const string _name, bool _test_dsals=false,
                  bool _test_usites=true, bool _test_genotypes=true): name(_name), test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes) {
+        validated_formats = {"GT", "RNC"};
+        validated_infos = {};
     }
+
+    // Constructor with specification for format and info fields
+    // for validation
+    GVCFTestCase(const string _name, vector<string> _validated_formats,
+                 vector<string> _validated_infos, bool _test_dsals=false,
+                 bool _test_usites=true, bool _test_genotypes=true): name(_name), test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes),validated_formats(_validated_formats), validated_infos(_validated_infos) {}
 
     // Reads in a yml file; writes gvcf records contained within yaml
     // file to disk; load expected unified_sites to memory
@@ -285,12 +299,29 @@ public:
         string out_vcf_path = temp_dir_path + "output.vcf";
         s = svc->genotype_sites(config, string("<ALL>"), sites, out_vcf_path, losses);
 
+        cout << s.str() << endl;
+        if (!s.ok()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
 
         string diff_out_path = temp_dir_path +  "output.diff";
 
-        string diff_cmd = "diff " + out_vcf_path + " " + truth_vcf_path + " > " + diff_out_path;
-
+        string diff_cmd = "python testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
+        // string diff_cmd += " --quiet";
+        if (!validated_formats.empty()) {
+            diff_cmd += " --formats ";
+            for (auto& validated_format : validated_formats) {
+                diff_cmd += validated_format + " ";
+            }
+        }
+        if (!validated_infos.empty()) {
+            diff_cmd += " --infos ";
+            for (auto& validated_info : validated_infos) {
+                diff_cmd +=  validated_info + " ";
+            }
+        }
+        diff_cmd += " > " + diff_out_path;
         int retval = system(diff_cmd.c_str());
         REQUIRE (WIFEXITED(retval));
 
@@ -535,10 +566,34 @@ TEST_CASE("join record logic test: 0 ref depth requirement") {
 }
 
 TEST_CASE("join record logic test: insufficient ref depth") {
+
     GVCFTestCase join_record_case("join_records_insufficient_ref_depth");
 
     genotyper_config cfg(GLnexusOutputFormat::VCF);
     cfg.required_dp = 13;
 
+    join_record_case.perform_gvcf_test(cfg);
+}
+
+TEST_CASE("join record logic test: test liftover fields") {
+
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB"};
+    vector<string> v_infos = {};
+    GVCFTestCase join_record_case("join_records_formats_basic", v_formats, v_infos);
+
+    genotyper_config cfg(GLnexusOutputFormat::VCF);
+
+    vector<string> orig_names;
+    orig_names.push_back("DP");
+
+    retained_format_field dp_field = retained_format_field(orig_names, "DP", RetainedFieldType::INT, FieldCombinationMethod::MIN, RetainedFieldNumber::BASIC, 1);
+    dp_field.description = "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">";
+
+
+    retained_format_field sb_field = retained_format_field({"SB"}, "SB", RetainedFieldType::INT, FieldCombinationMethod::MAX, RetainedFieldNumber::BASIC, 4);
+    sb_field.description = "##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.\">";
+
+    cfg.liftover_fields.push_back(dp_field);
+    cfg.liftover_fields.push_back(sb_field);
     join_record_case.perform_gvcf_test(cfg);
 }

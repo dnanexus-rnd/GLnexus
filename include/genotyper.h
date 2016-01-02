@@ -104,6 +104,5 @@ struct one_call {
         return !(*this <= rhs);
     }
 };
-
 } // namespace GLnexus
 #endif
