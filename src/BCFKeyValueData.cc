@@ -1191,7 +1191,7 @@ Status BCFKeyValueData::import_gvcf(MetadataCache& metadata,
 
     if (!s.ok()) {
         // We had a failure, remove from the active metadata
-        std::lock_guard<std::mutex> lock(mutex);
+        std::lock_guard<std::mutex> lock(body_->mutex);
         body_->amd.erase(dataset, rslt.samples);
     }
 
