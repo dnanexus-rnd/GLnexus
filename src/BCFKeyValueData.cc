@@ -1037,6 +1037,19 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
     return Status::OK();
 }
 
+// convenience macro for some sanity-checking in bulk_insert_gvcf_key_values below
+#ifdef NDEBUG
+#define CHECK_DANGLER_BUCKET(pbcf,bkt) {
+    range dangler_rng(pbcf);
+    assert(dangler_rng_.overlaps(bkt)); \
+    assert(dangler_rng_.beg < (bkt).beg); \
+    assert(dangler_rng_.end > (bkt).beg); \
+    assert(dangler_rng_.end <= (bkt).end); \
+}
+#else
+#define CHECK_DANGLER_BUCKET(pbcf,bkt)
+#endif
+
 static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           MetadataCache& metadata,
                                           KeyValue::DB* db,
@@ -1051,24 +1064,11 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
     int prev_pos = -1;
     int prev_rid = -1;
-    // records dangling from one bucket over to the next.
-    // For simplicity we assume a record can overlap only 1 or 2 buckets, or
+    // buffer of records dangling from one bucket over to the next. For
+    // simplicity we assume a record can overlap only 1 or 2 buckets, or
     // equivalently, the bucket size is an upper bound on record length.
     vector<shared_ptr<bcf1_t>> danglers;
-
-    // convenience macro for some asserts about danglers
-    #ifndef NDEBUG
-        range dangler_rng_(-1,-1,-1);
-        #define CHECK_DANGLER_BUCKET(pbcf,bkt) \
-            dangler_rng_ = range(pbcf); \
-            assert(dangler_rng_.overlaps(bkt)); \
-            assert(dangler_rng_.beg < (bkt).beg); \
-            assert(dangler_rng_.end > (bkt).beg); \
-            assert(dangler_rng_.end <= (bkt).end);
-    #else
-        #define CHECK_DANGLER_BUCKET(pbcf,bucket)
-    #endif
-
+    // current bucket
     range bucket(-1, 0, rangeHelper.interval_len);
 
     // scan the BCF records
