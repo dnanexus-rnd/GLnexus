@@ -922,7 +922,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     shared_ptr<const bcf_hdr_t> hdr;
     vector<shared_ptr<bcf1_t>> records, all_records;
 
-     #define check() s = data->dataset_range(dataset, hdr.get(), range(0,0,1000000), all_records); \
+     #define check() s = data->dataset_range(dataset, hdr.get(), range(0,0,10000000), all_records); \
                     REQUIRE(s.ok()); \
                     REQUIRE(records.size() <= count_if(all_records.begin(), all_records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());})); \
                     REQUIRE(all_of(records.begin(), records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());}))
@@ -1001,7 +1001,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
 
     // This query exercises a code path where the KeyValue iterator advances
     // to the end of the database
-    rng = range(0, 399999, 400001);
+    rng = range(0, 5999998, 6000001);
     s = data->sampleset_range(*cache, sampleset, rng,
                               samples, datasets, iterators);
     REQUIRE(s.ok());
