@@ -448,8 +448,8 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
         // vector as the representative record.
         // Update genotype vector's RNC to loss for all samples in this dataset
         for (int i = 0; i < bcf_nsamples; i++) {
-            genotypes[sample_mapping.at(i)*2].RNC = NoCallReason::LostAllele;
-            genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::LostAllele;
+            genotypes[sample_mapping.at(i)*2].RNC =
+                genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::UnphasedVariants;
         }
     }
 
@@ -582,6 +582,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 break;
             case NoCallReason::InsufficientDepth:
                 v = "D";
+                break;
+            case NoCallReason::UnphasedVariants:
+                v = "U";
                 break;
             default:
                 assert(c.RNC == NoCallReason::MissingData);
