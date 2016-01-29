@@ -1038,7 +1038,7 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
 }
 
 // convenience macro for some sanity-checking in bulk_insert_gvcf_key_values below
-#ifdef NDEBUG
+#ifndef NDEBUG
 #define CHECK_DANGLER_BUCKET(pbcf,bkt) {
     range dangler_rng(pbcf);
     assert(dangler_rng_.overlaps(bkt)); \
