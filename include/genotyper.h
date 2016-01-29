@@ -75,7 +75,8 @@ enum class NoCallReason {
     N_A,                  /// not applicable (the genotype *is* called)
     MissingData,          /// no gVCF coverage at all
     PartialData,          /// partial gVCF coverage
-    LostAllele            /// unrepresentable allele
+    LostAllele,           /// unrepresentable allele
+    InsufficientDepth     /// insufficient depth of coverage
 };
 
 /// A single allele call and metadata; diploid samples each have two calls

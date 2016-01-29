@@ -320,7 +320,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                 !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
                 auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
                 assert(al >= 0 && al < record->n_allele);                  \
-                if (depth->sufficient(ij.first, al) && depth->sufficient_ref(min_ref_depth[ij.second])) {                           \
+                if (depth->sufficient(ij.first, al)                        \
+                    && depth->sufficient_ref(min_ref_depth[ij.second])) {  \
                     if (allele_mapping[al] >= 0) {                         \
                         genotypes[2*ij.second+(ofs)] =                     \
                             one_call(bcf_gt_unphased(allele_mapping[al]),  \
@@ -329,6 +330,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                         genotypes[2*ij.second+(ofs)].RNC =                 \
                             NoCallReason::LostAllele;                      \
                     }                                                      \
+                } else {                                                   \
+                    genotypes[2*ij.second+(ofs)].RNC =                     \
+                        NoCallReason::InsufficientDepth;                   \
                 }                                                          \
             }
         fill_allele(0)
@@ -575,6 +579,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 break;
             case NoCallReason::LostAllele:
                 v = "L";
+                break;
+            case NoCallReason::InsufficientDepth:
+                v = "D";
                 break;
             default:
                 assert(c.RNC == NoCallReason::MissingData);
