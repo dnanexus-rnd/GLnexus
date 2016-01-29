@@ -387,7 +387,9 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
     // To track the total range covered by the records
     vector<range> record_rngs;
     for (auto& record: records) {
-        record_rngs.push_back(range(record.get()));
+        range record_rng(record.get());
+        assert(record_rng.overlaps(site.pos));
+        record_rngs.push_back(record_rng);
         S(AlleleDepthHelper::Open(cfg, dataset, hdr, record.get(), depth));
 
         // Update min_ref_depth vector
@@ -411,6 +413,15 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
 
     // records do not span the site, return ans as empty
     if (!site.pos.spanned_by(record_rngs)) {
+        // The RNCs default to MissingData, which is appropriate if records is
+        // empty. If however there are some records (but not enough to cover
+        // the site), update the RNCs to PartialData.
+        if (!record_rngs.empty()) {
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::PartialData;
+            }
+        }
         return Status::OK();
     }
 
@@ -559,9 +570,14 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             case NoCallReason::N_A:
                 v = ".";
                 break;
+            case NoCallReason::PartialData:
+                v = "P";
+                break;
             case NoCallReason::LostAllele:
                 v = "L";
                 break;
+            default:
+                assert(c.RNC == NoCallReason::MissingData);
         }
         rnc.push_back(v);
     }

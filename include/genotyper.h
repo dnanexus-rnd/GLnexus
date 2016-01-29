@@ -72,9 +72,10 @@ using LossTrackers = std::vector<LossTracker>;
 // Reasons for emitting a non-call (.), encoded in the RNC FORMAT field in the
 // output VCF
 enum class NoCallReason {
-    N_A,          /// not applicable (the genotype *is* called)
-    MissingData,  /// no gVCF coverage or lack of sufficient depth
-    LostAllele    /// unrepresentable allele
+    N_A,                  /// not applicable (the genotype *is* called)
+    MissingData,          /// no gVCF coverage at all
+    PartialData,          /// partial gVCF coverage
+    LostAllele            /// unrepresentable allele
 };
 
 /// A single allele call and metadata; diploid samples each have two calls
