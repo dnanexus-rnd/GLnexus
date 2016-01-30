@@ -542,3 +542,8 @@ TEST_CASE("join record logic test: insufficient ref depth") {
 
     join_record_case.perform_gvcf_test(cfg);
 }
+
+TEST_CASE("join record logic test: overlapping records") {
+    GVCFTestCase join_record_case("join_records_overlapping");
+    join_record_case.perform_gvcf_test();
+}

@@ -446,10 +446,24 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
         // If there are multiple variant vcf records, we cannot effectively
         // handle genotyping due to phase assertions, so we return an empty
         // vector as the representative record.
-        // Update genotype vector's RNC to loss for all samples in this dataset
+
+        // Update genotype vector's RNC. Distinguish UnphasedVariants from
+        // OverlappingVariants
+        // TODO: replace quadratic loop (but the # records is probably too
+        // small to matter)
+        auto rnc = NoCallReason::UnphasedVariants;
+        for (int i = 0; i < records.size() && rnc == NoCallReason::UnphasedVariants; i++) {
+            range rng_i(records[i]);
+            for (int j = i+1; j < records.size(); j++) {
+                if (rng_i.overlaps(range(records[j]))) {
+                    rnc = NoCallReason::OverlappingVariants;
+                    break;
+                }
+            }
+        }
         for (int i = 0; i < bcf_nsamples; i++) {
-            genotypes[sample_mapping.at(i)*2].RNC =
-                genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::UnphasedVariants;
+            genotypes[sample_mapping.at(i)*2].RNC = rnc;
+            genotypes[sample_mapping.at(i)*2+1].RNC = rnc;
         }
     }
 
@@ -585,6 +599,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 break;
             case NoCallReason::UnphasedVariants:
                 v = "U";
+                break;
+            case NoCallReason::OverlappingVariants:
+                v = "O";
                 break;
             default:
                 assert(c.RNC == NoCallReason::MissingData);

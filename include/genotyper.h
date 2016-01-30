@@ -77,7 +77,8 @@ enum class NoCallReason {
     PartialData,          /// partial gVCF coverage
     LostAllele,           /// unrepresentable allele
     InsufficientDepth,    /// insufficient depth of coverage
-    UnphasedVariants      /// site spans multiple unphased variants
+    UnphasedVariants,     /// site spans multiple unphased variants
+    OverlappingVariants   /// site spans multiple variants which overlap each other
 };
 
 /// A single allele call and metadata; diploid samples each have two calls
