@@ -583,26 +583,15 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // RNC
     vector<const char*> rnc;
     for (const auto& c : genotypes) {
-        char* v = "M";
+        char* v = (char*) "M";
+        #define RNC_CASE(reason,code) case NoCallReason::reason: v = (char*) code ; break;
         switch (c.RNC) {
-            case NoCallReason::N_A:
-                v = ".";
-                break;
-            case NoCallReason::PartialData:
-                v = "P";
-                break;
-            case NoCallReason::LostAllele:
-                v = "L";
-                break;
-            case NoCallReason::InsufficientDepth:
-                v = "D";
-                break;
-            case NoCallReason::UnphasedVariants:
-                v = "U";
-                break;
-            case NoCallReason::OverlappingVariants:
-                v = "O";
-                break;
+            RNC_CASE(N_A,".")
+            RNC_CASE(PartialData,"P")
+            RNC_CASE(LostAllele,"L")
+            RNC_CASE(InsufficientDepth,"D")
+            RNC_CASE(UnphasedVariants,"U")
+            RNC_CASE(OverlappingVariants,"O")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }
