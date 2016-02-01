@@ -320,7 +320,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                 !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
                 auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
                 assert(al >= 0 && al < record->n_allele);                  \
-                if (depth->sufficient(ij.first, al) && depth->sufficient_ref(min_ref_depth[ij.second])) {                           \
+                if (depth->sufficient(ij.first, al)                        \
+                    && depth->sufficient_ref(min_ref_depth[ij.second])) {  \
                     if (allele_mapping[al] >= 0) {                         \
                         genotypes[2*ij.second+(ofs)] =                     \
                             one_call(bcf_gt_unphased(allele_mapping[al]),  \
@@ -329,6 +330,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                         genotypes[2*ij.second+(ofs)].RNC =                 \
                             NoCallReason::LostAllele;                      \
                     }                                                      \
+                } else {                                                   \
+                    genotypes[2*ij.second+(ofs)].RNC =                     \
+                        NoCallReason::InsufficientDepth;                   \
                 }                                                          \
             }
         fill_allele(0)
@@ -387,7 +391,9 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
     // To track the total range covered by the records
     vector<range> record_rngs;
     for (auto& record: records) {
-        record_rngs.push_back(range(record.get()));
+        range record_rng(record.get());
+        assert(record_rng.overlaps(site.pos));
+        record_rngs.push_back(record_rng);
         S(AlleleDepthHelper::Open(cfg, dataset, hdr, record.get(), depth));
 
         // Update min_ref_depth vector
@@ -411,6 +417,15 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
 
     // records do not span the site, return ans as empty
     if (!site.pos.spanned_by(record_rngs)) {
+        // The RNCs default to MissingData, which is appropriate if records is
+        // empty. If however there are some records (but not enough to cover
+        // the site), update the RNCs to PartialData.
+        if (!record_rngs.empty()) {
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::PartialData;
+            }
+        }
         return Status::OK();
     }
 
@@ -431,10 +446,24 @@ Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
         // If there are multiple variant vcf records, we cannot effectively
         // handle genotyping due to phase assertions, so we return an empty
         // vector as the representative record.
-        // Update genotype vector's RNC to loss for all samples in this dataset
+
+        // Update genotype vector's RNC. Distinguish UnphasedVariants from
+        // OverlappingVariants
+        // TODO: replace quadratic loop (but the # records is probably too
+        // small to matter)
+        auto rnc = NoCallReason::UnphasedVariants;
+        for (int i = 0; i < records.size() && rnc == NoCallReason::UnphasedVariants; i++) {
+            range rng_i(records[i]);
+            for (int j = i+1; j < records.size(); j++) {
+                if (rng_i.overlaps(range(records[j]))) {
+                    rnc = NoCallReason::OverlappingVariants;
+                    break;
+                }
+            }
+        }
         for (int i = 0; i < bcf_nsamples; i++) {
-            genotypes[sample_mapping.at(i)*2].RNC = NoCallReason::LostAllele;
-            genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::LostAllele;
+            genotypes[sample_mapping.at(i)*2].RNC = rnc;
+            genotypes[sample_mapping.at(i)*2+1].RNC = rnc;
         }
     }
 
@@ -554,14 +583,17 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // RNC
     vector<const char*> rnc;
     for (const auto& c : genotypes) {
-        char* v = "M";
+        char* v = (char*) "M";
+        #define RNC_CASE(reason,code) case NoCallReason::reason: v = (char*) code ; break;
         switch (c.RNC) {
-            case NoCallReason::N_A:
-                v = ".";
-                break;
-            case NoCallReason::LostAllele:
-                v = "L";
-                break;
+            RNC_CASE(N_A,".")
+            RNC_CASE(PartialData,"P")
+            RNC_CASE(LostAllele,"L")
+            RNC_CASE(InsufficientDepth,"D")
+            RNC_CASE(UnphasedVariants,"U")
+            RNC_CASE(OverlappingVariants,"O")
+            default:
+                assert(c.RNC == NoCallReason::MissingData);
         }
         rnc.push_back(v);
     }
