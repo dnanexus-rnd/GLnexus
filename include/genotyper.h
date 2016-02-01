@@ -75,8 +75,9 @@ enum class NoCallReason {
     N_A,                  /// not applicable (the genotype *is* called)
     MissingData,          /// no gVCF coverage at all
     PartialData,          /// partial gVCF coverage
-    LostAllele,           /// unrepresentable allele
     InsufficientDepth,    /// insufficient depth of coverage
+    LostDeletion,         /// unrepresentable overlapping deletion
+    LostAllele,           /// unrepresentable allele (other than overlapping deletion)
     UnphasedVariants,     /// site spans multiple unphased variants
     OverlappingVariants   /// site spans multiple variants which overlap each other
 };

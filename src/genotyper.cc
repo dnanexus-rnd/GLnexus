@@ -266,6 +266,23 @@ static Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, const ve
     return Status::OK();
 }
 
+// Helper: given REF and ALT DNA, determine if the ALT represents a deletion
+// with respect to REF. Left-alignment is assumed and reference padding on the
+// left is tolerated.
+inline bool is_deletion(const string& ref, const string& alt) {
+    if (alt.size() >= ref.size()) {
+        return false;
+    }
+    for (int j = 0; j < alt.size(); j++) {
+        if (alt[j] != ref[j]) {
+            // some kind of complex edit where the ALT allele is both shorter
+            // and with differing basis in the prefix...
+            return false;
+        }
+    }
+    return true;
+}
+
 // Translate the hard-called genotypes from the bcf1_t into our genotype
 // vector, based on a mapping from the bcf1_t sample indices into indices of
 // the genotype vector. Calls on update_orig_calls_for_loss to register
@@ -280,6 +297,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
     // map the BCF's alleles onto the unified alleles
     vector<int> allele_mapping(record->n_allele, -1);
+    vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
 
     // reference allele maps if it contains the unified site
     range rng(record);
@@ -289,6 +307,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
     // map the bcf1_t alt alleles according to unification
     // checking for valid dna regex match
+    string ref_al(record->d.allele[0]);
     for (int i = 1; i < record->n_allele; i++) {
         string al(record->d.allele[i]);
         if (regex_match(al, regex_dna)) {
@@ -296,6 +315,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             if (p != site.unification.end()) {
                 allele_mapping[i] = p->second;
             }
+        }
+        if (al.size() < rng.size() && rng.size() == ref_al.size()) {
+            deletion_allele[i] = is_deletion(ref_al, al);
         }
     }
 
@@ -317,8 +339,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
         #define fill_allele(ofs)                                           \
             if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&              \
-                !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
-                auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
+                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                \
+                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);             \
                 assert(al >= 0 && al < record->n_allele);                  \
                 if (depth->sufficient(ij.first, al)                        \
                     && depth->sufficient_ref(min_ref_depth[ij.second])) {  \
@@ -328,7 +350,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                                      NoCallReason::N_A);                   \
                     } else {                                               \
                         genotypes[2*ij.second+(ofs)].RNC =                 \
-                            NoCallReason::LostAllele;                      \
+                            deletion_allele[al]                            \
+                                ? NoCallReason::LostDeletion               \
+                                : NoCallReason::LostAllele;                \
                     }                                                      \
                 } else {                                                   \
                     genotypes[2*ij.second+(ofs)].RNC =                     \
@@ -588,8 +612,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         switch (c.RNC) {
             RNC_CASE(N_A,".")
             RNC_CASE(PartialData,"P")
-            RNC_CASE(LostAllele,"L")
             RNC_CASE(InsufficientDepth,"D")
+            RNC_CASE(LostDeletion,"-")
+            RNC_CASE(LostAllele,"L")
             RNC_CASE(UnphasedVariants,"U")
             RNC_CASE(OverlappingVariants,"O")
             default:

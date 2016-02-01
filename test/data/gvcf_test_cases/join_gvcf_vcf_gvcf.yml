@@ -73,7 +73,7 @@ truth_output_vcf:
       ##fileformat=VCFv4.2
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, L = Lost/unrepresentable allele, D = insufficient Depth of coverage, U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
       A	999	.	ATG	ATCG,A	0	.	.	GT:RNC	0/1:..	0/2:..	0/1:..	0/0:..

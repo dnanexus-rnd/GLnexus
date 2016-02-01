@@ -547,3 +547,7 @@ TEST_CASE("join record logic test: overlapping records") {
     GVCFTestCase join_record_case("join_records_overlapping");
     join_record_case.perform_gvcf_test();
 }
+
+TEST_CASE("lost deletion") {
+    GVCFTestCase("lost_deletion").perform_gvcf_test();
+}
