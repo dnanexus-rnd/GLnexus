@@ -35,16 +35,14 @@ using minimized_alleles = map<allele,minimized_allele_info>;
 using minimized_allele = pair<allele,minimized_allele_info>;
 
 // Defines an ordering on minimized alleles used in a couple places below.
-// They're ordered by decreasing observation count, then by increasing (ALT)
-// DNA size, then by range, then lexicographically by DNA sequence.
+// They're ordered by decreasing observation count, then by increasing
+// absolute difference in size between REF and ALT.
 bool minimized_allele_lt(const minimized_allele& p1, const minimized_allele& p2) {
     if (p2.second.observation_count != p1.second.observation_count)
         return p2.second.observation_count < p1.second.observation_count;
-    if (p1.first.dna.size() != p2.first.dna.size())
-        return p1.first.dna.size() < p2.first.dna.size();
-    if (p1.first.pos != p2.first.pos)
-        return p1.first.pos < p2.first.pos;
-    return p1.first.dna < p2.first.dna;
+    auto d1 = std::max(p1.first.dna.size(),p1.first.pos.size()) - std::min(p1.first.dna.size(),p1.first.pos.size());
+    auto d2 = std::max(p2.first.dna.size(),p2.first.pos.size()) - std::min(p2.first.dna.size(),p2.first.pos.size());
+    return d1 < d2;
 }
 
 /// Minimize an ALT allele by trimming bases equal to the reference from

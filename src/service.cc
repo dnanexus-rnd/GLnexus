@@ -299,7 +299,7 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
                                  shared_ptr<bcf_hdr_t>& ans) {
     vector<string> hdr_lines;
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-    hdr_lines.push_back("##FORMAT=<ID=RNC,Number=G,Type=Character,Description=\"Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele\">");
+    hdr_lines.push_back("##FORMAT=<ID=RNC,Number=G,Type=Character,Description=\"Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present\">");
     for (auto& format_field : format_fields) {
         hdr_lines.push_back(format_field.description);
     }

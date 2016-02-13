@@ -73,9 +73,9 @@ truth_output_vcf:
       ##fileformat=VCFv4.2
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
-      21	10009464	.	TA	T	0	.	.	GT:RNC	./.:MM	0/0:..
-      21	10009466	.	A	G	0	.	.	GT:RNC	0/0:..	0/.:.M
-      21	10009467	.	A	C	0	.	.	GT:RNC	./.:MM	0/.:.M
+      21	10009464	.	TA	T	0	.	.	GT:RNC	./.:DD	0/0:..
+      21	10009466	.	A	G	0	.	.	GT:RNC	0/0:..	0/.:.D
+      21	10009467	.	A	C	0	.	.	GT:RNC	./.:DD	0/.:.D

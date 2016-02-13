@@ -17,7 +17,28 @@ namespace GLnexus {
 /// Determine whether the given record is a gVCF reference confidence record
 /// (or else a "normal" record with at least one specific ALT allele)
 static bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
-    return record->n_allele == 2 && string(record->d.allele[1]) == cfg.ref_symbolic_allele;
+    return record->n_allele == 2 && strcmp(record->d.allele[1], cfg.ref_symbolic_allele.c_str()) == 0;
+}
+
+/// Detect an idiosyncratic class of records from certain HaplotypeCaller
+/// versions which have QUAL == 0.0 and 0/0 genotype calls...we treat these as
+/// "pseudo" reference confidence records.
+static bool is_pseudo_ref_record(const bcf_hdr_t* hdr, bcf1_t* record) {
+    if (record->qual != 0.0) {
+        return false;
+    }
+    int *gt = nullptr, gtsz = 0;
+    int nGT = bcf_get_genotypes(hdr, record, &gt, &gtsz);
+    for (int i = 0; i < record->n_sample; i++) {
+        assert(i*2+1<nGT);
+        if (bcf_gt_is_missing(gt[i*2]) || bcf_gt_allele(gt[i*2]) != 0 ||
+            bcf_gt_is_missing(gt[i*2+1]) || bcf_gt_allele(gt[i*2+1]) != 0) {
+            free(gt);
+            return false;
+        }
+    }
+    free(gt);
+    return true;
 }
 
 class IFormatFieldHelper {
@@ -197,63 +218,72 @@ public:
 // whether we're looking at a gVCF reference confidence record or a "regular"
 // VCF record.
 class AlleleDepthHelper {
+    Status s_;
     const genotyper_config& cfg_;
-    size_t n_sample_, n_allele_;
-    bool is_g_;
-    shared_ptr<int32_t> v_;
-
-    AlleleDepthHelper(const genotyper_config& cfg,
-                      size_t n_sample, size_t n_allele, bool is_g,
-                      const shared_ptr<int32_t>& v)
-        : cfg_(cfg), n_sample_(n_sample), n_allele_(n_allele), is_g_(is_g), v_(v)
-        {}
+    size_t n_sample_ = 0, n_allele_ = 0;
+    bool is_g_ = false;
+    int32_t *v_ = nullptr;
+    int vsz_ = 0;
 
 public:
-    // TODO refactor to avoid heap allocation...
-    static Status Open(const genotyper_config& cfg, const string& dataset,
-                       const bcf_hdr_t* dataset_header, bcf1_t* record,
-                       unique_ptr<AlleleDepthHelper>& ans) {
-        if (cfg.required_dp) {
-            int32_t *v = nullptr;
-            int vsz = 0;
-            bool is_g = false;
 
-            // is this a gVCF reference confidence record?
-            if (is_gvcf_ref_record(cfg, record)) {
-                is_g = true;
-                // if so, look for the MIN_DP FORMAT field (or equivalent)
-                int nv = bcf_get_format_int32(dataset_header, record, cfg.ref_dp_format.c_str(),
-                                              &v, &vsz);
+    // The AlleleDepthHelper is constructed into an undefined state. Load()
+    // must be invoked, successfully, before it can be used.
+    AlleleDepthHelper(const genotyper_config& cfg)
+        : cfg_(cfg)
+        {}
 
-                if (nv != record->n_sample) {
-                    if (v) free(v);
-                    ostringstream errmsg;
-                    errmsg << dataset << " " << range(record).str() << " (" << cfg.ref_dp_format << ")";
-                    return Status::Invalid("genotyper: gVCF reference depth FORMAT field is either missing or has the wrong type", errmsg.str());
-                }
-            } else {
-                // this is a regular VCF record, so look for the AD FORMAT field (or equivalent)
-                int nv = bcf_get_format_int32(dataset_header, record, cfg.allele_dp_format.c_str(),
-                                              &v, &vsz);
+    ~AlleleDepthHelper() {
+        if (v_) free(v_);
+    }
 
-                if (nv != record->n_sample * record->n_allele) {
-                    if (v) free(v);
-                    ostringstream errmsg;
-                    errmsg << dataset << " " << range(record).str() << " (" << cfg.allele_dp_format << ")";
-                    return Status::Invalid("genotyper: VCF allele depth FORMAT field is either missing or has the wrong type", errmsg.str());
-                }
+    // The helper can be reused for multiple records by calling Load()
+    // repeatedly. This will be slightly more efficient than using a new
+    // helper for each record.
+    Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) {
+        n_sample_ = record->n_sample;
+        n_allele_ = record->n_allele;
+        // is this a gVCF reference confidence record?
+        is_g_ = is_gvcf_ref_record(cfg_, record);
+
+        if (is_g_) {
+            // if so, look for the MIN_DP FORMAT field (or equivalent)
+            int nv = bcf_get_format_int32(dataset_header, record, cfg_.ref_dp_format.c_str(),
+                                          &v_, &vsz_);
+
+            if (nv != record->n_sample) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+                return Status::Invalid("genotyper: gVCF reference depth FORMAT field is missing or malformed", errmsg.str());
             }
-
-            ans.reset(new AlleleDepthHelper(cfg, size_t(record->n_sample), size_t(record->n_allele), is_g,
-                                            shared_ptr<int32_t>(v, [](int32_t* v) { free(v); })));
         } else {
-            ans.reset(new AlleleDepthHelper(cfg, 0, 0, false, nullptr));
+            // this is a regular VCF record, so look for the AD FORMAT field (or equivalent)
+            int nv = bcf_get_format_int32(dataset_header, record, cfg_.allele_dp_format.c_str(),
+                                          &v_, &vsz_);
+
+            if (nv == -1) {
+                // We allow the AD field to not exist mainly as a (poor)
+                // workaround for some of our test case gVCFs not having it...
+                size_t sz = record->n_sample * record->n_allele * sizeof(int32_t);
+                if (vsz_ < sz) {
+                    v_ = (int32_t*) realloc(v_, sz);
+                    vsz_ = sz;
+                }
+                memset(v_, 0, sz);
+            } else if (nv != record->n_sample * record->n_allele) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
+                return Status::Invalid("genotyper: VCF allele depth FORMAT field is malformed", errmsg.str());
+            }
         }
         return Status::OK();
     }
 
+    // The behavior of remaining methods is undefined until Load() has been
+    // invoked successfully
+
     // Is there sufficient coverage for sample i, allele j?
-    bool sufficient(size_t sample, size_t allele) {
+    bool sufficient(unsigned sample, unsigned allele) {
         if (!cfg_.required_dp) {
             return true;
         }
@@ -262,34 +292,25 @@ public:
         if (is_g_) {
             // the MIN_DP array has just one integer per sample
             if (allele == 0) {
-                return v_.get()[sample] >= cfg_.required_dp;
+                return v_[sample] >= cfg_.required_dp;
             } else {
                 return false;
             }
         } else {
             // the AD array has one integer per allele per sample
-            return v_.get()[sample*n_allele_+allele] >= cfg_.required_dp;
+            return v_[sample*n_allele_+allele] >= cfg_.required_dp;
         }
     }
 
-    // Whether there is sufficient ref coverage, expect depth
-    // passed in to be < 0 if the representative record had no reference
-    // region
-    bool sufficient_ref(size_t depth) {
-        // Return true if no required_dp, or record has no ref region
-        if (!cfg_.required_dp || depth < 0) {
-            return true;
-        }
-        return (depth >= cfg_.required_dp);
-    }
+    bool is_gvcf_ref() { return is_g_; }
 
-    // Returns the depth of the gvcf_ref coverage for sample i
-    // returns -1 if record is not a gvcf confidence record
-    int get_gvcf_depth(size_t sample) {
-        if (!is_g_) {
-            return -1;
+    // Returns the depth for the reference allele for sample i
+    int get_ref_depth(unsigned sample) {
+        assert(sample < n_sample_);
+        if (is_g_) {
+            return v_[sample];
         } else {
-            return v_.get()[sample];
+            return v_[sample*n_allele_+0];
         }
     }
 };
@@ -438,29 +459,233 @@ static Status update_joint_call_loss(bcf1_t* record, int n_bcf_samples, const ve
     return Status::OK();
 }
 
-// Translate the hard-called genotypes from the bcf1_t into our genotype
-// vector, based on a mapping from the bcf1_t sample indices into indices of
-// the genotype vector. Calls on update_orig_calls_for_loss to register
-// original calls in the bcf1_t for loss calculations
+// Helper: given REF and ALT DNA, determine if the ALT represents a deletion
+// with respect to REF. Left-alignment is assumed and reference padding on the
+// left is tolerated.
+inline bool is_deletion(const string& ref, const string& alt) {
+    if (alt.size() >= ref.size()) {
+        return false;
+    }
+    for (int j = 0; j < alt.size(); j++) {
+        if (alt[j] != ref[j]) {
+            // some kind of complex edit where the ALT allele is both shorter
+            // and with differing basis in the prefix...
+            return false;
+        }
+    }
+    return true;
+}
+
+/// A helper function to update min_ref_depth based on several reference
+/// confidence records. min_ref_depth[j] is the minimum depth of reference
+/// coverage seen for sample j across the reference confidence records, and
+/// should be initialized to -1 before any reference confidence records are
+/// seen.
+static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* dataset_header,
+                                   int bcf_nsamples, const map<int,int>& sample_mapping,
+                                   const vector<shared_ptr<bcf1_t>>& ref_records,
+                                   AlleleDepthHelper& depth,
+                                   vector<int>& min_ref_depth) {
+    Status s;
+    for (auto& ref_record : ref_records) {
+        S(depth.Load(dataset, dataset_header, ref_record.get()));
+
+        for (int i=0; i<bcf_nsamples; i++) {
+            int mapped_sample = sample_mapping.at(i);
+            assert(mapped_sample < min_ref_depth.size());
+
+            if (min_ref_depth[mapped_sample] < 0) {
+                min_ref_depth[mapped_sample] = depth.get_ref_depth(i);
+            } else {
+                min_ref_depth[mapped_sample] = min(min_ref_depth[mapped_sample],
+                                                   depth.get_ref_depth(i));
+            }
+        }
+    }
+    return Status::OK();
+}
+
+/// Given a unified site and the set of gVCF records overlapping it in some
+/// dataset, separate the variant records from surrounding reference
+/// confidence records. Ideally and often there's either zero or one variant
+/// records -- zero if the dataset exhibits no variation at the site, and one
+/// if it does. Unfortunately, there are a number of circumstances under which
+/// some variant callers produce multiple overlapping records. The variant
+/// records should all share at least one reference position in common.
+///
+/// The variant records, if any, are returned through variant_records. It is
+/// then the job of translate_genotypes to figure out what to do with the
+/// cluster of variant records.
+///
+/// This function also modifies min_ref_depth which tracks the minimum depth
+/// of ref-records for a given sample. min_ref_depth is expected to be
+/// initialized to -1 for all samples, and the entry for a sample will be
+/// modified only if one or more ref records are present.
+///
+/// =====================================================
+/// Pre conditions:
+/// min_ref_depth should be initialized to -1 for all samples
+/// ======================================================
+/// Post conditions:
+/// No records given
+///      variant_records empty, min_ref_depth unchanged, rnc = MissingData
+/// Records do not span the entire range of site
+///      variant_records empty, min_ref_depth updated accordingly, rnc = PartialData
+/// Records span entire range, and consist of all reference confidence records
+///      variant_records empty, min_ref_depth updated accordingly, rnc = N_A
+/// Records span entire range, and include one or more variant records which
+/// all share at least one reference position
+///      variant_records filled in, min_ref_depth updated accordingly, rnc = N_A
+/// Records span entire range, and include multiple variant records which
+/// don't all share at least one reference position
+///      variant_records empty, min_ref_depth updated accordingly, rnc = UnphasedVariants
+Status find_variant_records(const genotyper_config& cfg, const unified_site& site,
+                            const string& dataset, const bcf_hdr_t* hdr, int bcf_nsamples,
+                            const map<int, int>& sample_mapping,
+                            const vector<shared_ptr<bcf1_t>>& records,
+                            AlleleDepthHelper& depth,
+                            NoCallReason& rnc,
+                            vector<int>& min_ref_depth,
+                            vector<shared_ptr<bcf1_t>>& variant_records) {
+    // initialize outputs
+    rnc = NoCallReason::MissingData;
+    variant_records.clear();
+
+    Status s;
+
+    // collect the ranges covered by the records
+    vector<range> record_rngs;
+    record_rngs.reserve(records.size());
+    for (auto& record: records) {
+        range record_rng(record.get());
+        assert(record_rng.overlaps(site.pos));
+        record_rngs.push_back(record_rng);
+        assert(bcf_nsamples == record->n_sample);
+    }
+
+    // check the records span the site, otherwise we need to produce
+    // PartialData no-calls
+    if (!site.pos.spanned_by(record_rngs)) {
+        if (!record_rngs.empty()) {
+            rnc = NoCallReason::PartialData;
+        }
+        return Status::OK();
+    }
+
+    // now that we know the records span the site, partition the variant
+    // record(s) and the surrounding reference confidence records.
+    vector<shared_ptr<bcf1_t>> ref_records;
+    ref_records.reserve(records.size());
+    for (auto& record : records) {
+        (is_gvcf_ref_record(cfg, record.get()) ? ref_records : variant_records).push_back(record);
+    }
+
+    // compute min_ref_depth across the reference confidence records
+    S(update_min_ref_depth(dataset, hdr, bcf_nsamples, sample_mapping,
+                           ref_records, depth, min_ref_depth));
+
+    // if there are multiple variant records, check if they all share at least
+    // one reference position.
+    if (variant_records.size() > 1) {
+        range intersection(variant_records[0]);
+        for (auto& record : variant_records) {
+            range record_rng(record);
+            assert(record_rng.rid == intersection.rid);
+            intersection.beg = max(record_rng.beg, intersection.beg);
+            intersection.end = min(record_rng.end, intersection.end);
+        }
+        if (intersection.beg >= intersection.end) {
+            // if not, then we've got to bug out with UnphasedVariants
+            variant_records.clear();
+            rnc = NoCallReason::UnphasedVariants;
+            return Status::OK();
+        }
+    }
+
+    // Success...
+    rnc = NoCallReason::N_A;
+    return Status::OK();
+}
+
+/// Based on the cluster of variant records and min_ref_depth produced by
+/// find_variant_records, fill genotypes for this dataset's samples with
+/// appropriate calls (currently by translation of the input hard-calls).
+/// Updates genotypes and losses_for_site, and may modify min_ref_depth.
 static Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
                                   const string& dataset, const bcf_hdr_t* dataset_header,
-                                  bcf1_t* record, const map<int,int>& sample_mapping,
-                                  vector<one_call>& genotypes, const vector<int>& min_ref_depth,
+                                  int bcf_nsamples, const map<int,int>& sample_mapping,
+                                  const vector<shared_ptr<bcf1_t>>& records,
+                                  AlleleDepthHelper& depth,
+                                  vector<int>& min_ref_depth,
+                                  vector<one_call>& genotypes,
                                   LossTrackers& losses_for_site) {
     assert(genotypes.size() == 2*min_ref_depth.size());
     Status s;
 
+    // right now we can only actually deal with one variant record...
+    bcf1_t *record = nullptr;
+
+    if (records.size() == 1) {
+        record = records[0].get();
+    } else if (records.size() > 1) {
+        // if we're given multiple overlapping variant records, attempt to
+        // reclassify all, or all but one, of them as "pseudo" ref records
+        vector<shared_ptr<bcf1_t>> pseudo_ref_records;
+        for (auto& a_record : records) {
+            assert(!is_gvcf_ref_record(cfg, a_record.get()));
+            if (is_pseudo_ref_record(dataset_header, a_record.get())) {
+                pseudo_ref_records.push_back(a_record);
+            } else if (!record) {
+                record = a_record.get();
+            } else {
+                // we've got an OverlappingVariants problem...
+                for (int i = 0; i < bcf_nsamples; i++) {
+                    genotypes[sample_mapping.at(i)*2].RNC =
+                        genotypes[sample_mapping.at(i)*2+1].RNC =
+                            NoCallReason::OverlappingVariants;
+                }
+                return Status::OK();
+            }
+        }
+
+        assert(pseudo_ref_records.size());
+        // update min_ref_depth with these pseudo ref records
+        S(update_min_ref_depth(dataset, dataset_header, bcf_nsamples, sample_mapping,
+                               pseudo_ref_records, depth, min_ref_depth));
+    }
+
+    if (!record) {
+        // no variation represented in this dataset; make homozygous ref calls
+        // if min_ref_depth indicates sufficient coverage for this sample
+        for (const auto& ij : sample_mapping) {
+            assert(ij.second < min_ref_depth.size());
+            int rd = min_ref_depth[ij.second];
+
+            if (rd >= cfg.required_dp) {
+                genotypes[2*ij.second] =
+                    genotypes[2*ij.second+1] =
+                        one_call(bcf_gt_unphased(0), NoCallReason::N_A);
+            } else {
+                genotypes[2*ij.second].RNC =
+                    genotypes[2*ij.second+1].RNC = NoCallReason::InsufficientDepth;
+            }
+        }
+        return Status::OK();
+    }
+
+    // Now, translating genotypes from one variant BCF record.
+
     // map the BCF's alleles onto the unified alleles
     vector<int> allele_mapping(record->n_allele, -1);
+    vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
 
-    // reference allele maps if it contains the unified site
     range rng(record);
-    if (rng.overlaps(site.pos)) {
-        allele_mapping[0] = 0;
-    }
+    assert(rng.overlaps(site.pos));
+    allele_mapping[0] = 0;
 
     // map the bcf1_t alt alleles according to unification
     // checking for valid dna regex match
+    string ref_al(record->d.allele[0]);
     for (int i = 1; i < record->n_allele; i++) {
         string al(record->d.allele[i]);
         if (regex_match(al, regex_dna)) {
@@ -468,6 +693,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             if (p != site.unification.end()) {
                 allele_mapping[i] = p->second;
             }
+        }
+        if (al.size() < rng.size() && rng.size() == ref_al.size()) {
+            deletion_allele[i] = is_deletion(ref_al, al);
         }
     }
 
@@ -478,9 +706,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     if (!gt || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
     assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
-    // Update the depth of coverage info
-    unique_ptr<AlleleDepthHelper> depth;
-    S(AlleleDepthHelper::Open(cfg, dataset, dataset_header, record, depth));
+    S(depth.Load(dataset, dataset_header, record));
 
     //unique_ptr<
     // for each shared sample, record the genotype call.
@@ -490,18 +716,25 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
         #define fill_allele(ofs)                                           \
             if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&              \
-                !bcf_gt_is_missing(gt[2*ij.first+ofs])) {                  \
-                auto al = bcf_gt_allele(gt[2*ij.first+ofs]);               \
+                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                \
+                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);             \
                 assert(al >= 0 && al < record->n_allele);                  \
-                if (depth->sufficient(ij.first, al) && depth->sufficient_ref(min_ref_depth[ij.second])) {                           \
+                int rd = min_ref_depth[ij.second];                         \
+                if (depth.sufficient(ij.first, al)                         \
+                    && (rd < 0 || rd >= cfg.required_dp)) {                \
                     if (allele_mapping[al] >= 0) {                         \
                         genotypes[2*ij.second+(ofs)] =                     \
                             one_call(bcf_gt_unphased(allele_mapping[al]),  \
                                      NoCallReason::N_A);                   \
                     } else {                                               \
                         genotypes[2*ij.second+(ofs)].RNC =                 \
-                            NoCallReason::LostAllele;                      \
+                            deletion_allele[al]                            \
+                                ? NoCallReason::LostDeletion               \
+                                : NoCallReason::LostAllele;                \
                     }                                                      \
+                } else {                                                   \
+                    genotypes[2*ij.second+(ofs)].RNC =                     \
+                        NoCallReason::InsufficientDepth;                   \
                 }                                                          \
             }
         fill_allele(0)
@@ -510,105 +743,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
     if (gt) {
         free(gt);
-    }
-
-    return Status::OK();
-}
-
-/// Given a set of records overlapping a site, we find the
-/// "representative record(s)" for a given site. The representative
-/// record(s) found are returned via the ans ptr. This function also
-/// modifies 2 genotyper substrates: min_ref_depth and genotypes.
-/// min_ref_depth tracks the minimum depth of ref-records for a given sample,
-/// and will be set to -1 if there are no ref records processed for a sample
-/// min_ref_depth is expected to be initialized to -1 for all samples.
-/// Modifications to genotypes vector is explained below
-/// The representative record is expected to be passed into translate_genotypes for genotyping
-/// =====================================================
-/// Pre conditions:
-/// min_ref_depth should be initialized to -1 for all samples
-/// ans should be empty when passed in
-/// ======================================================
-/// Expected behaviors:
-/// No records given
-///      ans returned as empty, no modification to genotypes and failed_ref_depth vectors
-/// Records do not span the entire range of site
-///      ans returned as empty, min_ref_depth updated accordingly, no change to genotypes
-/// Records span entire range, and consist of all gvcf records
-///      ans set as the first gvcf record passed, min_ref_depth updated accordingly, no change to genotypes
-/// Records span entire range, and consist of exactly 1 vcf variant record
-///      ans set as the 1 vcf variant record, min_ref_depth updated accordingly, no change to genotypes
-/// Records span entire range, and consists of >1 vcf variant record
-///      ans returned as empty, min_ref_depth updated accordingly, genotypes for all samples in this dataset are updated to be lost calls with RNC=LostAllele
-
-Status find_rep_record(const genotyper_config& cfg, const unified_site& site,
-                       const vector<shared_ptr<bcf1_t>>& records, const string& dataset,
-                       const bcf_hdr_t* hdr, int bcf_nsamples,
-                       const map<int, int>& sample_mapping, vector<one_call>& genotypes,
-                       vector<int>& min_ref_depth, shared_ptr<bcf1_t>& ans) {
-
-
-    if (ans) {
-        return Status::Invalid("find_rep_record: ans is not empty when passed into the function.");
-    }
-    // Clear ans to be empty
-    ans.reset();
-
-    Status s;
-    unique_ptr<AlleleDepthHelper> depth;
-
-    // To track the total range covered by the records
-    vector<range> record_rngs;
-    for (auto& record: records) {
-        record_rngs.push_back(range(record.get()));
-        S(AlleleDepthHelper::Open(cfg, dataset, hdr, record.get(), depth));
-
-        // Update min_ref_depth vector
-        for (int i=0; i<bcf_nsamples; i++) {
-            // TODO: Consider support for hom ref records
-            int ref_depth = depth->get_gvcf_depth(i);
-            int mapped_sample = sample_mapping.at(i);
-            assert(mapped_sample < min_ref_depth.size());
-
-            // relevant gvcf confidence record
-             if (ref_depth >= 0) {
-                if (min_ref_depth[mapped_sample] < 0) {
-                    min_ref_depth[mapped_sample] = ref_depth;
-                } else {
-                    min_ref_depth[mapped_sample] = min(min_ref_depth[mapped_sample], ref_depth);
-                }
-
-            }
-        }
-    }
-
-    // records do not span the site, return ans as empty
-    if (!site.pos.spanned_by(record_rngs)) {
-        return Status::OK();
-    }
-
-    // continue to find representative record if records span site
-    vector<shared_ptr<bcf1_t>> non_gvcf_records;
-    copy_if(records.begin(), records.end(), back_inserter(non_gvcf_records), [&cfg](auto& record) {return !is_gvcf_ref_record(cfg, record.get()); });
-
-    if (non_gvcf_records.size() == 0) {
-        // All records spanning site are gvcf, we can use any gvcf record
-        // as the representative, and translate_genotype will interpret  site
-        // as wholly REF
-        ans = records[0];
-    } else  if (non_gvcf_records.size() == 1) {
-        // If there is only 1 non_gvcf (ie vcf variant) record, this record
-        // should be used as a representative record for this site
-        ans = non_gvcf_records[0];
-    } else {
-        // If there are multiple variant vcf records, we cannot effectively
-        // handle genotyping due to phase assertions, so we return an empty
-        // vector as the representative record.
-        // Update genotype vector's RNC to loss for all samples in this dataset
-        for (int i = 0; i < bcf_nsamples; i++) {
-            genotypes[sample_mapping.at(i)*2].RNC = NoCallReason::LostAllele;
-            genotypes[sample_mapping.at(i)*2+1].RNC = NoCallReason::LostAllele;
-        }
     }
 
     return Status::OK();
@@ -659,6 +793,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                            samples2, datasets, iterators));
     assert(samples.size() == samples2->size());
 
+    AlleleDepthHelper adh(cfg);
+
     // for each pertinent dataset
     for (const auto& dataset : *datasets) {
         if (ext_abort && *ext_abort) {
@@ -702,25 +838,30 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             }
         }
 
-        update_orig_calls_for_loss(cfg, records, bcf_nsamples, dataset_header.get(), sample_mapping, loss_trackers);
+        // update loss trackers
+        update_orig_calls_for_loss(cfg, records, bcf_nsamples, dataset_header.get(),
+                                   sample_mapping, loss_trackers);
 
+        // find the variant records and process the surrounding reference
+        // confidence records
         vector<int> min_ref_depth(samples.size(), -1);
-        shared_ptr<bcf1_t> rep_record;
-        S(find_rep_record(cfg, site, records, dataset, dataset_header.get(), bcf_nsamples, sample_mapping, genotypes, min_ref_depth, rep_record));
+        vector<shared_ptr<bcf1_t>> variant_records;
+        NoCallReason rnc = NoCallReason::MissingData;
+        S(find_variant_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
+                               sample_mapping, records, adh, rnc, min_ref_depth, variant_records));
 
-        // non-empty rep_record
-        if (rep_record) {
-
-            // Populate FORMAT fields to be lifted over
-            for (auto& format_helper : format_helpers) {
-                for (auto& record : records){
-                    format_helper->add_record_data(dataset, dataset_header.get(), record.get(), sample_mapping);
-                }
+        if (rnc != NoCallReason::N_A) {
+            // no call for the samples in this dataset (several possible
+            // reasons)
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC = rnc;
             }
-
-            // Perform genotyping
-            S(translate_genotypes(cfg, site, dataset, dataset_header.get(), rep_record.get(),
-                                  sample_mapping, genotypes, min_ref_depth, loss_trackers));
+        } else {
+            // make genotype calls for the samples in this dataset
+            S(translate_genotypes(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
+                                  sample_mapping, variant_records, adh, min_ref_depth,
+                                  genotypes, loss_trackers));
         }
     }
 
@@ -767,14 +908,18 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // RNC
     vector<const char*> rnc;
     for (const auto& c : genotypes) {
-        char* v = "M";
+        char* v = (char*) "M";
+        #define RNC_CASE(reason,code) case NoCallReason::reason: v = (char*) code ; break;
         switch (c.RNC) {
-            case NoCallReason::N_A:
-                v = ".";
-                break;
-            case NoCallReason::LostAllele:
-                v = "L";
-                break;
+            RNC_CASE(N_A,".")
+            RNC_CASE(PartialData,"P")
+            RNC_CASE(InsufficientDepth,"D")
+            RNC_CASE(LostDeletion,"-")
+            RNC_CASE(LostAllele,"L")
+            RNC_CASE(UnphasedVariants,"U")
+            RNC_CASE(OverlappingVariants,"O")
+            default:
+                assert(c.RNC == NoCallReason::MissingData);
         }
         rnc.push_back(v);
     }
