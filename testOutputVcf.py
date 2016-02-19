@@ -135,25 +135,52 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
     assert(i_row.samples == t_row.samples)
 
     if (i_row.REF != t_row.REF):
+        WARNING("Found differing ref! {0} {1}".format(i_row.REF, t_row.REF))
         return (i_row, t_row)
 
     if (i_row.ALT != t_row.ALT):
+        WARNING("Found differeing alts! {0} {1}".format(i_row.ALT, t_row.ALT))
         return (i_row, t_row)
 
     for info_f in info_fs:
-        try:
+        n_present = sum([1 for row in (i_row, t_row) if info_f in row.INFO])
+
+        if not n_present:
+            # INFO field is missing in both truth and output
+            # We consider this as agreement
+            continue
+        elif n_present == 1:
+            # INFO field is missing in one of the files, we consider
+            # this as a mismatch
+            WARNING("Missing INFO field: {0} in matched rows: {1}; {2}".format(info_f, i_row, t_row))
+            return (i_row, t_row)
+        else:
+            # INFO field is in both files, we compare the values for
+            # mismatch
             if i_row.INFO[info_f] != t_row.INFO[info_f]:
                 return (i_row, t_row)
-        except AttributeError:
-            WARNING("Missing INFO field: {0} in matched rows: {1}; {2}".format(info_f, i_row, t_row))
 
-    for (i_sample, t_sample) in zip(i_row.samples, t_row.samples):
-        for format_f in format_fs:
-            try:
-                if i_sample[format_f] != t_sample[format_f]:
-                    return (i_row, t_row)
-            except AttributeError:
+    for format_f in format_fs:
+
+        n_present = sum([1 for row in (i_row, t_row) if format_f in row])
+
+        for (i_sample, t_sample) in zip(i_row.samples, t_row.samples):
+
+            if not n_present:
+                # FORMAT field is missing in both truth and output
+                # We consider this as agreement
+                continue
+            elif n_present == 1:
+                # INFO field is missing in one of the files, we consider
+                # this as a mismatch
                 WARNING("Missing FORMAT field: {0} in matched rows: {1}; {2}".format(format_f, i_row, t_row))
+                return (i_row, t_row)
+            else:
+                # FORMAT field is in both files, we compare the values for
+                # mismatch
+                if i_sample[format_f] != t_sample[format_f]:
+                    WARNING("Found differeing format value for {0}: {1}, {2}".format(format_f, i_sample[format_f], t_sample[format_f]))
+                    return (i_row, t_row)
 
     # Finished comparison without any differences noted
     return None

@@ -584,9 +584,8 @@ TEST_CASE("join record logic test: test liftover fields") {
     genotyper_config cfg(GLnexusOutputFormat::VCF);
 
     vector<string> orig_names;
-    orig_names.push_back("DP");
 
-    retained_format_field dp_field = retained_format_field(orig_names, "DP", RetainedFieldType::INT, FieldCombinationMethod::MIN, RetainedFieldNumber::BASIC, 1);
+    retained_format_field dp_field = retained_format_field({"DP", "MIN_DP"}, "DP", RetainedFieldType::INT, FieldCombinationMethod::MIN, RetainedFieldNumber::BASIC, 1);
     dp_field.description = "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">";
 
 
