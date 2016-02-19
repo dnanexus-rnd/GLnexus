@@ -398,10 +398,21 @@ struct StatsRangeQuery {
     }
 };
 
+enum class UnifierPreference { Common, Small };
+
 struct unifier_config {
-    /// Maximum number of alleles per unified site; excess rare alleles will
-    /// be pruned. If zero, then no specific limit is enforced.
+    /// Maximum number of alleles per unified site; excess alleles will be
+    /// pruned. If zero, then no specific limit is enforced.
     size_t max_alleles_per_site = 0;
+
+    /// The unifier may need to prune alleles if they're too numerous and/or
+    /// overlap in conflicting ways. The preference controls which alleles the
+    /// unifier will try hardest to keep: common alleles (default), or alleles
+    /// editing the smallest portion of the reference (least likely to
+    /// conflict with other alleles).
+    UnifierPreference preference = UnifierPreference::Common;
+
+    static Status of_yaml(const YAML::Node& yaml, unifier_config& ans);
 };
 
 enum class GLnexusOutputFormat {
