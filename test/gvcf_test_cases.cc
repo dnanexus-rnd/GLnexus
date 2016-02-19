@@ -42,6 +42,9 @@ class GVCFTestCase {
     // Name of curated case
     string name;
 
+    // unifier configuration
+    unifier_config unifier_cfg;
+
     // Filenames of input gvcfs
     set<string> input_gvcfs;
 
@@ -184,6 +187,11 @@ public:
         V(n_header.IsScalar(), "header string invalid");
         header = n_header.Scalar();
 
+        const auto n_unifier_config = n_input["unifier_config"];
+        if (n_unifier_config) {
+            S(unifier_config::of_yaml(n_unifier_config, unifier_cfg));
+        }
+
         // Stage temp folders for output
         S(create_folder(TEMP_DIR));
         temp_dir_path = TEMP_DIR + name + "/";
@@ -258,7 +266,7 @@ public:
         Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), als);
         REQUIRE(s.ok());
 
-        s =unified_sites(unifier_config(), als, sites);
+        s = unified_sites(unifier_cfg, als, sites);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
@@ -605,4 +613,8 @@ TEST_CASE("join record logic test: overlapping records") {
 
 TEST_CASE("lost deletion") {
     GVCFTestCase("lost_deletion").perform_gvcf_test();
+}
+
+TEST_CASE("join records with unifier preference for small alleles") {
+    GVCFTestCase("join_records_prefer_small").perform_gvcf_test();
 }

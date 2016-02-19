@@ -34,15 +34,35 @@ struct minimized_allele_info {
 using minimized_alleles = map<allele,minimized_allele_info>;
 using minimized_allele = pair<allele,minimized_allele_info>;
 
-// Defines an ordering on minimized alleles used in a couple places below.
-// They're ordered by decreasing observation count, then by increasing
-// absolute difference in size between REF and ALT.
-bool minimized_allele_lt(const minimized_allele& p1, const minimized_allele& p2) {
-    if (p2.second.observation_count != p1.second.observation_count)
-        return p2.second.observation_count < p1.second.observation_count;
+// orders on minimized alleles corresponding to the UnifierPreferences
+
+bool minimized_allele_delta_lt(const minimized_allele& p1, const minimized_allele& p2) {
     auto d1 = std::max(p1.first.dna.size(),p1.first.pos.size()) - std::min(p1.first.dna.size(),p1.first.pos.size());
     auto d2 = std::max(p2.first.dna.size(),p2.first.pos.size()) - std::min(p2.first.dna.size(),p2.first.pos.size());
     return d1 < d2;
+}
+
+// UnifierPreference::Small
+bool minimized_allele_small_lt(const minimized_allele& p1, const minimized_allele& p2) {
+    // smallest stretch of the reference
+    if (p1.first.pos.size() != p2.first.pos.size()) {
+        return p1.first.pos.size() < p2.first.pos.size();
+    }
+    return p2.second.observation_count < p1.second.observation_count;
+}
+
+// UnifierPreference::Common
+bool minimized_allele_common_lt(const minimized_allele& p1, const minimized_allele& p2) {
+    if (p2.second.observation_count != p1.second.observation_count)
+        return p2.second.observation_count < p1.second.observation_count;
+    return minimized_allele_delta_lt(p1, p2);
+}
+
+std::function<bool(const minimized_allele&, const minimized_allele&)> minimized_allele_lt(UnifierPreference pref) {
+    if (pref == UnifierPreference::Small) {
+        return minimized_allele_small_lt;
+    }
+    return minimized_allele_common_lt;
 }
 
 /// Minimize an ALT allele by trimming bases equal to the reference from
@@ -160,10 +180,10 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
 // most common alleles. (We have an 0-1 knapsack problem where alleles are
 // valued by frequency, and alleles not sharing at least one reference
 // position in common conflict.)
-auto prune_alleles(const minimized_alleles& alleles, minimized_alleles& pruned) {
+auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, minimized_alleles& pruned) {
     // sort the alt alleles by decreasing observation count (+ some tiebreakers)
     vector<minimized_allele> valleles(alleles.begin(), alleles.end());
-    sort(valleles.begin(), valleles.end(), minimized_allele_lt);
+    sort(valleles.begin(), valleles.end(), minimized_allele_lt(cfg.preference));
 
     // Build the sites by considering each alt allele in that order, and
     // accepting or rejecting it as follows. If the allele overlaps exactly
@@ -223,7 +243,7 @@ auto prune_alleles(const minimized_alleles& alleles, minimized_alleles& pruned) 
 // alleles at a site share at least one position; some alleles may be pruned
 // to achieve this. The result maps the range of each site to a pair of the
 // discovered REF alleles and the minimized ALT alleles.
-Status delineate_sites(const discovered_alleles& alleles,
+Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alleles,
                        map<range,pair<discovered_alleles,minimized_alleles>>& ans) {
     Status s;
 
@@ -241,7 +261,7 @@ Status delineate_sites(const discovered_alleles& alleles,
         S(minimize_alleles(active_region.second, refs, alts));
 
         // prune alt alleles as necessary to yield sites
-        auto sites = prune_alleles(alts, pruned);
+        auto sites = prune_alleles(cfg, alts, pruned);
         // TODO: should we do anything with the pruned alleles?
 
         for (const auto& site : sites) {
@@ -308,9 +328,11 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     allele ref(pos, "A");
     S(unify_ref(pos, refs, ref));
 
-    // sort the alt alleles by decreasing observation count (+ some tiebreakers)
+    // For presentation in the unified site, sort the alt alleles by
+    // decreasing observation count (+ some tiebreakers). Note, this may be a
+    // different sort order than used in prune_allele earlier.
     vector<minimized_allele> valts(alts.begin(), alts.end());
-    sort(valts.begin(), valts.end(), minimized_allele_lt);
+    sort(valts.begin(), valts.end(), minimized_allele_common_lt);
 
     // enforce max_alleles_per_site. NB, valts does not include the ref
     // allele, so we're truncating valts to cfg.max_alleles_per_site-1
@@ -366,7 +388,7 @@ Status unified_sites(const unifier_config& cfg,
     Status s;
 
     map<range,pair<discovered_alleles,minimized_alleles>> sites;
-    S(delineate_sites(alleles, sites));
+    S(delineate_sites(cfg, alleles, sites));
 
     ans.clear();
     for (const auto& site : sites) {

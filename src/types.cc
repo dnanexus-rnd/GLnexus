@@ -286,4 +286,37 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     return Status::OK();
 }
 
+Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
+    Status s;
+
+    ans = unifier_config();
+
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("unifier_config::of_yaml: " msg)
+    V(yaml.IsMap(), "not a map at top level");
+
+    const auto n_max_alleles_per_site = yaml["max_alleles_per_site"];
+    if (n_max_alleles_per_site) {
+        V(n_max_alleles_per_site.IsScalar(), "invalid max_alleles_per_site");
+        int max_alleles_per_site = n_max_alleles_per_site.as<int>();
+        V(max_alleles_per_site > 0, "invalid max_alleles_per_site");
+        ans.max_alleles_per_site = (size_t) max_alleles_per_site;
+    }
+
+    const auto n_preference = yaml["preference"];
+    if (n_preference) {
+        V(n_preference.IsScalar(), "invalid preference");
+        const string& preference = n_preference.Scalar();
+        if (preference == "common") {
+            ans.preference = UnifierPreference::Common;
+        } else if (preference == "small") {
+            ans.preference = UnifierPreference::Small;
+        } else {
+            V(false, "invalid preference");
+        }
+    }
+
+    #undef V
+    return Status::OK();
+}
+
 }
