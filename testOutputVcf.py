@@ -131,9 +131,6 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
     # Expect this function to be called only for rows with identical ranges
     assert(range(i_row) == range(t_row))
 
-    # Expect comparison for identical samples
-    assert(i_row.samples == t_row.samples)
-
     if (i_row.REF != t_row.REF):
         return (i_row, t_row)
 

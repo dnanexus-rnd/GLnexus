@@ -487,6 +487,42 @@ int main_dump(int argc, char *argv[]) {
     return 0;
 }
 
+// hard-coded configuration presets for unifier & genotyper. TODO: these
+// should reside in some user-modifiable yml file
+const char* config_presets_yml = R"eof(
+test:
+  genotyper_config:
+    liftover_fields:
+      - orig_names: [DP]
+        name: DP
+        description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+        type: int
+        combi_method: min
+        number: basic
+        count: 1
+)eof";
+
+GLnexus::Status load_config_preset(const std::string& name,
+                                   GLnexus::unifier_config& unifier_cfg,
+                                   GLnexus::genotyper_config& genotyper_cfg) {
+    GLnexus::Status s;
+    YAML::Node yaml = YAML::Load(config_presets_yml);
+    if (!yaml) {
+        return GLnexus::Status::NotFound("unknown configuration preset", name);
+    }
+    if (!yaml.IsMap()) {
+        return GLnexus::Status::Invalid("configuration presets");
+    }
+    if (yaml["unifier_config"]) {
+        S(GLnexus::unifier_config::of_yaml(yaml["unifier_config"], unifier_cfg));
+    }
+    if (yaml["genotyper_config"]) {
+        S(GLnexus::genotyper_config::of_yaml(yaml["genotyper_config"], genotyper_cfg));
+    }
+    return GLnexus::Status::OK();
+}
+
+
 void help_genotype(const char* prog) {
     cerr << "usage: " << prog << " genotype [options] /db/path chrom:1234-2345" << endl
          << "Genotype all samples in the database in the given interval. The positions are" << endl
@@ -495,6 +531,7 @@ void help_genotype(const char* prog) {
          << "Options:" << endl
          << "  --residuals, -r      generate detailed residuals output file" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+         << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
          << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
 }
@@ -509,17 +546,19 @@ int main_genotype(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"residuals", no_argument, 0, 'r'},
         {"bed", required_argument, 0, 'b'},
+        {"config", required_argument, 0, 'c'},
         {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
+    string config_preset;
     bool residuals = false;
     size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hrb:t:",
+    while (-1 != (c = getopt_long(argc, argv, "hrb:c:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -531,6 +570,9 @@ int main_genotype(int argc, char *argv[]) {
                 break;
             case 'r':
                 residuals = true;
+                break;
+            case 'c':
+                config_preset = string(optarg);
                 break;
             case 't':
                 threads = strtoul(optarg, nullptr, 10);
@@ -567,6 +609,13 @@ int main_genotype(int argc, char *argv[]) {
             return 1;
         }
     }
+
+    GLnexus::unifier_config unifier_cfg;
+    GLnexus::genotyper_config genotyper_cfg;
+    if (config_preset.size()) {
+        H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
+    }
+    genotyper_cfg.output_residuals = residuals;
 
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -647,15 +696,12 @@ int main_genotype(int argc, char *argv[]) {
             console->info() << "discovered " << alleles.size() << " alleles";
 
             vector<GLnexus::unified_site> sites;
-            H("unify sites", GLnexus::unified_sites(GLnexus::unifier_config(), alleles, sites));
+            H("unify sites", GLnexus::unified_sites(unifier_cfg, alleles, sites));
             console->info() << "unified to " << sites.size() << " sites";
 
             GLnexus::consolidated_loss losses;
-            GLnexus::genotyper_config genoCfg = GLnexus::genotyper_config();
-            genoCfg.output_residuals = residuals;
-
             H("genotype sites",
-              svc->genotype_sites(genoCfg, sampleset, sites, string("-"), losses));
+              svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-"), losses));
             console->info("genotyping complete!");
 
             if (losses.size() < 100) {

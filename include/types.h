@@ -467,6 +467,8 @@ struct retained_format_field {
 
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0) : orig_names(orig_names_), name(name_), type(type_), combi_method(combi_method_), number(number_), count(count_) {}
+
+    static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);
 };
 
 struct genotyper_config {
@@ -496,6 +498,8 @@ struct genotyper_config {
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
+
+    static Status of_yaml(const YAML::Node& yaml, genotyper_config& ans);
 };
 
 

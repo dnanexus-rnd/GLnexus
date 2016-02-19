@@ -319,4 +319,105 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     return Status::OK();
 }
 
+Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retained_format_field>& ans) {
+    Status s;
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("retained_format_field::of_yaml: " msg);
+
+    const auto n_orig_names = yaml["orig_names"];
+    V(n_orig_names && (n_orig_names.size() > 0), "missing orig_names");
+    vector<string> orig_names;
+    for (YAML::const_iterator it = n_orig_names.begin(); it != n_orig_names.end(); ++it) {
+        V(it->IsScalar(), "invalid orig_names");
+        orig_names.push_back(it->Scalar());
+    }
+
+    string name;
+    const auto n_name = yaml["name"];
+    V(n_name && (n_name.Scalar().size() > 0), "missing name");
+    name = n_name.Scalar();
+
+    string description;
+    const auto n_description = yaml["description"];
+    V(n_description && (n_description.Scalar().size() > 0), "missing description");
+    description = n_description.Scalar();
+
+    RetainedFieldType type;
+    const auto n_type = yaml["type"];
+    V(n_type && n_type.IsScalar(), "missing type");
+    string s_type = n_type.Scalar();
+    if (s_type == "int") {
+        type = RetainedFieldType::INT;
+    } else if (s_type == "float") {
+        type = RetainedFieldType::FLOAT;
+    } else {
+        V(false, "invalid type");
+    }
+
+    RetainedFieldNumber number;
+    const auto n_number = yaml["number"];
+    V(n_number && n_number.IsScalar(), "missing number");
+    string s_number = n_number.Scalar();
+    if (s_number == "basic") {
+        number = RetainedFieldNumber::BASIC;
+    } else if (s_number == "alt") {
+        number = RetainedFieldNumber::ALT;
+    } else if (s_number == "genotype") {
+        number = RetainedFieldNumber::GENOTYPE;
+    } else {
+        V(false, "invalid number");
+    }
+
+    int count = 0;
+    if (number == RetainedFieldNumber::BASIC) {
+        const auto n_count = yaml["count"];
+        V(n_count && n_count.IsScalar(), "missing count");
+        count = n_count.as<int>();
+    }
+
+    FieldCombinationMethod combi_method;
+    const auto n_combi_method = yaml["combi_method"];
+    V(n_combi_method && n_combi_method.IsScalar(), "missing combi_method");
+    string s_combi_method = n_combi_method.Scalar();
+    if (s_combi_method == "min") {
+        combi_method = FieldCombinationMethod::MIN;
+    } else if (s_combi_method == "max") {
+        combi_method = FieldCombinationMethod::MAX;
+    } else {
+        V(false, "invalid combi_method");
+    }
+
+    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count));
+    ans->description = description;
+    #undef V
+    return Status::OK();
 }
+
+Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) {
+    Status s;
+    ans = genotyper_config();
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("genotyper_config::of_yaml: " msg);
+
+    const auto n_required_dp = yaml["required_dp"];
+    if (n_required_dp) {
+        V(n_required_dp.IsScalar(), "invalid required_dp");
+        ans.required_dp = n_required_dp.as<int>();
+    }
+
+    // TODO: allele_dp_format, ref_symbolic_allele, ref_dp_format
+    // TODO: output_residuals, output_format
+
+    const auto n_liftover_fields = yaml["liftover_fields"];
+    if (n_liftover_fields) {
+        V(n_liftover_fields.IsSequence(), "invalid liftover_fields");
+        for (YAML::const_iterator it = n_liftover_fields.begin(); it != n_liftover_fields.end(); ++it) {
+            unique_ptr<retained_format_field> rff;
+            S(retained_format_field::of_yaml(*it, rff));
+            ans.liftover_fields.push_back(*rff);
+        }
+    }
+
+    #undef V
+    return Status::OK();
+}
+
+} // namespace GLnexus
