@@ -44,9 +44,8 @@ static bool is_pseudo_ref_record(const bcf_hdr_t* hdr, bcf1_t* record) {
 class IFormatFieldHelper {
 
 public:
-
     // basic information for the retained field
-     retained_format_field field_info;
+    retained_format_field field_info;
 
 
     // Expected number of samples in output bcf record
@@ -136,6 +135,7 @@ public:
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record, const map<int, int>& sample_mapping) {
         bool found = false;
         for (auto& field_name : field_info.orig_names) {
+            if (found) break;
             T *v = nullptr;
             int vsz = 0;
 
@@ -187,6 +187,7 @@ public:
         Status s;
         vector<T> ans;
         s = combine_format_data(ans);
+
         if (!s.ok()) {
             // TODO: Combine function failed; currently ignore error, do not
             // update this field, and move on. More intelligent error handling?
@@ -858,6 +859,12 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                     genotypes[sample_mapping.at(i)*2+1].RNC = rnc;
             }
         } else {
+
+            for (auto& record : records) {
+                for (auto& format_helper : format_helpers) {
+                    format_helper->add_record_data(dataset, dataset_header.get(), record.get(), sample_mapping);
+                }
+            }
             // make genotype calls for the samples in this dataset
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                   sample_mapping, variant_records, adh, min_ref_depth,
