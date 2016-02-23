@@ -44,6 +44,12 @@
       "optional": true
     },
     {
+      "name": "config",
+      "description": "configuration preset",
+      "class": "string",
+      "optional": true
+    },
+    {
       "name": "output_name",
       "class": "string",
       "default": "GLnexus"
