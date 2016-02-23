@@ -577,7 +577,7 @@ TEST_CASE("join record logic test: insufficient ref depth") {
 
 TEST_CASE("join record logic test: test liftover fields") {
 
-    vector<string> v_formats = {"GT", "RNC", "DP", "SB"};
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};
     vector<string> v_infos = {};
     GVCFTestCase join_record_case("join_records_formats_basic", v_formats, v_infos);
 
@@ -588,11 +588,19 @@ TEST_CASE("join record logic test: test liftover fields") {
     retained_format_field dp_field = retained_format_field({"DP", "MIN_DP"}, "DP", RetainedFieldType::INT, FieldCombinationMethod::MIN, RetainedFieldNumber::BASIC, 1);
     dp_field.description = "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">";
 
+    retained_format_field gq_field = retained_format_field({"GQ"}, "GQ", RetainedFieldType::INT, FieldCombinationMethod::MAX, RetainedFieldNumber::BASIC, 1);
+    gq_field.description = "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">";
 
     retained_format_field sb_field = retained_format_field({"SB"}, "SB", RetainedFieldType::INT, FieldCombinationMethod::MAX, RetainedFieldNumber::BASIC, 4);
     sb_field.description = "##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.\">";
 
+    retained_format_field ad_field = retained_format_field({"AD"}, "AD", RetainedFieldType::INT, FieldCombinationMethod::MIN,
+        RetainedFieldNumber::ALLELES);
+    ad_field.description = "##FORMAT=<ID=AD,Number=.,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">";
+
+    cfg.liftover_fields.push_back(ad_field);
     cfg.liftover_fields.push_back(dp_field);
+    cfg.liftover_fields.push_back(gq_field);
     cfg.liftover_fields.push_back(sb_field);
     join_record_case.perform_gvcf_test(cfg);
 }

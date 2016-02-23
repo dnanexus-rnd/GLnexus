@@ -430,7 +430,12 @@ enum class RetainedFieldNumber {
     ALT,
 
     // In vcf specification, corresponds to Number=G
-    GENOTYPE
+    GENOTYPE,
+
+    // Not a standard vcf specification, corresponds to 1 value per allele (REF + ALT)
+    // Example, GATK's AD field (which is represented in vcf spec as Number=.)
+    ALLELES,
+
 };
 
 struct retained_format_field {

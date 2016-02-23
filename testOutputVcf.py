@@ -163,6 +163,7 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
 
         n_present = sum([1 for row in (i_row, t_row) if format_f in row.FORMAT])
 
+        print "GOT ", n_present, " count for FORMAT FIELD ", format_f
         for (i_sample, t_sample) in zip(i_row.samples, t_row.samples):
 
             if not n_present:
