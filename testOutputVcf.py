@@ -133,13 +133,12 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
 
     # Expect comparison for identical samples
     assert(i_row.samples == t_row.samples)
-
     if (i_row.REF != t_row.REF):
         WARNING("Found differing ref! {0} {1}".format(i_row.REF, t_row.REF))
         return (i_row, t_row)
 
     if (i_row.ALT != t_row.ALT):
-        WARNING("Found differeing alts! {0} {1}".format(i_row.ALT, t_row.ALT))
+        WARNING("Found differing alts! {0} {1}".format(i_row.ALT, t_row.ALT))
         return (i_row, t_row)
 
     for info_f in info_fs:
@@ -162,7 +161,7 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
 
     for format_f in format_fs:
 
-        n_present = sum([1 for row in (i_row, t_row) if format_f in row])
+        n_present = sum([1 for row in (i_row, t_row) if format_f in row.FORMAT])
 
         for (i_sample, t_sample) in zip(i_row.samples, t_row.samples):
 
@@ -179,7 +178,7 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
                 # FORMAT field is in both files, we compare the values for
                 # mismatch
                 if i_sample[format_f] != t_sample[format_f]:
-                    WARNING("Found differeing format value for {0}: {1}, {2}".format(format_f, i_sample[format_f], t_sample[format_f]))
+                    WARNING("Found differing format value for {0}: {1}, {2}".format(format_f, i_sample[format_f], t_sample[format_f]))
                     return (i_row, t_row)
 
     # Finished comparison without any differences noted
