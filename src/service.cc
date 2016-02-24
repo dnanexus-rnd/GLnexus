@@ -192,7 +192,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     shared_ptr<const set<string>> samples, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     Status s;
-    S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos,
+    S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, 0,
                                    samples, datasets, iterators));
 
     // Enqueue processing of each dataset on the thread pool.

@@ -269,7 +269,7 @@ TEST_CASE("RocksDB BCF retrieval") {
         s = data->dataset_header("NA12878D", hdr);
         REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), 0, records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);
@@ -297,7 +297,7 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(bcf_get_info(hdr.get(), records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
 
         // subset of records
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), 0, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 2);
         std::shared_ptr<StatsRangeQuery> srq = data->getRangeStats();
@@ -317,15 +317,15 @@ TEST_CASE("RocksDB BCF retrieval") {
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
 
         // empty results
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), 0, records);
         REQUIRE(records.size() == 0);
 
-        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), 0, records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE(records.size() == 0);
 
         // bogus dataset
-        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
+        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), 0, records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE(records.size() == 0);
 
@@ -360,7 +360,7 @@ TEST_CASE("RocksKeyValue prefix mode") {
         vector<shared_ptr<bcf1_t>> records;
 
         // subset of records
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), 0, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 2);
 
@@ -376,14 +376,14 @@ TEST_CASE("RocksKeyValue prefix mode") {
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
 
         // empty results
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), 0, records);
         REQUIRE(records.size() == 0);
 
-        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), records);
+        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), 0, records);
         REQUIRE(records.size() == 0);
 
         // bogus dataset
-        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), records);
+        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), 0, records);
         REQUIRE(records.size() == 0);
 
     }
@@ -429,12 +429,12 @@ static void queryDataset(T *data, const std::string &dataset) {
     Status s = data->dataset_header(dataset, hdr);
 
     vector<shared_ptr<bcf1_t>> records;
-    s = data->dataset_range(dataset, hdr.get(), range(0, 1005, 1010),
+    s = data->dataset_range(dataset, hdr.get(), range(0, 1005, 1010), 0,
                             records);
     assert(s.ok());
     assert(records.size() == 0);
 
-    s = data->dataset_range(dataset, hdr.get(), range(0, 2003, 2006),
+    s = data->dataset_range(dataset, hdr.get(), range(0, 2003, 2006), 0,
                             records);
     assert(s.ok());
     assert(records.size() == 3);

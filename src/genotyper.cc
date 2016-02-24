@@ -593,7 +593,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
-    S(data.sampleset_range(cache, sampleset, site.pos,
+    S(data.sampleset_range(cache, sampleset, site.pos, 0,
                            samples2, datasets, iterators));
     assert(samples.size() == samples2->size());
 
