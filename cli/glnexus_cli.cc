@@ -640,14 +640,18 @@ int main_genotype(int argc, char *argv[]) {
             console->info() << "discovering alleles in " << ranges.size() << " range(s)";
             vector<GLnexus::discovered_alleles> valleles;
             H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
-            GLnexus::discovered_alleles alleles;
-            for (const auto& als : valleles) {
-                H("merging discovered alleles", GLnexus::merge_discovered_alleles(als, alleles));
+            unsigned discovered_allele_count=0;
+            for (const auto& dsals : valleles) {
+                discovered_allele_count += dsals.size();
             }
-            console->info() << "discovered " << alleles.size() << " alleles";
+            console->info() << "discovered " << discovered_allele_count << " alleles";
 
             vector<GLnexus::unified_site> sites;
-            H("unify sites", GLnexus::unified_sites(GLnexus::unifier_config(), alleles, sites));
+            for (int i = 0; i < valleles.size(); i++) {
+                vector<GLnexus::unified_site> sites_i;
+                H("unify sites", GLnexus::unified_sites(GLnexus::unifier_config(), valleles[i], sites_i, ranges[i]));
+                sites.insert(sites.end(), sites_i.begin(), sites_i.end());
+            }
             console->info() << "unified to " << sites.size() << " sites";
 
             GLnexus::consolidated_loss losses;

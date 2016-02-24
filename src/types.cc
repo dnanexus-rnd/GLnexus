@@ -96,7 +96,7 @@ Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >&
     V(n_end && n_end.IsScalar(), "missing/invalid 'end' field");
     int end = n_end.as<int>();
 
-    V(beg >= 1 && end >= beg, "invalid beg/end coordinates");
+    V(beg >= 0 && end >= beg, "invalid beg/end coordinates");
 
     ans = range(rid, beg, end);
     return Status::OK();
@@ -181,6 +181,11 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     ans << YAML::Key << "range" << YAML::Value;
     S(range_yaml(contigs, pos, ans));
 
+    if (containing_target.rid >= 0) {
+        ans << YAML::Key << "containing_target" << YAML::Value;
+        S(range_yaml(contigs, containing_target, ans));
+    }
+
     ans << YAML::Key << "alleles";
     ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
     for (const auto& allele : alleles) {
@@ -232,6 +237,11 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     V(n_range, "missing 'range' field");
     S(range_of_yaml(n_range, contigs, ans.pos));
     #define VR(pred,msg) if (!(pred)) return Status::Invalid("unified_site_of_yaml: " msg, ans.pos.str(contigs))
+
+    const auto n_containing_target = yaml["containing_target"];
+    if (n_containing_target) {
+        S(range_of_yaml(n_containing_target, contigs, ans.containing_target));
+    }
 
     ans.alleles.clear();
     const auto n_alleles = yaml["alleles"];
