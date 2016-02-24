@@ -376,6 +376,21 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         count = n_count.as<int>();
     }
 
+    bool default_to_zero = false;
+    const auto n_default_to_zero = yaml["default_to_zero"];
+    if (n_default_to_zero) {
+        V(n_default_to_zero.IsScalar(), "invalid default_to_zero value");
+        string s_default_to_zero = n_default_to_zero.Scalar();
+
+        if (s_default_to_zero == "true") {
+            default_to_zero = true;
+        } else if (s_default_to_zero == "false") {
+            default_to_zero = false;
+        } else {
+            V(false, "invalid default_to_zero value")
+        }
+    }
+
     FieldCombinationMethod combi_method;
     const auto n_combi_method = yaml["combi_method"];
     V(n_combi_method && n_combi_method.IsScalar(), "missing combi_method");
@@ -388,7 +403,7 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         V(false, "invalid combi_method");
     }
 
-    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count));
+    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_to_zero));
     ans->description = description;
     #undef V
     return Status::OK();

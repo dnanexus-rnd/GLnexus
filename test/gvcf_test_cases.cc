@@ -377,7 +377,7 @@ public:
             s = this->check_genotypes();
             REQUIRE(s.ok());
         }
-        s = this->cleanup();
+        //s = this->cleanup();
         REQUIRE(s.ok());
         return Status::OK();
     }
