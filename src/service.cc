@@ -74,6 +74,7 @@ static Status discover_alleles_thread(const set<string>& samples,
 
         // for each BCF record
         for (const auto& record : records) {
+            assert(record->n_allele >= 3);
             range rng(record);
             assert(pos.overlaps(rng));
             if (!pos.contains(rng)) {
@@ -192,7 +193,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     shared_ptr<const set<string>> samples, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     Status s;
-    S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, 0,
+    S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, 3,
                                    samples, datasets, iterators));
 
     // Enqueue processing of each dataset on the thread pool.

@@ -559,7 +559,6 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), 0, records);
-        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);
@@ -602,6 +601,17 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(records[1]->n_allele == 2);
         REQUIRE(string(records[1]->d.allele[0]) == "A");
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
+
+        // min_alleles predicate
+        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), 3, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+
+        REQUIRE(records[0]->pos == 10009463);
+        REQUIRE(records[0]->n_allele == 3);
+        REQUIRE(string(records[0]->d.allele[0]) == "TA");
+        REQUIRE(string(records[0]->d.allele[1]) == "T");
+        REQUIRE(string(records[0]->d.allele[2]) == "<NON_REF>");
 
         // empty results
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), 0, records);
@@ -875,6 +885,49 @@ TEST_CASE("BCFData::sampleset_range") {
     check();
     s = iterators[2]->next(dataset, hdr, records);
     REQUIRE(s == StatusCode::NOT_FOUND);
+
+    // min_alleles predicate
+    rng = range(0, 100000, 300500);
+    s = data->sampleset_range_base(*cache, sampleset, rng, 3,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 3);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 1);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    check();
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 1);
+    check();
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    check();
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 0);
+    check();
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "2");
+    REQUIRE(records.size() == 0);
+    check();
+    s = iterators[2]->next(dataset, hdr, records);
+    REQUIRE(s == StatusCode::NOT_FOUND);
 }
 
 TEST_CASE("BCFKeyValueData::sampleset_range") {
@@ -996,6 +1049,37 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     check();
     REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
     REQUIRE(records.size() == 1);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    // repeat with min_alleles predicate
+    rng = range(0, 290000, 300050);
+    s = data->sampleset_range(*cache, sampleset, rng, 3,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 2);
+
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 1);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records).ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[0]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
+
+    s = iterators[1]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(records.size() == 0);
+    check();
+    REQUIRE(iterators[1]->next(dataset, hdr, records).ok());
+    REQUIRE(records.size() == 0);
     check();
     REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 

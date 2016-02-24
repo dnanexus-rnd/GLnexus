@@ -957,13 +957,18 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    for (int i=0; i < bcf->n_allele; i++) {
+    // check gVCF-specific assumptions: the last allele is a symbolic one, and
+    // the others are DNA
+    if (bcf->n_allele<2 || !regex_match(bcf->d.allele[bcf->n_allele-1], regex_symbolic_allele)) {
+        return Status::Invalid("last ALT allele isn't symbolic; is this a *g*VCF file? ",
+                               filename + " " + range(bcf).str(contigs));
+    }
+    for (int i=0; i < bcf->n_allele-1; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (regex_match(allele_i, regex_dna) || regex_match(allele_i, regex_symbolic_allele))
-            continue;
-
-        return Status::Invalid("allele is not a recognized DNA sequence ",
-                               filename + " " + allele_i +  " " + range(bcf).str(contigs));
+        if (!regex_match(allele_i, regex_dna)) {
+            return Status::Invalid("allele is not a recognized DNA sequence ",
+                                   filename + " " + allele_i +  " " + range(bcf).str(contigs));
+        }
     }
 
     // TODO: verify there's at least one ALT allele, and that each ALT allele

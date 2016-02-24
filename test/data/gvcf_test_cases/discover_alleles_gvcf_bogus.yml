@@ -24,7 +24,7 @@ input:
     - NA12878D_HiSeqX.21.10009462-10009469.bogus.gvcf: |
         NA12879
         22	10009464	.	TA	T,bogus	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
-        22	10009466	.	bogus	<NON_REF>	.	.	END=10009466	GT:DP:GQ:MIN_DP:PL	0/0:13:0:13:0,0,342
+        22	10009466	.	bogus	T,<NON_REF>	.	.	END=10009466	GT:DP:GQ:MIN_DP:PL	0/0:13:0:13:0,0,342
 
 truth_discovered_alleles:
     - range: {ref: '22', beg: 10009464, end: 10009465}
