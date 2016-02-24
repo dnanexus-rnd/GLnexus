@@ -463,7 +463,7 @@ int main_dump(int argc, char *argv[]) {
             for (const auto& dataset : *datasets) {
                 shared_ptr<const bcf_hdr_t> hdr;
                 vector<shared_ptr<bcf1_t>> records;
-                H("dataset_range", data->dataset_range_and_header(dataset, query, hdr, records));
+                H("dataset_range", data->dataset_range_and_header(dataset, query, 0, hdr, records));
 
                 int bcf_nsamples = bcf_hdr_nsamples(hdr.get());
                 for (const auto& record : records) {

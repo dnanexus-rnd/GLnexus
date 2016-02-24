@@ -13,25 +13,25 @@ input:
   body:
     - discover_alleles_trio1.vcf: |
         trio1.fa	trio1.mo	trio1.ch
-        A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	1/1
-        A	1002	.	C	G,T	.	PASS	.	GT	0/0	1/1	2/2
-        A	1011	.	CC	AG	.	PASS	.	GT	0/1	0/1	0/1
-        A	1101	.	C	A	.	PASS	.	GT	0/1	0/1	0/1
-        A	1103	.	C	G	.	PASS	.	GT	0/1	0/1	0/1
-        A	1201	.	C	A	.	PASS	.	GT	0/1	0/1	0/1
-        B	1001	.	A	AA	.	PASS	.	GT	1/1	0/1	0/1
-        B	1002	.	C	G	.	PASS	.	GT	1/1	1/1	1/1
-        B	1011	.	CC	AG	.	PASS	.	GT	0/1	0/1	0/1
-        B	1017	.	A	AG	.	PASS	.	GT	0/1	0/1	1/1
-        C	1001	.	A	G	.	PASS	.	GT	0/1	0/1	1/1
+        A	1001	.	A	G,<*>	.	PASS	.	GT	0/1	0/1	1/1
+        A	1002	.	C	G,T,<*>	.	PASS	.	GT	0/0	1/1	2/2
+        A	1011	.	CC	AG,<*>	.	PASS	.	GT	0/1	0/1	0/1
+        A	1101	.	C	A,<*>	.	PASS	.	GT	0/1	0/1	0/1
+        A	1103	.	C	G,<*>	.	PASS	.	GT	0/1	0/1	0/1
+        A	1201	.	C	A,<*>	.	PASS	.	GT	0/1	0/1	0/1
+        B	1001	.	A	AA,<*>	.	PASS	.	GT	1/1	0/1	0/1
+        B	1002	.	C	G,<*>	.	PASS	.	GT	1/1	1/1	1/1
+        B	1011	.	CC	AG,<*>	.	PASS	.	GT	0/1	0/1	0/1
+        B	1017	.	A	AG,<*>	.	PASS	.	GT	0/1	0/1	1/1
+        C	1001	.	A	G,<*>	.	PASS	.	GT	0/1	0/1	1/1
     - discover_alleles_trio2.vcf: |
         trio2.fa	trio2.mo	trio2.ch
-        A	1001	.	A	G	.	PASS	.	GT	0/1	0/1	0/0
-        A	1002	.	C	A	.	PASS	.	GT	1/1	1/1	1/1
-        A	1011	.	CCC	AGA	.	PASS	.	GT	0/1	0/1	0/0
-        A	1101	.	CCC	AAA	.	PASS	.	GT	0/1	0/1	0/0
-        B	1002	.	CCCCCCCCCCCCCCC	AAAAAAAAAAAAAAA	.	PASS	.	GT	0/0	1/1	1/0
-        C	1001	.	G	A	.	PASS	.	GT	0/1	0/1	1/1
+        A	1001	.	A	G,<*>	.	PASS	.	GT	0/1	0/1	0/0
+        A	1002	.	C	A,<*>	.	PASS	.	GT	1/1	1/1	1/1
+        A	1011	.	CCC	AGA,<*>	.	PASS	.	GT	0/1	0/1	0/0
+        A	1101	.	CCC	AAA,<*>	.	PASS	.	GT	0/1	0/1	0/0
+        B	1002	.	CCCCCCCCCCCCCCC	AAAAAAAAAAAAAAA,<*>	.	PASS	.	GT	0/0	1/1	1/0
+        C	1001	.	G	A,<*>	.	PASS	.	GT	0/1	0/1	1/1
 
 truth_unified_sites:
     - range: {ref: "A", beg: 1001, end: 1001}

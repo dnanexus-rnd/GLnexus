@@ -140,14 +140,15 @@ Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &an
 
 // Get the range of the serialized BCF record starting at memory address
 // [buf+start], without deserializing the whole record.
-Status bcf_raw_range(const char *buf, int start, size_t len, range& ans) {
+Status bcf_raw_range(const char *buf, int start, size_t len, range& rng, unsigned& n_allele) {
     BOUNDS_CHECK(start + 32, len, "reading BCF record range");
 
     uint32_t *x = (uint32_t*) &buf[start];
     uint32_t rid = x[2];
     uint32_t beg = x[3];
     uint32_t rlen = x[4];
-    ans = range(rid, beg, beg + rlen);
+    rng = range(rid, beg, beg + rlen);
+    n_allele = x[6]>>16;
     return Status::OK();
 }
 
@@ -341,8 +342,8 @@ Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
     return bcf_raw_read_from_mem(buf_, current_, bufsz_, ans.get(), reclen);
 }
 
-Status BCFScanner::read_range(range& ans) {
-    return bcf_raw_range(buf_, current_, bufsz_, ans);
+Status BCFScanner::read_range(range& rng, unsigned& n_allele) {
+    return bcf_raw_range(buf_, current_, bufsz_, rng, n_allele);
 }
 
 /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
