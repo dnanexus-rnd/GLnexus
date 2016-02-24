@@ -600,23 +600,23 @@ static Status scan_bucket(
 
     while (scanner.valid()) {
         srq.nBCFRecordsRead++; // statistics counter for BCF records
-        S(scanner.read_range(cur_range));
+        unsigned n_allele;
+        S(scanner.read_range(cur_range, n_allele));
         assert(cur_range.rid == query.rid);
         assert(last_range <= cur_range);
         assert(cur_range.overlaps(bucket));
 
-        if (cur_range.overlaps(query)
-            && (include_danglers || cur_range.beg >= bucket.beg)) {
-            // TODO: push min_alleles predicate down into BCFScanner
+        if (n_allele >= min_alleles &&
+            cur_range.overlaps(query) &&
+            (include_danglers || cur_range.beg >= bucket.beg)) {
             shared_ptr<bcf1_t> vt;
             S(scanner.read(vt));
-            if (vt->n_allele >= min_alleles) {
-                if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
-                    return Status::IOError("BCFKeyValueData bcf_unpack",
-                                           dataset + "@" + query.str());
-                }
-                records.push_back(vt);
+            assert(vt->n_allele == n_allele);
+            if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
+                return Status::IOError("BCFKeyValueData bcf_unpack",
+                                       dataset + "@" + query.str());
             }
+            records.push_back(vt);
         } else if (cur_range.beg >= query.end) {
             // We can quit the scan at this point since the bucket's remaining
             // records all begin past the end of the query range.

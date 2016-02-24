@@ -193,6 +193,10 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     shared_ptr<const set<string>> samples, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     Status s;
+
+    // Query for (iterators to) records overlapping pos in all the data sets.
+    // We query with min_alleles=3 to get variant records only (excluding
+    // reference confidence records which have 2 alleles)
     S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, 3,
                                    samples, datasets, iterators));
 
