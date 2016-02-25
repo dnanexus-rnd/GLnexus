@@ -490,22 +490,44 @@ int main_dump(int argc, char *argv[]) {
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
 const char* config_presets_yml = R"eof(
-test:
-  genotyper_config:
-    liftover_fields:
-      - orig_names: [DP]
-        name: DP
-        description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
-        type: int
-        combi_method: min
-        number: basic
-        count: 1
+genotyper_config:
+  liftover_fields:
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [SB]
+      name: SB
+      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.\">'
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_to_zero: true
+      count: 0
 )eof";
 
 GLnexus::Status load_config_preset(const std::string& name,
                                    GLnexus::unifier_config& unifier_cfg,
                                    GLnexus::genotyper_config& genotyper_cfg) {
     GLnexus::Status s;
+    cerr << "Loading config "<< endl << config_presets_yml;
     YAML::Node yaml = YAML::Load(config_presets_yml);
     if (!yaml) {
         return GLnexus::Status::NotFound("unknown configuration preset", name);
@@ -617,6 +639,7 @@ int main_genotype(int argc, char *argv[]) {
     }
     genotyper_cfg.output_residuals = residuals;
 
+    cerr << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields." << endl;
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
 
