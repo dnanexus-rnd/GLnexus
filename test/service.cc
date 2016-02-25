@@ -33,12 +33,12 @@ public:
         return inner_.dataset_header(dataset, hdr);
     }
 
-    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos, vector<shared_ptr<bcf1_t> >& records) override {
+    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos, unsigned min_alleles, vector<shared_ptr<bcf1_t> >& records) override {
         if (i_++ % fail_every_ == 0) {
             failed_once_ = true;
             return Status::IOError("SIM");
         }
-        return inner_.dataset_range(dataset, hdr, pos, records);
+        return inner_.dataset_range(dataset, hdr, pos, min_alleles, records);
     }
 
     bool failed_once() { return failed_once_; }

@@ -109,8 +109,10 @@
   "runSpec": {
     "interpreter": "bash",
     "file": "src/code.sh",
-    "execDepends": [{"name": "liblz4-dev"},
-                    {"name": "libsnappy1"}],
+    "execDepends": [
+      {"name": "liblz4-dev"},
+      {"name": "libsnappy-dev"}
+    ],
     "systemRequirements": {
       "main": {
         "instanceType": "mem1_ssd1_x2"

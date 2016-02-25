@@ -113,7 +113,7 @@ int compare_query(T &data, MetadataCache &cache,
     shared_ptr<const set<string>> samples, datasets;
 
     // simple iterator
-    s = data.sampleset_range_base(cache, sampleset, rng,
+    s = data.sampleset_range_base(cache, sampleset, rng, 0,
                                   samples, datasets, iterators);
     assert(s.ok());
 
@@ -131,7 +131,7 @@ int compare_query(T &data, MetadataCache &cache,
 
     // sophisticated iterator
     auto resultsSoph = make_shared<IterResults>();
-    s = data.sampleset_range(cache, sampleset, rng,
+    s = data.sampleset_range(cache, sampleset, rng, 0,
                              samples, datasets, iterators);
     assert(s.ok());
     for (int i=0; i < iterators.size(); i++) {

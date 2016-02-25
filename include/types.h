@@ -253,6 +253,9 @@ Status discovered_alleles_of_yaml(const YAML::Node&,
 struct unified_site {
     range pos;
 
+    /// Optional: the sequencing target range (e.g. exon) containing this site
+    range containing_target;
+
 
     /// Alleles at the position.
 
@@ -279,7 +282,7 @@ struct unified_site {
         return observation_count < rhs.observation_count;
     }
 
-    unified_site(const range& pos_) noexcept : pos(pos_) {}
+    unified_site(const range& pos_) noexcept : pos(pos_), containing_target(-1,-1,-1) {}
 
     Status yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
                 YAML::Emitter& out) const;

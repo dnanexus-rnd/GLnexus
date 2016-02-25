@@ -49,17 +49,20 @@ public:
     // BCFData
     Status dataset_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
-    Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr, const range& pos,
+    Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr,
+                         const range& pos, unsigned min_alleles,
                          std::vector<std::shared_ptr<bcf1_t> >& records) override;
 
-    Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset, const range& pos,
+    Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset,
+                           const range& pos, unsigned min_alleles,
                            std::shared_ptr<const std::set<std::string>>& samples,
                            std::shared_ptr<const std::set<std::string>>& datasets,
                            std::vector<std::unique_ptr<RangeBCFIterator>>& iterators) override;
 
     // Provide a way to call the non-optimized base implementation of
     // sampleset_range. Mostly for unit testing.
-    Status sampleset_range_base(const MetadataCache& metadata, const std::string& sampleset, const range& pos,
+    Status sampleset_range_base(const MetadataCache& metadata, const std::string& sampleset,
+                                const range& pos, unsigned min_alleles,
                                 std::shared_ptr<const std::set<std::string>>& samples,
                                 std::shared_ptr<const std::set<std::string>>& datasets,
                                 std::vector<std::unique_ptr<RangeBCFIterator>>& iterators);

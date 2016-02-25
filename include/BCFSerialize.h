@@ -84,8 +84,8 @@ class BCFScanner {
     // move the cursor to the next record
     Status next();
 
-    // efficiently read just the range of the current record
-    Status read_range(range& ans);
+    // efficiently read just the range and n_allele of the current record
+    Status read_range(range& rng, unsigned& n_allele);
 
     // read the current record into a bcf1_t, which is NOT unpacked.
     Status read(std::shared_ptr<bcf1_t>& ans);
