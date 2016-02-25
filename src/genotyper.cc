@@ -187,7 +187,6 @@ class FormatFieldHelper : public IFormatFieldHelper {
         vector<string> depth_fields = {"DP", "MIN_DP"};
         bool found = false;
 
-        cout << "Handling AD case for " << record->rid << " " << record->pos << endl;
         // Expect only 1 value (corresponding the REF record)
         // This conveniently help us with the allele-mapping step, since the
         // first allele is guaranteed to be the REF allele
