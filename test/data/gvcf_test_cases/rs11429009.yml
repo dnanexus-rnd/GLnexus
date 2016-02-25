@@ -1,0 +1,70 @@
+readme: |
+
+  A tricky case for the allele unifier where the minimized alleles don't all
+  overlap; at one point we would prune rs11429009 unnecessarily, but this has
+  been relaxed.
+
+input:
+  header: |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=17,length=20000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        17	15643313	.	T	<NON_REF>	.	.	END=15643380	GT:DP:GQ:MIN_DP:PL	0/0:48:99:28:0,78,1170
+        17	15643381	rs58354673	CA	C,CAA,<NON_REF>	1047.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:32,47,3,0:82:99:1085,0,781,1220,723,2322,1182,805,2018,1979:21,11,35,12
+        17	15643383	.	A	<NON_REF>	.	.	END=15643383	GT:DP:GQ:MIN_DP:PL	0/0:100:0:100:0,0,170
+    - B.gvcf: |
+        B
+        17	15643315	.	A	<NON_REF>	.	.	END=15643380	GT:DP:GQ:MIN_DP:PL	0/0:42:99:22:0,63,945
+        17	15643381	rs58354673	CA	C,CAA,<NON_REF>	871.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:33,40,2,0:75:99:909,0,756,1046,774,2146,996,828,1865,1813:21,12,32,8
+        17	15643383	.	A	<NON_REF>	.	.	END=15643383	GT:DP:GQ:MIN_DP:PL	0/0:87:0:87:0,0,209
+    - C.gvcf: |
+        C
+        17	15643314	.	G	<NON_REF>	.	.	END=15643380	GT:DP:GQ:MIN_DP:PL	0/0:41:99:21:0,60,900
+        17	15643381	rs58354673	CA	C,CAA,<NON_REF>	25.74	.	.	GT:AD:DP:GQ:PL:SB	0/2:66,3,11,0:80:63:63,212,1978,0,1577,1628,259,1865,1639,1897:54,12,9,2
+        17	15643383	.	A	<NON_REF>	.	.	END=15643563	GT:DP:GQ:MIN_DP:PL	0/0:96:99:39:0,93,1395
+    - D.gvcf: |
+        D
+        17	15643313	.	T	<NON_REF>	.	.	END=15643381	GT:DP:GQ:MIN_DP:PL	0/0:44:99:23:0,66,889
+        17	15643382	rs11429009	A	AC,<NON_REF>	354.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:48,22,0:70:99:392,0,1494,537,1560,2096:42,6,17,5
+        17	15643383	.	A	<NON_REF>	.	.	END=15643383	GT:DP:GQ:MIN_DP:PL	0/0:82:0:82:0,0,784
+truth_unified_sites:
+    - range: {ref: 17, beg: 15643381, end: 15643382}
+      alleles: [CA, C, CAA, CAC]
+      copy_number: [0, 2, 1, 1]
+      unification:
+      - range: {beg: 15643381, end: 15643382}
+        alt: CA
+        to: 0
+      - range: {beg: 15643382, end: 15643382}
+        alt: A
+        to: 0
+      - range: {beg: 15643381, end: 15643382}
+        alt: C
+        to: 1
+      - range: {beg: 15643381, end: 15643382}
+        alt: CAA
+        to: 2
+      - range: {beg: 15643382, end: 15643382}
+        alt: AC
+        to: 3
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=17,length=20000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      17	15643381	.	CA	C,CAA,CAC	0	.	.	GT:RNC	0/1:..	0/1:..	0/2:..	0/3:..
