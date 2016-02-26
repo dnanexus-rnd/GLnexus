@@ -391,15 +391,6 @@ public:
     }
 };
 
-// Figure out if there were any losses reported for this site
-static bool any_losses(consolidated_loss &losses_for_site) {
-    for (auto ls_pair : losses_for_site) {
-        loss_stats &ls = ls_pair.second;
-        if (ls.n_calls_lost > 0) return true;
-    }
-    return false;
-}
-
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset,
                                const vector<unified_site>& sites,
                                const string& filename, consolidated_loss& dlosses,
@@ -419,8 +410,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
     // set up the residuals file
-    unique_ptr<Residuals> residuals = nullptr;
-    unique_ptr<ResidualsFile> residualsFile = nullptr;
+    shared_ptr<Residuals> residuals = nullptr;
+    shared_ptr<ResidualsFile> residualsFile = nullptr;
     string res_filename;
     if (filename != "-" && filename.find(".") > 0) {
         int lastindex = filename.find_last_of(".");
@@ -448,24 +439,15 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 abort = true;
                 return Status::Aborted();
             }
+            shared_ptr<string> residual_rec = nullptr;
             shared_ptr<bcf1_t> bcf;
             consolidated_loss losses_for_site;
             Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
                                       sampleset, sample_names, hdr.get(), bcf, losses_for_site,
+                                      residuals, residual_rec,
                                       &abort);
             if (ls.bad()) {
                 return ls;
-            }
-
-            shared_ptr<string> residual_rec = nullptr;
-            if (residuals != nullptr &&
-                any_losses(losses_for_site)) {
-                // create a residuals loss record
-                residual_rec = make_shared<string>();
-                ls = residuals->gen_record(sites[i], hdr.get(), bcf.get(), *residual_rec);
-                if (ls.bad()) {
-                    return ls;
-                }
             }
 
             results[i] = make_tuple(move(bcf), losses_for_site, residual_rec);

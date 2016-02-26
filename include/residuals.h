@@ -8,6 +8,13 @@
 
 namespace GLnexus {
 
+// Dataset and the records it has for a particular site
+struct DatasetSiteInfo {
+    std::string name;
+    std::shared_ptr<const bcf_hdr_t> header;
+    std::vector<std::shared_ptr<bcf1_t>> records;
+};
+
 class Residuals {
 private:
     const MetadataCache& cache_;
@@ -28,13 +35,15 @@ public:
     // Create a Residuals object
     static Status Open(const MetadataCache& cache, BCFData& data,
                        const std::string& sampleset, const std::vector<std::string>& samples,
-                       std::unique_ptr<Residuals> &ans);
+                       std::shared_ptr<Residuals> &ans);
 
-    // Create a YAML node describing a loss. The node
-    // is formatted as a string for simplicity.
+    // Create a YAML node describing a loss. The node is formatted as
+    // a string for simplicity. The [sites] variable is a list of
+    // sites, and records in them, to print out.
     Status gen_record(const unified_site& site,
                       const bcf_hdr_t *gl_hdr,
                       const bcf1_t *gl_call,
+                      const std::vector<DatasetSiteInfo> &sites,
                       std::string &ynode);
 };
 
@@ -50,7 +59,7 @@ public:
     // destructor
     ~ResidualsFile();
 
-    static Status Open(std::string filename, std::unique_ptr<ResidualsFile> &ans);
+    static Status Open(std::string filename, std::shared_ptr<ResidualsFile> &ans);
 
     // write a YAML record to the end of the file, as an element in a top-level sequence.
     Status write_record(std::string &rec);

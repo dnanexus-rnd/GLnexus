@@ -578,8 +578,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
+                     shared_ptr<Residuals>& residuals, shared_ptr<string> &residual_rec,
                      atomic<bool>* ext_abort) {
-	Status s;
+    Status s;
 
     // Initialize a vector for the unified genotype calls for each sample,
     // starting with everything missing. We'll then loop through BCF records
@@ -598,6 +599,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     assert(samples.size() == samples2->size());
 
     AlleleDepthHelper adh(cfg);
+    vector<DatasetSiteInfo> lost_calls_info;
 
     // for each pertinent dataset
     for (const auto& dataset : *datasets) {
@@ -666,6 +668,30 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                   sample_mapping, variant_records, adh, min_ref_depth,
                                   genotypes, loss_trackers));
+        }
+
+        if (residuals != nullptr) {
+            bool any_lost_calls = false;
+            for (int i = 0; i < bcf_nsamples; i++) {
+                if (genotypes[sample_mapping.at(i)*2].RNC != NoCallReason::N_A ||
+                    genotypes[sample_mapping.at(i)*2 + 1].RNC != NoCallReason::N_A) {
+                    any_lost_calls = true;
+                    break;
+                }
+            }
+            if (!any_lost_calls)
+                continue;
+            // missing call
+
+            // Note: there is a possibility here, that we are not handling currently.
+            // It might be that there are missing calls, but the original VCF
+            // also had the same missed calls. In this case, there is no real need
+            // to print the dataset/site.
+            DatasetSiteInfo dsi;
+            dsi.name = dataset;
+            dsi.header = dataset_header;
+            dsi.records = records;
+            lost_calls_info.push_back(dsi);
         }
     }
 
@@ -737,6 +763,11 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         losses.insert(make_pair(sample_name,loss));
     }
     merge_loss_stats(losses, losses_for_site);
+
+    if (residuals != nullptr) {
+        residual_rec = make_shared<string>();
+        Status ls = residuals->gen_record(site, hdr, ans.get(), lost_calls_info, *residual_rec);
+    }
     return Status::OK();
 }
 
