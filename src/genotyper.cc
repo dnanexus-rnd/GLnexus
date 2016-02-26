@@ -771,6 +771,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     merge_loss_stats(losses, losses_for_site);
 
     if (residuals != nullptr && any_losses(losses)) {
+        // Write loss record to the residuals file, useful for offline debugging.
         residual_rec = make_shared<string>();
         Status ls = residuals->gen_record(site, hdr, ans.get(), lost_calls_info, *residual_rec);
     }
