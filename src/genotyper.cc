@@ -575,6 +575,16 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
+// Figure out if there were any losses reported for this site
+static bool any_losses(consolidated_loss &losses_for_site) {
+    for (auto ls_pair : losses_for_site) {
+        loss_stats &ls = ls_pair.second;
+        if (ls.n_calls_lost > 0) return true;
+    }
+    return false;
+}
+
+
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
@@ -681,12 +691,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             }
             if (!any_lost_calls)
                 continue;
-            // missing call
 
-            // Note: there is a possibility here, that we are not handling currently.
-            // It might be that there are missing calls, but the original VCF
-            // also had the same missed calls. In this case, there is no real need
-            // to print the dataset/site.
+            // missing call, keep it in memory
             DatasetSiteInfo dsi;
             dsi.name = dataset;
             dsi.header = dataset_header;
@@ -764,7 +770,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     }
     merge_loss_stats(losses, losses_for_site);
 
-    if (residuals != nullptr) {
+    if (residuals != nullptr && any_losses(losses)) {
         residual_rec = make_shared<string>();
         Status ls = residuals->gen_record(site, hdr, ans.get(), lost_calls_info, *residual_rec);
     }

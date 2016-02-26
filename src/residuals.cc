@@ -41,11 +41,6 @@ Status Residuals::gen_record(const unified_site& site,
     out << YAML::Key << "body";
     out << YAML::BeginSeq;
 
-    // We can't increase the range here, because we just have the original records.
-//    range pos = site.pos;
-//    if (pos.beg > 0) pos.beg--;
-//    pos.end++; // pad the query +/- 1bp to show context
-
     // for each pertinent dataset
     for (const auto& ds_info : sites) {
         if (ds_info.records.size() == 0)
