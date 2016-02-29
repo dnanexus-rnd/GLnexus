@@ -410,8 +410,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
     // set up the residuals file
-    shared_ptr<Residuals> residuals = nullptr;
-    shared_ptr<ResidualsFile> residualsFile = nullptr;
+    unique_ptr<Residuals> residuals = nullptr;
+    unique_ptr<ResidualsFile> residualsFile = nullptr;
     string res_filename;
     if (filename != "-" && filename.find(".") > 0) {
         int lastindex = filename.find_last_of(".");
@@ -444,7 +444,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             consolidated_loss losses_for_site;
             Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
                                       sampleset, sample_names, hdr.get(), bcf, losses_for_site,
-                                      residuals, residual_rec,
+                                      residuals.get(), residual_rec,
                                       &abort);
             if (ls.bad()) {
                 return ls;

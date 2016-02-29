@@ -22,8 +22,8 @@ Residuals::~Residuals() {}
 
 Status Residuals::Open(const MetadataCache& cache, BCFData& data,
                        const std::string& sampleset, const std::vector<std::string>& samples,
-                       shared_ptr<Residuals> &ans) {
-    ans = make_shared<Residuals>(cache, data, sampleset, samples);
+                       unique_ptr<Residuals> &ans) {
+    ans = make_unique<Residuals>(cache, data, sampleset, samples);
     return Status::OK();
 }
 
@@ -86,8 +86,8 @@ ResidualsFile::~ResidualsFile() {
 
 
 Status ResidualsFile::Open(std::string filename,
-                           std::shared_ptr<ResidualsFile> &ans) {
-    ans = make_shared<ResidualsFile>(filename);
+                           std::unique_ptr<ResidualsFile> &ans) {
+    ans = make_unique<ResidualsFile>(filename);
 
     // Note: we open in truncate mode, to erase the existing file, if any.
     // This avoids confusing results of old runs, with the current run, in case of failure.

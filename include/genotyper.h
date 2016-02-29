@@ -17,7 +17,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                      const unified_site& site,
                      const std::string& sampleset, const std::vector<std::string>& samples,
                      const bcf_hdr_t* hdr, std::shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
-                     std::shared_ptr<Residuals>& residuals,
+                     Residuals *residuals,
                      std::shared_ptr<std::string> &residual_rec,
                      std::atomic<bool>* abort = nullptr);
 

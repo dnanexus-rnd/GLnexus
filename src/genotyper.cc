@@ -588,7 +588,7 @@ static bool any_losses(consolidated_loss &losses_for_site) {
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
-                     shared_ptr<Residuals>& residuals, shared_ptr<string> &residual_rec,
+                     Residuals *residuals, shared_ptr<string> &residual_rec,
                      atomic<bool>* ext_abort) {
     Status s;
 
@@ -689,15 +689,14 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                     break;
                 }
             }
-            if (!any_lost_calls)
-                continue;
-
-            // missing call, keep it in memory
-            DatasetSiteInfo dsi;
-            dsi.name = dataset;
-            dsi.header = dataset_header;
-            dsi.records = records;
-            lost_calls_info.push_back(dsi);
+            if (any_lost_calls) {
+                // missing call, keep it in memory
+                DatasetSiteInfo dsi;
+                dsi.name = dataset;
+                dsi.header = dataset_header;
+                dsi.records = records;
+                lost_calls_info.push_back(dsi);
+            }
         }
     }
 
@@ -773,7 +772,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     if (residuals != nullptr && any_losses(losses)) {
         // Write loss record to the residuals file, useful for offline debugging.
         residual_rec = make_shared<string>();
-        Status ls = residuals->gen_record(site, hdr, ans.get(), lost_calls_info, *residual_rec);
+        S(residuals->gen_record(site, hdr, ans.get(), lost_calls_info, *residual_rec));
     }
     return Status::OK();
 }

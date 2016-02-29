@@ -35,7 +35,7 @@ public:
     // Create a Residuals object
     static Status Open(const MetadataCache& cache, BCFData& data,
                        const std::string& sampleset, const std::vector<std::string>& samples,
-                       std::shared_ptr<Residuals> &ans);
+                       std::unique_ptr<Residuals> &ans);
 
     // Create a YAML node describing a loss. The node is formatted as
     // a string for simplicity. The [sites] variable is a list of
@@ -59,7 +59,7 @@ public:
     // destructor
     ~ResidualsFile();
 
-    static Status Open(std::string filename, std::shared_ptr<ResidualsFile> &ans);
+    static Status Open(std::string filename, std::unique_ptr<ResidualsFile> &ans);
 
     // write a YAML record to the end of the file, as an element in a top-level sequence.
     Status write_record(std::string &rec);
