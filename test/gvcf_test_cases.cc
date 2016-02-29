@@ -592,3 +592,7 @@ TEST_CASE("lost deletion") {
 TEST_CASE("join records with unifier preference for small alleles") {
     GVCFTestCase("join_records_prefer_small").perform_gvcf_test();
 }
+
+TEST_CASE("DP0_noAD") {
+    GVCFTestCase("DP0_noAD").perform_gvcf_test();
+}

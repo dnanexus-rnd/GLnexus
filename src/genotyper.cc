@@ -411,9 +411,24 @@ public:
             int nv = bcf_get_format_int32(dataset_header, record, cfg_.allele_dp_format.c_str(),
                                           &v_, &vsz_);
 
-            if (nv == -1) {
+            if (nv == -1 || nv == -3) {
                 // We allow the AD field to not exist mainly as a (poor)
                 // workaround for some of our test case gVCFs not having it...
+
+                if (nv == -3) {
+                    // AD is declared in the header, but not present in the
+                    // FORMAT fields for this record. We'll tolerate this for
+                    // an unusual observed class of variant records which have
+                    // INFO DP=0 (gVCF test case DP0_noAD.yml)
+
+                    nv = bcf_get_info_int32(dataset_header, record, "DP", &v_, &vsz_);
+                    if (nv != 1 || v_[0] != 0) {
+                        ostringstream errmsg;
+                        errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
+                        return Status::Invalid("genotyper: VCF allele depth FORMAT field is missing", errmsg.str());
+                    }
+                }
+
                 size_t sz = record->n_sample * record->n_allele * sizeof(int32_t);
                 if (vsz_ < sz) {
                     v_ = (int32_t*) realloc(v_, sz);
