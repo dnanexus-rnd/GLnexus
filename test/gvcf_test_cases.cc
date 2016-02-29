@@ -594,5 +594,8 @@ TEST_CASE("join records with unifier preference for small alleles") {
 }
 
 TEST_CASE("DP0_noAD") {
-    GVCFTestCase("DP0_noAD").perform_gvcf_test();
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};
+    vector<string> v_infos = {};
+    GVCFTestCase DP0_case("DP0_noAD", v_formats, v_infos);
+    DP0_case.perform_gvcf_test();
 }
