@@ -575,15 +575,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
-// Figure out if there were any losses reported for this site
-static bool any_losses(consolidated_loss &losses_for_site) {
-    for (auto ls_pair : losses_for_site) {
-        loss_stats &ls = ls_pair.second;
-        if (ls.n_calls_lost > 0) return true;
-    }
-    return false;
-}
-
 
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
@@ -769,7 +760,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     }
     merge_loss_stats(losses, losses_for_site);
 
-    if (residuals != nullptr && any_losses(losses)) {
+    if (residuals != nullptr &&
+        !lost_calls_info.empty()) {
         // Write loss record to the residuals file, useful for offline debugging.
         residual_rec = make_shared<string>();
         S(residuals->gen_record(site, hdr, ans.get(), lost_calls_info, *residual_rec));
