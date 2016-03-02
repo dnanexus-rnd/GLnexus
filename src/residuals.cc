@@ -17,35 +17,13 @@ static string concat(const std::vector<std::string>& samples) {
 }
 
 
-// return the list of samples in this dataset, in the format
-// of one string, with a tab as a delimiter. This matches BCF headers.
-static string samples_from_dataset(const bcf_hdr_t *hdr) {
-    vector<string> samples;
-
-    int nsamples = bcf_hdr_nsamples(hdr);
-    for (int i=0; i < nsamples; i++) {
-        auto sample_name = string(bcf_hdr_int2id(hdr, BCF_DT_SAMPLE, i));
-        samples.push_back(sample_name);
-    }
-
-    return concat(samples);
-}
-
-// destructor
-Residuals::~Residuals() {}
-
-Status Residuals::Open(const MetadataCache& cache, BCFData& data,
-                       const std::string& sampleset, const std::vector<std::string>& samples,
-                       unique_ptr<Residuals> &ans) {
-    ans = make_unique<Residuals>(cache, data, sampleset, samples);
-    return Status::OK();
-}
-
-
-Status Residuals::gen_record(const unified_site& site,
-                             const bcf_hdr_t *gl_hdr,
-                             const bcf1_t *gl_call,
-                             std::string &ynode) {
+Status residuals_gen_record(const unified_site& site,
+                            const bcf_hdr_t *gl_hdr,
+                            const bcf1_t *gl_call,
+                            const std::vector<DatasetSiteInfo> &sites,
+                            const MetadataCache& cache,
+                            const std::vector<std::string>& samples,
+                            std::string &ynode) {
     Status s;
     YAML::Emitter out;
     out << YAML::BeginMap;
@@ -54,58 +32,33 @@ Status Residuals::gen_record(const unified_site& site,
     out << YAML::Key << "body";
     out << YAML::BeginSeq;
 
-    // fetch the original records
-    range pos = site.pos;
-    if (pos.beg > 0) pos.beg--;
-    pos.end++; // pad the query +/- 1bp to show context
-    shared_ptr<const set<string>> samples2, datasets;
-    vector<unique_ptr<RangeBCFIterator>> iterators;
-    S(data_.sampleset_range(cache_, sampleset_, pos, 0,
-                            samples2, datasets, iterators));
-    assert(samples_.size() == samples2->size());
-
     // for each pertinent dataset
-    for (const auto& dataset : *datasets) {
-        // load BCF records overlapping the site by "merging" the iterators
-        shared_ptr<const bcf_hdr_t> dataset_header;
-        vector<vector<shared_ptr<bcf1_t>>> recordss(iterators.size());
-        vector<shared_ptr<bcf1_t>> records;
+    for (const auto& ds_info : sites) {
+        if (ds_info.records.size() == 0)
+            continue;
 
-        for (const auto& iter : iterators) {
-            string this_dataset;
-            vector<shared_ptr<bcf1_t>> these_records;
-            S(iter->next(this_dataset, dataset_header, these_records));
-            if (dataset != this_dataset) {
-                return Status::Failure("residuals: iterator returned unexpected dataset",
-                                       this_dataset + " instead of " + dataset);
-            }
-            records.insert(records.end(), these_records.begin(), these_records.end());
+        ostringstream records_text;
+        records_text << ds_info.name;
+        for (const auto& rec : ds_info.records) {
+            records_text << "\n" << *(bcf1_to_string(ds_info.header.get(), rec.get()));
         }
-
-        if (records.size()) {
-            ostringstream records_text;
-            records_text << samples_from_dataset(dataset_header.get());
-            for (const auto& rec : records) {
-                records_text << "\n" << *(bcf1_to_string(dataset_header.get(), rec.get()));
-            }
-            out << YAML::BeginMap;
-            out << YAML::Key << dataset;
-            out << YAML::Value << YAML::Literal << records_text.str();
-            out << YAML::EndMap;
-        }
+        out << YAML::BeginMap;
+        out << YAML::Key << ds_info.name;
+        out << YAML::Value << YAML::Literal << records_text.str();
+        out << YAML::EndMap;
     }
     out << YAML::EndSeq;
     out << YAML::EndMap;
 
     // write the unified site
     out << YAML::Key << "unified_site";
-    const auto& contigs = cache_.contigs();
+    const auto& contigs = cache.contigs();
     S(site.yaml(contigs, out));
 
 
     // write the output bcf, the calls that GLnexus made. Also, add the samples matching the calls.
     out << YAML::Key << "output_vcf";
-    out << YAML::Literal << concat(samples_) + "\n" + *(bcf1_to_string(gl_hdr, gl_call));
+    out << YAML::Literal << concat(samples) + "\n" + *(bcf1_to_string(gl_hdr, gl_call));
 
     out << YAML::EndMap;
 
@@ -124,7 +77,7 @@ ResidualsFile::~ResidualsFile() {
 
 
 Status ResidualsFile::Open(std::string filename,
-                                  std::unique_ptr<ResidualsFile> &ans) {
+                           std::unique_ptr<ResidualsFile> &ans) {
     ans = make_unique<ResidualsFile>(filename);
 
     // Note: we open in truncate mode, to erase the existing file, if any.
