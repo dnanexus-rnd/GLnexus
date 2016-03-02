@@ -17,22 +17,13 @@ static string concat(const std::vector<std::string>& samples) {
 }
 
 
-// destructor
-Residuals::~Residuals() {}
-
-Status Residuals::Open(const MetadataCache& cache, BCFData& data,
-                       const std::string& sampleset, const std::vector<std::string>& samples,
-                       unique_ptr<Residuals> &ans) {
-    ans = make_unique<Residuals>(cache, data, sampleset, samples);
-    return Status::OK();
-}
-
-
-Status Residuals::gen_record(const unified_site& site,
-                             const bcf_hdr_t *gl_hdr,
-                             const bcf1_t *gl_call,
-                             const std::vector<DatasetSiteInfo> &sites,
-                             std::string &ynode) {
+Status residuals_gen_record(const unified_site& site,
+                            const bcf_hdr_t *gl_hdr,
+                            const bcf1_t *gl_call,
+                            const std::vector<DatasetSiteInfo> &sites,
+                            const MetadataCache& cache,
+                            const std::vector<std::string>& samples,
+                            std::string &ynode) {
     Status s;
     YAML::Emitter out;
     out << YAML::BeginMap;
@@ -61,13 +52,13 @@ Status Residuals::gen_record(const unified_site& site,
 
     // write the unified site
     out << YAML::Key << "unified_site";
-    const auto& contigs = cache_.contigs();
+    const auto& contigs = cache.contigs();
     S(site.yaml(contigs, out));
 
 
     // write the output bcf, the calls that GLnexus made. Also, add the samples matching the calls.
     out << YAML::Key << "output_vcf";
-    out << YAML::Literal << concat(samples_) + "\n" + *(bcf1_to_string(gl_hdr, gl_call));
+    out << YAML::Literal << concat(samples) + "\n" + *(bcf1_to_string(gl_hdr, gl_call));
 
     out << YAML::EndMap;
 

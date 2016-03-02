@@ -410,7 +410,6 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     S(BCFFileSink::Open(cfg, filename, hdr.get(), bcf_out));
 
     // set up the residuals file
-    unique_ptr<Residuals> residuals = nullptr;
     unique_ptr<ResidualsFile> residualsFile = nullptr;
     string res_filename;
     if (filename != "-" && filename.find(".") > 0) {
@@ -421,7 +420,6 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         res_filename = "/tmp/residuals.yml";
     }
     if (cfg.output_residuals) {
-        S(Residuals::Open(*(body_->metadata_), body_->data_, sampleset, sample_names, residuals));
         S(ResidualsFile::Open(res_filename, residualsFile));
     }
 
@@ -444,7 +442,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             consolidated_loss losses_for_site;
             Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
                                       sampleset, sample_names, hdr.get(), bcf, losses_for_site,
-                                      residuals.get(), residual_rec,
+                                      residualsFile != nullptr, residual_rec,
                                       &abort);
             if (ls.bad()) {
                 return ls;
