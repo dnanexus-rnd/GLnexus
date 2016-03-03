@@ -314,13 +314,15 @@ public:
         consolidated_loss losses;
         string out_vcf_path = temp_dir_path + "output.vcf";
         s = svc->genotype_sites(genotyper_cfg, string("<ALL>"), sites, out_vcf_path, losses);
-
+        if (! s.ok()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
 
         string diff_out_path = temp_dir_path +  "output.diff";
 
         string diff_cmd = "python testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
-        // string diff_cmd += " --quiet";
+        diff_cmd += " --quiet";
         if (!validated_formats.empty()) {
             diff_cmd += " --formats ";
             for (auto& validated_format : validated_formats) {
@@ -572,11 +574,25 @@ TEST_CASE("join record logic test: insufficient ref depth") {
     join_record_case.perform_gvcf_test();
 }
 
-TEST_CASE("join record logic test: test liftover fields") {
+TEST_CASE("liftover field: combi") {
+    vector<string> v_formats = {"GT", "RNC", "AD", "DP", "SB"};
+    vector<string> v_infos = {};
+    GVCFTestCase format_fields_combi("format_fields_combi", v_formats, v_infos);
+    format_fields_combi.perform_gvcf_test();
+}
+
+TEST_CASE("liftover field: AD_fall_back") {
+    vector<string> v_formats = {"GT", "RNC", "AD"};
+    vector<string> v_infos = {};
+    GVCFTestCase format_fields_AD("format_fields_AD_fallback", v_formats, v_infos);
+    format_fields_AD.perform_gvcf_test();
+}
+
+TEST_CASE("liftover field: integration") {
 
     vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};
     vector<string> v_infos = {};
-    GVCFTestCase join_record_case("join_records_formats_basic", v_formats, v_infos);
+    GVCFTestCase join_record_case("format_fields_integrated", v_formats, v_infos);
     join_record_case.perform_gvcf_test();
 }
 

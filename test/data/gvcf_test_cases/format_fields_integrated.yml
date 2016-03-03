@@ -1,7 +1,6 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
-  This test file expect DP and SB files to be lifted over; it expects DP's combination method to be MIN; while SB's to be MAX.
-  Values for SB and DP fields should be tested in the gvcf_test_case setup
+  This is an integrated test targeting a variety of handling including default_to_zero, combining records and resolution by alleles
 
 input:
   header : |-

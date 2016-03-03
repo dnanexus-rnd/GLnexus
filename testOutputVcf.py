@@ -17,6 +17,10 @@ def WARNING(msg):
     if STRICT:
         exit(-1)
 
+def INFO(msg):
+    if not QUIET:
+        sys.stderr.write("INFO " + msg + "\n")
+
 class range:
 
     def __init__(self, chrom, start, end):
@@ -253,9 +257,9 @@ def compare_vcfs(input_file, truth_file, info_f, format_f):
     info_fields, format_fields = find_cmp_fields(input_reader, truth_reader, info_f, format_f)
 
     if not info_fields:
-        WARNING("No INFO fields will be compared!")
+        INFO("No INFO fields will be compared!")
     if not format_fields:
-        WARNING("No FORMAT fields will be compared!")
+        INFO("No FORMAT fields will be compared!")
 
     if not QUIET:
         sys.stderr.write("Performing comparison on INFO fields: {0} and FORMAT fields: {1}\n".format(
