@@ -62,7 +62,8 @@ public:
      IFormatFieldHelper() = default;
 
      virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping) = 0;
+                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                                    const vector<string>& field_names={}, int n_val_per_sample=-1) = 0;
 
      virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
@@ -72,6 +73,9 @@ public:
 
 template <class T>
 class FormatFieldHelper : public IFormatFieldHelper {
+
+    // Boolean on whether the AD field has been handled
+    bool handled_AD_field = false;
 
     // A vector of length n_samples, where each element
     // is a vector consisting of format field value from
@@ -177,71 +181,6 @@ class FormatFieldHelper : public IFormatFieldHelper {
         }
     }
 
-    // This code is a duplication of add_record_data, for the most part,
-    // I'm leaving it as duplicated first, for future considerations on making this more compact
-    // after we have more of a handle on how to deal with the AD field
-    Status handle_AD_field(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                           const map<int, int>& sample_mapping, const vector<int> allele_mapping) {
-
-        // Fill AD using either DP or MIN_DP, preferentially use DP, if available
-        vector<string> depth_fields = {"DP", "MIN_DP"};
-        bool found = false;
-
-        // Expect only 1 value (corresponding the REF record)
-        // This conveniently help us with the allele-mapping step, since the
-        // first allele is guaranteed to be the REF allele
-        int n_val_per_sample = 1;
-
-        for (auto& field_name : depth_fields) {
-            if (found) break;
-
-            T *v = nullptr;
-            int vsz = 0;
-
-            // rv is the number of values written
-            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v, &vsz);
-
-            // raise error if there's a failed get due to type mismatch
-            if (rv == -2) {
-                if (v) free(v);
-                ostringstream errmsg;
-                errmsg << dataset << " " << range(record).str() << " (" << field_name << ")";
-                return Status::Invalid("genotyper: getting format field errored with type mismatch", errmsg.str());
-            }
-            // don't raise error if get failed due to tag missing in record or
-            // in vcf header; continue to look with other possible field names
-
-            if (rv >= 0) {
-                found = true;
-                if (rv != record->n_sample * n_val_per_sample) {
-                // For this field, we expect n_val_per_sample values per sample
-                    if (v) free(v);
-                    ostringstream errmsg;
-                    errmsg << dataset << " " << range(record).str() << "(" << field_name << ")";
-                    return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
-                } // close rv != record->n_sample * count
-
-                for (int i=0; i<record->n_sample; i++) {
-                    for (int j=0; j<n_val_per_sample; j++) {
-
-                        int in_ind = i * n_val_per_sample + j;
-                        int out_ind = get_out_ind_of_value(i, j, sample_mapping, allele_mapping);
-
-                        if (out_ind < 0) {
-                           continue;
-                        }
-
-                        assert(out_ind < format_v.size());
-                        assert(in_ind < vsz);
-                        format_v[out_ind].push_back(v[in_ind]);
-                    } // close for j loop
-                } // close for i loop
-            } // close rv >= 0
-            free(v);
-        }
-
-        return Status::OK();
-    }
 public:
 
     FormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
@@ -266,11 +205,20 @@ public:
 
 
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                           const map<int, int>& sample_mapping, const vector<int> allele_mapping) {
+                           const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                           const vector<string>& field_names={}, int n_val_per_sample=-1) {
 
         bool found = false;
-        int n_val_per_sample = expected_n_val_per_sample(record);
-        for (auto& field_name : field_info.orig_names) {
+        if (n_val_per_sample < 0) {
+            n_val_per_sample = expected_n_val_per_sample(record);
+        }
+
+        vector<string> names_to_search = field_names;
+        if (names_to_search.empty()) {
+            names_to_search = field_info.orig_names;
+        }
+
+        for (auto& field_name : names_to_search) {
             if (found) break;
             T *v = nullptr;
             int vsz = 0;
@@ -321,8 +269,18 @@ public:
 
             // Special case handling for AD field to convert ref
             // DP/MIN_DP to repopulate AD field
-            if (field_info.name == "AD") {
-                return handle_AD_field(dataset, dataset_header, record, sample_mapping, allele_mapping);
+            if (field_info.name == "AD" && !handled_AD_field) {
+
+                // Prevent runaway recursion
+                handled_AD_field = true;
+
+                // Call add_record_data again, searching for DP, MIN_DP, override n_val_per_sample to 1
+                Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"DP", "MIN_DP"}, 1);
+
+                // Reset flag for next dataset
+                handled_AD_field = false;
+
+                return s;
             }
             // TODO: The specified field could not be found from the input record, this is "OK"
             // because we might be able to find some other record that has the requisite value
@@ -871,26 +829,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
 
     S(find_allele_mapping(site, record, allele_mapping, deletion_allele))
-
-    // range rng(record);
-    // assert(rng.overlaps(site.pos));
-    // allele_mapping[0] = 0;
-
-    // // map the bcf1_t alt alleles according to unification
-    // // checking for valid dna regex match
-    // string ref_al(record->d.allele[0]);
-    // for (int i = 1; i < record->n_allele; i++) {
-    //     string al(record->d.allele[i]);
-    //     if (regex_match(al, regex_dna)) {
-    //         auto p = site.unification.find(allele(rng, al));
-    //         if (p != site.unification.end()) {
-    //             allele_mapping[i] = p->second;
-    //         }
-    //     }
-    //     if (al.size() < rng.size() && rng.size() == ref_al.size()) {
-    //         deletion_allele[i] = is_deletion(ref_al, al);
-    //     }
-    // }
 
     // get the genotype calls
     int *gt = nullptr, gtsz = 0;
