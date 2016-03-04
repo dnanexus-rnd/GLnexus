@@ -10,7 +10,8 @@ main() {
     recordFreq=99
 
     # log detailed utilization
-    dstat -cmdn 10 &
+    dstat -cmdn 60 &
+    iostat -x 300 &
 
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then

@@ -75,16 +75,16 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
                               rocksdb::ColumnFamilyOptions& opts) {
     // universal compaction, 1GiB memtable budget
     opts.OptimizeUniversalStyleCompaction(1<<30);
-    opts.num_levels = 4;
+    opts.num_levels = 3;
     opts.target_file_size_base = 16 * size_t(1<<30);
-    opts.level0_file_num_compaction_trigger = 8;
+    opts.level0_file_num_compaction_trigger = 5;
 
     opts.compaction_options_universal.compression_size_percent = -1;
     opts.compaction_options_universal.allow_trivial_move = true;
     opts.compaction_options_universal.max_size_amplification_percent = 300;
     opts.compaction_options_universal.size_ratio = 10;
-    opts.compaction_options_universal.min_merge_width = 3;
-    opts.compaction_options_universal.max_merge_width = 8;
+    opts.compaction_options_universal.min_merge_width = 2;
+    opts.compaction_options_universal.max_merge_width = 10;
 
     // compress all files with LZ4
     opts.compression_per_level.clear();

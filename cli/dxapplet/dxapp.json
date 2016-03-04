@@ -105,7 +105,8 @@
     "file": "src/code.sh",
     "execDepends": [
       {"name": "liblz4-dev"},
-      {"name": "libsnappy-dev"}
+      {"name": "libsnappy-dev"},
+      {"name": "sysstat"}
     ],
     "systemRequirements": {
       "main": {
