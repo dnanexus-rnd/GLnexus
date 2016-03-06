@@ -69,11 +69,17 @@ public:
 
     struct import_result {
         std::set<std::string> samples;
-        unsigned int records = 0;
-        unsigned int buckets = 0;
+        unsigned int records = 0;     // total # BCF records
+        unsigned int max_records = 0; // max # records in any bucket
+        size_t bytes = 0;             // total BCF bytes
+        size_t max_bytes = 0;         // max bytes in any bucket
+        unsigned int buckets = 0;     // # buckets
 
-        import_result& add_bucket(unsigned int bucket_records, const range& bucket_range) {
+        import_result& add_bucket(unsigned int bucket_records, size_t bucket_bytes) {
             records += bucket_records;
+            max_records = std::max(max_records, records);
+            bytes += bucket_bytes;
+            max_bytes = std::max(max_bytes, bytes);
             buckets++;
             return *this;
         }
@@ -85,6 +91,9 @@ public:
             samples.insert(rhs.samples.begin(), rhs.samples.end());
             assert(samples.size() == sz0+rhs.samples.size());
             records += rhs.records;
+            max_records = std::max(max_records, rhs.max_records);
+            bytes += rhs.bytes;
+            max_bytes = std::max(max_bytes, rhs.max_bytes);
             buckets += rhs.buckets;
             return *this;
         }

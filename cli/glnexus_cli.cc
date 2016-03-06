@@ -362,8 +362,11 @@ int main_load(int argc, char *argv[]) {
             // report results
             console->info() << "Loaded " << datasets_loaded.size() << " datasets with "
                             << stats.samples.size() << " samples; "
+                            << stats.bytes << " bytes in "
                             << stats.records << " BCF records in "
-                            << stats.buckets << " buckets.";
+                            << stats.buckets << " buckets. "
+                            << "Bucket max " << stats.max_bytes << " bytes, max "
+                            << stats.max_records << " records.";
 
             // call all_samples_sampleset to create the sample set including
             // the newly loaded ones. By doing this now we make it possible
