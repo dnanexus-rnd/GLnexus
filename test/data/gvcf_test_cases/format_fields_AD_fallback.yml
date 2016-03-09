@@ -1,6 +1,6 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
-  This test, explicitly test the behavior of AD fallback with reading ref depth from DP and MIN_DP fields, and populating other alleles's depth
+  This test, explicitly test the behavior of AD fallback with reading ref depth from MIN_DP and DP fields, and populating other alleles's depth
   to zero (by default).
 
 input:
@@ -72,4 +72,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	C	CG	0	.	.	GT:AD:RNC	0/0:2,0:..	1/1:1,19:..
+      A	1000	.	C	CG	0	.	.	GT:AD:RNC	0/0:1,0:..	1/1:1,19:..
