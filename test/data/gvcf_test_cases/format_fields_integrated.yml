@@ -1,0 +1,140 @@
+readme: |
+  This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
+  This is an integrated test targeting a variety of handling including default_to_zero, combining records and resolution by alleles
+
+input:
+  header : |-
+    ##fileformat=VCFv4.1
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+    ##FILTER=<ID=LowQual,Description="Low quality">
+    ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+    ##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+    ##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+    ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+    ##contig=<ID=21,length=48129895>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - NA12878.gvcf: |
+        NA12878
+        21	10009461	.	T	A, <NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009462	.	T	<NON_REF>	.	.	END=10009463	GT:GQ:MIN_DP:PL	0/0:36:14:0,36,540
+        21	10009464	.	TA	T,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009466	.	A	<NON_REF>	.	.	END=10009466	GT:DP:GQ:MIN_DP:PL:SB	0/0:13:0:13:0,0,342:3,3,3,3
+        21	10009467	.	A	<NON_REF>	.	.	END=10009468	GT:DP:GQ:MIN_DP:PL:SB	0/0:12:36:12:0,36,410:2,2,2,2
+        21	10009469	.	A	<NON_REF>	.	.	END=10009471	GT:DP:GQ:MIN_DP:PL	0/0:13:39:13:0,39,453
+    - NA12879.gvcf: |
+        NA12879
+        21	10009461	.	T	A, <NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009462	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009463	.	C	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009464	.	A	<NON_REF>	.	.	END=10009465	GT:DP:GQ:MIN_DP:PL:SB	0/0:13:0:13:0,0,342:1,1,1,1
+        21	10009466	.	AA	GT,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+
+genotyper_config:
+  liftover_fields:
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [SB]
+      name: SB
+      description: "##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.\">"
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_to_zero: true
+      count: 0
+
+truth_unified_sites:
+    - range: {ref: "21", beg: 10009461, end: 10009461}
+      alleles: [T, A]
+      observation_count: [0, 2]
+      unification:
+        - range: {beg: 10009461, end: 10009461}
+          alt: T
+          to: 0
+        - range: {beg: 10009461, end: 10009461}
+          alt: A
+          to: 1
+    - range: {ref: "21", beg: 10009462, end: 10009462}
+      alleles: [T, A]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009462, end: 10009462}
+          alt: T
+          to: 0
+        - range: {beg: 10009462, end: 10009462}
+          alt: A
+          to: 1
+    - range: {ref: "21", beg: 10009463, end: 10009463}
+      alleles: [C, G]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009463, end: 10009463}
+          alt: C
+          to: 0
+        - range: {beg: 10009463, end: 10009463}
+          alt: G
+          to: 1
+    - range: {ref: "21", beg: 10009464, end: 10009465}
+      alleles: [TA, T]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009464, end: 10009465}
+          alt: TA
+          to: 0
+        - range: {beg: 10009464, end: 10009465}
+          alt: T
+          to: 1
+    - range: {ref: "21", beg: 10009466, end: 10009467}
+      alleles: [AA, GT]
+      observation_count: [0, 1]
+      unification:
+        - range: {beg: 10009466, end: 10009467}
+          alt: AA
+          to: 0
+        - range: {beg: 10009466, end: 10009467}
+          alt: GT
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##contig=<ID=21,length=48129895>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
+      21	10009461	.	T	A	.	.	.	GT:AD:DP:GQ:SB:RNC	0/1:10,2:12:16:1,9,1,1:..	0/1:10,2:12:16:1,9,1,1:..
+      21	10009462	.	T	A	0	.	.	GT:DP:GQ:AD:RNC	0/0:14:36:14,0:..	0/1:12:16:10,2:..
+      21	10009463	.	C	G	0	.	.	GT:DP:GQ:AD:RNC	0/0:14:36:14,0:..	0/1:12:16:10,2:..
+      21	10009464	.	TA	T	0	.	.	GT:DP:GQ:SB:AD:RNC	0/1:12:16:1,9,1,1:10,2:..	0/0:13:0:1,1,1,1:13,0:..
+      21	10009466	.	AA	GT	0	.	.	GT:DP:GQ:SB:AD:RNC	0/0:12:0:3,3,3,3:12,0:..	0/1:12:16:1,9,1,1:10,2:..

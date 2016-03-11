@@ -36,6 +36,9 @@ input:
         21	10009466	.	A	G,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:20,2,0:22:16:16,0,240,46,246,292:1,9,1,1
         21	10009467	.	A	C,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:20,2,0:22:16:16,0,240,46,246,292:1,9,1,1
 
+genotyper_config:
+  required_dp: 13
+
 truth_unified_sites:
     - range: {ref: "21", beg: 10009464, end: 10009465}
       alleles: [TA, T]

@@ -1,5 +1,7 @@
 readme: |
-  Regression test for an unusual class of gVCF variant records with INFO DP=0 and no FORMAT DP or AD
+  This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
+  In particular, this test ascertains the behavior of combi_methods, with application of the min combination for DP, AD and max combination of SB.
+  The values don't make realistic sense, but we're just going through the math for testing purposes.
 
 input:
   header: |-
@@ -23,15 +25,24 @@ input:
   body:
     - A.gvcf: |
         A
-        A	900	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+        A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+        A	1000	.	CC	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	1/1:3:20:1,19,0:35,3,0,35,3,35:5,6,7,8
+        A	1002	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
     - B.gvcf: |
         B
         A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
-        A	1000	.	C	CG,<NON_REF>	1.38	.	DP=0	GT:GQ:PL:SB	1/1:3:35,3,0,35,3,35:0,0,0,0
-        A	1001	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+        A	1000	.	C	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:3:20:3,17,0:35,3,0,35,3,35:1,2,3,4
+        A	1001	.	C	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:SB:PL	0/0:2:0:1:11,12,13,14:0,0,0
 
 genotyper_config:
   liftover_fields:
+    - orig_names: [SB]
+      name: SB
+      description: "##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.\">"
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
     - orig_names: [DP, MIN_DP]
       name: DP
       description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
@@ -49,16 +60,22 @@ genotyper_config:
       count: 0
 
 truth_unified_sites:
-    - range: {ref: "A", beg: 1000, end: 1000}
-      alleles: [C, CG]
-      observation_count: [0, 2]
+    - range: {ref: "A", beg: 1000, end: 1001}
+      alleles: [CC, T, TC]
+      observation_count: [0, 2, 1]
       unification:
         - range: {beg: 1000, end: 1000}
           alt: C
           to: 0
-        - range: {beg: 1000, end: 1000}
-          alt: CG
+        - range: {beg: 1000, end: 1001}
+          alt: CC
+          to: 0
+        - range: {beg: 1000, end: 1001}
+          alt: T
           to: 1
+        - range: {beg: 1000, end: 1000}
+          alt: T
+          to: 2
 
 truth_output_vcf:
   - truth.vcf: |
@@ -66,8 +83,9 @@ truth_output_vcf:
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
       ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	C	CG	0	.	.	GT:AD:RNC	0/0:1,0:..	1/1:0,0:..
+      A	1000	.	CC	T,TC	0	.	.	GT:SB:DP:AD:RNC	1/1:5,6,7,8:20:1,19,0:..	0/2:11,12,13,14:2:1,0,17:..

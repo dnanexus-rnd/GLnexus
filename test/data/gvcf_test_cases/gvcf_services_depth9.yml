@@ -33,6 +33,10 @@ input:
     - NA12879.gvcf: |
         NA12879
         21	10009462	.	A	<NON_REF>	.	.	END=10009475	GT:DP:GQ:MIN_DP:PL	0/0:13:0:13:0,0,342
+
+genotyper_config:
+  required_dp: 10
+
 truth_unified_sites:
     - range: {ref: "21", beg: 10009464, end: 10009465}
       alleles: [TA, T]

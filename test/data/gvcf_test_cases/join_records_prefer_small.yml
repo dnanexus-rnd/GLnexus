@@ -29,9 +29,10 @@ input:
         A	1000	.	T	A,<NON_REF>	315.53	.	.	GT:AD:DP:GQ:PL:SB	0/1:103,15,0:118:99:232,0,3603,542,3649,4191:64,39,11,4
         A	1001	.	T	<NON_REF>	.	.	END=1001	GT:DP:GQ:MIN_DP:PL	0/0:121:41:121:0,42,4038
         A	1002	.	C	G,<NON_REF>	315.53	.	.	GT:AD:DP:GQ:PL:SB	0/1:103,15,0:118:99:232,0,3603,542,3649,4191:64,39,11,4
-  unifier_config:
-    max_alleles_per_site: 16
-    preference: small
+
+unifier_config:
+  max_alleles_per_site: 16
+  preference: small
 
 truth_unified_sites:
     - range: {ref: A, beg: 1000, end: 1000}

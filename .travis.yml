@@ -21,6 +21,10 @@ before_install:
   - ulimit -c unlimited -S # enable core dump
   - .travis/before_install.sh
 
+install:
+  - export PATH=$HOME/.local/bin:$PATH
+  - pip install -r requirements.txt --user `whoami`
+
 script:
   # Report version of CMake and GCC
   - cmake --version

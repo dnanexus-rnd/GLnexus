@@ -41,6 +41,334 @@ static bool is_pseudo_ref_record(const bcf_hdr_t* hdr, bcf1_t* record) {
     return true;
 }
 
+class IFormatFieldHelper {
+
+public:
+    // basic information for the retained field
+    const retained_format_field field_info;
+
+
+    // Expected number of samples in output bcf record
+    const int n_samples;
+
+    // Expected number of values per sample in the **output** (ie unified site)
+    // Note this may differ from the count of input for RetainedFieldNumber::ALLELES
+    // and RetainedFieldNumber::ALT since the number of alleles may differ in input and
+    // output
+    const int count;
+
+     IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
+
+     IFormatFieldHelper() = default;
+
+     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                                    const vector<string>& field_names, int n_val_per_sample) = 0;
+
+      virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                                const map<int, int>& sample_mapping, const vector<int> allele_mapping) = 0;
+
+     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
+
+     virtual ~IFormatFieldHelper() = default;
+
+};
+
+template <class T>
+class FormatFieldHelper : public IFormatFieldHelper {
+
+    // Boolean on whether the AD field has been handled
+    bool handled_AD_field = false;
+
+    // A vector of length n_samples * count, where each element
+    // is a vector consisting of format field value from
+    // record(s) related to the given sample, at a specified
+    // position (for fields with more than 1 value per sample).
+    // The second layer is a vector containing up to n_record values
+    // whereby 0 or 1 value is pushed to it for every record processed by
+    // add_record_data
+    vector<vector<T>> format_v;
+
+    // Combination function to handle combining multiple format values
+    // from multiple records
+    T (*combine_f) (vector<T>);
+
+    static T max_element_wrapper(vector<T> v) {
+        return (*max_element(v.begin(), v.end()));
+    }
+
+    static T min_element_wrapper(vector<T> v) {
+        return (*min_element(v.begin(), v.end()));
+    }
+
+    // Overloaded wrapper function to call bcf_get_format of the correct
+    // format field type
+    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v, int* vsz) {
+        return bcf_get_format_int32(dataset_header, record, field_name, v, vsz);
+    }
+    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v, int* vsz) {
+        return bcf_get_format_float(dataset_header, record, field_name, v, vsz);
+    }
+
+    Status combine_format_data(vector<T>& ans) {
+        if (field_info.default_to_zero) {
+            for (auto& v : format_v) {
+                if (v.empty()) {
+                    v.push_back(0);
+                }
+            }
+        }
+
+        if( any_of(format_v.begin(), format_v.end(), [](vector<T> v){return v.empty();})) {
+            // At least one of the sample is missing a value in this format field.
+            // For vcf spec compliance, we drop this format field for the output row by 
+            // clearing out the format_v vector
+            ans.clear();
+            return Status::OK();
+            // return Status::Invalid("genotyper: one or more sample has missing FORMAT field for the intended output field", field_info.name);
+        }
+        assert(format_v.size() == n_samples * count);
+
+        for (auto& format_one : format_v) {
+            ans.push_back(combine_f(format_one));
+        }
+
+        return Status::OK();
+    }
+
+    /// For a given record, give the number of expected values
+    /// per sample, based on the format type
+    int expected_n_val_per_sample(const bcf1_t* record) {
+
+        // RetainedFieldNumber::BASIC
+        int expected_count = count;
+        if (field_info.number == RetainedFieldNumber::ALT) {
+            expected_count = record->n_allele - 1;
+        } else if (field_info.number == RetainedFieldNumber::ALLELES) {
+            expected_count = record->n_allele;
+        } else if (field_info.number == RetainedFieldNumber::GENOTYPE) {
+            expected_count = (record->n_allele + 1) * record->n_allele / 2;
+        }
+        return expected_count;
+    }
+
+    /// Given a format field for an input sample (unmapped_i), and
+    /// the unmapped_j-th value for this sample, find the corresponding
+    /// index of the this format field in the output.
+    /// Returns a negative value if this value cannot be mapped to the output
+    /// (e.g. allele-specific info for a trimmed allele), and raises error
+    /// if the sample cannot be mapped
+    int get_out_ind_of_value(int unmapped_i, int unmapped_j,
+                             const map<int, int>& sample_mapping,
+                             const vector<int> allele_mapping) {
+        int mapped_i = sample_mapping.at(unmapped_i);
+
+        // Sample should always be mappable
+        assert (mapped_i >= 0);
+
+        switch (field_info.number){
+            case RetainedFieldNumber::ALT:
+            case RetainedFieldNumber::ALLELES:
+            {
+                // Fall through for both cases that require allele_mapping
+                int mapped_j = allele_mapping[unmapped_j];
+                if (mapped_j < 0) {
+                    // Allele is not mappable (trimmed or is a gvcf record)
+                    return -1;
+                } else {
+                    return mapped_i * count + mapped_j;
+                }
+                break;
+            }
+            case RetainedFieldNumber::GENOTYPE:
+            {
+                // TODO: Generate mapping for PL field (Number=G)
+                return -1;
+            }
+            default:
+            {
+                // RetainedFieldNumber::BASIC case
+                return mapped_i * count + unmapped_j;
+            }
+        }
+    }
+
+public:
+
+    FormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
+
+        switch (field_info.combi_method) {
+            case FieldCombinationMethod::MIN:
+                combine_f = FormatFieldHelper::min_element_wrapper;
+                break;
+            case FieldCombinationMethod::MAX:
+                combine_f = FormatFieldHelper::max_element_wrapper;
+                break;
+        }
+
+        for (int i=0; i<n_samples_ * count_; i++){
+            // We keep 1 vector for each eventual output value
+            // So if every sample contains X values (in vcf specification, Number=X), then we keep X vectors per sample.
+            format_v.push_back(vector<T>());
+        }
+    }
+
+    virtual ~FormatFieldHelper() = default;
+
+    // Wrapper with default values populated for
+    // field_names and n_val_per_sample
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping) {
+
+        return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {}, -1);
+    }
+
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                           const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                           const vector<string>& field_names={}, int n_val_per_sample=-1) {
+
+        bool found = false;
+        if (n_val_per_sample < 0) {
+            n_val_per_sample = expected_n_val_per_sample(record);
+        }
+
+        const vector<string> * names_to_search = &field_names;
+        if (names_to_search->empty()) {
+            names_to_search = &(field_info.orig_names);
+        }
+
+        for (auto& field_name : *names_to_search) {
+            if (found) break;
+            T *v = nullptr;
+            int vsz = 0;
+
+            // rv is the number of values written
+            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v, &vsz);
+
+            // raise error if there's a failed get due to type mismatch
+            if (rv == -2) {
+                if (v) free(v);
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << field_name << ")";
+                return Status::Invalid("genotyper: getting format field errored with type mismatch", errmsg.str());
+            }
+            // don't raise error if get failed due to tag missing in record or
+            // in vcf header; continue to look with other possible field names
+
+            if (rv >= 0) {
+                found = true;
+                if (rv != record->n_sample * n_val_per_sample) {
+                // For this field, we expect n_val_per_sample values per sample
+                    if (v) free(v);
+                    ostringstream errmsg;
+                    errmsg << dataset << " " << range(record).str() << "(" << field_name << ")";
+                    return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
+                } // close rv != record->n_sample * count
+
+                for (int i=0; i<record->n_sample; i++) {
+                    for (int j=0; j<n_val_per_sample; j++) {
+
+                        int in_ind = i * n_val_per_sample + j;
+                        int out_ind = get_out_ind_of_value(i, j, sample_mapping, allele_mapping);
+
+                        if (out_ind < 0) {
+                           continue;
+                        }
+
+                        assert(out_ind < format_v.size());
+                        assert(in_ind < vsz);
+                        format_v[out_ind].push_back(v[in_ind]);
+                    } // close for j loop
+                } // close for i loop
+            } // close rv >= 0
+            free(v);
+        }
+
+        if (!found && field_info.name == "AD" && !handled_AD_field) {
+        // Special case handling for AD field to convert ref
+        // DP/MIN_DP to repopulate AD field
+
+            // Prevent runaway recursion
+            handled_AD_field = true;
+
+            // Call add_record_data again, searching for DP, MIN_DP, override n_val_per_sample to 1
+            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"MIN_DP", "DP"}, 1);
+
+            // Reset flag for next dataset
+            handled_AD_field = false;
+
+            return s;
+        }
+
+        return Status::OK();
+    }
+
+    Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) {
+        Status s;
+        vector<T> ans;
+        S(combine_format_data(ans));
+
+        if (ans.empty()) {
+            // FORMAT field could not be represented for this record
+            return Status::OK();
+        }
+
+        int retval  = 0;
+        switch (field_info.type) {
+            case RetainedFieldType::INT:
+                retval = bcf_update_format_int32(hdr, record, field_info.name.c_str(), ans.data(), n_samples * count);
+                break;
+            case RetainedFieldType::FLOAT:
+                retval = bcf_update_format_float(hdr, record, field_info.name.c_str(), ans.data(), n_samples * count);
+                break;
+            default:
+                return Status::Invalid("genotyper: Unexpected RetainedFieldType when executing update_record_format.");
+        }
+        if (retval != 0) {
+            return Status::Failure("genotyper: failed to update record format when executing update_record_format.");
+        }
+        return Status::OK();
+    }
+
+
+};
+
+Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
+                            const vector<retained_format_field>& liftover_fields,
+                            const unified_site& site,
+                            const vector<string>& samples) {
+    for (const auto& format_field_info : liftover_fields) {
+        int count = -1;
+        if (format_field_info.number == RetainedFieldNumber::BASIC) {
+            count = format_field_info.count;
+        } else if (format_field_info.number == RetainedFieldNumber::ALT) {
+            // site.alleles.size() gives # alleles incl. REF
+            count = (site.alleles.size() - 1);
+        } else if (format_field_info.number == RetainedFieldNumber::ALLELES) {
+            count = (site.alleles.size());
+        }
+
+        if (count < 0) {
+            return Status::Failure("setup_format_helpers: failed to identify count for format field");
+        }
+
+        switch (format_field_info.type) {
+            case RetainedFieldType::INT:
+            {
+                format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new FormatFieldHelper<int32_t>(format_field_info, samples.size(), count)));
+                break;
+            }
+            case RetainedFieldType::FLOAT:
+            {
+                format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new FormatFieldHelper<float>(format_field_info, samples.size(), count)));
+                break;
+            }
+        }
+    }
+
+    return Status::OK();
+}
+
 // Helper class for keeping track of the per-allele depth of coverage info in
 // a bcf1_t record. There are a couple different cases to handle, depending on
 // whether we're looking at a gVCF reference confidence record or a "regular"
@@ -450,6 +778,31 @@ Status find_variant_records(const genotyper_config& cfg, const unified_site& sit
     return Status::OK();
 }
 
+static Status find_allele_mapping(const unified_site& site, const bcf1_t *record,
+                                  vector<int>& allele_mapping, vector<bool>& deletion_allele) {
+    range rng(record);
+    assert(rng.overlaps(site.pos));
+    allele_mapping[0] = 0;
+
+    // map the bcf1_t alt alleles according to unification
+    // checking for valid dna regex match
+    string ref_al(record->d.allele[0]);
+    for (int i = 1; i < record->n_allele; i++) {
+        string al(record->d.allele[i]);
+        if (regex_match(al, regex_dna)) {
+            auto p = site.unification.find(allele(rng, al));
+            if (p != site.unification.end()) {
+                allele_mapping[i] = p->second;
+            }
+        }
+        if (al.size() < rng.size() && rng.size() == ref_al.size()) {
+            deletion_allele[i] = is_deletion(ref_al, al);
+        }
+    }
+
+    return Status::OK();
+}
+
 /// Based on the cluster of variant records and min_ref_depth produced by
 /// find_variant_records, fill genotypes for this dataset's samples with
 /// appropriate calls (currently by translation of the input hard-calls).
@@ -522,25 +875,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     vector<int> allele_mapping(record->n_allele, -1);
     vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
 
-    range rng(record);
-    assert(rng.overlaps(site.pos));
-    allele_mapping[0] = 0;
-
-    // map the bcf1_t alt alleles according to unification
-    // checking for valid dna regex match
-    string ref_al(record->d.allele[0]);
-    for (int i = 1; i < record->n_allele; i++) {
-        string al(record->d.allele[i]);
-        if (regex_match(al, regex_dna)) {
-            auto p = site.unification.find(allele(rng, al));
-            if (p != site.unification.end()) {
-                allele_mapping[i] = p->second;
-            }
-        }
-        if (al.size() < rng.size() && rng.size() == ref_al.size()) {
-            deletion_allele[i] = is_deletion(ref_al, al);
-        }
-    }
+    S(find_allele_mapping(site, record, allele_mapping, deletion_allele))
 
     // get the genotype calls
     int *gt = nullptr, gtsz = 0;
@@ -590,7 +925,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
-
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans, consolidated_loss& losses_for_site,
@@ -607,6 +941,10 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     for (const auto& sample : samples) {
         loss_trackers.push_back(LossTracker(site.pos));
     }
+
+    // Setup format field helpers
+    vector<unique_ptr<IFormatFieldHelper>> format_helpers;
+    S(setup_format_helpers(format_helpers, cfg.liftover_fields, site, samples));
 
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
@@ -686,6 +1024,20 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                   genotypes, loss_trackers));
         }
 
+        // Update format fields
+        for (auto& record : records) {
+            vector<int> allele_mapping(record->n_allele, -1);
+            vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
+
+            S(find_allele_mapping(site, record.get(), allele_mapping, deletion_allele))
+
+            for (auto& format_helper : format_helpers) {
+                S(format_helper->add_record_data(dataset, dataset_header.get(), record.get(),
+                                               sample_mapping, allele_mapping));
+            }
+        }
+
+        // Handle residuals
         if (residualsFlag) {
             bool any_lost_calls = false;
             for (int i = 0; i < bcf_nsamples; i++) {
@@ -736,6 +1088,11 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     assert(gt.size() == genotypes.size());
     if (bcf_update_genotypes(hdr, ans.get(), gt.data(), gt.size()) != 0) {
         return Status::Failure("bcf_update_genotypes");
+    }
+
+    // Lifted-over FORMAT fields (non-genotype based)
+    for (auto& format_helper : format_helpers) {
+        S(format_helper->update_record_format(hdr, ans.get()));
     }
 
     // RNC
