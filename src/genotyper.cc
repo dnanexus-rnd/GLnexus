@@ -103,12 +103,18 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
     // Overloaded wrapper function to call bcf_get_format of the correct
     // format field type
-    // TODO: reuse buffers
-    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v, int* vlen) {
-        return bcf_get_format_int32(dataset_header, record, field_name, v, vlen);
+    int32_t *iv_ = nullptr;
+    float *fv_ = nullptr;
+    int ivlen_ = 0, fvlen_ = 0;
+    int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v) {
+        int ans = bcf_get_format_int32(dataset_header, record, field_name, &iv_, &ivlen_);
+        *v = iv_;
+        return ans;
     }
-    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v, int* vlen) {
-        return bcf_get_format_float(dataset_header, record, field_name, v, vlen);
+    int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v) {
+        int ans = bcf_get_format_float(dataset_header, record, field_name, &fv_, &fvlen_);
+        *v = fv_;
+        return ans;
     }
 
     Status combine_format_data(vector<T>& ans) {
@@ -210,7 +216,10 @@ public:
         format_v.resize(n_samples_ * count_);
     }
 
-    virtual ~FormatFieldHelper() = default;
+    virtual ~FormatFieldHelper() {
+        free(iv_);
+        free(fv_);
+    }
 
     // Wrapper with default values populated for
     // field_names and n_val_per_sample
@@ -237,14 +246,12 @@ public:
         for (auto& field_name : *names_to_search) {
             if (found) break;
             T *v = nullptr;
-            int vlen = 0;
 
             // rv is the number of values written
-            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v, &vlen);
+            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v);
 
             // raise error if there's a failed get due to type mismatch
             if (rv == -2) {
-                free(v);
                 ostringstream errmsg;
                 errmsg << dataset << " " << range(record).str() << " (" << field_name << ")";
                 return Status::Invalid("genotyper: getting format field errored with type mismatch", errmsg.str());
@@ -256,7 +263,6 @@ public:
                 found = true;
                 if (rv != record->n_sample * n_val_per_sample) {
                 // For this field, we expect n_val_per_sample values per sample
-                    free(v);
                     ostringstream errmsg;
                     errmsg << dataset << " " << range(record).str() << "(" << field_name << ")";
                     return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
@@ -273,12 +279,11 @@ public:
                         }
 
                         assert(out_ind < format_v.size());
-                        assert(in_ind < vlen);
+                        assert(in_ind < rv);
                         format_v[out_ind].push_back(v[in_ind]);
                     } // close for j loop
                 } // close for i loop
             } // close rv >= 0
-            free(v);
         }
 
         if (!found && field_info.name == "AD" && !handled_AD_field) {
