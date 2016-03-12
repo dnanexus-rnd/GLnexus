@@ -18,7 +18,7 @@ dx set_properties :/Attic/travis/GLnexus "git_revision=${GIT_REVISION}"
 # launch on pre-staged test dataset
 dx run :/Attic/travis/GLnexus \
     -i gvcf_tar=:/Fake/gvcfs1024.tar -i bed_ranges_to_genotype=:/vcr_b37.bed \
-    -i iter_compare=true \
+    -i iter_compare=true -i config=test \
     --name "GLnexus medium tests ${GIT_REVISION}" \
     --folder :/Attic/travis --instance-type mem3_ssd1_x16 --priority normal -y
 
