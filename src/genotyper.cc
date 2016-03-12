@@ -103,11 +103,12 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
     // Overloaded wrapper function to call bcf_get_format of the correct
     // format field type
-    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v, int* vsz) {
-        return bcf_get_format_int32(dataset_header, record, field_name, v, vsz);
+    // TODO: reuse buffers
+    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v, int* vlen) {
+        return bcf_get_format_int32(dataset_header, record, field_name, v, vlen);
     }
-    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v, int* vsz) {
-        return bcf_get_format_float(dataset_header, record, field_name, v, vsz);
+    static int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v, int* vlen) {
+        return bcf_get_format_float(dataset_header, record, field_name, v, vlen);
     }
 
     Status combine_format_data(vector<T>& ans) {
@@ -206,11 +207,7 @@ public:
                 break;
         }
 
-        for (int i=0; i<n_samples_ * count_; i++){
-            // We keep 1 vector for each eventual output value
-            // So if every sample contains X values (in vcf specification, Number=X), then we keep X vectors per sample.
-            format_v.push_back(vector<T>());
-        }
+        format_v.resize(n_samples_ * count_);
     }
 
     virtual ~FormatFieldHelper() = default;
@@ -240,14 +237,14 @@ public:
         for (auto& field_name : *names_to_search) {
             if (found) break;
             T *v = nullptr;
-            int vsz = 0;
+            int vlen = 0;
 
             // rv is the number of values written
-            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v, &vsz);
+            int rv = FormatFieldHelper::bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v, &vlen);
 
             // raise error if there's a failed get due to type mismatch
             if (rv == -2) {
-                if (v) free(v);
+                free(v);
                 ostringstream errmsg;
                 errmsg << dataset << " " << range(record).str() << " (" << field_name << ")";
                 return Status::Invalid("genotyper: getting format field errored with type mismatch", errmsg.str());
@@ -259,7 +256,7 @@ public:
                 found = true;
                 if (rv != record->n_sample * n_val_per_sample) {
                 // For this field, we expect n_val_per_sample values per sample
-                    if (v) free(v);
+                    free(v);
                     ostringstream errmsg;
                     errmsg << dataset << " " << range(record).str() << "(" << field_name << ")";
                     return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
@@ -276,7 +273,7 @@ public:
                         }
 
                         assert(out_ind < format_v.size());
-                        assert(in_ind < vsz);
+                        assert(in_ind < vlen);
                         format_v[out_ind].push_back(v[in_ind]);
                     } // close for j loop
                 } // close for i loop
@@ -379,7 +376,7 @@ class AlleleDepthHelper {
     size_t n_sample_ = 0, n_allele_ = 0;
     bool is_g_ = false;
     int32_t *v_ = nullptr;
-    int vsz_ = 0;
+    int vlen_ = 0;
 
 public:
 
@@ -390,7 +387,7 @@ public:
         {}
 
     ~AlleleDepthHelper() {
-        if (v_) free(v_);
+        free(v_);
     }
 
     // The helper can be reused for multiple records by calling Load()
@@ -405,7 +402,7 @@ public:
         if (is_g_) {
             // if so, look for the MIN_DP FORMAT field (or equivalent)
             int nv = bcf_get_format_int32(dataset_header, record, cfg_.ref_dp_format.c_str(),
-                                          &v_, &vsz_);
+                                          &v_, &vlen_);
 
             if (nv != record->n_sample) {
                 ostringstream errmsg;
@@ -415,7 +412,7 @@ public:
         } else {
             // this is a regular VCF record, so look for the AD FORMAT field (or equivalent)
             int nv = bcf_get_format_int32(dataset_header, record, cfg_.allele_dp_format.c_str(),
-                                          &v_, &vsz_);
+                                          &v_, &vlen_);
 
             if (nv == -1 || nv == -3) {
                 // We allow the AD field to not exist mainly as a (poor)
@@ -427,7 +424,7 @@ public:
                     // an unusual observed class of variant records which have
                     // INFO DP=0 (gVCF test case DP0_noAD.yml)
 
-                    nv = bcf_get_info_int32(dataset_header, record, "DP", &v_, &vsz_);
+                    nv = bcf_get_info_int32(dataset_header, record, "DP", &v_, &vlen_);
                     if (nv != 1 || v_[0] != 0) {
                         ostringstream errmsg;
                         errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
@@ -435,12 +432,12 @@ public:
                     }
                 }
 
-                size_t sz = record->n_sample * record->n_allele * sizeof(int32_t);
-                if (vsz_ < sz) {
-                    v_ = (int32_t*) realloc(v_, sz);
-                    vsz_ = sz;
+                nv = record->n_sample * record->n_allele;
+                if (vlen_ < nv) {
+                    v_ = (int32_t*) realloc(v_, nv*sizeof(int32_t));
+                    vlen_ = nv;
                 }
-                memset(v_, 0, sz);
+                memset(v_, 0, nv*sizeof(int32_t));
             } else if (nv != record->n_sample * record->n_allele) {
                 ostringstream errmsg;
                 errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
@@ -918,9 +915,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         fill_allele(1)
     }
 
-    if (gt) {
-        free(gt);
-    }
+    free(gt);
 
     return Status::OK();
 }
