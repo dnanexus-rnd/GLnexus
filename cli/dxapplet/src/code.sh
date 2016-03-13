@@ -11,7 +11,7 @@ main() {
 
     # log detailed utilization
     dstat -cmdn 60 &
-    iostat -x 300 &
+    iostat -x 600 &
 
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
