@@ -32,13 +32,20 @@ Status residuals_gen_record(const unified_site& site,
     out << YAML::Key << "body";
     out << YAML::BeginSeq;
 
-    // for each pertinent dataset
+    // for each dataset
     for (const auto& ds_info : sites) {
         if (ds_info.records.size() == 0)
             continue;
 
         ostringstream records_text;
-        records_text << ds_info.name;
+        // line with sample name(s)
+        for (int i = 0; i < bcf_hdr_nsamples(gl_hdr); i++) {
+            if (i > 0) {
+                records_text << '\t';
+            }
+            records_text << bcf_hdr_int2id(gl_hdr, BCF_DT_SAMPLE, i);
+        }
+        // gVCF records, one per line
         for (const auto& rec : ds_info.records) {
             records_text << "\n" << *(bcf1_to_string(ds_info.header.get(), rec.get()));
         }
