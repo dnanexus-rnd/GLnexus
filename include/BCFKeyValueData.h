@@ -77,9 +77,9 @@ public:
 
         import_result& add_bucket(unsigned int bucket_records, size_t bucket_bytes) {
             records += bucket_records;
-            max_records = std::max(max_records, records);
+            max_records = std::max(max_records, bucket_records);
             bytes += bucket_bytes;
-            max_bytes = std::max(max_bytes, bytes);
+            max_bytes = std::max(max_bytes, bucket_bytes);
             buckets++;
             return *this;
         }
