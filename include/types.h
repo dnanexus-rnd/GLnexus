@@ -230,13 +230,13 @@ struct allele {
 
 struct discovered_allele_info {
     bool is_ref;
-    float observation_count;
+    float copy_number;
 
-    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && observation_count == rhs.observation_count; }
+    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && copy_number == rhs.copy_number; }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " observation count: " << std::setprecision(1) << observation_count << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << std::setprecision(1) << copy_number << "]";
         return os.str();
     }
 };
@@ -268,18 +268,18 @@ struct unified_site {
     /// DNA) onto the unified alleles (by index).
     std::map<allele,int> unification;
 
-    std::vector<float> observation_count;
+    std::vector<float> copy_number;
     //std::vector<float> genotype_prior;
 
     bool operator==(const unified_site& rhs) const noexcept {
         return pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
-               && observation_count == rhs.observation_count;
+               && copy_number == rhs.copy_number;
     }
     bool operator<(const unified_site& rhs) const noexcept{
         if (pos != rhs.pos) return pos < rhs.pos;
         if (alleles != rhs.alleles) return alleles < rhs.alleles;
         if (unification != rhs.unification) return unification < rhs.unification;
-        return observation_count < rhs.observation_count;
+        return copy_number < rhs.copy_number;
     }
 
     unified_site(const range& pos_) noexcept : pos(pos_), containing_target(-1,-1,-1) {}

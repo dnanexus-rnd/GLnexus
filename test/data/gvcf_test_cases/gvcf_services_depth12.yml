@@ -42,7 +42,7 @@ genotyper_config:
 truth_unified_sites:
     - range: {ref: "21", beg: 10009464, end: 10009465}
       alleles: [TA, T]
-      observation_count: [0, 1]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 10009464, end: 10009465}
           alt: TA
@@ -52,7 +52,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: "21", beg: 10009466, end: 10009466}
       alleles: [A, G]
-      observation_count: [0, 1]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 10009466, end: 10009466}
           alt: A
@@ -62,7 +62,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: "21", beg: 10009467, end: 10009467}
       alleles: [A, C]
-      observation_count: [0, 1]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 10009467, end: 10009467}
           alt: A

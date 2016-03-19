@@ -44,7 +44,7 @@ genotyper_config:
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1002}
       alleles: [TTC, T, TAC]
-      observation_count: [0, 2, 1]
+      copy_number: [0, 2, 1]
       unification:
         - range: {beg: 1000, end: 1002}
           alt: TTC

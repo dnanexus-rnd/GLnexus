@@ -19,7 +19,7 @@ using discovered_allele = pair<allele,discovered_allele_info>;
 // original representations.
 struct minimized_allele_info {
     set<allele> originals;
-    float observation_count = 0.0;
+    float copy_number = 0.0;
 
     string str() const {
         ostringstream os;
@@ -27,7 +27,7 @@ struct minimized_allele_info {
         for (auto& al : originals) {
             os << "  " << al.str() << endl;
         }
-        os << "Observation count: " << observation_count << endl;
+        os << "Copy number: " << copy_number << endl;
         return os.str();
     }
 };
@@ -48,13 +48,13 @@ bool minimized_allele_small_lt(const minimized_allele& p1, const minimized_allel
     if (p1.first.pos.size() != p2.first.pos.size()) {
         return p1.first.pos.size() < p2.first.pos.size();
     }
-    return p2.second.observation_count < p1.second.observation_count;
+    return p2.second.copy_number < p1.second.copy_number;
 }
 
 // UnifierPreference::Common
 bool minimized_allele_common_lt(const minimized_allele& p1, const minimized_allele& p2) {
-    if (p2.second.observation_count != p1.second.observation_count)
-        return p2.second.observation_count < p1.second.observation_count;
+    if (p2.second.copy_number != p1.second.copy_number)
+        return p2.second.copy_number < p1.second.copy_number;
     return minimized_allele_delta_lt(p1, p2);
 }
 
@@ -120,17 +120,17 @@ Status minimize_alleles(const discovered_alleles& src,
         // minimize the alt allele
         S(minimize_allele(rp->second.first, alt));
 
-        // add it to alts, combining originals and observation_count with any
+        // add it to alts, combining originals and copy_number with any
         // previously observed occurrences of the same minimized alt allele.
         auto ap = alts.find(alt);
         if (ap == alts.end()) {
             minimized_allele_info info;
             info.originals.insert(dal.first);
-            info.observation_count = dal.second.observation_count;
+            info.copy_number = dal.second.copy_number;
             alts[alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
-            ap->second.observation_count += dal.second.observation_count;
+            ap->second.copy_number += dal.second.copy_number;
         }
     }
 
@@ -181,7 +181,7 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
 // valued by frequency, and alleles not sharing at least one reference
 // position in common conflict.)
 auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, minimized_alleles& pruned) {
-    // sort the alt alleles by decreasing observation count (+ some tiebreakers)
+    // sort the alt alleles by decreasing copy number (+ some tiebreakers)
     vector<minimized_allele> valleles(alleles.begin(), alleles.end());
     sort(valleles.begin(), valleles.end(), minimized_allele_lt(cfg.preference));
 
@@ -329,7 +329,7 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     S(unify_ref(pos, refs, ref));
 
     // For presentation in the unified site, sort the alt alleles by
-    // decreasing observation count (+ some tiebreakers). Note, this may be a
+    // decreasing copy number count (+ some tiebreakers). Note, this may be a
     // different sort order than used in prune_allele earlier.
     vector<minimized_allele> valts(alts.begin(), alts.end());
     sort(valts.begin(), valts.end(), minimized_allele_common_lt);
@@ -338,12 +338,12 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     // allele, so we're truncating valts to cfg.max_alleles_per_site-1
     if (cfg.max_alleles_per_site > 1 && valts.size() >= cfg.max_alleles_per_site) {
         // Out of fairness, we also prune alt alleles with the same
-        // observation count as the first truncated one, except we always need
+        // copy number as the first truncated one, except we always need
         // to keep at least one alt allele of course.
         unsigned int trunc0 = 1, trunc1 = 1;
         for (; trunc1 < cfg.max_alleles_per_site; trunc1++) {
-            assert(valts[trunc0].second.observation_count >= valts[trunc1].second.observation_count);
-            while(valts[trunc0].second.observation_count > valts[trunc1].second.observation_count)
+            assert(valts[trunc0].second.copy_number >= valts[trunc1].second.copy_number);
+            while(valts[trunc0].second.copy_number > valts[trunc1].second.copy_number)
                 trunc0++;
         }
         // TODO: should we do something with the additional pruned alleles?
@@ -354,10 +354,10 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     // fill out the unification
     unified_site us(pos);
     us.alleles.push_back(ref.dna);
-    // We don't attempt to specify the ref observation count for now. It's
-    // problematic because the observation counts in discovered_alleles omit
-    // nearly all homozygous ref genotypes.
-    us.observation_count.push_back(0.0);
+    // We don't attempt to specify the ref copy number for now. It's
+    // problematic because the copy numbers in discovered_alleles omit nearly
+    // all homozygous ref genotypes.
+    us.copy_number.push_back(0.0);
     for (const auto& ref : refs) {
         us.unification[ref.first] = 0;
     }
@@ -370,14 +370,14 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
         assert(unified_alt.pos == ref.pos);
 
         us.alleles.push_back(unified_alt.dna);
-        us.observation_count.push_back(alt_info.observation_count);
+        us.copy_number.push_back(alt_info.copy_number);
         for (const auto& original : alt_info.originals) {
             us.unification[original] = i;
         }
     }
     ans = std::move(us);
     return Status::OK();
-    // TODO: will need some representation for observation count of pruned
+    // TODO: will need some representation for copy number of pruned
     // alleles. but maybe counting samples (+ploidy config) in
     // discovered_alleles will suffice.
 }

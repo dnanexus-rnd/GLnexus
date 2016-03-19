@@ -38,40 +38,40 @@ truth_discovered_alleles:
     - range: {ref: 'A', beg: 1001, end: 1001}
       dna: 'A'
       is_ref: true
-      observation_count: 6
+      copy_number: 6
     - range: {ref: 'A', beg: 1001, end: 1001}
       dna: 'G'
       is_ref: false
-      observation_count: 6
+      copy_number: 6
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'C'
       is_ref: true
-      observation_count: 2
+      copy_number: 2
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'A'
       is_ref: false
-      observation_count: 6
+      copy_number: 6
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'G'
       is_ref: false
-      observation_count: 2
+      copy_number: 2
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'T'
       is_ref: false
-      observation_count: 2
+      copy_number: 2
     - range: {ref: 'A', beg: 1011, end: 1012}
       dna: 'CC'
       is_ref: true
-      observation_count: 3
+      copy_number: 3
     - range: {ref: 'A', beg: 1011, end: 1012}
       dna: 'AG'
       is_ref: false
-      observation_count: 3
+      copy_number: 3
     - range: {ref: 'A', beg: 1011, end: 1013}
       dna: 'CCC'
       is_ref: true
-      observation_count: 4
+      copy_number: 4
     - range: {ref: 'A', beg: 1011, end: 1013}
       dna: 'AGA'
       is_ref: false
-      observation_count: 2
+      copy_number: 2

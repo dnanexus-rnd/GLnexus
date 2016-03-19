@@ -46,7 +46,7 @@ input:
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1002}
       alleles: [TTC, T]
-      observation_count: [0, 3]
+      copy_number: [0, 3]
       unification:
         - range: {beg: 1000, end: 1002}
           alt: TTC

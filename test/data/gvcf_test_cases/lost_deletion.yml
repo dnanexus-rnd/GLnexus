@@ -53,7 +53,7 @@ input:
 truth_unified_sites:
     - range: {ref: A, beg: 608825, end: 608832}
       alleles: [TGGGGCCG, T, TGGAGCCG]
-      observation_count: [0, 4, 2]
+      copy_number: [0, 4, 2]
       unification:
         - range: {beg: 608819, end: 608843}
           alt: AGGGACTGGGGCCGGGACCGGGACC
@@ -72,7 +72,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: A, beg: 608835, end: 608852}
       alleles: [ACCGGGACCGGGACTGGG, A]
-      observation_count: [0, 4]
+      copy_number: [0, 4]
       unification:
         - range: {beg: 608819, end: 608843}
           alt: AGGGACTGGGGCCGGGACCGGGACC

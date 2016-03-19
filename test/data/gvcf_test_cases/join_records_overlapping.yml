@@ -42,7 +42,7 @@ input:
 truth_unified_sites:
     - range: {ref: A, beg: 907970, end: 907971}
       alleles: [AC, AA, A]
-      observation_count: [0, 3, 1]
+      copy_number: [0, 3, 1]
       unification:
         - range: {beg: 907970, end: 907971}
           alt: AC

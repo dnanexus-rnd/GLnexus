@@ -30,9 +30,9 @@ truth_discovered_alleles:
     - range: {ref: '22', beg: 10009464, end: 10009465}
       dna: 'TA'
       is_ref: true
-      observation_count: 1
+      copy_number: 1
     - range: {ref: '22', beg: 10009464, end: 10009465}
       dna: 'T'
       is_ref: false
-      observation_count: 1
+      copy_number: 1
 

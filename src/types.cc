@@ -11,7 +11,7 @@ regex regex_dna     ("[ACGTN]+")
     ;
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
-// using the sum of their observation_counts
+// using the sum of their copy_numbers
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest) {
     for (auto& dsal : src) {
         UNPAIR(dsal,allele,ai)
@@ -22,7 +22,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
             if (ai.is_ref != p->second.is_ref) {
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
-            p->second.observation_count += ai.observation_count;
+            p->second.copy_number += ai.copy_number;
         }
     }
 
@@ -118,8 +118,8 @@ Status yaml_of_discovered_alleles(const discovered_alleles& dal,
             << YAML::Value << p.first.dna;
         out << YAML::Key << "is_ref"
             << YAML::Value << p.second.is_ref;
-        out << YAML::Key << "observation_count"
-            << YAML::Value << p.second.observation_count;
+        out << YAML::Key << "copy_number"
+            << YAML::Value << p.second.copy_number;
 
         out << YAML::EndMap;
     }
@@ -157,10 +157,10 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
         VR(n_is_ref && n_is_ref.IsScalar(), "missing/invalid 'is_ref' field in entry");
         ai.is_ref = n_is_ref.as<bool>();
 
-        const auto n_observation_count = (*p)["observation_count"];
-        VR(n_observation_count && n_observation_count.IsScalar(), "missing/invalid 'observation_count' field in entry");
-        ai.observation_count = n_observation_count.as<float>();
-        VR(std::isfinite(ai.observation_count) && !std::isnan(ai.observation_count), "invalid 'observation_count' field in entry");
+        const auto n_copy_number = (*p)["copy_number"];
+        VR(n_copy_number && n_copy_number.IsScalar(), "missing/invalid 'copy_number' field in entry");
+        ai.copy_number = n_copy_number.as<float>();
+        VR(std::isfinite(ai.copy_number) && !std::isnan(ai.copy_number), "invalid 'copy_number' field in entry");
 
         VR(ans.find(al) == ans.end(), "duplicate alleles");
         ans[al] = ai;
@@ -193,9 +193,9 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     }
     ans << YAML::EndSeq;
 
-    ans << YAML::Key << "observation_count";
+    ans << YAML::Key << "copy_number";
     ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (auto count : observation_count) {
+    for (auto count : copy_number) {
         ans << count;
     }
     ans << YAML::EndSeq;
@@ -280,16 +280,16 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     }
     VR(ans.unification.size() >= 2, "not enough unification entries");
 
-    ans.observation_count.clear();
-    const auto n_obs = yaml["observation_count"];
-    VR(n_obs && n_obs.IsSequence(), "missing 'observation_count' field");
+    ans.copy_number.clear();
+    const auto n_obs = yaml["copy_number"];
+    VR(n_obs && n_obs.IsSequence(), "missing 'copy_number' field");
     for (YAML::const_iterator ct = n_obs.begin(); ct != n_obs.end(); ++ct) {
-        VR(ct->IsScalar(), "invalid observation count");
+        VR(ct->IsScalar(), "invalid copy_nuber");
         float ctf = ct->as<float>();
-        VR(ctf == ctf && ctf >= 0.0, "invalid observation_count");
-        ans.observation_count.push_back(ctf);
+        VR(ctf == ctf && ctf >= 0.0, "invalid copy_number");
+        ans.copy_number.push_back(ctf);
     }
-    VR(ans.observation_count.size() == ans.alleles.size(), "observation_count list has wrong length");
+    VR(ans.copy_number.size() == ans.alleles.size(), "copy_number list has wrong length");
 
     #undef V
     #undef VR
