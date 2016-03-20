@@ -977,6 +977,9 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     // differs from the REF allele, and that the expected FORMAT fields are
     // present for each sample declared in the header (e.g. GT, AD, GL)
 
+    // TODO: validate genotypes (all entries are either missing or in [0,n_allele))
+    // TODO: validate genotype likelihoods (n_samples*nGT entries; PL: all entries nonnegative; GL: all entries nonpositive)
+
     return Status::OK();
 }
 

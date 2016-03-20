@@ -31,7 +31,7 @@ input:
     - B.gvcf: |
         B
         A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
-        A	1000	.	C	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:3:20:3,17,0:35,3,0,35,3,35:1,2,3,4
+        A	1000	.	C	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:2:20:3,17,0:35,3,0,35,2,35:1,2,3,4
         A	1001	.	C	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:SB:PL	0/0:2:0:1:11,12,13,14:0,0,0
 
 genotyper_config:
@@ -62,7 +62,7 @@ genotyper_config:
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1001}
       alleles: [CC, T, TC]
-      copy_number: [0, 2, 1]
+      copy_number: [0, 1.5, 1.47]
       unification:
         - range: {beg: 1000, end: 1000}
           alt: C

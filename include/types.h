@@ -236,7 +236,7 @@ struct discovered_allele_info {
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << std::setprecision(1) << copy_number << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << "]";
         return os.str();
     }
 };
@@ -514,5 +514,21 @@ struct genotyper_config {
     static Status of_yaml(const YAML::Node& yaml, genotyper_config& ans);
 };
 
+// convenience wrapper for a self-freeing vector with an exposed 'capacity' --
+// used with htslib functions that reuse/realloc the buffer
+template<class T> struct htsvecbox {
+    T *v = nullptr;
+    int capacity = 0;
+    bool empty() const { return v == nullptr; }
+    T& operator[](unsigned i) { return v[i]; }
+    void clear() {
+        free(v);
+        v = nullptr;
+        capacity = 0;
+    }
+    ~htsvecbox() {
+        free(v);
+    }
+};
 
 } //namespace GLnexus

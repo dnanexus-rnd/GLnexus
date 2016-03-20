@@ -70,7 +70,7 @@ int main() {
 
         nGL = bcf_get_format_float(hdr.get(), vt, "GL", &gl, &glsz);
 
-        int n_gt = diploid::genotypes(vt->n_allele);
+        int n_gt = GLnexus::diploid::genotypes(vt->n_allele);
         float max_post = -std::numeric_limits<float>::infinity();
         int fa_max, mo_max, pb_max, sb_max;
 
@@ -79,8 +79,8 @@ int main() {
             for (int mo = 0; mo < n_gt; mo++) {
                 for (int pb = 0; pb < n_gt; pb++) {
                     for (int sb = 0; sb < n_gt; sb++) {
-                        int denovo = diploid::trio::mendelian_inconsistencies(2, fa, mo, pb) +
-                                     diploid::trio::mendelian_inconsistencies(2, fa, mo, sb);
+                        int denovo = GLnexus::diploid::trio::mendelian_inconsistencies(fa, mo, pb) +
+                                     GLnexus::diploid::trio::mendelian_inconsistencies(fa, mo, sb);
 
                         float post =  gl[fa] + gl[3+mo] + gl[6+pb] + gl[9+sb] - 6*denovo;
                         if (post > max_post) {

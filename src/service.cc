@@ -3,6 +3,7 @@
 #include "unifier.h"
 #include "genotyper.h"
 #include "residuals.h"
+#include "diploid.h"
 #include <algorithm>
 #include <sstream>
 #include <fstream>
@@ -61,15 +62,17 @@ static Status discover_alleles_thread(const set<string>& samples,
     string dataset;
     shared_ptr<const bcf_hdr_t> dataset_header;
     vector<shared_ptr<bcf1_t>> records;
+    vector<vector<float>> copy_number;
     while ((s = iterator.next(dataset, dataset_header, records)).ok()) {
         discovered_alleles dsals;
         // determine which of the dataset's samples are in the desired sample set
         // TODO: FCMM-memoize this during the operation
-        int dataset_nsamples = bcf_hdr_nsamples(dataset_header.get());
-        vector<bool> dataset_sample_relevant;
-        for (size_t i = 0; i < dataset_nsamples; i++) {
-            string sample_i(bcf_hdr_int2id(dataset_header.get(), BCF_DT_SAMPLE, i));
-            dataset_sample_relevant.push_back(samples.find(sample_i) != samples.end());
+        size_t dataset_nsamples = bcf_hdr_nsamples(dataset_header.get());
+        vector<unsigned> dataset_relevant_samples;
+        for (unsigned i = 0; i < dataset_nsamples; i++) {
+            if (samples.find(string(bcf_hdr_int2id(dataset_header.get(), BCF_DT_SAMPLE, i))) != samples.end()) {
+                dataset_relevant_samples.push_back(i);
+            }
         }
 
         // for each BCF record
@@ -87,39 +90,27 @@ static Status discover_alleles_thread(const set<string>& samples,
                 continue;
             }
 
-            vector<float> obs_counts(record->n_allele, 0.0);
+            // calculate estimated allele copy numbers for this record
+            // TODO: ideally we'd compute them only for relevant samples
+            S(diploid::estimate_allele_copy_number(dataset_header.get(), record.get(), copy_number));
+            #define round_to_hundredths(x) (roundf(x*100.0)/100.0)
 
-            // count hard-called alt allele observations for desired samples
-            // TODO: could use GLs for soft estimate
-            // TODO: "max ref extension" distance for each allele
-            int *gt = nullptr, gtsz = 0;
-            int ngt = bcf_get_genotypes(dataset_header.get(), record.get(), &gt, &gtsz);
-            assert(ngt == 2*dataset_nsamples);
-            for (int i = 0; i < ngt; i++) {
-                if (gt[i] != bcf_int32_vector_end) {
-                    int al_i = bcf_gt_allele(gt[i]);
-                    if (al_i >= 0 && al_i < record->n_allele
-                        && dataset_sample_relevant.at(i/2)) {
-                        obs_counts[al_i] += 1.0;
-                    }
-                }
-            }
-            if (gt) {
-                free(gt);
-            }
-
-            // FIXME -- minor potential bug -- double-counting observations of
+            // FIXME -- minor potential bug -- double-counting copy number of
             // alleles that span multiple discovery ranges
 
             // create a discovered_alleles entry for each alt allele matching [ACGT]+
             // In particular this excludes gVCF <NON_REF> symbolic alleles
             bool any_alt = false;
             for (int i = 1; i < record->n_allele; i++) {
-                if (obs_counts[i] > 0.0) { // TODO: threshold for soft estimates
+                float copy_number_i = 0.0;
+                for (unsigned sample : dataset_relevant_samples) {
+                    copy_number_i += copy_number[sample][i];
+                }
+                if (copy_number_i >= 0.5) { // TODO: configurable threshold
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
                     if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
-                        discovered_allele_info ai = { false, obs_counts[i] };
+                        discovered_allele_info ai = { false, round_to_hundredths(copy_number_i) };
                         dsals.insert(make_pair(allele(rng, aldna), ai));
                         any_alt = true;
                     }
@@ -131,7 +122,11 @@ static Status discover_alleles_thread(const set<string>& samples,
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
             if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
                 if (any_alt) {
-                    discovered_allele_info ai = { true, obs_counts[0] };
+                    float ref_copy_number = 0.0;
+                    for (unsigned sample : dataset_relevant_samples) {
+                        ref_copy_number += copy_number[sample][0];
+                    }
+                    discovered_allele_info ai = { true, round_to_hundredths(ref_copy_number) };
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }
             } else {
