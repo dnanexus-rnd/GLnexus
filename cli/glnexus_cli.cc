@@ -493,6 +493,8 @@ int main_dump(int argc, char *argv[]) {
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
 const char* config_presets_yml = R"eof(
+unifier_config:
+  min_allele_copy_number: 0.9
 genotyper_config:
   required_dp: 1
   liftover_fields:
@@ -725,7 +727,7 @@ int main_genotype(int argc, char *argv[]) {
             vector<GLnexus::unified_site> sites;
             for (int i = 0; i < valleles.size(); i++) {
                 vector<GLnexus::unified_site> sites_i;
-                H("unify sites", GLnexus::unified_sites(GLnexus::unifier_config(), valleles[i], sites_i, ranges[i]));
+                H("unify sites", GLnexus::unified_sites(unifier_cfg, valleles[i], sites_i, ranges[i]));
                 sites.insert(sites.end(), sites_i.begin(), sites_i.end());
             }
             console->info() << "unified to " << sites.size() << " sites";

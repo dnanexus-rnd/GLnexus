@@ -304,6 +304,13 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("unifier_config::of_yaml: " msg)
     V(yaml.IsMap(), "not a map at top level");
 
+    const auto n_min_allele_copy_number = yaml["min_allele_copy_number"];
+    if (n_min_allele_copy_number) {
+        V(n_min_allele_copy_number.IsScalar(), "invalid min_allele_copy_number");
+        ans.min_allele_copy_number = n_min_allele_copy_number.as<float>();
+        V(ans.min_allele_copy_number >= 0, "invalid min_allele_copy_number");
+    }
+
     const auto n_max_alleles_per_site = yaml["max_alleles_per_site"];
     if (n_max_alleles_per_site) {
         V(n_max_alleles_per_site.IsScalar(), "invalid max_alleles_per_site");

@@ -182,7 +182,14 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
 // position in common conflict.)
 auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, minimized_alleles& pruned) {
     // sort the alt alleles by decreasing copy number (+ some tiebreakers)
-    vector<minimized_allele> valleles(alleles.begin(), alleles.end());
+    vector<minimized_allele> valleles;
+    valleles.reserve(alleles.size());
+    for (const auto& allele : alleles) {
+        // filter alleles with insufficient copy number
+        if (allele.second.copy_number >= cfg.min_allele_copy_number) {
+            valleles.push_back(allele);
+        }
+    }
     sort(valleles.begin(), valleles.end(), minimized_allele_lt(cfg.preference));
 
     // Build the sites by considering each alt allele in that order, and

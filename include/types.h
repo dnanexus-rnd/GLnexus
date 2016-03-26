@@ -404,6 +404,12 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
+    // Keep only alleles with at least this estimated copy number discovered
+    // in the cohort. The estimated copy number is a soft estimate based on
+    // the genotype likelihoods, so setting this somewhere between 0 and 1 can
+    // filter out weak singleton observations.
+    float min_allele_copy_number = 0.0;
+
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.
     size_t max_alleles_per_site = 0;
