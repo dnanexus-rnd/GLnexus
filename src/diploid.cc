@@ -57,12 +57,13 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
             assert(igl[ik] >= 0.0);
             gl[ik] = exp10f(float(igl[ik])/(-10.0));
         }
+/*
     // couldn't load PL; try GL
     } else if (bcf_get_format_float(header, record, "GL", &gl.v, &gl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
             assert(gl[ik] <= 0.0);
             gl[ik] = exp10f(gl[ik]);
-        }
+        } */
     } else {
         gl.clear();
     }
