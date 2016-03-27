@@ -37,7 +37,7 @@ unifier_config:
 truth_unified_sites:
     - range: {ref: A, beg: 1000, end: 1000}
       alleles: [T, A]
-      observation_count: [0, 1]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 1000, end: 1000}
           alt: T
@@ -50,7 +50,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: A, beg: 1002, end: 1002}
       alleles: [C, G]
-      observation_count: [0, 1]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 1000, end: 1002}
           alt: TTC

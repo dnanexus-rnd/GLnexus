@@ -86,21 +86,21 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  observation_count: 10.5
+  copy_number: 10.5
 )";
 
     #define VERIFY_DA(dal) \
         REQUIRE((dal).size() == 2); \
         REQUIRE((dal).find(allele(range(1, 99, 100),"A")) != (dal).end()); \
         REQUIRE((dal)[allele(range(1, 99, 100),"A")].is_ref == true); \
-        REQUIRE((dal)[allele(range(1, 99, 100),"A")].observation_count == 100); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"A")].copy_number == 100); \
         REQUIRE((dal).find(allele(range(1, 99, 100),"G")) != (dal).end()); \
         REQUIRE((dal)[allele(range(1, 99, 100),"G")].is_ref == false); \
-        REQUIRE((dal)[allele(range(1, 99, 100),"G")].observation_count == 10.5);
+        REQUIRE((dal)[allele(range(1, 99, 100),"G")].copy_number == 10.5);
 
     SECTION("basic") {
         YAML::Node n = YAML::Load(da_yaml);
@@ -116,11 +116,11 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 - range: {ref: 'bogus', beg: 100, end: 100}
   dna: G
   is_ref: false
-  observation_count: 10.5
+  copy_number: 10.5
 )");
 
         discovered_alleles dal;
@@ -130,7 +130,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
         n = YAML::Load(1 + R"(
 - dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -140,7 +140,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: 123
   dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -152,11 +152,11 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 - range: {ref: '17', beg: 100, end: 100}
   dna: BOGUS
   is_ref: false
-  observation_count: 10.5
+  copy_number: 10.5
 )");
 
         discovered_alleles dal;
@@ -164,16 +164,16 @@ TEST_CASE("discovered_alleles_of_yaml") {
         REQUIRE(s.bad());
     }
 
-    SECTION("bogus observation_count") {
+    SECTION("bogus copy_number") {
         YAML::Node n = YAML::Load(1 + R"(
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  observation_count: [x]
+  copy_number: [x]
 )");
 
         discovered_alleles dal;
@@ -201,11 +201,11 @@ TEST_CASE("yaml_of_discovered_alleles") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  observation_count: 100
+  copy_number: 100
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  observation_count: 10.5
+  copy_number: 10.5
 )";
 
         YAML::Node n = YAML::Load(da_yaml);
@@ -229,7 +229,7 @@ TEST_CASE("unified_site::of_yaml") {
     const char* snp = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {ref: '17', beg: 100, end: 100}
     alt: A
@@ -248,15 +248,15 @@ unification:
         REQUIRE((us).unification.size() == 2);  \
         REQUIRE((us).unification[allele(range(1, 99, 100), "A")] == 0); \
         REQUIRE((us).unification[allele(range(1, 99, 100), "G")] == 1); \
-        REQUIRE((us).observation_count.size() == 2); \
-        REQUIRE((us).observation_count[0] == 100.0); \
-        REQUIRE((us).observation_count[1] == 51.0);
+        REQUIRE((us).copy_number.size() == 2); \
+        REQUIRE((us).copy_number[0] == 100.0); \
+        REQUIRE((us).copy_number[1] == 51.0);
 
 
     const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
 alleles: [AG, AC, C]
-observation_count: [100, 50, 1]
+copy_number: [100, 50, 1]
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     alt: AG
@@ -318,7 +318,7 @@ unification:
         const char* snp_opt = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {beg: 100, end: 100}
     alt: A
@@ -339,7 +339,7 @@ unification:
         const char* snp_bogus = 1 + R"(
 range: {ref: 'bogus', beg: 100, end: 100}
 alleles: [A, G]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {beg: 100, end: 100}
     alt: A
@@ -356,7 +356,7 @@ unification:
         snp_bogus = 1 + R"(
 range: 12345
 alleles: [A, G]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {beg: 100, end: 100}
     alt: A
@@ -373,7 +373,7 @@ unification:
         const char* snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {beg: 100, end: 100}
     alt: A
@@ -389,7 +389,7 @@ unification:
         const char* snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {ref: 'bogus', beg: 100, end: 100}
     alt: A
@@ -406,7 +406,7 @@ unification:
         snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-observation_count: [100, 51]
+copy_number: [100, 51]
 unification:
   - range: {beg: 100, end: 100}
     alt: A
@@ -427,7 +427,7 @@ TEST_CASE("unified_site::yaml") {
 range: {ref: '17', beg: 1000, end: 1001}
 containing_target: {ref: '17', beg: 1, end: 10000}
 alleles: [AG, AC, C]
-observation_count: [100, 50, 1]
+copy_number: [100, 50, 1]
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     alt: AG

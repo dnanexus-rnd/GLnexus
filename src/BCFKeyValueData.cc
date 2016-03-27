@@ -1,5 +1,6 @@
 #include "BCFKeyValueData.h"
 #include "BCFSerialize.h"
+#include "diploid.h"
 #include "yaml-cpp/yaml.h"
 #include "vcf.h"
 #include "hfile.h"
@@ -959,24 +960,67 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    // check gVCF-specific assumptions: the last allele is a symbolic one, and
-    // the others are DNA
+    // check that alleles are all distinct, and some gVCF-specific
+    // assumptions: the last allele is a symbolic one, and the others are DNA
     if (bcf->n_allele<2 || !regex_match(bcf->d.allele[bcf->n_allele-1], regex_symbolic_allele)) {
         return Status::Invalid("last ALT allele isn't symbolic; is this a *g*VCF file? ",
                                filename + " " + range(bcf).str(contigs));
     }
-    for (int i=0; i < bcf->n_allele-1; i++) {
+    set<string> alleles;
+    for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (!regex_match(allele_i, regex_dna)) {
+        if (i < bcf->n_allele-1 && !regex_match(allele_i, regex_dna)) {
             return Status::Invalid("allele is not a recognized DNA sequence ",
                                    filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }
+        alleles.insert(allele_i);
+    }
+    if (alleles.size() != bcf->n_allele) {
+        return Status::Invalid("alleles are not distinct ", filename + " " + range(bcf).str(contigs));
     }
 
-    // TODO: verify there's at least one ALT allele, and that each ALT allele
-    // differs from the REF allele, and that the expected FORMAT fields are
-    // present for each sample declared in the header (e.g. GT, AD, GL)
+    // validate genotypes (all entries either missing or in [0, n_allele))
+    if (bcf->n_sample != bcf_hdr_nsamples(hdr)) {
+        return Status::Invalid("gVCF record doesn't have expected # of samples", filename + " " + range(bcf).str(contigs));
+    }
+    htsvecbox<int> gt;
+    int nGT = bcf_get_genotypes(hdr, bcf, &gt.v, &gt.capacity);
+    if (nGT != 2*bcf->n_sample) {
+        return Status::Invalid("gVCF record doesn't have expected # of GT entries", filename + " " + range(bcf).str(contigs));
+    }
+    for (int i = 0; i < nGT; i++) {
+        if (!bcf_gt_is_missing(gt[i]) && (bcf_gt_allele(gt[i]) < 0 || bcf_gt_allele(gt[i]) >= bcf->n_allele)) {
+            return Status::Invalid("invalid GT entry in gVCF record", filename + " " + range(bcf).str(contigs));
+        }
+    }
 
+    // validate genotype likelihoods (n_samples*nGT entries; PL: all entries nonnegative; GL: all entries nonpositive)
+    htsvecbox<int32_t> pl;
+    int nPL = bcf_get_format_int32(hdr, bcf, "PL", &pl.v, &pl.capacity);
+    if (nPL >= 0) {
+        if (nPL != bcf->n_sample * diploid::genotypes(bcf->n_allele)) {
+            return Status::Invalid("gVCF record doesn't have expected # of PL entries", filename + " " + range(bcf).str(contigs));
+        }
+        for (int i = 0; i < nPL; i++) {
+            if (pl[i] < 0) {
+                return Status::Invalid("negative PL entry in gVCF record", filename + " " + range(bcf).str(contigs));
+            }
+        }
+    }
+/*
+    htsvecbox<float> gl;
+    int nGL = bcf_get_format_float(hdr, bcf, "GL", &gl.v, &gl.capacity);
+    if (nGL >= 0) {
+        if (nGL != bcf->n_sample * diploid::genotypes(bcf->n_allele)) {
+            return Status::Invalid("gVCF record doesn't have expected # of GL entries", filename + " " + range(bcf).str(contigs));
+        }
+        for (int i = 0; i < nGL; i++) {
+            if (gl[i] > 0.0) {
+                return Status::Invalid("positive GL entry in gVCF record", filename + " " + range(bcf).str(contigs));
+            }
+        }
+    }
+*/
     return Status::OK();
 }
 

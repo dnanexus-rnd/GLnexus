@@ -1,76 +1,116 @@
 #include <utility>
 #include <math.h>
 #include <assert.h>
+#include <sstream>
+#include "diploid.h"
 using namespace std;
 
+namespace GLnexus {
 namespace diploid {
 
 // n_gt = (nA+1) choose 2 = (nA+1)!/2/(nA-1)! = (nA+1)(nA)/2
-int genotypes(int n_allele) {
+unsigned genotypes(unsigned n_allele) {
     return (n_allele+1)*n_allele/2;
 }
 
-int alleles_gt(int n_allele, int i, int j) {
-    /*
-      0 1 2
-    0 0 1 2 
-    1   3 4
-    2     5
-
-      0 1 2 3
-    0 0 1 2 3
-    1   4 5 6
-    2     7 8
-    3       9
-
-    // t[0,0] = 0
-    // t[1,1] = n_allele
-    // t[2,2] = n_allele + (n_allele - 1)
-    // t[3,3] = n_allele + (n_allele - 1) + (n_allele - 2)
-    // t[i,i] = i*n_allele-(i-1)(i)/2
-    */
-
-    assert(i >= 0 && i < n_allele);
-    assert(j >= 0 && j < n_allele);
-
+unsigned alleles_gt(unsigned i, unsigned j) {
     if (j < i) {
         swap(i, j);
     }
-    return (i == 0 ? 0 : (n_allele*i-(i-1)*i/2)) + (j-i);
+    return (j*(j+1)/2)+i;
 }
 
 // given a genotype index, return a pair with the indices of the constituent n_allele
-pair<int,int> gt_alleles(int n_allele, int gt) {
+pair<unsigned,unsigned> gt_alleles(unsigned gt) {
     /*
-    0 0
-    0 1
-    0 2
-    1 1
-    1 2
-    2 2
-
       0 1 2
-    0 0 1 2
-    1   3 4
+    0 0 1 3
+    1   2 4
     2     5
+
+      0 1 2 3
+    0 0 1 3 6
+    1   2 4 7
+    2     5 8
+    3       9
     */
 
-    /*
-    http://stackoverflow.com/a/243342
-    WTF? really!? 
-    TODO: make a lookup table for small values of n_allele
-    */
+    unsigned j = (unsigned)((sqrt(8*gt+1)-1.0)/2.0);
+    assert(gt >= j*(j+1)/2);
+    unsigned i = gt - j*(j+1)/2;
+    return make_pair(i,j);
+}
 
-    assert(gt >= 0 && gt < genotypes(n_allele));
+GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, vector<vector<float>>& ans) {
+    ans.resize(record->n_sample);
+    unsigned nGT = genotypes(record->n_allele);
 
-    double m = n_allele;
-    double row = (-2*m - 1 + sqrt( (4*m*(m+1) - 8*(double)gt - 7) )) / -2;
-    if( row == (double)(int) row ) row -= 1;
-    int irow = (int) row;
-    
-    int col = gt - n_allele * irow + irow*(irow+1) / 2;
+    // buffers for genotype likelihoods
+    htsvecbox<int32_t> igl;
+    htsvecbox<float> gl;
 
-    return pair<int,int>(irow, col);
+    // try loading genotype likelihoods from PL
+    if (bcf_get_format_int32(header, record, "PL", &igl.v, &igl.capacity) == record->n_sample*nGT) {
+        gl.capacity = record->n_sample*nGT;
+        gl.v = (float*) calloc(gl.capacity, sizeof(float));
+        for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
+            assert(igl[ik] >= 0.0);
+            gl[ik] = exp10f(float(igl[ik])/(-10.0));
+        }
+/*
+    // couldn't load PL; try GL
+    } else if (bcf_get_format_float(header, record, "GL", &gl.v, &gl.capacity) == record->n_sample*nGT) {
+        for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
+            assert(gl[ik] <= 0.0);
+            gl[ik] = exp10f(gl[ik]);
+        } */
+    } else {
+        gl.clear();
+    }
+
+    if (!gl.empty()) {
+        for (unsigned i = 0; i < record->n_sample; i++) {
+            float *gl_i = &(gl[i*nGT]);
+            auto& ans_i = ans[i];
+            ans_i.resize(record->n_allele);
+            memset(ans_i.data(), 0, record->n_allele*sizeof(float));
+
+            // based on genotype likelihoods and implicit uniform prior,
+            // calculate expected # of copies of each allele
+            float total_likelihood = 0.0;
+            for (unsigned k = 0; k < nGT; k++) {
+                total_likelihood += gl_i[k];
+                auto p = gt_alleles(k);
+                ans_i[p.first] += gl_i[k];
+                ans_i[p.second] += gl_i[k];
+            }
+            for (unsigned j = 0; j < record->n_allele; j++) {
+                ans_i[j] /= total_likelihood;
+            }
+        }
+    } else {
+        // couldn't find any genotype likelihoods; set copy number based on
+        // the hard genotype calls
+        htsvecbox<int> gt;
+        if (bcf_get_genotypes(header, record, &gt.v, &gt.capacity) != 2*record->n_sample) {
+            return Status::Invalid("diploid::estimate_copy_number: couldn't load PL, GL, nor genotypes", range(record).str());
+        }
+
+        for (unsigned i = 0; i < record->n_sample; i++) {
+            auto& ans_i = ans[i];
+            ans_i.resize(record->n_allele);
+            memset(ans_i.data(), 0, record->n_allele*sizeof(float));
+            for (unsigned ofs : {0, 1}) {
+                if (!bcf_gt_is_missing(gt[i*2+ofs])) {
+                    unsigned j = bcf_gt_allele(gt[i*2+ofs]);
+                    assert(j < record->n_allele);
+                    ans_i[j] += 1.0;
+                }
+            }
+        }
+    }
+
+    return Status::OK();
 }
 
 namespace trio {
@@ -82,10 +122,10 @@ namespace trio {
 //   2 if neither child allele is found in the parents
 // Note, this is not simply number of alleles not found in either parent, e.g.
 // p1=0/0, p2=1/1, ch=1/1 => 1
-int mendelian_inconsistencies(int n_allele, int gt_p1, int gt_p2, int gt_ch) {
-    auto a_p1 = gt_alleles(n_allele, gt_p1);
-    auto a_p2 = gt_alleles(n_allele, gt_p2);
-    auto a_ch = gt_alleles(n_allele, gt_ch);
+int mendelian_inconsistencies(int gt_p1, int gt_p2, int gt_ch) {
+    auto a_p1 = gt_alleles(gt_p1);
+    auto a_p2 = gt_alleles(gt_p2);
+    auto a_ch = gt_alleles(gt_ch);
     auto a1 = a_ch.first, a2 = a_ch.second;
 
     if (a1 == a_p1.first || a1 == a_p1.second) {
@@ -96,6 +136,4 @@ int mendelian_inconsistencies(int n_allele, int gt_p1, int gt_p2, int gt_ch) {
         return (a2 == a_p1.first || a2 == a_p1.second || a2 == a_p2.first || a2 == a_p2.second) ? 1 : 2;
     }
 }
-} // namespace trio
-
-} // namespace diploid
+}}}

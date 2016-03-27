@@ -376,7 +376,6 @@ Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpe
 // whether we're looking at a gVCF reference confidence record or a "regular"
 // VCF record.
 class AlleleDepthHelper {
-    Status s_;
     const genotyper_config& cfg_;
     size_t n_sample_ = 0, n_allele_ = 0;
     bool is_g_ = false;
@@ -455,35 +454,18 @@ public:
     // The behavior of remaining methods is undefined until Load() has been
     // invoked successfully
 
-    // Is there sufficient coverage for sample i, allele j?
-    bool sufficient(unsigned sample, unsigned allele) {
-        if (!cfg_.required_dp) {
-            return true;
-        }
-        assert(sample < n_sample_);
-        assert(allele < n_allele_);
-        if (is_g_) {
-            // the MIN_DP array has just one integer per sample
-            if (allele == 0) {
-                return v_[sample] >= cfg_.required_dp;
-            } else {
-                return false;
-            }
-        } else {
-            // the AD array has one integer per allele per sample
-            return v_[sample*n_allele_+allele] >= cfg_.required_dp;
-        }
-    }
-
     bool is_gvcf_ref() { return is_g_; }
 
-    // Returns the depth for the reference allele for sample i
-    int get_ref_depth(unsigned sample) {
-        assert(sample < n_sample_);
+    // get depth for sample i & allele j
+    unsigned get(unsigned sample, unsigned allele) {
+        if (sample >= n_sample_ || allele >= n_allele_) return 0;
         if (is_g_) {
+            // the MIN_DP array has just one integer per sample
+            if (allele != 0) return 0;
             return v_[sample];
         } else {
-            return v_[sample*n_allele_+0];
+            // the AD array has one integer per allele per sample
+            return v_[sample*n_allele_+allele];
         }
     }
 };
@@ -668,10 +650,10 @@ static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* datas
             assert(mapped_sample < min_ref_depth.size());
 
             if (min_ref_depth[mapped_sample] < 0) {
-                min_ref_depth[mapped_sample] = depth.get_ref_depth(i);
+                min_ref_depth[mapped_sample] = depth.get(i, 0);
             } else {
                 min_ref_depth[mapped_sample] = min(min_ref_depth[mapped_sample],
-                                                   depth.get_ref_depth(i));
+                                                   (int) depth.get(i, 0));
             }
         }
     }
@@ -899,7 +881,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                 auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);             \
                 assert(al >= 0 && al < record->n_allele);                  \
                 int rd = min_ref_depth[ij.second];                         \
-                if (depth.sufficient(ij.first, al)                         \
+                if (depth.get(ij.first, al) >= cfg.required_dp             \
                     && (rd < 0 || rd >= cfg.required_dp)) {                \
                     if (allele_mapping[al] >= 0) {                         \
                         genotypes[2*ij.second+(ofs)] =                     \

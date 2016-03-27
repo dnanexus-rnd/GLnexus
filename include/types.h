@@ -230,13 +230,13 @@ struct allele {
 
 struct discovered_allele_info {
     bool is_ref;
-    float observation_count;
+    float copy_number;
 
-    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && observation_count == rhs.observation_count; }
+    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && copy_number == rhs.copy_number; }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " observation count: " << std::setprecision(1) << observation_count << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << "]";
         return os.str();
     }
 };
@@ -268,18 +268,18 @@ struct unified_site {
     /// DNA) onto the unified alleles (by index).
     std::map<allele,int> unification;
 
-    std::vector<float> observation_count;
+    std::vector<float> copy_number;
     //std::vector<float> genotype_prior;
 
     bool operator==(const unified_site& rhs) const noexcept {
         return pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
-               && observation_count == rhs.observation_count;
+               && copy_number == rhs.copy_number;
     }
     bool operator<(const unified_site& rhs) const noexcept{
         if (pos != rhs.pos) return pos < rhs.pos;
         if (alleles != rhs.alleles) return alleles < rhs.alleles;
         if (unification != rhs.unification) return unification < rhs.unification;
-        return observation_count < rhs.observation_count;
+        return copy_number < rhs.copy_number;
     }
 
     unified_site(const range& pos_) noexcept : pos(pos_), containing_target(-1,-1,-1) {}
@@ -404,6 +404,12 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
+    // Keep only alleles with at least this estimated copy number discovered
+    // in the cohort. The estimated copy number is a soft estimate based on
+    // the genotype likelihoods, so setting this somewhere between 0 and 1 can
+    // filter out weak singleton observations.
+    float min_allele_copy_number = 0.0;
+
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.
     size_t max_alleles_per_site = 0;
@@ -514,5 +520,21 @@ struct genotyper_config {
     static Status of_yaml(const YAML::Node& yaml, genotyper_config& ans);
 };
 
+// convenience wrapper for a self-freeing vector with an exposed 'capacity' --
+// used with htslib functions that reuse/realloc the buffer
+template<class T> struct htsvecbox {
+    T *v = nullptr;
+    int capacity = 0;
+    bool empty() const { return v == nullptr; }
+    T& operator[](unsigned i) { return v[i]; }
+    void clear() {
+        free(v);
+        v = nullptr;
+        capacity = 0;
+    }
+    ~htsvecbox() {
+        free(v);
+    }
+};
 
 } //namespace GLnexus

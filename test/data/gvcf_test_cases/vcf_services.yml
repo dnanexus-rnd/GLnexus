@@ -36,7 +36,7 @@ input:
 truth_unified_sites:
     - range: {ref: "A", beg: 1001, end: 1001}
       alleles: [A, G]
-      observation_count: [0, 6]
+      copy_number: [0, 6]
       unification:
         - range: {beg: 1001, end: 1001}
           alt: A
@@ -46,7 +46,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: "A", beg: 1002, end: 1002}
       alleles: [C, A, G, T]
-      observation_count: [0, 6, 2, 2]
+      copy_number: [0, 6, 2, 2]
       unification:
         - range: {beg: 1002, end: 1002}
           alt: C
@@ -62,7 +62,7 @@ truth_unified_sites:
           to: 3
     - range: {ref: "A", beg: 1011, end: 1013}
       alleles: [CCC, AGC, AGA]
-      observation_count: [0, 3, 2]
+      copy_number: [0, 3, 2]
       unification:
         - range: {beg: 1011, end: 1012}
           alt: CC
@@ -78,7 +78,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: "A", beg: 1101, end: 1101}
       alleles: [C, A]
-      observation_count: [0, 3]
+      copy_number: [0, 3]
       unification:
         - range: {beg: 1101, end: 1101}
           alt: C
@@ -91,7 +91,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: "A", beg: 1103, end: 1103}
       alleles: [C, G]
-      observation_count: [0, 3]
+      copy_number: [0, 3]
       unification:
         - range: {beg: 1101, end: 1103}
           alt: CCC
@@ -104,7 +104,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: "A", beg: 1201, end: 1201}
       alleles: [C, A]
-      observation_count: [0, 3]
+      copy_number: [0, 3]
       unification:
         - range: {beg: 1201, end: 1201}
           alt: C
