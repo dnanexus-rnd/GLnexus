@@ -484,7 +484,8 @@ struct retained_format_field {
     FieldCombinationMethod combi_method;
 
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
-        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, bool default_to_zero_=false) : orig_names(orig_names_), name(name_), type(type_), combi_method(combi_method_), number(number_), count(count_), default_to_zero(default_to_zero_) {}
+        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, bool default_to_zero_=false)
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_to_zero(default_to_zero_), count(count_), combi_method(combi_method_) {}
 
     static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);
 };

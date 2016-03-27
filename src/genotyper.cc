@@ -904,10 +904,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // overlapping this site and fill in the genotypes as we encounter them.
     vector<one_call> genotypes(2*samples.size());
 
-    LossTrackers loss_trackers;
-    for (const auto& sample : samples) {
-        loss_trackers.push_back(LossTracker(site.pos));
-    }
+    LossTrackers loss_trackers(samples.size(), site.pos);
 
     // Setup format field helpers
     vector<unique_ptr<IFormatFieldHelper>> format_helpers;

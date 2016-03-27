@@ -93,7 +93,7 @@ static Status discover_alleles_thread(const set<string>& samples,
             // calculate estimated allele copy numbers for this record
             // TODO: ideally we'd compute them only for relevant samples
             S(diploid::estimate_allele_copy_number(dataset_header.get(), record.get(), copy_number));
-            #define round_to_hundredths(x) (roundf(x*100.0)/100.0)
+            #define round_to_hundredths(x) (roundf(x*100.0f)/100.0f)
 
             // FIXME -- minor potential bug -- double-counting copy number of
             // alleles that span multiple discovery ranges

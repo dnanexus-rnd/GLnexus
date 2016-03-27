@@ -789,8 +789,8 @@ public:
                       unsigned min_alleles, bool include_danglers,
                       shared_ptr<const set<string>>& datasets,
                       const shared_ptr<KeyValue::Reader>& reader)
-        : data_(data), body_(body), bucket_(bucket), query_(query),
-          min_alleles_(min_alleles), include_danglers_(include_danglers), datasets_(datasets),
+        : data_(data), body_(body), min_alleles_(min_alleles), include_danglers_(include_danglers),
+          bucket_(bucket), query_(query), datasets_(datasets),
           dataset_(datasets->begin()), bucket_prefix_(bucket_prefix),
           reader_(reader) {}
 
