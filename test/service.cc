@@ -167,10 +167,10 @@ TEST_CASE("service::discover_alleles gVCF") {
         REQUIRE(als.size() == 2);
         auto p = als.find(allele(range(0, 10009463, 10009465), "TA"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 1.02f);
+        REQUIRE(p->second.copy_number == 1.0245f);
         p = als.find(allele(range(0, 10009463, 10009465), "T"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 0.98f);
+        REQUIRE(p->second.copy_number == 0.9755f);
     }
 
     SECTION("exclusion/detection of bogus alleles") {
@@ -179,10 +179,10 @@ TEST_CASE("service::discover_alleles gVCF") {
         REQUIRE(als.size() == 2);
         auto p = als.find(allele(range(1, 10009463, 10009465), "TA"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 1.02f);
+        REQUIRE(p->second.copy_number == 1.0245f);
         p = als.find(allele(range(1, 10009463, 10009465), "T"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 0.98f);
+        REQUIRE(p->second.copy_number == 0.9755f);
 
         s = svc->discover_alleles("<ALL>", range(1, 10009465, 10009466), als);
         REQUIRE(s == StatusCode::INVALID);

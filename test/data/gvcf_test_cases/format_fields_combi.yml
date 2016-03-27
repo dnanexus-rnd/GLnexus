@@ -62,7 +62,7 @@ genotyper_config:
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1001}
       alleles: [CC, T, TC]
-      copy_number: [0, 1.5, 1.47]
+      copy_number: [0, 1.4987, 1.4684]
       unification:
         - range: {beg: 1000, end: 1000}
           alt: C

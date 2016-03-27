@@ -43,7 +43,7 @@ input:
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1001}
       alleles: [TA, TAA, TAAA, T]
-      copy_number: [0, 3.97, 1, 0.76]
+      copy_number: [0, 3.9693, 0.9999, 0.7583]
       unification:
         - range: {beg: 1000, end: 1001}
           alt: TA
