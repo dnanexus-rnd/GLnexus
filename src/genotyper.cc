@@ -27,17 +27,15 @@ static bool is_pseudo_ref_record(const bcf_hdr_t* hdr, bcf1_t* record) {
     if (record->qual != 0.0) {
         return false;
     }
-    int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(hdr, record, &gt, &gtsz);
+    htsvecbox<int> gt;
+    int nGT = bcf_get_genotypes(hdr, record, &gt.v, &gt.capacity);
     for (int i = 0; i < record->n_sample; i++) {
         assert(i*2+1<nGT);
         if (bcf_gt_is_missing(gt[i*2]) || bcf_gt_allele(gt[i*2]) != 0 ||
             bcf_gt_is_missing(gt[i*2+1]) || bcf_gt_allele(gt[i*2+1]) != 0) {
-            free(gt);
             return false;
         }
     }
-    free(gt);
     return true;
 }
 
@@ -103,17 +101,16 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
     // Overloaded wrapper function to call bcf_get_format of the correct
     // format field type
-    int32_t *iv_ = nullptr;
-    float *fv_ = nullptr;
-    int ivlen_ = 0, fvlen_ = 0;
+    htsvecbox<int32_t> iv_;
+    htsvecbox<float> fv_;
     int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v) {
-        int ans = bcf_get_format_int32(dataset_header, record, field_name, &iv_, &ivlen_);
-        *v = iv_;
+        int ans = bcf_get_format_int32(dataset_header, record, field_name, &iv_.v, &iv_.capacity);
+        *v = iv_.v;
         return ans;
     }
     int bcf_get_format_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v) {
-        int ans = bcf_get_format_float(dataset_header, record, field_name, &fv_, &fvlen_);
-        *v = fv_;
+        int ans = bcf_get_format_float(dataset_header, record, field_name, &fv_.v, &fv_.capacity);
+        *v = fv_.v;
         return ans;
     }
 
@@ -216,10 +213,7 @@ public:
         format_v.resize(n_samples_ * count_);
     }
 
-    virtual ~FormatFieldHelper() {
-        free(iv_);
-        free(fv_);
-    }
+    virtual ~FormatFieldHelper() = default;
 
     // Wrapper with default values populated for
     // field_names and n_val_per_sample
@@ -379,8 +373,7 @@ class AlleleDepthHelper {
     const genotyper_config& cfg_;
     size_t n_sample_ = 0, n_allele_ = 0;
     bool is_g_ = false;
-    int32_t *v_ = nullptr;
-    int vlen_ = 0;
+    htsvecbox<int32_t> v_;
 
 public:
 
@@ -389,10 +382,6 @@ public:
     AlleleDepthHelper(const genotyper_config& cfg)
         : cfg_(cfg)
         {}
-
-    ~AlleleDepthHelper() {
-        free(v_);
-    }
 
     // The helper can be reused for multiple records by calling Load()
     // repeatedly. This will be slightly more efficient than using a new
@@ -406,7 +395,7 @@ public:
         if (is_g_) {
             // if so, look for the MIN_DP FORMAT field (or equivalent)
             int nv = bcf_get_format_int32(dataset_header, record, cfg_.ref_dp_format.c_str(),
-                                          &v_, &vlen_);
+                                          &v_.v, &v_.capacity);
 
             if (nv != record->n_sample) {
                 ostringstream errmsg;
@@ -416,7 +405,7 @@ public:
         } else {
             // this is a regular VCF record, so look for the AD FORMAT field (or equivalent)
             int nv = bcf_get_format_int32(dataset_header, record, cfg_.allele_dp_format.c_str(),
-                                          &v_, &vlen_);
+                                          &v_.v, &v_.capacity);
 
             if (nv == -1 || nv == -3) {
                 // We allow the AD field to not exist mainly as a (poor)
@@ -428,7 +417,7 @@ public:
                     // an unusual observed class of variant records which have
                     // INFO DP=0 (gVCF test case DP0_noAD.yml)
 
-                    nv = bcf_get_info_int32(dataset_header, record, "DP", &v_, &vlen_);
+                    nv = bcf_get_info_int32(dataset_header, record, "DP", &v_.v, &v_.capacity);
                     if (nv != 1 || v_[0] != 0) {
                         ostringstream errmsg;
                         errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
@@ -437,11 +426,11 @@ public:
                 }
 
                 nv = record->n_sample * record->n_allele;
-                if (vlen_ < nv) {
-                    v_ = (int32_t*) realloc(v_, nv*sizeof(int32_t));
-                    vlen_ = nv;
+                if (v_.capacity < nv) {
+                    v_.v = (int32_t*) realloc(v_.v, nv*sizeof(int32_t));
+                    v_.capacity = nv;
                 }
-                memset(v_, 0, nv*sizeof(int32_t));
+                memset(v_.v, 0, nv*sizeof(int32_t));
             } else if (nv != record->n_sample * record->n_allele) {
                 ostringstream errmsg;
                 errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
@@ -574,9 +563,9 @@ static Status update_orig_calls_for_loss(const genotyper_config& cfg, const vect
     for (auto& record: records) {
         Status s;
         range rng(record);
-        int *gt = nullptr, gtsz = 0;
-        int nGT = bcf_get_genotypes(dataset_header, record.get(), &gt, &gtsz);
-        if (!gt || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::update_orig_calls_for_loss bcf_get_genotypes");
+        htsvecbox<int> gt;
+        int nGT = bcf_get_genotypes(dataset_header, record.get(), &gt.v, &gt.capacity);
+        if (!gt.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::update_orig_calls_for_loss bcf_get_genotypes");
 
         for (int i = 0; i < n_bcf_samples; i++) {
             int sample_ind = sample_mapping.at(i);
@@ -585,8 +574,6 @@ static Status update_orig_calls_for_loss(const genotyper_config& cfg, const vect
             int n_calls = !bcf_gt_is_missing(gt[i*2]) + !bcf_gt_is_missing(gt[i*2 + 1]);
             loss.add_call_for_site(rng, n_calls, is_gvcf_ref_record(cfg, record.get()));
         }
-
-        free(gt);
     }
     return Status::OK();
 }
@@ -862,10 +849,10 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     S(find_allele_mapping(site, record, allele_mapping, deletion_allele))
 
     // get the genotype calls
-    int *gt = nullptr, gtsz = 0;
-    int nGT = bcf_get_genotypes(dataset_header, record, &gt, &gtsz);
+    htsvecbox<int> gt;
+    int nGT = bcf_get_genotypes(dataset_header, record, &gt.v, &gt.capacity);
     int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
-    if (!gt || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
+    if (!gt.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
     assert(record->n_sample == bcf_hdr_nsamples(dataset_header));
 
     S(depth.Load(dataset, dataset_header, record));
@@ -901,8 +888,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         fill_allele(0)
         fill_allele(1)
     }
-
-    free(gt);
 
     return Status::OK();
 }
