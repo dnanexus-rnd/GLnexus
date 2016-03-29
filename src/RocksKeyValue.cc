@@ -94,7 +94,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
     bbto.block_size = 64 * 1024;
-    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 6);
+    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 8);
 
     if (prefix_length) {
         // prefix-based hash indexing for this column family
