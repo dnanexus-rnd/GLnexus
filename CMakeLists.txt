@@ -34,11 +34,11 @@ MARK_AS_ADVANCED(
 
 # Compilation for performance profiling
 SET(CMAKE_CXX_FLAGS_PROFILE
-    "-ggdb -O3 -DNDEBUG -fno-omit-frame-pointer"
+    "-g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables"
     CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_C_FLAGS_PROFILE
-    "-ggdb -O3 -DNDEBUG -fno-omit-frame-pointer"
+    "-g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables"
     CACHE STRING "Flags used by the C compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_EXE_LINKER_FLAGS_PROFILE
@@ -64,7 +64,7 @@ ExternalProject_Add(htslib
     URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
-    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -g -O3 -march=ivybridge/" Makefile
+    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables -march=ivybridge/" Makefile
     BUILD_IN_SOURCE 1
     BUILD_COMMAND bash -c "make -n && make -j8"
     INSTALL_COMMAND ""

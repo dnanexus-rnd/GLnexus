@@ -111,6 +111,7 @@
     "file": "src/code.sh",
     "execDepends": [
       {"name": "liblz4-dev"},
+      {"name": "liblz4-1-dbg"},
       {"name": "libsnappy-dev"},
       {"name": "sysstat"}
     ],
