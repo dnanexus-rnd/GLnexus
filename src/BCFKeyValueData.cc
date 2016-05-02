@@ -423,7 +423,7 @@ Status BCFKeyValueData::all_samples_sampleset(string& ans) {
     unique_ptr<KeyValue::Iterator> it;
     S(body_->db->iterator(coll, "*", it));
     if (!it->valid() || it->key_str() != "*") return Status::NotFound("BCFKeyValueData::all_samples_sampleset: improperly initialized database");
-    uint64_t version = strtoull(it->value().first, nullptr, 10);
+    uint64_t version = strtoull(string(it->value().first, it->value().second).c_str(), nullptr, 10);
     ans = "*@" + to_string(version); // this is the desired sample set
 
     // Does the desired sample set exist already? If so, we are done.
