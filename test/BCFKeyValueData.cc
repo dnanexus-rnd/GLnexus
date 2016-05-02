@@ -1249,7 +1249,7 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
 TEST_CASE("BCFKeyValueData too many contigs") {
     KeyValueMem::DB db({});
     std::vector<std::pair<std::string,size_t> > contigs;
-    for (int i=0; i < 1002; ++i) {
+    for (int i=0; i < 10002; ++i) {
         contigs.push_back(make_pair<string,uint64_t>(to_string(i), 1000000));
     }
     Status s = T::InitializeDB(&db, contigs);
