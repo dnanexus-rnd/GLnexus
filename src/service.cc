@@ -352,7 +352,7 @@ public:
             outfile = vcf_open(filename.c_str(), "w");
         } else if (cfg.output_format == GLnexusOutputFormat::BCF) {
             // open as bcf
-            outfile = bcf_open(filename.c_str(), "wb");
+            outfile = bcf_open(filename.c_str(), "wb1");
         } else {
             return Status::Invalid("BCFFileSink::Open: Invalid output format");
         }
@@ -428,9 +428,17 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // We assume that by virtue of preallocating, no mutex is necessary to
     // use it as follows because writes and reads of individual elements are
     // serialized by the futures.
+    atomic<size_t> results_retrieved(0);
     atomic<bool> abort(false);
     for (size_t i = 0; i < sites.size(); i++) {
         auto fut = body_->threadpool_.push([&, i](int tid){
+            while (i > results_retrieved+4*body_->cfg_.threads) {
+                // throttle worker thread if the results retrieval, below, is falling
+                // too far behind. Otherwise memory usage would be unbounded because
+                // the results have to be retrieved and written out before they can
+                // be deallocated.
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
             if (abort || (ext_abort && *ext_abort)) {
                 abort = true;
                 return Status::Aborted();
@@ -488,6 +496,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             s = move(s_i);
             abort = true;
         }
+        results_retrieved++;
     }
     if (s.bad()) {
         return s;
