@@ -3,6 +3,51 @@
 # http://stackoverflow.com/a/17841619
 function join { local IFS="$1"; shift; echo "$*"; }
 
+function install_kernel_debug_symbols_from_web {
+    lsb_rel=$(lsb_release -cs)
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-proposed main restricted universe multiverse" >> ddebs.list
+    sudo cp ddebs.list /etc/apt/sources.list.d/
+
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
+    sudo apt-get update
+
+    # Make sure that the kernel symbol package exists
+    kernel_version=$(uname -r)
+    retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
+    if [[ -z "$retval" ]]; then
+        echo "Error: the kernel debug symbols package for $(kernel_version) are not available"
+        exit 1
+    fi
+
+    sudo apt-get install linux-image-$kernel_version-dbgsym
+}
+
+function install_kernel_debug_symbols {
+    # We carry debugging symbols for common kernels in the resources bundle.
+    # This saves roughly 10-15 minutes.
+    kernel_dbgsym_pkg=""
+    case $linux_version in
+        "3.13.0-85-generic")
+            kernel_dbgsym_pkg=linux-image-3.13.0-85-generic-dbgsym_3.13.0-85.129_amd64.ddeb
+            ;;
+        "3.13.0-74-generic")
+            kernel_dbgsym_pkg=linux-image-3.13.0-74-generic-dbgsym_3.13.0-74.118_i386.ddeb
+            ;;
+        *)
+            echo "We don't have the necessary debugging symbols for $linux_version"
+            install_kernel_debug_symbols_from_web
+            return
+            ;;
+    esac
+
+    echo "installing kernel debug symbols from project resources"
+    sudo dpkg -i $kernel_dbgsym_pkg
+    sudo apt-get install -f
+}
+
+
 main() {
     set -ex -o pipefail
 
@@ -13,32 +58,16 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
-#    sudo bash -c 'echo "0" > /proc/sys/kernel/kptr_restrict'
-
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
+        #sudo sysctl -w kernel.kptr_restrict=0
+
         # install linux-tools for the current kernel version
         linux_version=`uname -r`
         sudo apt-get -y -qq install "linux-tools-${linux_version}"
 
-        kernel_dbgsym_pkg=""
-        case $linux_version in
-            "3.13.0-85-generic")
-                kernel_dbgsym_pkg=linux-image-3.13.0-85-generic-dbgsym_3.13.0-85.129_amd64.ddeb
-                ;;
-            "3.13.0-74-generic")
-                kernel_dbgsym_pkg=linux-image-3.13.0-74-generic-dbgsym_3.13.0-74.118_i386.ddeb
-                ;;
-            *)
-
-                echo "We don't have the necessary debugging symbols for $linux_version"
-                exit 1
-                ;;
-        esac
-
-        echo "installing kernel debug symbols from project resources"
-        sudo dpkg -i $kernel_dbgsym_pkg
-        sudo apt-get install -f
+        # Install kernel debug symbols
+        install_kernel_debug_symbols
 
         echo "print all the loadable kernel modules"
         lsmod
@@ -106,6 +135,8 @@ main() {
     # genotype the ranges
     if [ "$(cat ranges.bed | wc -l)" -gt "0" ]; then
         if [ "$enable_perf" == "true" ]; then
+            # Run a perf command that will record everything the
+            # machine is doing, this allows tracking down all activity,
             mkdir -p out/perf
             sudo perf record -F $recordFreq -a -g &
             perf_pid=$!
@@ -133,7 +164,8 @@ main() {
         fi
 
         if [ "$enable_perf" == "true" ]; then
-            sleep 5
+            # Try to kill the perf process nicely; this does not always work
+            sleep 2
             sudo kill -s SIGINT $perf_pid
             sudo chmod 644 perf.data
             perf script > perf_genotype
