@@ -13,18 +13,39 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
+#    sudo bash -c 'echo "0" > /proc/sys/kernel/kptr_restrict'
+
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
         # install linux-tools for the current kernel version
         linux_version=`uname -r`
         sudo apt-get -y -qq install "linux-tools-${linux_version}"
 
+        kernel_dbgsym_pkg=""
+        case $linux_version in
+            "3.13.0-85-generic")
+                kernel_dbgsym_pkg=linux-image-3.13.0-85-generic-dbgsym_3.13.0-85.129_amd64.ddeb
+                ;;
+            "3.13.0-74-generic")
+                kernel_dbgsym_pkg=linux-image-3.13.0-74-generic-dbgsym_3.13.0-74.118_i386.ddeb
+                ;;
+            *)
+
+                echo "We don't have the necessary debugging symbols for $linux_version"
+                exit 1
+                ;;
+        esac
+
+        echo "installing kernel debug symbols from project resources"
+        sudo dpkg -i $kernel_dbgsym_pkg
+        sudo apt-get install -f
+
+        echo "print all the loadable kernel modules"
+        lsmod
+
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
         rm -f perf.data
-
-        # install flame-graph package
-        git clone https://github.com/brendangregg/FlameGraph
     fi
 
     # download inputs.
@@ -87,6 +108,7 @@ main() {
         if [ "$enable_perf" == "true" ]; then
             mkdir -p out/perf
             sudo perf record -F $recordFreq -a -g &
+            perf_pid=$!
         fi
 
         residuals_flag=""
@@ -100,7 +122,7 @@ main() {
         fi
 
         mkdir -p out/vcf
-        time glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(expr 2 \* $(nproc)) --bed ranges.bed \
+        time glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
 
         # we are writing the generated VCF to stdout, so the residuals will
@@ -111,7 +133,8 @@ main() {
         fi
 
         if [ "$enable_perf" == "true" ]; then
-            sudo killall perf
+            sleep 5
+            sudo kill -s SIGINT $perf_pid
             sudo chmod 644 perf.data
             perf script > perf_genotype
             FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
