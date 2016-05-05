@@ -1003,14 +1003,18 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
         // Handle residuals
         if (residualsFlag) {
+            const set<NoCallReason> non_residual_RNCs = { NoCallReason::N_A, NoCallReason::MissingData,
+                                                          NoCallReason::PartialData, NoCallReason::InsufficientDepth };
+
             bool any_lost_calls = false;
             for (int i = 0; i < bcf_nsamples; i++) {
-                if (genotypes[sample_mapping.at(i)*2].RNC != NoCallReason::N_A ||
-                    genotypes[sample_mapping.at(i)*2 + 1].RNC != NoCallReason::N_A) {
+                if (non_residual_RNCs.find(genotypes[sample_mapping.at(i)*2].RNC) == non_residual_RNCs.end() ||
+                    non_residual_RNCs.find(genotypes[sample_mapping.at(i)*2 + 1].RNC) == non_residual_RNCs.end()) {
                     any_lost_calls = true;
                     break;
                 }
             }
+
             if (any_lost_calls) {
                 // missing call, keep it in memory
                 DatasetSiteInfo dsi;
