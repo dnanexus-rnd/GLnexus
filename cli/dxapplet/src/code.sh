@@ -69,6 +69,9 @@ main() {
         # This is disabled, because we do not have the right permissions in a platform container.
         #enable_kernel_tracing
 
+        # install flame-graph package
+        git clone https://github.com/brendangregg/FlameGraph
+
         # install linux-tools for the current kernel version
         linux_version=`uname -r`
         sudo apt-get -y -qq install "linux-tools-${linux_version}"
