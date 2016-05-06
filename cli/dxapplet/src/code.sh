@@ -61,6 +61,7 @@ main() {
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
         #sudo sysctl -w kernel.kptr_restrict=0
+        #sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
 
         # install linux-tools for the current kernel version
         linux_version=`uname -r`
@@ -153,7 +154,7 @@ main() {
         fi
 
         mkdir -p out/vcf
-        time glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --bed ranges.bed \
+        time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
 
         # we are writing the generated VCF to stdout, so the residuals will

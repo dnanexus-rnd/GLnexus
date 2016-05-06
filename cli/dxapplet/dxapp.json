@@ -113,7 +113,8 @@
       {"name": "liblz4-dev"},
       {"name": "libsnappy-dev"},
       {"name": "sysstat"},
-      {"name": "tabix"}
+      {"name": "tabix"},
+      {"name": "numactl"}
     ],
     "systemRequirements": {
       "main": {
