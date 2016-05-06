@@ -112,7 +112,8 @@
     "execDepends": [
       {"name": "liblz4-dev"},
       {"name": "libsnappy-dev"},
-      {"name": "sysstat"}
+      {"name": "sysstat"},
+      {"name": "numactl"}
     ],
     "systemRequirements": {
       "main": {
