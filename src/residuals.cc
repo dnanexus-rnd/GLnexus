@@ -34,9 +34,6 @@ Status residuals_gen_record(const unified_site& site,
 
     // for each dataset
     for (const auto& ds_info : sites) {
-        if (ds_info.records.size() == 0)
-            continue;
-
         ostringstream records_text;
         // line with sample name(s)
         for (int i = 0; i < bcf_hdr_nsamples(gl_hdr); i++) {
