@@ -3,7 +3,10 @@
 # http://stackoverflow.com/a/17841619
 function join { local IFS="$1"; shift; echo "$*"; }
 
-function install_kernel_debug_symbols_from_web {
+function install_kernel_debug_symbols {
+    echo "Installing kernel debug symbols"
+
+    # Add special debian repositories holding kernel debugging symbols
     lsb_rel=$(lsb_release -cs)
     echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
     echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
@@ -13,43 +16,46 @@ function install_kernel_debug_symbols_from_web {
     sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
     sudo apt-get update
 
-    # Make sure that the kernel symbol package exists
+    # Check for an exact match to the kernel version
     kernel_version=$(uname -r)
     retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
-    if [[ -z "$retval" ]]; then
-        echo "Error: the kernel debug symbols package for $(kernel_version) are not available"
-        exit 1
+    if [[ -n "$retval" ]]; then
+        sudo apt-get install linux-image-$kernel_version-dbgsym
+        return
     fi
 
-    sudo apt-get install linux-image-$kernel_version-dbgsym
+    echo "An exact match for kernel [$kernel_version] debug symbols is not available"
+    kernel_version_short=$(uname -r | cut --delimiter='-' --fields=1)
+    echo "Searching for close match for kernel $kernel_version_short"
+
+    pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
+    echo "Found package $pkg, installing ..."
+    sudo apt-get install $pkg
 }
 
-function install_kernel_debug_symbols {
-    # We carry debugging symbols for common kernels in the resources bundle.
-    # This saves roughly 10-15 minutes.
-    kernel_dbgsym_pkg=""
-    case $linux_version in
-        "3.13.0-85-generic")
-            kernel_dbgsym_pkg=linux-image-3.13.0-85-generic-dbgsym_3.13.0-85.129_amd64.ddeb
-            ;;
-        "3.13.0-74-generic")
-            kernel_dbgsym_pkg=linux-image-3.13.0-74-generic-dbgsym_3.13.0-74.118_i386.ddeb
-            ;;
-        *)
-            echo "We don't have the necessary debugging symbols for $linux_version"
-            install_kernel_debug_symbols_from_web
-            return
-            ;;
-    esac
+# Disable the transparent huge-pages feature
+function disable_huge_pages {
+    if [ -d /sys/kernel/mm/transparent_hugepage ]; then
+        thp_path=/sys/kernel/mm/transparent_hugepage
+    else
+      return 0
+    fi
 
-    echo "installing kernel debug symbols from project resources"
-    sudo dpkg -i $kernel_dbgsym_pkg
-    sudo apt-get install -f
+    sudo sh -c 'echo never > ${thp_path}/enabled'
+    sudo sh -c 'echo never > ${thp_path}/defrag'
 }
 
+# Allow kernel tracing
+function enable_kernel_tracing {
+    sudo sysctl -w kernel.kptr_restrict=0
+    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+}
 
 main() {
     set -ex -o pipefail
+
+    # This is disabled, because we do not have the right permissions in a platform container.
+    #disable_huge_pages
 
     # parameters for performance recording
     recordFreq=99
@@ -60,18 +66,14 @@ main() {
 
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
-        #sudo sysctl -w kernel.kptr_restrict=0
-        #sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+        # This is disabled, because we do not have the right permissions in a platform container.
+        #enable_kernel_tracing
 
         # install linux-tools for the current kernel version
         linux_version=`uname -r`
         sudo apt-get -y -qq install "linux-tools-${linux_version}"
 
-        # Install kernel debug symbols
         install_kernel_debug_symbols
-
-        echo "print all the loadable kernel modules"
-        lsmod
 
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
