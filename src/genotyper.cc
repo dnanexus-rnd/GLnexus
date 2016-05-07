@@ -1108,6 +1108,17 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                cache, samples,
                                *residual_rec));
     }
+
+    // Overwrite the output BCF record with a duplicate. Why? This forces htslib to
+    // perform some internal serialization of the data (see the static bcf1_sync
+    // function in vcf.c, which we can't call directly, but is called by bcf_dup).
+    // htslib would otherwise do this serialization implicitly while writing the
+    // record out to a file, but by doing it explicitly here, we get to do some of the
+    // work in the current worker thread rather than the single thread responsible for
+    // writing out the file.
+    auto ans2 = shared_ptr<bcf1_t>(bcf_dup(ans.get()), &bcf_destroy);
+    ans = move(ans2);
+
     return Status::OK();
 }
 

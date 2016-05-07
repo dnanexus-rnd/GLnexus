@@ -437,6 +437,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 // too far behind. Otherwise memory usage would be unbounded because
                 // the results have to be retrieved and written out before they can
                 // be deallocated.
+                // TODO: somehow report how much time is spent stalled here
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
             if (abort || (ext_abort && *ext_abort)) {
