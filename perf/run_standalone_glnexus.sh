@@ -50,8 +50,9 @@ ed ranges.bed | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
 sleep 2
 clean_shutdown
 sudo chmod 644 perf.data
-perf script > perf_genotype
-FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
+perf script > out/perf/perf_genotype
+stackcollapse-perf.pl < out/perf/perf_genotype > out/perf/genotype.stacks
+flamegraph.pl out/perf/genotype.stacks > out/perf/genotype_perf.svg
 /bin/rm -f perf.data
 
 
