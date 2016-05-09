@@ -17,7 +17,7 @@
 #include <regex>
 using namespace std;
 
-#define MAX_NUM_CONTIGS_PER_GVCF (1000)
+#define MAX_NUM_CONTIGS_PER_GVCF (10000)
 #define MAX_CONTIG_LEN (10000000000)  // 10^10
 
 namespace GLnexus {
@@ -80,7 +80,7 @@ private:
     BCFBucketRange& operator=(const BCFBucketRange&);
 
 public:
-    static const size_t PREFIX_LENGTH = 23;
+    static const size_t PREFIX_LENGTH = 24;
     int interval_len;
 
     // constructor
@@ -94,7 +94,7 @@ public:
         stringstream ss;
         // We add leading zeros to ensure that string lexicographic ordering will sort
         // keys in ascending order.
-        ss << setw(3) << setfill('0') << rng.rid
+        ss << setw(4) << setfill('0') << rng.rid
            << setw(10) << setfill('0') << rng.beg
            << setw(10) << setfill('0') << rng.end;
         std::string ans = ss.str();
@@ -104,7 +104,7 @@ public:
 
     // Produce the complete key for a bucket (given the prefix) in a dataset
     std::string bucket_key(const std::string& prefix, const std::string& dataset) {
-        assert(prefix.size() == 23);
+        assert(prefix.size() == PREFIX_LENGTH);
         return prefix+dataset;
     }
 

@@ -145,6 +145,7 @@ main() {
             config_flag="--config $config"
         fi
 
+        # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
         mkdir -p out/vcf
         time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
