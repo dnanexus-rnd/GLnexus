@@ -46,9 +46,6 @@ cscope*
 #emacs
 *~
 
-# Linux images
-linux-image-*
-
 # htslib stuff
 mem:*
 src/1.*.zip
