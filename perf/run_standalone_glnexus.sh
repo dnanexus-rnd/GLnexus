@@ -8,7 +8,7 @@ iostat_pid=""
 
 function clean_shutdown {
     if [ -n $perf_pid ]; then
-        kill -s SIGINT $perf_pid
+        sudo kill -s SIGINT $perf_pid
     fi
     if [ -n $dstat_pid ]; then
         kill -9 $dstat_pid
