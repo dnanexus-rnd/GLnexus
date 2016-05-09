@@ -66,6 +66,12 @@
       "optional": true
     },
     {
+      "name": "enable_kernel_perf",
+      "class": "boolean",
+      "default": false,
+      "optional": true
+    },
+    {
       "name": "iter_compare",
       "class": "boolean",
       "default": false,

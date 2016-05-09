@@ -4,6 +4,10 @@
 function join { local IFS="$1"; shift; echo "$*"; }
 
 function install_kernel_debug_symbols {
+    echo "Setting Linux permissions to allow seeing kernel symbols"
+    sudo sysctl -w kernel.kptr_restrict=0
+    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+
     echo "Installing kernel debug symbols"
 
     # Add special debian repositories holding kernel debugging symbols
@@ -33,29 +37,9 @@ function install_kernel_debug_symbols {
     sudo apt-get install $pkg
 }
 
-# Disable the transparent huge-pages feature
-function disable_huge_pages {
-    if [ -d /sys/kernel/mm/transparent_hugepage ]; then
-        thp_path=/sys/kernel/mm/transparent_hugepage
-    else
-      return 0
-    fi
-
-    sudo sh -c 'echo never > ${thp_path}/enabled'
-    sudo sh -c 'echo never > ${thp_path}/defrag'
-}
-
-# Allow kernel tracing
-function enable_kernel_tracing {
-    sudo sysctl -w kernel.kptr_restrict=0
-    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
-}
 
 main() {
     set -ex -o pipefail
-
-    # This is disabled, because we do not have the right permissions in a platform container.
-    #disable_huge_pages
 
     # parameters for performance recording
     recordFreq=99
@@ -64,19 +48,22 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
+    # We want to have visibility into kernel symbols. This is under a
+    # special flag, because normally, we do not have the right
+    # permissions in a platform container. We do this first, so, if there
+    # are any permission problems, we will fail early.
+    if [ "$enable_kernel_perf" == "true" ]; then
+        install_kernel_debug_symbols
+    fi
+
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
-        # This is disabled, because we do not have the right permissions in a platform container.
-        #enable_kernel_tracing
-
         # install flame-graph package
         git clone https://github.com/brendangregg/FlameGraph
 
         # install linux-tools for the current kernel version
         linux_version=`uname -r`
         sudo apt-get -y -qq install "linux-tools-${linux_version}"
-
-        install_kernel_debug_symbols
 
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
