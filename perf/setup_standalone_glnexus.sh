@@ -8,13 +8,20 @@ source ~/dx-toolkit/environment
 echo "Downloading data sets"
 mkdir -p /mnt/U/data
 cd /mnt/U/data
-dx download RGC_Coriell_NODOWNLOAD:/vcr_b37.bed
-dx download RGC_Coriell_NODOWNLOAD:/Fake/
+if [ ! -e "vcr_b37.bed" ]; then
+    dx download RGC_Coriell_NODOWNLOAD:/
+    cp vcr_b37.bed ranges.bed
+fi
+if [ ! -e "gvcfs1024.tar" ]; then
+    mkdir 1024
+    pushd 1024
+    dx download RGC_Coriell_NODOWNLOAD:/Fake/gvcfs1024.tar
+    tar xvf gvcfs1024.tar --strip-components=1
+    popd
+fi
 
-tar xvf gvcfs1024.tar --strip-components=1
 find gvcf -type f > all_gvcfs.txt
 wc -l all_gvcfs.txt
-cp vcr_b37.bed ranges.bed
 
 echo "Initilize database"
 glnexus_cli init GLnexus.db $(find gvcf -type f | head -n 1)
