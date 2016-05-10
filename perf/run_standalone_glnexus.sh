@@ -39,10 +39,7 @@ mkdir -p out/perf
 sudo perf record -F $recordFreq -a -g &
 perf_pid=$!
 
-config_flag="--config test"
-
-time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --b\
-ed ranges.bed | bcftools view - | bgzip -c > out/matches.vcf.gz
+time numactl --interleave=all glnexus_cli genotype GLnexus.db --config test -t $(nproc) --bed ranges.bed | bcftools view - | bgzip -c > out/matches.vcf.gz
 
 
 # Try to kill the perf process nicely; this does not always work
