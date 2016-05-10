@@ -16,6 +16,9 @@ function clean_shutdown {
     if [ -n $iostat_pid ]; then
         kill -9 $iostat_pid
     fi
+
+    killall dstat
+    killall iostat
 }
 trap clean_shutdown EXIT
 trap clean_shutdown SIGINT
