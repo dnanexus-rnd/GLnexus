@@ -27,7 +27,7 @@ find gvcf -type f > all_gvcfs.txt
 wc -l all_gvcfs.txt
 
 echo "Initilize database"
-glnexus_cli init GLnexus.db $(find gvcf -type f | head -n 1)
+glnexus_cli init --bucket-size 30000 GLnexus.db $(find gvcf -type f | head -n 1)
 
 echo "Loading data"
 cat all_gvcfs.txt | time glnexus_cli load --and-delete GLnexus.db -
