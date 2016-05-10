@@ -13,8 +13,8 @@ if [ ! -e "vcr_b37.bed" ]; then
     cp vcr_b37.bed ranges.bed
 fi
 if [ ! -e "gvcfs1024.tar" ]; then
-    mkdir 1024
-    pushd 1024
+    mkdir gvcf
+    pushd gvcf
     dx download RGC_Coriell_NODOWNLOAD:/Fake/gvcfs1024.tar
     tar xvf gvcfs1024.tar --strip-components=1
     popd
