@@ -4,6 +4,9 @@ set -ex -o pipefail
 
 source ~/dx-toolkit/environment
 
+# debug packages
+sudo apt-get install libjemalloc1-dbg
+
 # download data sets
 echo "Downloading data sets"
 mkdir -p /mnt/U/data

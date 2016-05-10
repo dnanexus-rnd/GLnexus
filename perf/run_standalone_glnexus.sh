@@ -16,9 +16,6 @@ function clean_shutdown {
     if [ -n $iostat_pid ]; then
         kill -9 $iostat_pid
     fi
-
-    killall dstat
-    killall iostat
 }
 trap clean_shutdown EXIT
 trap clean_shutdown SIGINT
@@ -44,9 +41,8 @@ perf_pid=$!
 
 config_flag="--config test"
 
-mkdir -p out/vcf
 time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --b\
-ed ranges.bed | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
+ed ranges.bed | bcftools view - | bgzip -c > out/matches.vcf.gz
 
 
 # Try to kill the perf process nicely; this does not always work
@@ -56,7 +52,7 @@ sudo chmod 644 perf.data
 perf script > out/perf/perf_genotype
 stackcollapse-perf.pl < out/perf/perf_genotype > out/perf/genotype.stacks
 flamegraph.pl out/perf/genotype.stacks > out/perf/genotype_perf.svg
-/bin/rm -f perf.data
+
 
 
 
