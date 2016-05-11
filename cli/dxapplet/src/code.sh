@@ -13,6 +13,15 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
+    # Kernel tracing implies user-space space tracing
+    if [ "$enable_kernel_perf" == "true" ]; then
+        enable_perf=true
+    fi
+
+    if [ "$enable_perf" == "true" ]; then
+        apt_get_add_debug_repos
+    fi
+
     # We want to have visibility into kernel symbols. This is under a
     # special flag, because normally, we do not have the right
     # permissions in a platform container. We do this first, so, if there
@@ -33,6 +42,13 @@ main() {
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
         rm -f perf.data
+
+        # Use libraries with debugging symbols, if they exist.
+        # This allows tracing the C++ standard library.
+        sudo apt-get -y -qq install libjemalloc1-dbg
+        sudo apt-get -y -qq install libstdc++6-dbgsym
+        sudo apt-get -y -qq install libc6-dbg
+        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/debug
     fi
 
     # download inputs.
@@ -148,15 +164,10 @@ main() {
     fi
 }
 
-
-function install_kernel_debug_symbols {
-    echo "Setting Linux permissions to allow seeing kernel symbols"
-    sudo sysctl -w kernel.kptr_restrict=0
-    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
-
-    echo "Installing kernel debug symbols"
-
-    # Add special debian repositories holding kernel debugging symbols
+# Add special debian repositories holding kernel debugging symbols, and
+# libraries with debug information.
+function apt_get_add_debug_repos {
+    echo "Adding apt-get repositories with debug symbols"
     lsb_rel=$(lsb_release -cs)
     echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
     echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
@@ -165,7 +176,14 @@ function install_kernel_debug_symbols {
 
     sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
     sudo apt-get update
+}
 
+function install_kernel_debug_symbols {
+    echo "Setting Linux permissions to allow seeing kernel symbols"
+    sudo sysctl -w kernel.kptr_restrict=0
+    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+
+    echo "Installing kernel debug symbols"
     # Check for an exact match to the kernel version
     kernel_version=$(uname -r)
     retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
