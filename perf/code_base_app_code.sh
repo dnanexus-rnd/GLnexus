@@ -3,8 +3,59 @@
 # http://stackoverflow.com/a/17841619
 function join { local IFS="$1"; shift; echo "$*"; }
 
+function install_kernel_debug_symbols {
+    echo "Installing kernel debug symbols"
+
+    # Add special debian repositories holding kernel debugging symbols
+    lsb_rel=$(lsb_release -cs)
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-proposed main restricted universe multiverse" >> ddebs.list
+    sudo cp ddebs.list /etc/apt/sources.list.d/
+
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
+    sudo apt-get update
+
+    # Check for an exact match to the kernel version
+    kernel_version=$(uname -r)
+    retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
+    if [[ -n "$retval" ]]; then
+        sudo apt-get install linux-image-$kernel_version-dbgsym
+        return
+    fi
+
+    echo "An exact match for kernel [$kernel_version] debug symbols is not available"
+    kernel_version_short=$(uname -r | cut --delimiter='-' --fields=1)
+    echo "Searching for close match for kernel $kernel_version_short"
+
+    pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
+    echo "Found package $pkg, installing ..."
+    sudo apt-get install $pkg
+}
+
+# Disable the transparent huge-pages feature
+function disable_huge_pages {
+    if [ -d /sys/kernel/mm/transparent_hugepage ]; then
+        thp_path=/sys/kernel/mm/transparent_hugepage
+    else
+      return 0
+    fi
+
+    sudo sh -c 'echo never > ${thp_path}/enabled'
+    sudo sh -c 'echo never > ${thp_path}/defrag'
+}
+
+# Allow kernel tracing
+function enable_kernel_tracing {
+    sudo sysctl -w kernel.kptr_restrict=0
+    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+}
+
 main() {
     set -ex -o pipefail
+
+    # This is disabled, because we do not have the right permissions in a platform container.
+    #disable_huge_pages
 
     # parameters for performance recording
     recordFreq=99
@@ -13,25 +64,11 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
-    # Kernel tracing implies user-space space tracing
-    if [ "$enable_kernel_perf" == "true" ]; then
-        enable_perf=true
-    fi
-
-    if [ "$enable_perf" == "true" ]; then
-        apt_get_add_debug_repos
-    fi
-
-    # We want to have visibility into kernel symbols. This is under a
-    # special flag, because normally, we do not have the right
-    # permissions in a platform container. We do this first, so, if there
-    # are any permission problems, we will fail early.
-    if [ "$enable_kernel_perf" == "true" ]; then
-        install_kernel_debug_symbols
-    fi
-
     # install the perf utility
     if [ "$enable_perf" == "true" ]; then
+        # This is disabled, because we do not have the right permissions in a platform container.
+        #enable_kernel_tracing
+
         # install flame-graph package
         git clone https://github.com/brendangregg/FlameGraph
 
@@ -39,16 +76,11 @@ main() {
         linux_version=`uname -r`
         sudo apt-get -y -qq install "linux-tools-${linux_version}"
 
+        install_kernel_debug_symbols
+
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
         rm -f perf.data
-
-        # Use libraries with debugging symbols, if they exist.
-        # This allows tracing the C++ standard library.
-        sudo apt-get -y -qq install libjemalloc1-dbg
-        sudo apt-get -y -qq install libstdc++6-dbgsym
-        sudo apt-get -y -qq install libc6-dbg
-        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/debug
     fi
 
     # download inputs.
@@ -126,7 +158,6 @@ main() {
             config_flag="--config $config"
         fi
 
-        # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
         mkdir -p out/vcf
         time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --bed ranges.bed \
             | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
@@ -162,41 +193,4 @@ main() {
     if [ "$sleep" -gt "0" ]; then
         sleep "$sleep"
     fi
-}
-
-# Add special debian repositories holding kernel debugging symbols, and
-# libraries with debug information.
-function apt_get_add_debug_repos {
-    echo "Adding apt-get repositories with debug symbols"
-    lsb_rel=$(lsb_release -cs)
-    echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
-    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
-    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-proposed main restricted universe multiverse" >> ddebs.list
-    sudo cp ddebs.list /etc/apt/sources.list.d/
-
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
-    sudo apt-get update
-}
-
-function install_kernel_debug_symbols {
-    echo "Setting Linux permissions to allow seeing kernel symbols"
-    sudo sysctl -w kernel.kptr_restrict=0
-    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
-
-    echo "Installing kernel debug symbols"
-    # Check for an exact match to the kernel version
-    kernel_version=$(uname -r)
-    retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
-    if [[ -n "$retval" ]]; then
-        sudo apt-get install linux-image-$kernel_version-dbgsym
-        return
-    fi
-
-    echo "An exact match for kernel [$kernel_version] debug symbols is not available"
-    kernel_version_short=$(uname -r | cut --delimiter='-' --fields=1)
-    echo "Searching for close match for kernel $kernel_version_short"
-
-    pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
-    echo "Found package $pkg, installing ..."
-    sudo apt-get install $pkg
 }
