@@ -8,6 +8,7 @@ source ~/dx-toolkit/environment
 sudo apt-get install libjemalloc1-dbg
 sudo apt-get install libstdc++-4.8-dev-dbgsym
 sudo apt-get install libstdc++6-4.8-dbg
+sudo apt-get install libc6-dbg
 
 # download data sets
 echo "Downloading data sets"

@@ -3,41 +3,6 @@
 # http://stackoverflow.com/a/17841619
 function join { local IFS="$1"; shift; echo "$*"; }
 
-function install_kernel_debug_symbols {
-    echo "Setting Linux permissions to allow seeing kernel symbols"
-    sudo sysctl -w kernel.kptr_restrict=0
-    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
-
-    echo "Installing kernel debug symbols"
-
-    # Add special debian repositories holding kernel debugging symbols
-    lsb_rel=$(lsb_release -cs)
-    echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
-    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
-    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-proposed main restricted universe multiverse" >> ddebs.list
-    sudo cp ddebs.list /etc/apt/sources.list.d/
-
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
-    sudo apt-get update
-
-    # Check for an exact match to the kernel version
-    kernel_version=$(uname -r)
-    retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
-    if [[ -n "$retval" ]]; then
-        sudo apt-get install linux-image-$kernel_version-dbgsym
-        return
-    fi
-
-    echo "An exact match for kernel [$kernel_version] debug symbols is not available"
-    kernel_version_short=$(uname -r | cut --delimiter='-' --fields=1)
-    echo "Searching for close match for kernel $kernel_version_short"
-
-    pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
-    echo "Found package $pkg, installing ..."
-    sudo apt-get install $pkg
-}
-
-
 main() {
     set -ex -o pipefail
 
@@ -181,4 +146,39 @@ main() {
     if [ "$sleep" -gt "0" ]; then
         sleep "$sleep"
     fi
+}
+
+
+function install_kernel_debug_symbols {
+    echo "Setting Linux permissions to allow seeing kernel symbols"
+    sudo sysctl -w kernel.kptr_restrict=0
+    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+
+    echo "Installing kernel debug symbols"
+
+    # Add special debian repositories holding kernel debugging symbols
+    lsb_rel=$(lsb_release -cs)
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-proposed main restricted universe multiverse" >> ddebs.list
+    sudo cp ddebs.list /etc/apt/sources.list.d/
+
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
+    sudo apt-get update
+
+    # Check for an exact match to the kernel version
+    kernel_version=$(uname -r)
+    retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
+    if [[ -n "$retval" ]]; then
+        sudo apt-get install linux-image-$kernel_version-dbgsym
+        return
+    fi
+
+    echo "An exact match for kernel [$kernel_version] debug symbols is not available"
+    kernel_version_short=$(uname -r | cut --delimiter='-' --fields=1)
+    echo "Searching for close match for kernel $kernel_version_short"
+
+    pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
+    echo "Found package $pkg, installing ..."
+    sudo apt-get install $pkg
 }
