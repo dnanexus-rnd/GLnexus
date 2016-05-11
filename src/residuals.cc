@@ -36,11 +36,11 @@ Status residuals_gen_record(const unified_site& site,
     for (const auto& ds_info : sites) {
         ostringstream records_text;
         // line with sample name(s)
-        for (int i = 0; i < bcf_hdr_nsamples(gl_hdr); i++) {
+        for (int i = 0; i < bcf_hdr_nsamples(ds_info.header); i++) {
             if (i > 0) {
                 records_text << '\t';
             }
-            records_text << bcf_hdr_int2id(gl_hdr, BCF_DT_SAMPLE, i);
+            records_text << bcf_hdr_int2id(ds_info.header, BCF_DT_SAMPLE, i);
         }
         // gVCF records, one per line
         for (const auto& rec : ds_info.records) {
