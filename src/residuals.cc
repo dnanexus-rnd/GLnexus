@@ -19,8 +19,8 @@ static string concat(const std::vector<std::string>& samples) {
 
 Status residuals_gen_record(const unified_site& site,
                             const bcf_hdr_t *gl_hdr,
-                            const bcf1_t *gl_call,
-                            const std::vector<DatasetSiteInfo> &sites,
+                            bcf1_t *gl_call,
+                            const std::vector<DatasetResidual> &sites,
                             const MetadataCache& cache,
                             const std::vector<std::string>& samples,
                             std::string &ynode) {
@@ -33,14 +33,17 @@ Status residuals_gen_record(const unified_site& site,
     out << YAML::BeginSeq;
 
     // for each dataset
+    vector<string> residual_samples;
     for (const auto& ds_info : sites) {
         ostringstream records_text;
         // line with sample name(s)
         for (int i = 0; i < bcf_hdr_nsamples(ds_info.header); i++) {
+            string sample_i = bcf_hdr_int2id(ds_info.header, BCF_DT_SAMPLE, i);
+            residual_samples.push_back(sample_i);
             if (i > 0) {
                 records_text << '\t';
             }
-            records_text << bcf_hdr_int2id(ds_info.header, BCF_DT_SAMPLE, i);
+            records_text << sample_i;
         }
         // gVCF records, one per line
         for (const auto& rec : ds_info.records) {
@@ -60,9 +63,25 @@ Status residuals_gen_record(const unified_site& site,
     S(site.yaml(contigs, out));
 
 
-    // write the output bcf, the calls that GLnexus made. Also, add the samples matching the calls.
+    // write the output bcf with the calls that GLnexus made for these samples
+    // (including only the samples with residuals)
+    vector<const char*> samples4subset;
+    for (const string& sample : residual_samples) {
+        samples4subset.push_back(sample.c_str());
+    }
+    vector<int> imap(residual_samples.size());
+    shared_ptr<bcf_hdr_t> subhdr(bcf_hdr_subset(gl_hdr, residual_samples.size(), (char**) samples4subset.data(), imap.data()), &bcf_hdr_destroy);
+    if (!subhdr) {
+        return Status::Failure("residuals_gen_record: bcf_hdr_subset failed");
+    }
+
+    auto subrec = shared_ptr<bcf1_t>(bcf_dup(gl_call), &bcf_destroy);
+    if (bcf_subset(gl_hdr, subrec.get(), residual_samples.size(), imap.data())) {
+        return Status::Failure("residuals_gen_record: bcf_subset failed");
+    }
+
     out << YAML::Key << "output_vcf";
-    out << YAML::Literal << concat(samples) + "\n" + *(bcf1_to_string(gl_hdr, gl_call));
+    out << YAML::Literal << concat(residual_samples) + "\n" + *(bcf1_to_string(subhdr.get(), subrec.get()));
 
     out << YAML::EndMap;
 

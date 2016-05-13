@@ -9,7 +9,7 @@
 namespace GLnexus {
 
 // Dataset and the records it has for a particular site
-struct DatasetSiteInfo {
+struct DatasetResidual {
     std::string name;
     std::shared_ptr<const bcf_hdr_t> header;
     std::vector<std::shared_ptr<bcf1_t>> records;
@@ -20,8 +20,8 @@ struct DatasetSiteInfo {
 // sites, and records in them, to print out.
 Status residuals_gen_record(const unified_site& site,
                             const bcf_hdr_t *gl_hdr,
-                            const bcf1_t *gl_call,
-                            const std::vector<DatasetSiteInfo> &sites,
+                            bcf1_t *gl_call,
+                            const std::vector<DatasetResidual> &sites,
                             const MetadataCache& cache,
                             const std::vector<std::string>& samples,
                             std::string &ynode);

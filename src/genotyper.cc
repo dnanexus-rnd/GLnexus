@@ -902,7 +902,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     assert(samples.size() == samples2->size());
 
     AlleleDepthHelper adh(cfg);
-    vector<DatasetSiteInfo> lost_calls_info;
+    vector<DatasetResidual> lost_calls_info;
 
     // for each pertinent dataset
     for (const auto& dataset : *datasets) {
@@ -1002,11 +1002,11 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
             if (any_lost_calls) {
                 // missing call, keep it in memory
-                DatasetSiteInfo dsi;
-                dsi.name = dataset;
-                dsi.header = dataset_header;
-                dsi.records = records;
-                lost_calls_info.push_back(dsi);
+                DatasetResidual dsr;
+                dsr.name = dataset;
+                dsr.header = dataset_header;
+                dsr.records = records;
+                lost_calls_info.push_back(dsr);
             }
         }
     }
