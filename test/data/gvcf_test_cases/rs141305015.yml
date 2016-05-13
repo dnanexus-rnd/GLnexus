@@ -1,0 +1,52 @@
+readme: |
+  This tests the treatment of "pseudo" reference confidence records that don't all overlap a variant record.
+input:
+  header : |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=100000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	36643697	.	AACG	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:44,2,0:46:48:0,48,2757,132,2763,2847:17,27,0,0
+        A	36643700	rs141305015	GAGA	G,<NON_REF>	591.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:22,17,0:39:99:629,0,1026,695,1078,1773:9,13,7,10
+        A	36643703	rs200892098	A	G,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:39,2,0:41:36:0,36,2639,120,2645,2729:15,24,0,0
+    - B.gvcf: |
+        B
+        A	36643699	.	CGAG	C,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:55,2,0:57:99:0,122,2011,165,2017,2060:21,34,0,0
+        A	36643700	rs141305015	GAGA	G,<NON_REF>	1851.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:2,52,0:54:99:1890,113,0,1896,156,1940:1,1,19,33
+        A	36643703	.	A	T,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:53,2,0:55:99:0,116,1949,159,1955,1999:20,33,0,0
+    - C.gvcf: |
+        C
+        A	36643699	.	A	<NON_REF>	.	.	END=36645699	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
+
+truth_unified_sites:
+    - range: {ref: A, beg: 36643700, end: 36643703}
+      alleles: [GAGA, G]
+      copy_number: [0, 3]
+      unification:
+        - range: {beg: 36643700, end: 36643703}
+          alt: GAGA
+          to: 0
+        - range: {beg: 36643700, end: 36643703}
+          alt: G
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=A,length=100000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
+      A	36643700	.	GAGA	G	0	.	.	GT:RNC	0/1:..	1/1:..	0/0:..

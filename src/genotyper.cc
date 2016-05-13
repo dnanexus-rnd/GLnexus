@@ -719,7 +719,8 @@ Status find_variant_records(const genotyper_config& cfg, const unified_site& sit
     vector<shared_ptr<bcf1_t>> ref_records;
     ref_records.reserve(records.size());
     for (auto& record : records) {
-        (is_gvcf_ref_record(cfg, record.get()) ? ref_records : variant_records).push_back(record);
+        (is_gvcf_ref_record(cfg, record.get()) || is_pseudo_ref_record(hdr, record.get())
+            ? ref_records : variant_records).push_back(record);
     }
 
     // compute min_ref_depth across the reference confidence records
@@ -795,30 +796,14 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     if (records.size() == 1) {
         record = records[0].get();
     } else if (records.size() > 1) {
-        // if we're given multiple overlapping variant records, attempt to
-        // reclassify all, or all but one, of them as "pseudo" ref records
-        vector<shared_ptr<bcf1_t>> pseudo_ref_records;
-        for (auto& a_record : records) {
-            assert(!is_gvcf_ref_record(cfg, a_record.get()));
-            if (is_pseudo_ref_record(dataset_header, a_record.get())) {
-                pseudo_ref_records.push_back(a_record);
-            } else if (!record) {
-                record = a_record.get();
-            } else {
-                // we've got an OverlappingVariants problem...
-                for (int i = 0; i < bcf_nsamples; i++) {
-                    genotypes[sample_mapping.at(i)*2].RNC =
-                        genotypes[sample_mapping.at(i)*2+1].RNC =
-                            NoCallReason::OverlappingVariants;
-                }
-                return Status::OK();
-            }
+        // we've got an OverlappingVariants problem; there might be certain
+        // cases we'll be able to handle better here in the future
+        for (int i = 0; i < bcf_nsamples; i++) {
+            genotypes[sample_mapping.at(i)*2].RNC =
+                genotypes[sample_mapping.at(i)*2+1].RNC =
+                    NoCallReason::OverlappingVariants;
         }
-
-        assert(pseudo_ref_records.size());
-        // update min_ref_depth with these pseudo ref records
-        S(update_min_ref_depth(dataset, dataset_header, bcf_nsamples, sample_mapping,
-                               pseudo_ref_records, depth, min_ref_depth));
+        return Status::OK();
     }
 
     if (!record) {

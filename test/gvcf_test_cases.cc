@@ -619,3 +619,7 @@ TEST_CASE("DP0_noAD") {
 TEST_CASE("min_allele_copy_number") {
     GVCFTestCase("min_allele_copy_number").perform_gvcf_test();
 }
+
+TEST_CASE("rs141305015") {
+    GVCFTestCase("rs141305015").perform_gvcf_test();
+}
