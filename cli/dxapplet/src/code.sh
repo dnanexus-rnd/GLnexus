@@ -48,6 +48,7 @@ main() {
         sudo apt-get -y -qq install libjemalloc1-dbg
         sudo apt-get -y -qq install libstdc++6-dbgsym
         sudo apt-get -y -qq install libc6-dbg
+        sudo apt-get -y -qq install libgcc1-dbg
         export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/debug
     fi
 
