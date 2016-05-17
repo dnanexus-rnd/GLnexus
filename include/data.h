@@ -110,23 +110,26 @@ public:
     /// be mutated. (They aren't declared const because some vcf.h accessor
     /// functions don't take const bcf1_t*)
     ///
-    /// min_alleles: return only records with at least this many alleles
-    /// (counting the REF allele). This is a targeted optimization for
-    /// selecting only variant records from gVCF files, as variant records
-    /// have at least three alleles (REF, one or more specified ALTs, and
-    /// <NON_REF>/<*>) while reference confidence records have only two
-    /// alleles. Thus, setting min_alleles=3 should yield variant records
-    /// only, while min_alleles=0 will yield all records.
+    /// predicate: a function that filters BCF records in the range,
+    /// only if it returns true, is the record added to [records]. For
+    /// example, a typical function return true only if min_alleles is
+    /// greater than three.  This is a targeted optimization for
+    /// selecting only variant records from gVCF files, as variant
+    /// records have at least three alleles (REF, one or more
+    /// specified ALTs, and <NON_REF>/<*>) while reference confidence
+    /// records have only two alleles. Thus, setting min_alleles=3
+    /// should yield variant records only, while min_alleles=0 will
+    /// yield all records.
     ///
     /// The provided header must match the data set, otherwise the behavior is undefined!
     virtual Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr,
-                                 const range& pos, unsigned min_alleles,
+                                 const range& pos, bcf_predicate predicate,
                                  std::vector<std::shared_ptr<bcf1_t> >& records) = 0;
 
     /// Wrapper for dataset_range which first fetches the appropriate header
     /// (useful if the caller doesn't already have the header in hand)
     virtual Status dataset_range_and_header(const std::string& dataset,
-                                            const range& pos, unsigned min_alleles,
+                                            const range& pos, bcf_predicate predicate,
                                             std::shared_ptr<const bcf_hdr_t>& hdr,
                                             std::vector<std::shared_ptr<bcf1_t> >& records);
 
@@ -140,7 +143,7 @@ public:
     /// that is, they will all reach their end after the same number of steps.
     /// The iterators together will produce each relevant record exactly once.
     virtual Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset,
-                                   const range& pos, unsigned min_alleles,
+                                   const range& pos, bcf_predicate predicate,
                                    std::shared_ptr<const std::set<std::string>>& samples,
                                    std::shared_ptr<const std::set<std::string>>& datasets,
                                    std::vector<std::unique_ptr<RangeBCFIterator>>& iterators);

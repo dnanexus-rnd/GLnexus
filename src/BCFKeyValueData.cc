@@ -589,7 +589,7 @@ static Status scan_bucket(
     const pair<const char*, size_t>& data,
     const bcf_hdr_t* hdr,
     const range& query,
-    unsigned min_alleles,
+    bcf_predicate predicate,
     const bool include_danglers,
     StatsRangeQuery &srq,
     vector<shared_ptr<bcf1_t> >& records)
@@ -609,8 +609,7 @@ static Status scan_bucket(
         assert(last_range <= cur_range);
         assert(cur_range.overlaps(bucket));
 
-        if (n_allele >= min_alleles &&
-            cur_range.overlaps(query) &&
+        if (cur_range.overlaps(query) &&
             (include_danglers || cur_range.beg >= bucket.beg)) {
             shared_ptr<bcf1_t> vt;
             S(scanner.read(vt));
@@ -619,7 +618,9 @@ static Status scan_bucket(
                 return Status::IOError("BCFKeyValueData bcf_unpack",
                                        dataset + "@" + query.str());
             }
-            records.push_back(vt);
+            if (predicate == nullptr ||
+                predicate(hdr, vt.get()))
+                records.push_back(vt);
         } else if (cur_range.beg >= query.end) {
             // We can quit the scan at this point since the bucket's remaining
             // records all begin past the end of the query range.
@@ -644,7 +645,7 @@ static Status scan_bucket(
 Status BCFKeyValueData::dataset_range(const string& dataset,
                                       const bcf_hdr_t* hdr,
                                       const range& query,
-                                      unsigned min_alleles,
+                                      bcf_predicate predicate,
                                       vector<shared_ptr<bcf1_t> >& records) {
     Status s;
     records.clear();
@@ -669,7 +670,7 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         string data;
         s = body_->db->get(coll, key, data);
         if (s.ok()) {
-            S(scan_bucket(r, dataset, make_pair(data.c_str(), data.size()), hdr, query, min_alleles,
+            S(scan_bucket(r, dataset, make_pair(data.c_str(), data.size()), hdr, query, predicate,
                           first, accu, records));
         } else if (s != StatusCode::NOT_FOUND) {
             return s;
@@ -698,7 +699,7 @@ class BCFBucketIterator : public RangeBCFIterator {
     BCFKeyValueData_body& body_;
 
     bool first_ = true;
-    unsigned min_alleles_;
+    bcf_predicate predicate_;
     bool include_danglers_ = true;
 
     range bucket_, query_;
@@ -775,7 +776,7 @@ class BCFBucketIterator : public RangeBCFIterator {
         }
 
         // extract the records overlapping query_
-        s = scan_bucket(bucket_, dataset, it_->value(), hdr.get(), query_, min_alleles_,
+        s = scan_bucket(bucket_, dataset, it_->value(), hdr.get(), query_, predicate_,
                         include_danglers_, stats_, records);
         if (s.ok()) {
             stats_.nBCFRecordsInRange += records.size();
@@ -786,10 +787,10 @@ class BCFBucketIterator : public RangeBCFIterator {
 public:
     BCFBucketIterator(BCFData& data, BCFKeyValueData_body& body, const range& query,
                       const range& bucket, const std::string& bucket_prefix,
-                      unsigned min_alleles, bool include_danglers,
+                      bcf_predicate predicate, bool include_danglers,
                       shared_ptr<const set<string>>& datasets,
                       const shared_ptr<KeyValue::Reader>& reader)
-        : data_(data), body_(body), min_alleles_(min_alleles), include_danglers_(include_danglers),
+        : data_(data), body_(body), predicate_(predicate), include_danglers_(include_danglers),
           bucket_(bucket), query_(query), datasets_(datasets),
           dataset_(datasets->begin()), bucket_prefix_(bucket_prefix),
           reader_(reader) {}
@@ -818,7 +819,7 @@ public:
 };
 
 Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const string& sampleset,
-                                        const range& pos, unsigned min_alleles,
+                                        const range& pos, bcf_predicate predicate,
                                         shared_ptr<const set<string>>& samples,
                                         shared_ptr<const set<string>>& datasets,
                                         vector<unique_ptr<RangeBCFIterator>>& iterators) {
@@ -834,7 +835,7 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
     size_t total_sample_count;
     S(metadata.sample_count(total_sample_count));
     if (samples->size() == 1 || samples->size() * 10 < total_sample_count) {
-        return sampleset_range_base(metadata, sampleset, pos, min_alleles, samples, datasets, iterators);
+        return sampleset_range_base(metadata, sampleset, pos, predicate, samples, datasets, iterators);
     }
 
     // get a KeyValue::Reader so that all iterators read from the same
@@ -857,7 +858,7 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
         string bucket = body_->rangeHelper->bucket_prefix(r);
 
         iterators.push_back(make_unique<BCFBucketIterator>
-                            (*this, *body_, pos, r, bucket, min_alleles, first, datasets, reader));
+                            (*this, *body_, pos, r, bucket, predicate, first, datasets, reader));
         first = false;
     }
 
@@ -867,11 +868,11 @@ Status BCFKeyValueData::sampleset_range(const MetadataCache& metadata, const str
 // Provide a way to call the non-optimized base implementation of
 // sampleset_range. Mostly for unit testing.
 Status BCFKeyValueData::sampleset_range_base(const MetadataCache& metadata, const string& sampleset,
-                                             const range& pos, unsigned min_alleles,
+                                             const range& pos, bcf_predicate predicate,
                                              shared_ptr<const set<string>>& samples,
                                              shared_ptr<const set<string>>& datasets,
                                              vector<unique_ptr<RangeBCFIterator>>& iterators) {
-    return BCFData::sampleset_range(metadata, sampleset, pos, min_alleles, samples, datasets, iterators);
+    return BCFData::sampleset_range(metadata, sampleset, pos, predicate, samples, datasets, iterators);
 }
 
 // test whether a gVCF file is compatible for deposition into the database
@@ -889,7 +890,7 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
         ans = false;
     } else {
         for (int i = 0; i < ncontigs; i++) {
-            if (string(contignames[i]) != contigs[i].first || 
+            if (string(contignames[i]) != contigs[i].first ||
                 hdr->id[BCF_DT_CTG][i].val->info[0] != contigs[i].second) {
                 ans = false;
                 break;

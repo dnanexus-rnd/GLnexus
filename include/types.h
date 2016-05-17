@@ -538,4 +538,7 @@ template<class T> struct htsvecbox {
     }
 };
 
+// Predicate used for filtering BCF records, as they are read from the database.
+typedef bool (*bcf_predicate)(const bcf_hdr_t*, bcf1_t*);
+
 } //namespace GLnexus
