@@ -614,13 +614,14 @@ static Status scan_bucket(
             shared_ptr<bcf1_t> vt;
             S(scanner.read(vt));
             assert(vt->n_allele == n_allele);
-            if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
-                return Status::IOError("BCFKeyValueData bcf_unpack",
-                                       dataset + "@" + query.str());
-            }
             if (predicate == nullptr ||
-                predicate(hdr, vt.get()))
+                predicate(hdr, vt.get())) {
+                if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
+                    return Status::IOError("BCFKeyValueData bcf_unpack",
+                                           dataset + "@" + query.str());
+                }
                 records.push_back(vt);
+            }
         } else if (cur_range.beg >= query.end) {
             // We can quit the scan at this point since the bucket's remaining
             // records all begin past the end of the query range.

@@ -121,6 +121,10 @@ public:
     /// should yield variant records only, while min_alleles=0 will
     /// yield all records.
     ///
+    /// Note: the BCF record is provided in packed form to the predicate
+    /// function. It can unpack it if needed, in which case, it will not be
+    /// unpacked again by the dataset_range function.
+    ///
     /// The provided header must match the data set, otherwise the behavior is undefined!
     virtual Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr,
                                  const range& pos, bcf_predicate predicate,
