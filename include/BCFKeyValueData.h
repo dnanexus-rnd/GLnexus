@@ -50,8 +50,7 @@ public:
     Status dataset_header(const std::string& dataset,
                               std::shared_ptr<const bcf_hdr_t>& hdr) const override;
     Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr,
-                         const range& pos,
-                         bool predicate(const bcf_hdr_t*, bcf1_t*),
+                         const range& pos, bcf_predicate predicate,
                          std::vector<std::shared_ptr<bcf1_t> >& records) override;
 
     Status sampleset_range(const MetadataCache& metadata, const std::string& sampleset,
