@@ -34,11 +34,11 @@ MARK_AS_ADVANCED(
 
 # Compilation for performance profiling
 SET(CMAKE_CXX_FLAGS_PROFILE
-    "-gdwarf -O2 -DNDEBUG -funwind-tables -fasynchronous-unwind-tables"
+    "-gdwarf -O3 -DNDEBUG"
     CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_C_FLAGS_PROFILE
-    "-gdwarf -O2 -DNDEBUG -funwind-tables -fasynchronous-unwind-tables"
+    "-gdwarf -O3 -DNDEBUG"
     CACHE STRING "Flags used by the C compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_EXE_LINKER_FLAGS_PROFILE
@@ -64,7 +64,7 @@ ExternalProject_Add(htslib
     URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
-    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables -march=ivybridge/" Makefile
+    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -gdwarf -O3 -DNDEBUG -march=ivybridge/" Makefile
     BUILD_IN_SOURCE 1
     BUILD_COMMAND bash -c "make -n && make -j8"
     INSTALL_COMMAND ""
@@ -205,8 +205,7 @@ add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_library(libglnexus ALIAS glnexus)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge")
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
 
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
