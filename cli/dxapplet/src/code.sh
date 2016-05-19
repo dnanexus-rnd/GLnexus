@@ -13,6 +13,16 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
+    # update standard C/C++ libraries, to match gcc-5
+    # the standard C++ library has to be version
+    # 3.4.20 or above
+    #
+    sudo apt-get -y -qq install libstdc++6
+    sudo add-apt-repository --yes -s ppa:ubuntu-toolchain-r/test
+    sudo apt-get -y -qq update || true
+    #sudo apt-get upgrade
+    sudo apt-get -y -qq upgrade libstdc++6
+
     # Kernel tracing implies user-space space tracing
     if [ "$enable_kernel_perf" == "true" ]; then
         enable_perf=true

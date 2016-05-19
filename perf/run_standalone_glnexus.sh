@@ -40,6 +40,7 @@ sudo perf record -F $recordFreq -a -g &
 perf_pid=$!
 
 # Use debugging symbols
+#export LD_PRELOAD_PATH=
 export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/debug
 time numactl --interleave=all glnexus_cli genotype GLnexus.db --config test -t $(nproc) --bed ranges.bed | bcftools view - | bgzip -c > out/matches.vcf.gz
 

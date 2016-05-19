@@ -34,11 +34,11 @@ MARK_AS_ADVANCED(
 
 # Compilation for performance profiling
 SET(CMAKE_CXX_FLAGS_PROFILE
-    "-g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables"
+    "-gdwarf -O2 -DNDEBUG -funwind-tables -fasynchronous-unwind-tables"
     CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_C_FLAGS_PROFILE
-    "-g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables"
+    "-gdwarf -O2 -DNDEBUG -funwind-tables -fasynchronous-unwind-tables"
     CACHE STRING "Flags used by the C compiler during performance profiling builds."
     FORCE )
 SET(CMAKE_EXE_LINKER_FLAGS_PROFILE
@@ -205,7 +205,8 @@ add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_library(libglnexus ALIAS glnexus)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
 
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
