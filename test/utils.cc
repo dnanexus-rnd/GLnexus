@@ -176,10 +176,17 @@ public:
         }
         records.clear();
         for (const auto& bcf : p->second.records) {
-            if (range(bcf).overlaps(pos) &&
-                (predicate == nullptr || predicate(hdr, bcf.get()))) {
-                    records.push_back(bcf);
-                }
+            if (!range(bcf).overlaps(pos))
+                continue;
+
+            bool rec_ok = false;
+            if (predicate == nullptr) {
+                rec_ok = true;
+            } else {
+                S(predicate(hdr, bcf.get(), rec_ok));
+            }
+            if (rec_ok)
+                records.push_back(bcf);
         }
         return Status::OK();
     }

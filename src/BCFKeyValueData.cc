@@ -614,8 +614,14 @@ static Status scan_bucket(
             shared_ptr<bcf1_t> vt;
             S(scanner.read(vt));
             assert(vt->n_allele == n_allele);
-            if (predicate == nullptr ||
-                predicate(hdr, vt.get())) {
+
+            bool rec_ok = false;
+            if (predicate == nullptr) {
+                rec_ok = true;
+            } else {
+                S(predicate(hdr, vt.get(), rec_ok));
+            }
+            if (rec_ok) {
                 if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
                     return Status::IOError("BCFKeyValueData bcf_unpack",
                                            dataset + "@" + query.str());

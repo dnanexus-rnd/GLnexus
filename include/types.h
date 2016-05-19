@@ -538,7 +538,12 @@ template<class T> struct htsvecbox {
     }
 };
 
-// Predicate used for filtering BCF records, as they are read from the database.
-typedef bool (*bcf_predicate)(const bcf_hdr_t*, bcf1_t*);
+// Predicate function used for filtering BCF records, as they are read from the database.
+// [retval] is set to true, for any record that passes the test.
+//
+// Note: the BCF record may be provided in packed form.  The function
+// can unpack it, and return bad status in case of error (e.g., data
+// corruption).
+typedef Status (*bcf_predicate)(const bcf_hdr_t*, bcf1_t*, bool &retval);
 
 } //namespace GLnexus

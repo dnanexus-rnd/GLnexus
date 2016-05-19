@@ -603,8 +603,9 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(string(records[1]->d.allele[1]) == "<NON_REF>");
 
         // min_alleles predicate
-        bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf) {
-            return bcf->n_allele >= 3;
+        bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
+            retval = (bcf->n_allele >= 3);
+            return Status::OK();
         };
         s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), predicate, records);
         REQUIRE(s.ok());
@@ -890,8 +891,9 @@ TEST_CASE("BCFData::sampleset_range") {
     REQUIRE(s == StatusCode::NOT_FOUND);
 
     // min_alleles predicate
-    bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf) {
-        return bcf->n_allele >= 3;
+    bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
+        retval = (bcf->n_allele >= 3);
+        return Status::OK();
     };
     rng = range(0, 100000, 300500);
     s = data->sampleset_range_base(*cache, sampleset, rng, predicate,
@@ -1059,8 +1061,9 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(iterators[1]->next(dataset, hdr, records) == StatusCode::NOT_FOUND);
 
     // repeat with min_alleles predicate
-    bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf) {
-        return bcf->n_allele >= 3;
+    bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
+        retval = (bcf->n_allele >= 3);
+        return Status::OK();
     };
     rng = range(0, 290000, 300050);
     s = data->sampleset_range(*cache, sampleset, rng, predicate,
