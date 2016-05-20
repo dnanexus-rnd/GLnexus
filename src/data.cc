@@ -112,12 +112,12 @@ Status MetadataCache::sampleset_datasets(const string& sampleset,
     return Status::OK();
 }
 
-Status BCFData::dataset_range_and_header(const string& dataset, const range& pos, unsigned min_alleles,
+Status BCFData::dataset_range_and_header(const string& dataset, const range& pos, bcf_predicate predicate,
                                          shared_ptr<const bcf_hdr_t>& hdr,
                                          vector<shared_ptr<bcf1_t> >& records) {
     Status s;
     S(dataset_header(dataset, hdr));
-    return dataset_range(dataset, hdr.get(), pos, min_alleles, records);
+    return dataset_range(dataset, hdr.get(), pos, predicate, records);
 }
 
 // default sampleset_range implementation:
@@ -131,13 +131,13 @@ class DefaultRangeBCFIteratorImpl : public RangeBCFIterator {
     bool first_range_;
     shared_ptr<const set<string>> datasets_;
     set<string>::const_iterator it_;
-    unsigned min_alleles_;
+    bcf_predicate predicate_;
 
 public:
-    DefaultRangeBCFIteratorImpl(BCFData& data, range range, bool first_range, unsigned min_alleles,
+    DefaultRangeBCFIteratorImpl(BCFData& data, range range, bool first_range, bcf_predicate predicate,
                                 shared_ptr<const set<string>>& datasets)
         : data_(data), range_(range), first_range_(first_range),
-          datasets_(datasets), it_(datasets->begin()), min_alleles_(min_alleles) {}
+          datasets_(datasets), it_(datasets->begin()), predicate_(predicate) {}
 
     Status next(string& dataset, shared_ptr<const bcf_hdr_t>& hdr,
                 vector<shared_ptr<bcf1_t>>& records) override {
@@ -147,7 +147,7 @@ public:
         dataset = *it_++;
 
         vector<shared_ptr<bcf1_t>> all_records;
-        Status s = data_.dataset_range_and_header(dataset, range_, min_alleles_, hdr, all_records);
+        Status s = data_.dataset_range_and_header(dataset, range_, predicate_, hdr, all_records);
         if (s.bad()) {
              if (s == StatusCode::NOT_FOUND) {
                 // censor this error so caller doesn't think this is the normal
@@ -190,7 +190,7 @@ public:
  * data for one bucket for all datasets lies adjacently on disk.
  */
 Status BCFData::sampleset_range(const MetadataCache& metadata, const string& sampleset,
-                                const range& pos, unsigned min_alleles,
+                                const range& pos, bcf_predicate predicate,
                                 shared_ptr<const set<string>>& samples,
                                 shared_ptr<const set<string>>& datasets,
                                 vector<unique_ptr<RangeBCFIterator>>& iterators) {
@@ -202,7 +202,7 @@ Status BCFData::sampleset_range(const MetadataCache& metadata, const string& sam
     bool first = true;
     for (int beg = pos.beg; beg < pos.end; beg += RANGE_STEP) {
         range sub(pos.rid, beg, min(pos.end,beg+RANGE_STEP));
-        iterators.push_back(make_unique<DefaultRangeBCFIteratorImpl>(*this, sub, first, min_alleles, datasets));
+        iterators.push_back(make_unique<DefaultRangeBCFIteratorImpl>(*this, sub, first, predicate, datasets));
         first = false;
     }
 

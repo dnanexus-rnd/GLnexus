@@ -167,7 +167,7 @@ public:
     }
 
     Status dataset_range(const string& dataset, const bcf_hdr_t *hdr,
-                         const range& pos, unsigned min_alleles,
+                         const range& pos, bcf_predicate predicate,
                          vector<shared_ptr<bcf1_t> >& records) override {
         Status s;
         auto p = datasets_.find(dataset);
@@ -176,9 +176,17 @@ public:
         }
         records.clear();
         for (const auto& bcf : p->second.records) {
-            if (range(bcf).overlaps(pos) && bcf->n_allele >= min_alleles) {
-                records.push_back(bcf);
+            if (!range(bcf).overlaps(pos))
+                continue;
+
+            bool rec_ok = false;
+            if (predicate == nullptr) {
+                rec_ok = true;
+            } else {
+                S(predicate(hdr, bcf.get(), rec_ok));
             }
+            if (rec_ok)
+                records.push_back(bcf);
         }
         return Status::OK();
     }
