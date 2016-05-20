@@ -18,15 +18,12 @@ main() {
         enable_perf=true
     fi
 
-    if [ "$enable_perf" == "true" ]; then
-        apt_get_add_debug_repos
-    fi
-
     # We want to have visibility into kernel symbols. This is under a
     # special flag, because normally, we do not have the right
     # permissions in a platform container. We do this first, so, if there
     # are any permission problems, we will fail early.
     if [ "$enable_kernel_perf" == "true" ]; then
+        apt_get_add_debug_repos
         install_kernel_debug_symbols
     fi
 
