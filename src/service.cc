@@ -192,7 +192,11 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     // Query for (iterators to) records overlapping pos in all the data sets.
     // We query with min_alleles=3 to get variant records only (excluding
     // reference confidence records which have 2 alleles)
-    S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, 3,
+    bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
+        retval = (bcf->n_allele >= 3);
+        return Status::OK();
+    };
+    S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, predicate,
                                    samples, datasets, iterators));
 
     // Enqueue processing of each dataset on the thread pool.
