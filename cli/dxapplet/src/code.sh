@@ -44,6 +44,8 @@ main() {
         rm -f perf.data
     fi
 
+    # Make sure jemalloc replaced the default malloc implementation, for
+    # all C/C++ libraries
     export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 
     # download inputs.
