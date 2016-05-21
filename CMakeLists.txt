@@ -205,16 +205,16 @@ add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_library(libglnexus ALIAS glnexus)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge -static-libstdc++ -pthread")
 
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
-target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
+target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
 add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
 add_dependencies(glnexus_cli spdlog)
-target_link_libraries(glnexus_cli -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp snappy bz2 lz4 rt)
+target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
 install(TARGETS playground DESTINATION bin)
 
@@ -252,7 +252,7 @@ if (test)
                  test/compare_iter.cc
                  test/unifier.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts rt snappy z bz2 lz4 rt libyaml-cpp)
+  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
   add_test(unit_tests unit_tests)
 endif()
