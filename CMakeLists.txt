@@ -32,29 +32,6 @@ MARK_AS_ADVANCED(
     CMAKE_EXE_LINKER_FLAGS_COVERAGE
     CMAKE_SHARED_LINKER_FLAGS_COVERAGE )
 
-# Compilation for performance profiling
-SET(CMAKE_CXX_FLAGS_PROFILE
-    "-gdwarf -O3 -DNDEBUG"
-    CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
-    FORCE )
-SET(CMAKE_C_FLAGS_PROFILE
-    "-gdwarf -O3 -DNDEBUG"
-    CACHE STRING "Flags used by the C compiler during performance profiling builds."
-    FORCE )
-SET(CMAKE_EXE_LINKER_FLAGS_PROFILE
-    ""
-    CACHE STRING "Flags used for linking binaries during performance profiling builds."
-    FORCE )
-SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE
-    ""
-    CACHE STRING "Flags used by the shared libraries linker during performance profiling builds."
-    FORCE )
-MARK_AS_ADVANCED(
-    CMAKE_CXX_FLAGS_PROFILE
-    CMAKE_C_FLAGS_PROFILE
-    CMAKE_EXE_LINKER_FLAGS_PROFILE
-    CMAKE_SHARED_LINKER_FLAGS_PROFILE )
-
 # Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
 project(GLnexus)
 
@@ -176,7 +153,7 @@ include_directories(${SPDLOG_INCLUDE_DIR})
 execute_process(COMMAND git describe --tags --long --dirty --always
                 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto -march=ivybridge")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-gdwarf -DNDEBUG -O3")
 
 ################################
 # Normal Libraries & Executables

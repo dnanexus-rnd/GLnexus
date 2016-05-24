@@ -13,6 +13,12 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
+    # Replace malloc with jemalloc
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
+
+    # Make sure jemalloc is in use
+    check_use_of_jemalloc_lib
+
     # Kernel tracing implies user-space space tracing
     if [ "$enable_kernel_perf" == "true" ]; then
         enable_perf=true
@@ -40,13 +46,6 @@ main() {
         perf record -F $recordFreq -g /bin/ls
         rm -f perf.data
     fi
-
-    # Make sure jemalloc replaced the default malloc implementation, for
-    # all C/C++ libraries
-    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
-
-    # Make sure we are using jemalloc
-    ensure_use_of_jemalloc_lib
 
     # download inputs.
     # TODO: it would be nice to overlap the staging of the input gVCFs with
@@ -199,13 +198,11 @@ function install_kernel_debug_symbols {
 }
 
 # Make sure the jemalloc library is used.
-# We do this
-function ensure_use_of_jemalloc_lib {
-    MALLOC_CONF=invalid_flag:foo glnexus_cli >& /tmp/malloc_dbg
+function check_use_of_jemalloc_lib {
+    MALLOC_CONF=invalid_flag:foo glnexus_cli >& /tmp/malloc_dbg || true
     num_appear=$(grep jemalloc /tmp/malloc_dbg | wc -l)
-    if [[ $num_apper -eq "0" ]]; then
-        echo "Error, the jemalloc is not use. Bailing out."
+    if [[ $num_appear == "0" ]]; then
+        echo "Error, jemalloc is not supposed to be in use"
         exit 1
     fi
-    rm /tmp/malloc_dbg
 }
