@@ -202,7 +202,7 @@ function check_use_of_jemalloc_lib {
     MALLOC_CONF=invalid_flag:foo glnexus_cli >& /tmp/malloc_dbg || true
     num_appear=$(grep jemalloc /tmp/malloc_dbg | wc -l)
     if [[ $num_appear == "0" ]]; then
-        echo "Error, jemalloc is not supposed to be in use"
+        echo "Error, jemalloc is supposed to be in use"
         exit 1
     fi
 }
