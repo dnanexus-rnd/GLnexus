@@ -45,6 +45,9 @@ main() {
     # all C/C++ libraries
     export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 
+    # Make sure we are using jemalloc
+    ensure_use_of_jemalloc_lib
+
     # download inputs.
     # TODO: it would be nice to overlap the staging of the input gVCFs with
     # the bulk load, by streaming the filenames into glnexus_cli as they're
@@ -193,4 +196,16 @@ function install_kernel_debug_symbols {
     pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
     echo "Found package $pkg, installing ..."
     sudo apt-get install $pkg
+}
+
+# Make sure the jemalloc library is used.
+# We do this
+function ensure_use_of_jemalloc_lib {
+    MALLOC_CONF=invalid_flag:foo glnexus_cli >& /tmp/malloc_dbg
+    num_appear=$(grep jemalloc /tmp/malloc_dbg | wc -l)
+    if [[ $num_apper -eq "0" ]]; then
+        echo "Error, the jemalloc is not use. Bailing out."
+        exit 1
+    fi
+    rm /tmp/malloc_dbg
 }

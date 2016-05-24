@@ -16,7 +16,6 @@
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
 #include "compare_iter.h"
-#include "alloc_check.h"
 
 using namespace std;
 
@@ -837,8 +836,6 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%t] %+");
     console->info() << "glnexus_cli " << GIT_REVISION;
-
-    //mallctl(nullptr, nullptr, nullptr, nullptr, 0);
 
     if (argc == 1) {
         help(argv[0]);
