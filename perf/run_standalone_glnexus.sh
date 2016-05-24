@@ -35,12 +35,15 @@ dstat_pid=$!
 iostat -x 60 &
 iostat_pid=$!
 
+
+
 mkdir -p out/perf
-sudo perf record -F $recordFreq -a -g &
+sudo perf record -F $recordFreq -a --call-graph dwarf &
 perf_pid=$!
 
-# Use debugging symbols
-export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/debug
+# Make sure jemalloc replaced the default malloc implementation, for
+# all C/C++ libraries
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 time numactl --interleave=all glnexus_cli genotype GLnexus.db --config test -t $(nproc) --bed ranges.bed | bcftools view - | bgzip -c > out/matches.vcf.gz
 
 

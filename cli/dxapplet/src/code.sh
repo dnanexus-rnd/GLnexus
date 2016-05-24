@@ -13,13 +13,15 @@ main() {
     dstat -cmdn 60 &
     iostat -x 600 &
 
+    # Replace malloc with jemalloc
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
+
+    # Make sure jemalloc is in use
+    check_use_of_jemalloc_lib
+
     # Kernel tracing implies user-space space tracing
     if [ "$enable_kernel_perf" == "true" ]; then
         enable_perf=true
-    fi
-
-    if [ "$enable_perf" == "true" ]; then
-        apt_get_add_debug_repos
     fi
 
     # We want to have visibility into kernel symbols. This is under a
@@ -27,6 +29,7 @@ main() {
     # permissions in a platform container. We do this first, so, if there
     # are any permission problems, we will fail early.
     if [ "$enable_kernel_perf" == "true" ]; then
+        apt_get_add_debug_repos
         install_kernel_debug_symbols
     fi
 
@@ -42,14 +45,6 @@ main() {
         # test that perf is working correctly
         perf record -F $recordFreq -g /bin/ls
         rm -f perf.data
-
-        # Use libraries with debugging symbols, if they exist.
-        # This allows tracing the C++ standard library.
-        sudo apt-get -y -qq install libjemalloc1-dbg
-        sudo apt-get -y -qq install libstdc++6-dbgsym
-        sudo apt-get -y -qq install libc6-dbg
-        sudo apt-get -y -qq install libgcc1-dbg
-        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/debug
     fi
 
     # download inputs.
@@ -113,7 +108,7 @@ main() {
             # Run a perf command that will record everything the
             # machine is doing, this allows tracking down all activity,
             mkdir -p out/perf
-            sudo perf record -F $recordFreq -a -g &
+            sudo perf record -F $recordFreq -a --call-graph dwarf &
             perf_pid=$!
         fi
 
@@ -200,4 +195,14 @@ function install_kernel_debug_symbols {
     pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
     echo "Found package $pkg, installing ..."
     sudo apt-get install $pkg
+}
+
+# Make sure the jemalloc library is used.
+function check_use_of_jemalloc_lib {
+    MALLOC_CONF=invalid_flag:foo glnexus_cli >& /tmp/malloc_dbg || true
+    num_appear=$(grep jemalloc /tmp/malloc_dbg | wc -l)
+    if [[ $num_appear == "0" ]]; then
+        echo "Error, jemalloc is supposed to be in use"
+        exit 1
+    fi
 }

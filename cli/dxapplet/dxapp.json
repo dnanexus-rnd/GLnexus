@@ -116,10 +116,9 @@
     "interpreter": "bash",
     "file": "src/code.sh",
     "execDepends": [
-      {"name": "liblz4-dev"},
-      {"name": "libsnappy-dev"},
       {"name": "sysstat"},
-      {"name": "numactl"}
+      {"name": "numactl"},
+      {"name": "libjemalloc1"}
     ],
     "systemRequirements": {
       "main": {

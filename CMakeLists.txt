@@ -32,29 +32,6 @@ MARK_AS_ADVANCED(
     CMAKE_EXE_LINKER_FLAGS_COVERAGE
     CMAKE_SHARED_LINKER_FLAGS_COVERAGE )
 
-# Compilation for performance profiling
-SET(CMAKE_CXX_FLAGS_PROFILE
-    "-g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables"
-    CACHE STRING "Flags used by the C++ compiler during performance profiling builds."
-    FORCE )
-SET(CMAKE_C_FLAGS_PROFILE
-    "-g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables"
-    CACHE STRING "Flags used by the C compiler during performance profiling builds."
-    FORCE )
-SET(CMAKE_EXE_LINKER_FLAGS_PROFILE
-    ""
-    CACHE STRING "Flags used for linking binaries during performance profiling builds."
-    FORCE )
-SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE
-    ""
-    CACHE STRING "Flags used by the shared libraries linker during performance profiling builds."
-    FORCE )
-MARK_AS_ADVANCED(
-    CMAKE_CXX_FLAGS_PROFILE
-    CMAKE_C_FLAGS_PROFILE
-    CMAKE_EXE_LINKER_FLAGS_PROFILE
-    CMAKE_SHARED_LINKER_FLAGS_PROFILE )
-
 # Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
 project(GLnexus)
 
@@ -64,7 +41,7 @@ ExternalProject_Add(htslib
     URL https://github.com/samtools/htslib/archive/1.2.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
-    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -g3 -ggdb -O2 -DNDEBUG -fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables -march=ivybridge/" Makefile
+    PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -gdwarf -O3 -DNDEBUG -march=ivybridge/" Makefile
     BUILD_IN_SOURCE 1
     BUILD_COMMAND bash -c "make -n && make -j8"
     INSTALL_COMMAND ""
@@ -176,7 +153,7 @@ include_directories(${SPDLOG_INCLUDE_DIR})
 execute_process(COMMAND git describe --tags --long --dirty --always
                 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto -march=ivybridge")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-gdwarf -DNDEBUG -O3")
 
 ################################
 # Normal Libraries & Executables
@@ -205,16 +182,16 @@ add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_library(libglnexus ALIAS glnexus)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -march=ivybridge")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge -static-libstdc++ -pthread")
 
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
-target_link_libraries(playground -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp)
+target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
 add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
 add_dependencies(glnexus_cli spdlog)
-target_link_libraries(glnexus_cli -pthread jemalloc glnexus libhts z librocksdb libyaml-cpp snappy bz2 lz4 rt)
+target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
 install(TARGETS playground DESTINATION bin)
 
@@ -252,7 +229,7 @@ if (test)
                  test/compare_iter.cc
                  test/unifier.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus librocksdb -pthread jemalloc libhts rt snappy z bz2 lz4 rt libyaml-cpp)
+  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
   add_test(unit_tests unit_tests)
 endif()
