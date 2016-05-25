@@ -623,3 +623,7 @@ TEST_CASE("min_allele_copy_number") {
 TEST_CASE("rs141305015") {
     GVCFTestCase("rs141305015").perform_gvcf_test();
 }
+
+TEST_CASE("rs11429009 allele unifier test") {
+    GVCFTestCase("rs11429009").perform_gvcf_test();
+}

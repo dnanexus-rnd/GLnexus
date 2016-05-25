@@ -174,12 +174,9 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
     return ans;
 }
 
-// Given a cluster of related/overlapping ALT alleles, prune some so that all
-// remaining alleles further cluster into "sites" in which all alleles share
-// at least one reference position. We heuristically try to avoid pruning the
-// most common alleles. (We have an 0-1 knapsack problem where alleles are
-// valued by frequency, and alleles not sharing at least one reference
-// position in common conflict.)
+// Given a cluster of related/overlapping ALT alleles, decompose it into
+// "sites" by heuristically pruning rare or lengthy alleles to avoid excessive
+// collapsing
 auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, minimized_alleles& pruned) {
     // sort the alt alleles by decreasing copy number (+ some tiebreakers)
     vector<minimized_allele> valleles;
@@ -194,10 +191,9 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
 
     // Build the sites by considering each alt allele in that order, and
     // accepting or rejecting it as follows. If the allele overlaps exactly
-    // one existing site, and overlaps all existing alleles at that site, then
-    // accept it. Also accept the allele if it doesn't overlap any already-
-    // accepted allele, creating a new site. Reject alleles that overlap some
-    // but not all alleles at a site, or that overlap multiple existing sites.
+    // one existing site, then accept it. Also accept the allele if it doesn't
+    // overlap any already- accepted allele, creating a new site. Reject
+    // alleles that overlap multiple existing sites.
     pruned.clear();
     map<range,minimized_alleles> sites;
     for (const minimized_allele& mal : valleles) {
@@ -220,15 +216,6 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             continue;
         }
         if (related_site != sites.end()) {
-            if (any_of(related_site->second.begin(), related_site->second.end(),
-                       [&mal] (const minimized_allele& other) {
-                            return !(mal.first.pos.overlaps(other.first.pos));
-                        })) {
-                // reject since this allele doesn't overlap all alleles in the site
-                pruned.insert(mal);
-                continue;
-            }
-
             // merge this allele into the related site
             range urng(mal.first.pos.rid,
                        min(mal.first.pos.beg, related_site->first.beg),
@@ -246,20 +233,17 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     return sites;
 }
 
-// Given all discovered alleles, delineate one or more sites, where all
-// alleles at a site share at least one position; some alleles may be pruned
-// to achieve this. The result maps the range of each site to a pair of the
+// Delineate sites given all discovered alleles, potentially pruning some as
+// described above. The result maps the range of each site to a pair of the
 // discovered REF alleles and the minimized ALT alleles.
 Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alleles,
                        map<range,pair<discovered_alleles,minimized_alleles>>& ans) {
     Status s;
 
-    // Start by finding non-interacting "active regions" -- individual pairs
-    // of alleles within each active region might be non-overlapping.
+    // Start by coarsely partitioning "active regions" (allele clusters)
     auto active_regions = partition<discovered_alleles>(alleles);
 
-    // Decompose each active region into sites in which all alleles share at
-    // least one position.
+    // Decompose each active region into sites
     ans.clear();
     for (const auto& active_region : active_regions) {
         // minimize the alt alleles
