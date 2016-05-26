@@ -283,7 +283,7 @@ unification:
         REQUIRE((us).unification[allele(range(1, 999, 1001), "AC")] == 1); \
         REQUIRE((us).unification[allele(range(1, 999, 1001), "C")] == 2);  \
         REQUIRE((us).unification[allele(range(1, 1000, 1001), "C")] == 1);
-    
+
     SECTION("snp") {
         YAML::Node n = YAML::Load(snp);
 
@@ -301,7 +301,7 @@ unification:
         REQUIRE(s.ok());
         VERIFY_DEL(us);
     }
-    
+
     SECTION("snp+del") {
         vector<YAML::Node> ns = YAML::LoadAll("---\n" + string(snp) + "\n---\n" + string(del) + "\n...");
         REQUIRE(ns.size() == 2);
@@ -452,5 +452,56 @@ unification:
         unified_site us2(range(-1,-1,-1));
         REQUIRE(unified_site::of_yaml(n, contigs, us2).ok());
         REQUIRE(us == us2);
+    }
+}
+
+TEST_CASE("unifier_config") {
+    SECTION("roundtrip") {
+        const char* buf = 1 + R"(
+        {min_allele_copy_number: 5.0,
+         max_alleles_per_site:  44,
+         preference: common}
+)";
+        Status s;
+
+        YAML::Node node = YAML::Load(buf);
+        unifier_config uc;
+        s = unifier_config::of_yaml(node, uc);
+        REQUIRE(s.ok());
+
+        YAML::Emitter ans;
+        s = uc.yaml(ans);
+        REQUIRE(s.ok());
+        node = YAML::Load(ans.c_str());
+        unifier_config uc2;
+        s = unifier_config::of_yaml(node, uc2);
+        REQUIRE(uc == uc2);
+    }
+}
+
+TEST_CASE("genotyper_config") {
+    SECTION("roundtrip") {
+        const char* geno_buf = 1 + R"(
+         {required_dp: 3,
+         allele_dp_format: AD,
+         ref_symbolic_allele: <NON_REF>,
+         ref_dp_format: MIN_DP,
+         output_residuals: true,
+         output_format: VCF}
+)";
+
+        Status s;
+        YAML::Node node = YAML::Load(geno_buf);
+        genotyper_config gc;
+        s = genotyper_config::of_yaml(node, gc);
+        REQUIRE(s.ok());
+
+        YAML::Emitter ans;
+        s = gc.yaml(ans);
+        REQUIRE(s.ok());
+        node = YAML::Load(ans.c_str());
+        genotyper_config gc2;
+        s = genotyper_config::of_yaml(node, gc2);
+        REQUIRE(gc == gc2);
     }
 }
