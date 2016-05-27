@@ -77,7 +77,7 @@ static Status discover_alleles_thread(const set<string>& samples,
 
         // for each BCF record
         for (const auto& record : records) {
-            assert(record->n_allele >= 3);
+            assert(!is_gvcf_ref_record(record.get()));
             range rng(record);
             assert(pos.overlaps(rng));
             if (!pos.contains(rng)) {
@@ -193,9 +193,10 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     // We query for variant records only (excluding reference confidence records
     // which have only a symbolic ALT allele)
     bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
-        // bcf_unpack alleles
-        // call some function that determines if the only ALT allele is symbolic
-        retval = (bcf->n_allele >= 3);
+        if (bcf_unpack(bcf, BCF_UN_STR)) {
+            return Status::IOError("bcf_unpack");
+        }
+        retval = !is_gvcf_ref_record(bcf);
         return Status::OK();
     };
     S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, predicate,
