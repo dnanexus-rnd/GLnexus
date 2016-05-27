@@ -490,7 +490,6 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
 
     ans << YAML::Key << "required_dp" << YAML::Value << required_dp;
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
-    ans << YAML::Key << "ref_symbolic_allele" << YAML::Value << ref_symbolic_allele;
     ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
     ans << YAML::Key << "output_residuals" << YAML::Value << output_residuals;
 
@@ -531,12 +530,6 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     if (n_allele_dp_format) {
         V(n_allele_dp_format.IsScalar(), "invalid allele_dp_format");
         ans.allele_dp_format = n_allele_dp_format.Scalar();
-    }
-
-    const auto n_ref_symbolic_allele = yaml["ref_symbolic_allele"];
-    if (n_ref_symbolic_allele) {
-        V(n_ref_symbolic_allele.IsScalar(), "invalid ref_symbolic_allele");
-        ans.ref_symbolic_allele = n_ref_symbolic_allele.Scalar();
     }
 
     const auto n_ref_dp_format = yaml["ref_dp_format"];
