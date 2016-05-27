@@ -607,14 +607,14 @@ liftover_fields:
     combi_method: max
     orig_names: [XXX, YYY]
 
-  - name: AAA
-    description: foobar
+  - name: BBB
+    description: xxx
     type: int
     number: genotype
     default_to_zero: false
     count: 5
     combi_method: max
-    orig_names: [XXX, YYY]
+    orig_names: [uuu, zzz]
 
  )";
 
@@ -650,7 +650,7 @@ liftover_fields:
         }
     }
 
-    const char* buf4 = 1 + R"(
+    const char* bad_buf1 = 1 + R"(
          {required_dp: -1,
          allele_dp_format: AD,
          ref_symbolic_allele: <NON_REF>,
@@ -659,7 +659,45 @@ liftover_fields:
          output_format: BCF}
 )";
 
-    const char* bad_examples[] = {buf4};
+    const char* bad_buf2 = 1 + R"(
+         required_dp: 2
+         allele_dp_format: AD
+         ref_symbolic_allele: <NON_REF>
+         ref_dp_format: MIN_DP
+         output_residuals: false
+         output_format: xxxxxxxxx
+)";
+
+     const char* bad_buf3 = 1 + R"(
+required_dp: 0
+allele_dp_format: AD
+ref_symbolic_allele: <NON_REF>
+ref_dp_format: MIN_DP
+output_residuals: false
+output_format: BCF
+liftover_fields:
+
+  - name: CCC
+    description: foobar
+    type: int
+    number: cat
+    default_to_zero: false
+    count: 5
+    combi_method: max
+    orig_names: [XXX, YYY]
+
+  - name: DDD
+    description: xxx
+    type: int
+    number: cow
+    default_to_zero: false
+    count: 5
+    combi_method: max
+    orig_names: [uuu, zzz]
+
+ )";
+
+    const char* bad_examples[] = {bad_buf1, bad_buf2, bad_buf3};
 
     SECTION("bad examples") {
         Status s;
