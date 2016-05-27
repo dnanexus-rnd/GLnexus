@@ -909,9 +909,6 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
     return ans;
 }
 
-// regex for a VCF symbolic allele
-static std::regex regex_symbolic_allele("<.*>");
-
 // Sanity-check an individual bcf1_t record before ingestion.
 static Status validate_bcf(BCFBucketRange& rangeHelper,
                            const std::vector<std::pair<std::string,size_t> >&contigs,
@@ -968,22 +965,19 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    // check that alleles are all distinct, and some gVCF-specific
-    // assumptions: the last allele is a symbolic one, and the others are DNA
-    if (bcf->n_allele<2 || !regex_match(bcf->d.allele[bcf->n_allele-1], regex_symbolic_allele)) {
-        return Status::Invalid("last ALT allele isn't symbolic; is this a *g*VCF file? ",
-                               filename + " " + range(bcf).str(contigs));
-    }
+    // check that alleles are all distinct, and some gVCF-specific assumptions: all
+    // alleles are valid DNA, except the last one which MAY be a symbolic allele.
     set<string> alleles;
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (i < bcf->n_allele-1 && !regex_match(allele_i, regex_dna)) {
-            return Status::Invalid("allele is not a recognized DNA sequence ",
-                                   filename + " " + allele_i +  " " + range(bcf).str(contigs));
+        if (!regex_match(allele_i, regex_dna) &&
+            (i < bcf->n_allele-1 || !is_symbolic_allele(bcf->d.allele[bcf->n_allele-1]))) {
+            return Status::Invalid("allele is not a DNA sequence ",
+                                filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }
         alleles.insert(allele_i);
     }
-    if (alleles.size() != bcf->n_allele) {
+    if (bcf->n_allele<2 || alleles.size() != bcf->n_allele) {
         return Status::Invalid("alleles are not distinct ", filename + " " + range(bcf).str(contigs));
     }
 

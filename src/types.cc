@@ -578,4 +578,15 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     return Status::OK();
 }
 
+// regex for a VCF symbolic allele
+static std::regex regex_symbolic_allele("<.*>");
+bool is_symbolic_allele(const char* allele) {
+    return regex_match(allele, regex_symbolic_allele);
+}
+
+// gVCF reference confidence records recognized as having exactly one, symbolic ALT allele
+bool is_gvcf_ref_record(const bcf1_t* record) {
+    return record->n_allele == 2 && is_symbolic_allele(record->d.allele[1]);
+}
+
 } // namespace GLnexus

@@ -190,9 +190,11 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     Status s;
 
     // Query for (iterators to) records overlapping pos in all the data sets.
-    // We query with min_alleles=3 to get variant records only (excluding
-    // reference confidence records which have 2 alleles)
+    // We query for variant records only (excluding reference confidence records
+    // which have only a symbolic ALT allele)
     bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
+        // bcf_unpack alleles
+        // call some function that determines if the only ALT allele is symbolic
         retval = (bcf->n_allele >= 3);
         return Status::OK();
     };

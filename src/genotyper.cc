@@ -14,12 +14,6 @@ using namespace std;
 // GT (and RNC for accountability). Also it assumes diploid.
 namespace GLnexus {
 
-/// Determine whether the given record is a gVCF reference confidence record
-/// (or else a "normal" record with at least one specific ALT allele)
-static bool is_gvcf_ref_record(const genotyper_config& cfg, const bcf1_t* record) {
-    return record->n_allele == 2 && strcmp(record->d.allele[1], cfg.ref_symbolic_allele.c_str()) == 0;
-}
-
 /// Detect an idiosyncratic class of records from certain HaplotypeCaller
 /// versions which have QUAL == 0.0 and 0/0 genotype calls...we treat these as
 /// "pseudo" reference confidence records.
@@ -390,7 +384,7 @@ public:
         n_sample_ = record->n_sample;
         n_allele_ = record->n_allele;
         // is this a gVCF reference confidence record?
-        is_g_ = is_gvcf_ref_record(cfg_, record);
+        is_g_ = is_gvcf_ref_record(record);
 
         if (is_g_) {
             // if so, look for the MIN_DP FORMAT field (or equivalent)
@@ -577,7 +571,7 @@ Status find_variant_records(const genotyper_config& cfg, const unified_site& sit
     vector<shared_ptr<bcf1_t>> ref_records;
     ref_records.reserve(records.size());
     for (auto& record : records) {
-        (is_gvcf_ref_record(cfg, record.get()) || is_pseudo_ref_record(hdr, record.get())
+        (is_gvcf_ref_record(record.get()) || is_pseudo_ref_record(hdr, record.get())
             ? ref_records : variant_records).push_back(record);
     }
 
