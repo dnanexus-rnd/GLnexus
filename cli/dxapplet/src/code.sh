@@ -122,16 +122,26 @@ main() {
             config_flag="--config $config"
         fi
 
+        # set up for gzip or lz4 output compression
+        compressor="pigz"
+        vcf_compressor="bgzip"
+        compress_ext="gz"
+        if [ "$lz4_output" == "true" ]; then
+            compressor="lz4"
+            vcf_compressor="lz4"
+            compress_ext="lz4"
+        fi
+
         # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
         mkdir -p out/vcf
         time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) --bed ranges.bed \
-            | bcftools view - | bgzip -c > "out/vcf/${output_name}.vcf.gz"
+            | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
         # we are writing the generated VCF to stdout, so the residuals will
         # be placed in a default location.
         if [ -f /tmp/residuals.yml ]; then
             mkdir -p out/residuals/
-            mv /tmp/residuals.yml out/residuals/
+            $compressor -c /tmp/residuals.yml > "out/residuals/${output_name}.residuals.yml.${compress_ext}"
         fi
 
         if [ "$enable_perf" == "true" ]; then

@@ -82,13 +82,19 @@
       "class": "boolean",
       "default": false,
       "optional": true
+    },
+    {
+      "name": "lz4_output",
+      "help": "Compress outputs with LZ4 instead of gzip",
+      "class": "boolean",
+      "default": false
     }
   ],
   "outputSpec": [
     {
       "name": "vcf",
       "class": "file",
-      "patterns": ["*.vcf.gz"],
+      "patterns": ["*.vcf.gz", "*.vcf.lz4"],
       "optional": true
     },
     {
@@ -118,7 +124,9 @@
     "execDepends": [
       {"name": "sysstat"},
       {"name": "numactl"},
-      {"name": "libjemalloc1"}
+      {"name": "libjemalloc1"},
+      {"name": "pigz"},
+      {"name": "liblz4-tool"}
     ],
     "systemRequirements": {
       "main": {
