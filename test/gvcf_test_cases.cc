@@ -311,9 +311,8 @@ public:
         REQUIRE(!sites.empty());
 
         genotyper_cfg.output_format = GLnexusOutputFormat::VCF;
-        consolidated_loss losses;
         string out_vcf_path = temp_dir_path + "output.vcf";
-        s = svc->genotype_sites(genotyper_cfg, string("<ALL>"), sites, out_vcf_path, losses);
+        s = svc->genotype_sites(genotyper_cfg, string("<ALL>"), sites, out_vcf_path);
         if (! s.ok()) {
             cout << s.str() << endl;
         }

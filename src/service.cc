@@ -395,7 +395,7 @@ public:
 
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset,
                                const vector<unified_site>& sites,
-                               const string& filename, consolidated_loss& dlosses,
+                               const string& filename,
                                atomic<bool>* ext_abort) {
     Status s;
     shared_ptr<const set<string>> samples;
@@ -427,7 +427,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
     // Enqueue processing of each site as a task on the thread pool.
     vector<future<Status>> statuses;
-    vector<tuple<shared_ptr<bcf1_t>,consolidated_loss,shared_ptr<string>>> results(sites.size());
+    vector<tuple<shared_ptr<bcf1_t>,shared_ptr<string>>> results(sites.size());
     // ^^^ results to be filled by side-effect in the individual tasks below.
     // We assume that by virtue of preallocating, no mutex is necessary to
     // use it as follows because writes and reads of individual elements are
@@ -450,16 +450,15 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
             }
             shared_ptr<string> residual_rec = nullptr;
             shared_ptr<bcf1_t> bcf;
-            consolidated_loss losses_for_site;
             Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],
-                                      sampleset, sample_names, hdr.get(), bcf, losses_for_site,
+                                      sampleset, sample_names, hdr.get(), bcf,
                                       residualsFile != nullptr, residual_rec,
                                       &abort);
             if (ls.bad()) {
                 return ls;
             }
 
-            results[i] = make_tuple(move(bcf), losses_for_site, residual_rec);
+            results[i] = make_tuple(move(bcf), residual_rec);
             return ls;
         });
         statuses.push_back(move(fut));
@@ -477,14 +476,12 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
         // the memory it takes ASAP
         shared_ptr<bcf1_t> bcf_i = move(std::get<0>(results[i]));
         assert(std::get<0>(results[i]) == nullptr);
-        consolidated_loss losses_for_site = move(std::get<1>(results[i]));
-        shared_ptr<string> residual_rec =  move(std::get<2>(results[i]));
-        assert(std::get<2>(results[i]) == nullptr);
+        shared_ptr<string> residual_rec =  move(std::get<1>(results[i]));
+        assert(std::get<1>(results[i]) == nullptr);
 
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
             assert(bcf_i);
-            merge_loss_stats(losses_for_site, dlosses);
             s = bcf_out->write(bcf_i.get());
             if (s.bad()) {
                 abort = true;

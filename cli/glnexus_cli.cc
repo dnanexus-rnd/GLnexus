@@ -732,23 +732,12 @@ int main_genotype(int argc, char *argv[]) {
             }
             console->info() << "unified to " << sites.size() << " sites";
 
-            GLnexus::consolidated_loss losses;
             GLnexus::genotyper_config genoCfg = GLnexus::genotyper_config();
             genoCfg.output_residuals = residuals;
 
             H("genotype sites",
-              svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-"), losses));
+              svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-")));
             console->info("genotyping complete!");
-
-            if (losses.size() < 100) {
-                cerr << "\nReporting loss for " << sites.size() << " site(s) genotyped for "<< losses.size() << " sample(s)." << endl;
-
-                cerr << "============" << endl;
-                for (auto& loss : losses) {
-                    cerr << "Sample " << loss.first << ": ";
-                    cerr << loss.second.str() << endl;
-                }
-            }
         }
 
         std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
