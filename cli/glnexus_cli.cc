@@ -494,30 +494,23 @@ int main_dump(int argc, char *argv[]) {
 // should reside in some user-modifiable yml file
 const char* config_presets_yml = R"eof(
 unifier_config:
-  min_allele_copy_number: 0.95
+  min_allele_copy_number: 0.99
 genotyper_config:
   required_dp: 1
   liftover_fields:
-    - orig_names: [DP, MIN_DP]
-      name: DP
-      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
-      type: int
-      combi_method: min
-      number: basic
-      count: 1
-    - orig_names: [SB]
-      name: SB
-      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.\">'
-      type: int
-      combi_method: max
-      number: basic
-      count: 4
     - orig_names: [GQ]
       name: GQ
       description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">'
       type: int
       number: basic
       combi_method: min
+      count: 1
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
+      type: int
+      combi_method: min
+      number: basic
       count: 1
     - orig_names: [AD]
       name: AD
@@ -527,6 +520,13 @@ genotyper_config:
       combi_method: min
       default_to_zero: true
       count: 0
+    - orig_names: [SB]
+      name: SB
+      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.\">'
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
 )eof";
 
 GLnexus::Status load_config_preset(const std::string& name,
