@@ -283,7 +283,7 @@ unification:
         REQUIRE((us).unification[allele(range(1, 999, 1001), "AC")] == 1); \
         REQUIRE((us).unification[allele(range(1, 999, 1001), "C")] == 2);  \
         REQUIRE((us).unification[allele(range(1, 1000, 1001), "C")] == 1);
-    
+
     SECTION("snp") {
         YAML::Node n = YAML::Load(snp);
 
@@ -301,7 +301,7 @@ unification:
         REQUIRE(s.ok());
         VERIFY_DEL(us);
     }
-    
+
     SECTION("snp+del") {
         vector<YAML::Node> ns = YAML::LoadAll("---\n" + string(snp) + "\n---\n" + string(del) + "\n...");
         REQUIRE(ns.size() == 2);
@@ -452,5 +452,261 @@ unification:
         unified_site us2(range(-1,-1,-1));
         REQUIRE(unified_site::of_yaml(n, contigs, us2).ok());
         REQUIRE(us == us2);
+    }
+}
+
+TEST_CASE("unifier_config") {
+    const char* buf1 = 1 + R"(
+        {min_allele_copy_number: 5.0,
+         max_alleles_per_site:  44,
+         preference: common}
+)";
+    const char* buf2 = 1 + R"(
+        {min_allele_copy_number: 5.0,
+         max_alleles_per_site:  1,
+         preference: small}
+)";
+
+    const char* good_examples[] = {buf1, buf2};
+
+    SECTION("good examples") {
+        Status s;
+
+        for (const char* buf : good_examples) {
+            YAML::Node node = YAML::Load(buf);
+            unifier_config uc;
+            s = unifier_config::of_yaml(node, uc);
+            REQUIRE(s.ok());
+
+            YAML::Emitter ans;
+            s = uc.yaml(ans);
+            REQUIRE(s.ok());
+            node = YAML::Load(ans.c_str());
+            unifier_config uc2;
+            s = unifier_config::of_yaml(node, uc2);
+            REQUIRE(uc == uc2);
+        }
+    }
+
+    const char* buf3 = 1 + R"(
+        {min_allele_copy_number: 5.0,
+         max_alleles_per_site:  -1,
+         preference: small}
+)";
+    const char* buf4 = 1 + R"(
+        {min_allele_copy_number: 2.0,
+         max_alleles_per_site:  1,
+         preference: foobar}
+)";
+    const char* bad_examples[] = {buf3, buf4};
+
+    SECTION("bad examples") {
+        Status s;
+
+        for (const char* buf : bad_examples) {
+            YAML::Node node = YAML::Load(buf);
+            unifier_config uc;
+            s = unifier_config::of_yaml(node, uc);
+            REQUIRE(s.bad());
+        }
+    }
+}
+
+TEST_CASE("retained_format_field") {
+    const char* buf1 = 1 + R"(
+        {orig_names: [XXX, YYY],
+         name: AAA,
+         description: foobar,
+         type: int,
+         number: genotype,
+         default_to_zero: false,
+         count: 5,
+         combi_method: max}
+)";
+
+    const char* good_examples[] = {buf1};
+
+    SECTION("good examples") {
+        Status s;
+
+        for (const char* buf : good_examples) {
+            YAML::Node node = YAML::Load(buf);
+            unique_ptr<retained_format_field> rff;
+            s = retained_format_field::of_yaml(node, rff);
+            REQUIRE(s.ok());
+
+            YAML::Emitter ans;
+            s = rff->yaml(ans);
+            REQUIRE(s.ok());
+            node = YAML::Load(ans.c_str());
+            unique_ptr<retained_format_field> rff2;
+            s = retained_format_field::of_yaml(node, rff2);
+            REQUIRE(*rff == *rff2);
+        }
+    }
+
+    const char* buf4 = 1 + R"(
+        {orig_names: [XXX, YYY],
+         name: AAA,
+         description: foobar,
+         type: int,
+         number: GENOTYPE,
+         default_to_zero: false,
+         count: 5,
+         combi_method: zzzzz}
+)";
+    const char* bad_examples[] = {buf4};
+
+    SECTION("bad examples") {
+        Status s;
+
+        for (const char* buf : bad_examples) {
+            YAML::Node node = YAML::Load(buf);
+            unique_ptr<retained_format_field> rff;
+            s = retained_format_field::of_yaml(node, rff);
+            REQUIRE(s.bad());
+        }
+    }
+}
+
+
+TEST_CASE("genotyper_config") {
+    const char* buf1 = 1 + R"(
+         required_dp: 3
+         allele_dp_format: AD
+         ref_symbolic_allele: <NON_REF>
+         ref_dp_format: MIN_DP
+         output_residuals: true
+         output_format: VCF
+)";
+
+    const char* buf2 = 1 + R"(
+         required_dp: 0
+         allele_dp_format: AD
+         ref_symbolic_allele: <NON_REF>
+         ref_dp_format: MIN_DP
+         output_residuals: false
+         output_format: BCF
+)";
+
+     const char* buf3 = 1 + R"(
+required_dp: 0
+allele_dp_format: AD
+ref_symbolic_allele: <NON_REF>
+ref_dp_format: MIN_DP
+output_residuals: false
+output_format: BCF
+liftover_fields:
+
+  - name: AAA
+    description: foobar
+    type: int
+    number: genotype
+    default_to_zero: false
+    count: 5
+    combi_method: max
+    orig_names: [XXX, YYY]
+
+  - name: BBB
+    description: xxx
+    type: int
+    number: genotype
+    default_to_zero: false
+    count: 5
+    combi_method: max
+    orig_names: [uuu, zzz]
+
+ )";
+
+    const char* good_examples[] = {buf1, buf2, buf3};
+
+    SECTION("good examples") {
+        for (const char* buf : good_examples) {
+            Status s;
+            genotyper_config gc, gc2;
+            {
+                YAML::Node node = YAML::Load(buf);
+                s = genotyper_config::of_yaml(node, gc);
+                REQUIRE(s.ok());
+            }
+
+            {
+                YAML::Emitter ans;
+                s = gc.yaml(ans);
+                REQUIRE(ans.good());
+                REQUIRE(s.ok());
+
+                // **NOTE**
+                // I don't know why this is, but the Emitter
+                // adds quotation marks into the string, changing it,
+                // and preventing the YAML::Load step from succeeding.
+                std::string str_node = string(ans.c_str());
+                std::replace(str_node.begin(), str_node.end(), '\"',' ');
+
+                YAML::Node node = YAML::Load(str_node);
+                s = genotyper_config::of_yaml(node, gc2);
+            }
+            REQUIRE(gc == gc2);
+        }
+    }
+
+    const char* bad_buf1 = 1 + R"(
+         {required_dp: -1,
+         allele_dp_format: AD,
+         ref_symbolic_allele: <NON_REF>,
+         ref_dp_format: MIN_DP,
+         output_residuals: xxx,
+         output_format: BCF}
+)";
+
+    const char* bad_buf2 = 1 + R"(
+         required_dp: 2
+         allele_dp_format: AD
+         ref_symbolic_allele: <NON_REF>
+         ref_dp_format: MIN_DP
+         output_residuals: false
+         output_format: xxxxxxxxx
+)";
+
+     const char* bad_buf3 = 1 + R"(
+required_dp: 0
+allele_dp_format: AD
+ref_symbolic_allele: <NON_REF>
+ref_dp_format: MIN_DP
+output_residuals: false
+output_format: BCF
+liftover_fields:
+
+  - name: CCC
+    description: foobar
+    type: int
+    number: cat
+    default_to_zero: false
+    count: 5
+    combi_method: max
+    orig_names: [XXX, YYY]
+
+  - name: DDD
+    description: xxx
+    type: int
+    number: cow
+    default_to_zero: false
+    count: 5
+    combi_method: max
+    orig_names: [uuu, zzz]
+
+ )";
+
+    const char* bad_examples[] = {bad_buf1, bad_buf2, bad_buf3};
+
+    SECTION("bad examples") {
+        Status s;
+
+        for (const char* buf : bad_examples) {
+            YAML::Node node = YAML::Load(buf);
+            genotyper_config gc;
+            s = genotyper_config::of_yaml(node, gc);
+            REQUIRE(s.bad());
+        }
     }
 }
