@@ -646,7 +646,6 @@ liftover_fields:
             char const *res1 = ans.c_str();
 
             node = YAML::Load(res1);
-            cout << res1 << endl;
             s = genotyper_config::of_yaml(node, gc2);
             REQUIRE(s.ok());
 
