@@ -523,9 +523,7 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key <<  "liftover_fields";
     ans << YAML::Value << YAML::BeginSeq;
     for (const auto& lo_field : liftover_fields) {
-        YAML::Emitter ye;
-        S(lo_field.yaml(ye));
-        ans << ye.c_str();
+        S(lo_field.yaml(ans));
     }
     ans << YAML::EndSeq;
 

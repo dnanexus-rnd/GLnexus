@@ -538,10 +538,20 @@ TEST_CASE("retained_format_field") {
             YAML::Emitter ans;
             s = rff->yaml(ans);
             REQUIRE(s.ok());
-            node = YAML::Load(ans.c_str());
+            const char *x = ans.c_str();
+            YAML::Node node2 = YAML::Load(x);
             unique_ptr<retained_format_field> rff2;
             s = retained_format_field::of_yaml(node, rff2);
-            REQUIRE(*rff == *rff2);
+
+            // We would like to compare the two retained-format-fields,
+            // like this:
+            //   REQUIRE(*rff == *rff2);
+            // but we don't have an equality operator, so, we compare c-strings instead.
+            YAML::Emitter ans3;
+            s = rff2->yaml(ans3);
+            REQUIRE(s.ok());
+            const char *y = ans3.c_str();
+            REQUIRE(*x == *y);
         }
     }
 
@@ -624,29 +634,32 @@ liftover_fields:
         for (const char* buf : good_examples) {
             Status s;
             genotyper_config gc, gc2;
-            {
-                YAML::Node node = YAML::Load(buf);
-                s = genotyper_config::of_yaml(node, gc);
-                REQUIRE(s.ok());
-            }
 
-            {
-                YAML::Emitter ans;
-                s = gc.yaml(ans);
-                REQUIRE(ans.good());
-                REQUIRE(s.ok());
+            YAML::Node node = YAML::Load(buf);
+            s = genotyper_config::of_yaml(node, gc);
+            REQUIRE(s.ok());
 
-                // **NOTE**
-                // I don't know why this is, but the Emitter
-                // adds quotation marks into the string, changing it,
-                // and preventing the YAML::Load step from succeeding.
-                std::string str_node = string(ans.c_str());
-                std::replace(str_node.begin(), str_node.end(), '\"',' ');
+            YAML::Emitter ans;
+            s = gc.yaml(ans);
+            REQUIRE(ans.good());
+            REQUIRE(s.ok());
+            char const *res1 = ans.c_str();
 
-                YAML::Node node = YAML::Load(str_node);
-                s = genotyper_config::of_yaml(node, gc2);
-            }
-            REQUIRE(gc == gc2);
+            node = YAML::Load(res1);
+            cout << res1 << endl;
+            s = genotyper_config::of_yaml(node, gc2);
+            REQUIRE(s.ok());
+
+            // We would like to compare the two structures
+            // like this:
+            //   REQUIRE(gc == gc2);
+            // but we don't have an equality operator, so, we compare c-strings instead.
+            YAML::Emitter ans2;
+            s = gc2.yaml(ans2);
+            REQUIRE(ans2.good());
+            REQUIRE(s.ok());
+            const char *res2 = ans2.c_str();
+            REQUIRE(*res1 == *res2);
         }
     }
 

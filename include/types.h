@@ -501,30 +501,6 @@ struct retained_format_field {
         std::sort(orig_names.begin(), orig_names.end());
     }
 
-//    bool operator<(const retained_format_field& rhs) const noexcept {
-//        return name < rhs.name;
-//    }
-
-    bool operator==(const retained_format_field& rhs) const noexcept {
-        // compare the orig_names vector, they are sorted.
-        if (orig_names.size() != rhs.orig_names.size())
-            return false;
-        std::vector<std::string>::const_iterator it, itrhs;
-        for (it = orig_names.begin(), itrhs = rhs.orig_names.begin();
-             it != orig_names.end() && itrhs != rhs.orig_names.end();
-             ++it, ++itrhs) {
-            if ((*it) != (*itrhs)) return false;
-        }
-
-        return name == rhs.name &&
-            description == rhs.description &&
-            type == rhs.type &&
-            number == rhs.number &&
-            default_to_zero == rhs.default_to_zero &&
-            count == rhs.count &&
-            combi_method == rhs.combi_method;
-    }
-
     Status yaml(YAML::Emitter &out) const;
     static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);
 };
@@ -556,26 +532,6 @@ struct genotyper_config {
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
-
-    bool operator==(const genotyper_config& rhs) const noexcept {
-        // Compare the liftover_fields vector.
-        // note: this relies on the order of the fields being the same.
-        std::vector<retained_format_field>::const_iterator it, itrhs;
-        if (liftover_fields.size() != rhs.liftover_fields.size())
-            return false;
-        for (it = liftover_fields.begin(), itrhs = rhs.liftover_fields.begin();
-             it != liftover_fields.end() && itrhs != rhs.liftover_fields.end();
-             ++it, ++itrhs) {
-             if (!(*it == *itrhs)) return false;
-        }
-
-        return (required_dp == rhs.required_dp &&
-                allele_dp_format == rhs.allele_dp_format &&
-                ref_symbolic_allele == rhs.ref_symbolic_allele &&
-                ref_dp_format == rhs.ref_dp_format &&
-                output_residuals == rhs.output_residuals &&
-                output_format == rhs.output_format);
-    }
 
     Status yaml(YAML::Emitter& out) const;
     static Status of_yaml(const YAML::Node& yaml, genotyper_config& ans);
