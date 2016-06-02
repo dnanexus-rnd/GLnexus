@@ -411,8 +411,7 @@ TEST_CASE("genotyper placeholder") {
             s = Service::Start(service_config(), *data, *faildata, svc);
             REQUIRE(s.ok());
 
-            consolidated_loss losses;
-            s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
+            s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn);
             if (faildata->failed_once()) {
                 worked = true;
                 REQUIRE(s == StatusCode::IO_ERROR);
@@ -423,63 +422,6 @@ TEST_CASE("genotyper placeholder") {
         }
 
         REQUIRE(worked);
-    }
-
-    SECTION("2 trios") {
-        // Test retained for validation of loss tracking
-        // genotyping test moved to gvcf_test_cases/gvcf_services.yml
-        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
-        REQUIRE(s.ok());
-
-        vector<unified_site> sites;
-        s = unified_sites(unifier_config(), als, sites);
-        REQUIRE(s.ok());
-
-        consolidated_loss losses;
-        s = svc->genotype_sites(genotyper_config(), string("<ALL>"), sites, tfn, losses);
-        REQUIRE(s.ok());
-
-        unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(tfn.c_str(), "r"), [](vcfFile* f) { bcf_close(f); });
-        REQUIRE(bool(vcf));
-
-        // validate loss information
-        auto loss1 = losses.find("trio1.ch");
-        REQUIRE(loss1 != losses.end());
-        loss_stats loss_ch = loss1->second;
-        REQUIRE(loss_ch.n_no_calls_total == 2);
-        REQUIRE(loss_ch.n_bp_lost == 4);
-
-        auto loss2 = losses.find("trio1.fa");
-        REQUIRE(loss2 != losses.end());
-        loss_stats loss_fa = loss2->second;
-        REQUIRE(loss_fa.n_no_calls_total == 2);
-        REQUIRE(loss_fa.n_bp_lost == 4);
-
-        auto loss3 = losses.find("trio1.mo");
-        REQUIRE(loss3 != losses.end());
-        loss_stats loss_mo = loss3->second;
-        REQUIRE(loss_mo.n_no_calls_total == 2);
-        REQUIRE(loss_mo.n_bp_lost == 4);
-
-        auto loss4 = losses.find("trio2.ch");
-        REQUIRE(loss4 != losses.end());
-        loss_stats loss_ch2 = loss4->second;
-        REQUIRE(loss_ch2.n_no_calls_total == 2);
-        REQUIRE(loss_ch2.n_bp_lost == 0);
-
-        int expected_loss_bp = sites[3].pos.size() + sites[4].pos.size();
-
-        auto loss5 = losses.find("trio2.fa");
-        REQUIRE(loss5 != losses.end());
-        loss_stats loss_fa2 = loss5->second;
-        REQUIRE(loss_fa2.n_no_calls_total == 4);
-        REQUIRE(loss_fa2.n_bp_lost == expected_loss_bp);
-
-        auto loss6 = losses.find("trio2.mo");
-        REQUIRE(loss6 != losses.end());
-        loss_stats loss_mo2 = loss6->second;
-        REQUIRE(loss_mo2.n_no_calls_total == 4);
-        REQUIRE(loss_mo2.n_bp_lost == expected_loss_bp);
     }
 
     SECTION("unification with multiple contigs") {
@@ -507,7 +449,6 @@ TEST_CASE("genotyper placeholder") {
 }
 
 TEST_CASE("gVCF genotyper") {
-    // Test cases retained for testing of loss tracking
     unique_ptr<VCFData> data;
     Status s = VCFData::Open({"NA12878D_HiSeqX.21.10009462-10009469.gvcf"}, data);
     REQUIRE(s.ok());
@@ -551,18 +492,8 @@ TEST_CASE("gVCF genotyper") {
         us.copy_number = { 1, 1 };
         sites.push_back(us);
 
-        consolidated_loss losses;
-        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
+        s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
         REQUIRE(s.ok());
-
-        auto loss = losses.find("NA12878");
-        REQUIRE(loss != losses.end());
-        loss_stats loss_na = loss->second;
-        REQUIRE(loss_na.n_no_calls_total == 0);
-        REQUIRE(loss_na.n_bp_lost == 0);
-        REQUIRE(loss_na.n_calls_lost == 0);
-        REQUIRE(loss_na.n_gvcf_calls_lost == 0);
-        REQUIRE(loss_na.n_gvcf_bp_lost == 0);
     }
 
     SECTION("require depth > 12") {
@@ -599,18 +530,8 @@ TEST_CASE("gVCF genotyper") {
         genotyper_config cfg;
         cfg.required_dp = 13;
 
-        consolidated_loss losses;
-        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
         REQUIRE(s.ok());
-
-        auto loss = losses.find("NA12878");
-        REQUIRE(loss != losses.end());
-        loss_stats loss_d12 = loss->second;
-        REQUIRE(loss_d12.n_no_calls_total == 4);
-        REQUIRE(loss_d12.n_bp_lost == 6);
-        REQUIRE(loss_d12.n_calls_lost == 4);
-        REQUIRE(loss_d12.n_gvcf_bp_lost == 2);
-        REQUIRE(loss_d12.n_gvcf_calls_lost == 2);
     }
 
 
@@ -627,18 +548,8 @@ TEST_CASE("gVCF genotyper") {
 
         genotyper_config cfg;
         cfg.required_dp = 9;
-        consolidated_loss losses;
-        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn, losses);
+        s = svc->genotype_sites(cfg, string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
         REQUIRE(s.ok());
-
-        auto loss = losses.find("NA12878");
-        REQUIRE(loss != losses.end());
-        loss_stats loss_d9 = loss->second;
-        REQUIRE(loss_d9.n_no_calls_total == 1);
-        REQUIRE(loss_d9.n_bp_lost == 2);
-        REQUIRE(loss_d9.n_calls_lost == 1);
-        REQUIRE(loss_d9.n_gvcf_calls_lost == 0);
-        REQUIRE(loss_d9.n_gvcf_bp_lost == 0);
     }
 }
 
@@ -659,10 +570,9 @@ TEST_CASE("genotype residuals") {
     REQUIRE(s.ok());
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
-    consolidated_loss losses;
     genotyper_config cfg;
     cfg.output_residuals = true;
-    s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn, losses);
+    s = svc->genotype_sites(cfg, string("<ALL>"), sites, tfn);
     REQUIRE(s.ok());
 
     // verify that the residuals file is in correct yaml format
