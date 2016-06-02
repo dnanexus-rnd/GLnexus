@@ -14,6 +14,8 @@
 #include <mutex>
 #include <regex>
 #include <atomic>
+#include <algorithm>
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 // suppressed warnings due to use of deprecated auto_ptr in yaml-cpp
@@ -344,6 +346,13 @@ struct unifier_config {
     /// conflict with other alleles).
     UnifierPreference preference = UnifierPreference::Common;
 
+    bool operator==(const unifier_config& rhs) const noexcept {
+        return min_allele_copy_number == rhs.min_allele_copy_number &&
+            max_alleles_per_site == rhs.max_alleles_per_site &&
+            preference == rhs.preference;
+    }
+
+    Status yaml(YAML::Emitter& out) const;
     static Status of_yaml(const YAML::Node& yaml, unifier_config& ans);
 };
 
@@ -408,8 +417,13 @@ struct retained_format_field {
 
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, bool default_to_zero_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_to_zero(default_to_zero_), count(count_), combi_method(combi_method_) {}
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_to_zero(default_to_zero_), count(count_), combi_method(combi_method_) {
+        // Keep the names in sorted order, so that the comparison operator
+        // will compare orig_name vectors element-wise.
+        std::sort(orig_names.begin(), orig_names.end());
+    }
 
+    Status yaml(YAML::Emitter &out) const;
     static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);
 };
 
@@ -441,6 +455,7 @@ struct genotyper_config {
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
 
+    Status yaml(YAML::Emitter& out) const;
     static Status of_yaml(const YAML::Node& yaml, genotyper_config& ans);
 };
 

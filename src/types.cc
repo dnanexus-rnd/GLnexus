@@ -319,12 +319,87 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     return Status::OK();
 }
 
+Status unifier_config::yaml(YAML::Emitter& ans) const {
+    ans << YAML::BeginMap;
+    ans << YAML::Key << "min_allele_copy_number" << YAML::Value << min_allele_copy_number;
+    ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
+
+    ans << YAML::Key << "preference" << YAML::Value;
+    if (preference == UnifierPreference::Common) {
+        ans << "common";
+    } else if (preference == UnifierPreference::Small) {
+        ans << "small";
+    } else {
+        return Status::Invalid("invalid preference");
+    }
+
+    ans << YAML::EndMap;
+
+    return Status::OK();
+}
+
+Status retained_format_field::yaml(YAML::Emitter& ans) const {
+    Status s;
+    ans << YAML::Flow;
+    ans << YAML::BeginMap;
+
+    ans << YAML::Key << "orig_names";
+    ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (auto& name : orig_names) {
+        ans << name;
+    }
+    ans << YAML::EndSeq;
+
+    ans << YAML::Key << "name" << YAML::Value << name;
+    ans << YAML::Key << "description" << YAML::Value << description;
+
+    ans << YAML::Key << "type" << YAML::Value;
+    if (type == RetainedFieldType::INT) {
+        ans << "int";
+    } else if (type == RetainedFieldType::FLOAT) {
+        ans << "float";
+    } else {
+        return Status::Invalid("retained_format_field::yaml: invalid type");
+    }
+
+    ans << YAML::Key << "number" << YAML::Value;
+    if (number == RetainedFieldNumber::BASIC) {
+        ans << "basic";
+    } else if (number == RetainedFieldNumber::ALT) {
+        ans << "alt";
+    } if (number == RetainedFieldNumber::GENOTYPE) {
+        ans << "genotype";
+    } else if (number == RetainedFieldNumber::ALLELES) {
+        ans << "alleles";
+    } else {
+        return Status::Invalid("retained_format_field::yaml: invalid number");
+    }
+
+    ans << YAML::Key << "default_to_zero" << YAML::Value << default_to_zero;
+    ans << YAML::Key << "count" << YAML::Value << count;
+
+    ans << YAML::Key << "combi_method" << YAML::Value;
+    if (combi_method == FieldCombinationMethod::MIN) {
+        ans << "min";
+    } else if (combi_method == FieldCombinationMethod::MAX) {
+        ans << "max";
+    } else {
+        return Status::Invalid("retained_format_field::yaml: invalid combi_method");
+    }
+
+    ans << YAML::EndMap;
+
+    return Status::OK();
+}
+
 Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retained_format_field>& ans) {
     Status s;
     #define V(pred,msg) if (!(pred)) return Status::Invalid("retained_format_field::of_yaml: " msg);
 
+    V(yaml.IsMap(), "not a map at top level");
+
     const auto n_orig_names = yaml["orig_names"];
-    V(n_orig_names && (n_orig_names.size() > 0), "missing orig_names");
+    V(n_orig_names && n_orig_names.IsSequence() && (n_orig_names.size() > 0), "missing orig_names");
     vector<string> orig_names;
     for (YAML::const_iterator it = n_orig_names.begin(); it != n_orig_names.end(); ++it) {
         V(it->IsScalar(), "invalid orig_names");
@@ -402,10 +477,41 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
     } else {
         V(false, "invalid combi_method");
     }
-
     ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_to_zero));
     ans->description = description;
     #undef V
+    return Status::OK();
+}
+
+Status genotyper_config::yaml(YAML::Emitter& ans) const {
+    Status s;
+    ans << YAML::Block;
+    ans << YAML::BeginMap;
+
+    ans << YAML::Key << "required_dp" << YAML::Value << required_dp;
+    ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
+    ans << YAML::Key << "ref_symbolic_allele" << YAML::Value << ref_symbolic_allele;
+    ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
+    ans << YAML::Key << "output_residuals" << YAML::Value << output_residuals;
+
+    ans << YAML::Key << "output_format" << YAML::Value;
+    if (output_format == GLnexusOutputFormat::BCF) {
+        ans << "BCF";
+    } else if (output_format == GLnexusOutputFormat::VCF) {
+        ans << "VCF";
+    } else {
+        return Status::Invalid("genotyper_config::yaml: invalid output_format");
+    }
+
+    ans << YAML::Key <<  "liftover_fields";
+    ans << YAML::Value << YAML::BeginSeq;
+    for (const auto& lo_field : liftover_fields) {
+        S(lo_field.yaml(ans));
+    }
+    ans << YAML::EndSeq;
+
+    ans << YAML::EndMap;
+
     return Status::OK();
 }
 
@@ -413,15 +519,50 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     Status s;
     ans = genotyper_config();
     #define V(pred,msg) if (!(pred)) return Status::Invalid("genotyper_config::of_yaml: " msg);
+    V(yaml.IsMap(), "not a map at top level");
 
     const auto n_required_dp = yaml["required_dp"];
     if (n_required_dp) {
-        V(n_required_dp.IsScalar(), "invalid required_dp");
+        V(n_required_dp.IsScalar() && n_required_dp.as<int>() >= 0, "invalid required_dp");
         ans.required_dp = n_required_dp.as<int>();
     }
 
-    // TODO: allele_dp_format, ref_symbolic_allele, ref_dp_format
-    // TODO: output_residuals, output_format
+    const auto n_allele_dp_format = yaml["allele_dp_format"];
+    if (n_allele_dp_format) {
+        V(n_allele_dp_format.IsScalar(), "invalid allele_dp_format");
+        ans.allele_dp_format = n_allele_dp_format.Scalar();
+    }
+
+    const auto n_ref_symbolic_allele = yaml["ref_symbolic_allele"];
+    if (n_ref_symbolic_allele) {
+        V(n_ref_symbolic_allele.IsScalar(), "invalid ref_symbolic_allele");
+        ans.ref_symbolic_allele = n_ref_symbolic_allele.Scalar();
+    }
+
+    const auto n_ref_dp_format = yaml["ref_dp_format"];
+    if (n_ref_dp_format) {
+        V(n_ref_dp_format.IsScalar(), "invalid ref_dp_format");
+        ans.ref_dp_format = n_ref_dp_format.Scalar();
+    }
+
+    const auto n_output_residuals = yaml["output_residuals"];
+    if (n_output_residuals) {
+        V(n_output_residuals.IsScalar(), "invalid output_residuals");
+        ans.output_residuals = n_output_residuals.as<bool>();
+    }
+
+    const auto n_output_format = yaml["output_format"];
+    if (n_output_format) {
+        V(n_output_format.IsScalar(), "invalid output_format");
+        string s_output_format = n_output_format.Scalar();
+        if (s_output_format == "BCF") {
+            ans.output_format = GLnexusOutputFormat::BCF;
+        } else if (s_output_format == "VCF") {
+            ans.output_format = GLnexusOutputFormat::VCF;
+        } else {
+            return Status::Invalid("genotyper_config::of_yaml: invalid output_format. Must be one of {BCF, VCF}.");
+        }
+    }
 
     const auto n_liftover_fields = yaml["liftover_fields"];
     if (n_liftover_fields) {

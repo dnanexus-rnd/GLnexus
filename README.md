@@ -41,21 +41,14 @@ Evolving developer documentation can be found on the [project github page](http:
 
 The code has some hooks for performance profiling using
 [`perf`](https://en.wikipedia.org/wiki/Perf_(Linux)) and
-[FlameGraph](http://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html). To
-make the profile as detailed as possible, the code should be compiled in
-`Profile` mode like so:
+[FlameGraph](http://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html).
 
-```
-cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Profile . && make
-```
-
-To profile performance within the DNAnexus applet, change `CMAKE_BUILD_TYPE`
-to `Profile` in `cli/dxapplet/Makefile`, rebuild the applet, and run it as
+To profile performance within the DNAnexus applet run the applet as
 usual plus `-i enable_perf=true`. This produces an output file
 ```genotype.stacks``` containing sampling observation counts for common call
 stacks. To generate an SVG visualization with FlameGraph:
 
 ```
 git clone https://github.com/brendangregg/FlameGraph
-FlameGraph/flamegraph.pl <(grep glnexus genotype.stacks) > genotype.svg
+FlameGraph/flamegraph.pl < genotype.stacks > genotype.svg
 ```
