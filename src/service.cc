@@ -77,7 +77,7 @@ static Status discover_alleles_thread(const set<string>& samples,
 
         // for each BCF record
         for (const auto& record : records) {
-            assert(record->n_allele >= 3);
+            assert(!is_gvcf_ref_record(record.get()));
             range rng(record);
             assert(pos.overlaps(rng));
             if (!pos.contains(rng)) {
@@ -190,10 +190,13 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     Status s;
 
     // Query for (iterators to) records overlapping pos in all the data sets.
-    // We query with min_alleles=3 to get variant records only (excluding
-    // reference confidence records which have 2 alleles)
+    // We query for variant records only (excluding reference confidence records
+    // which have only a symbolic ALT allele)
     bcf_predicate predicate = [](const bcf_hdr_t* hdr, bcf1_t* bcf, bool &retval) {
-        retval = (bcf->n_allele >= 3);
+        if (bcf_unpack(bcf, BCF_UN_STR)) {
+            return Status::IOError("bcf_unpack");
+        }
+        retval = !is_gvcf_ref_record(bcf);
         return Status::OK();
     };
     S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, predicate,

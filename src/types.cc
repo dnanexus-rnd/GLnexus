@@ -490,7 +490,6 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
 
     ans << YAML::Key << "required_dp" << YAML::Value << required_dp;
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
-    ans << YAML::Key << "ref_symbolic_allele" << YAML::Value << ref_symbolic_allele;
     ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
     ans << YAML::Key << "output_residuals" << YAML::Value << output_residuals;
 
@@ -533,12 +532,6 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
         ans.allele_dp_format = n_allele_dp_format.Scalar();
     }
 
-    const auto n_ref_symbolic_allele = yaml["ref_symbolic_allele"];
-    if (n_ref_symbolic_allele) {
-        V(n_ref_symbolic_allele.IsScalar(), "invalid ref_symbolic_allele");
-        ans.ref_symbolic_allele = n_ref_symbolic_allele.Scalar();
-    }
-
     const auto n_ref_dp_format = yaml["ref_dp_format"];
     if (n_ref_dp_format) {
         V(n_ref_dp_format.IsScalar(), "invalid ref_dp_format");
@@ -576,6 +569,17 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
 
     #undef V
     return Status::OK();
+}
+
+// regex for a VCF symbolic allele
+static std::regex regex_symbolic_allele("<.*>");
+bool is_symbolic_allele(const char* allele) {
+    return regex_match(allele, regex_symbolic_allele);
+}
+
+// gVCF reference confidence records recognized as having exactly one, symbolic ALT allele
+bool is_gvcf_ref_record(const bcf1_t* record) {
+    return record->n_allele == 2 && is_symbolic_allele(record->d.allele[1]);
 }
 
 } // namespace GLnexus

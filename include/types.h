@@ -434,9 +434,6 @@ struct genotyper_config {
     /// FORMAT field to consult for per-allele depth in VCF records
     std::string allele_dp_format = "AD";
 
-    /// The symbolic allele used in gVCF reference confidence models
-    std::string ref_symbolic_allele = "<NON_REF>";
-
     /// FORMAT field to consult for reference depth in gVCF reference records
     std::string ref_dp_format = "MIN_DP";
 
@@ -475,6 +472,13 @@ template<class T> struct htsvecbox {
         free(v);
     }
 };
+
+// test string against <.*>
+bool is_symbolic_allele(const char*);
+
+/// Determine whether the given record is a gVCF reference confidence record
+/// (or else a "normal" record with at least one specific ALT allele)
+bool is_gvcf_ref_record(const bcf1_t* record);
 
 // Predicate function used for filtering BCF records, as they are read from the database.
 // [retval] is set to true, for any record that passes the test.
