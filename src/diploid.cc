@@ -41,28 +41,27 @@ pair<unsigned,unsigned> gt_alleles(unsigned gt) {
     return make_pair(i,j);
 }
 
-GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, vector<vector<float>>& ans) {
+GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, double bias00, vector<vector<double>>& ans) {
     ans.resize(record->n_sample);
     unsigned nGT = genotypes(record->n_allele);
 
     // buffers for genotype likelihoods
     htsvecbox<int32_t> igl;
-    htsvecbox<float> gl;
+    htsvecbox<float> fgl;
+    vector<double> gl(record->n_sample*nGT);
 
     // try loading genotype likelihoods from PL
     if (bcf_get_format_int32(header, record, "PL", &igl.v, &igl.capacity) == record->n_sample*nGT) {
-        gl.capacity = record->n_sample*nGT;
-        gl.v = (float*) calloc(gl.capacity, sizeof(float));
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
             assert(igl[ik] >= 0.0);
-            gl[ik] = exp10f(float(igl[ik])/(-10.0));
+            gl[ik] = exp10(double(igl[ik])/(-10.0));
         }
 /*
     // couldn't load PL; try GL
-    } else if (bcf_get_format_float(header, record, "GL", &gl.v, &gl.capacity) == record->n_sample*nGT) {
+    } else if (bcf_get_format_float(header, record, "GL", &fgl.v, &fgl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
-            assert(gl[ik] <= 0.0);
-            gl[ik] = exp10f(gl[ik]);
+            assert(fgl[ik] <= 0.0);
+            gl[ik] = exp10(gl[ik]));
         } */
     } else {
         gl.clear();
@@ -70,19 +69,20 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
 
     if (!gl.empty()) {
         for (unsigned i = 0; i < record->n_sample; i++) {
-            float *gl_i = &(gl[i*nGT]);
-            auto& ans_i = ans[i];
+            double *gl_i = &(gl[i*nGT]);
+            vector<double>& ans_i = ans[i];
             ans_i.resize(record->n_allele);
-            memset(ans_i.data(), 0, record->n_allele*sizeof(float));
+            memset(ans_i.data(), 0, record->n_allele*sizeof(double));
 
-            // based on genotype likelihoods and implicit uniform prior,
+            // based on genotype likelihoods and specified bias,
             // calculate expected # of copies of each allele
-            float total_likelihood = 0.0;
+            double total_likelihood = 0.0;
             for (unsigned k = 0; k < nGT; k++) {
-                total_likelihood += gl_i[k];
+                double gl_ik = gl_i[k] * (k == 0 ? bias00 : 1.0);
+                total_likelihood += gl_ik;
                 auto p = gt_alleles(k);
-                ans_i[p.first] += gl_i[k];
-                ans_i[p.second] += gl_i[k];
+                ans_i[p.first] += gl_ik;
+                ans_i[p.second] += gl_ik;
             }
             for (unsigned j = 0; j < record->n_allele; j++) {
                 ans_i[j] /= total_likelihood;
@@ -97,9 +97,9 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
         }
 
         for (unsigned i = 0; i < record->n_sample; i++) {
-            auto& ans_i = ans[i];
+            vector<double>& ans_i = ans[i];
             ans_i.resize(record->n_allele);
-            memset(ans_i.data(), 0, record->n_allele*sizeof(float));
+            memset(ans_i.data(), 0, record->n_allele*sizeof(double));
             for (unsigned ofs : {0, 1}) {
                 if (!bcf_gt_is_missing(gt[i*2+ofs])) {
                     unsigned j = bcf_gt_allele(gt[i*2+ofs]);

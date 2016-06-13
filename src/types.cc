@@ -261,7 +261,7 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
         VR(ans.unification.find(al) == ans.unification.end(), "duplicate unification entries");
         ans.unification[al] = to;
     }
-    VR(ans.unification.size() >= 2, "not enough unification entries");
+    VR(ans.unification.size() >= 1, "not enough unification entries");
 
     ans.copy_number.clear();
     const auto n_obs = yaml["copy_number"];

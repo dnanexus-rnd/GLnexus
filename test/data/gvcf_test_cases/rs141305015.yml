@@ -35,9 +35,6 @@ truth_unified_sites:
       copy_number: [0, 3]
       unification:
         - range: {beg: 36643700, end: 36643703}
-          alt: GAGA
-          to: 0
-        - range: {beg: 36643700, end: 36643703}
           alt: G
           to: 1
 

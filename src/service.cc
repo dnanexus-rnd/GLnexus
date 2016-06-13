@@ -62,7 +62,7 @@ static Status discover_alleles_thread(const set<string>& samples,
     string dataset;
     shared_ptr<const bcf_hdr_t> dataset_header;
     vector<shared_ptr<bcf1_t>> records;
-    vector<vector<float>> copy_number;
+    vector<vector<double>> copy_number;
     while ((s = iterator.next(dataset, dataset_header, records)).ok()) {
         discovered_alleles dsals;
         // determine which of the dataset's samples are in the desired sample set
@@ -91,9 +91,10 @@ static Status discover_alleles_thread(const set<string>& samples,
             }
 
             // calculate estimated allele copy numbers for this record
+            // TODO: configurable bias00
             // TODO: ideally we'd compute them only for relevant samples
-            S(diploid::estimate_allele_copy_number(dataset_header.get(), record.get(), copy_number));
-            #define round4(x) (roundf(x*10000.0f)/10000.0f)
+            S(diploid::estimate_allele_copy_number(dataset_header.get(), record.get(), 1.0, copy_number));
+            #define round4(x) (float(round(x*10000.0)/10000.0))
 
             // FIXME -- minor potential bug -- double-counting copy number of
             // alleles that span multiple discovery ranges
@@ -102,11 +103,11 @@ static Status discover_alleles_thread(const set<string>& samples,
             // In particular this excludes gVCF <NON_REF> symbolic alleles
             bool any_alt = false;
             for (int i = 1; i < record->n_allele; i++) {
-                float copy_number_i = 0.0;
+                double copy_number_i = 0.0;
                 for (unsigned sample : dataset_relevant_samples) {
                     copy_number_i += copy_number[sample][i];
                 }
-                if (copy_number_i >= 0.5) { // TODO: configurable threshold
+                if (copy_number_i) {
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
                     if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
@@ -122,7 +123,7 @@ static Status discover_alleles_thread(const set<string>& samples,
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
             if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
                 if (any_alt) {
-                    float ref_copy_number = 0.0;
+                    double ref_copy_number = 0.0;
                     for (unsigned sample : dataset_relevant_samples) {
                         ref_copy_number += copy_number[sample][0];
                     }

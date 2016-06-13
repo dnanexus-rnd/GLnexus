@@ -64,12 +64,6 @@ truth_unified_sites:
       alleles: [CC, T, TC]
       copy_number: [0, 1.4987, 1.4684]
       unification:
-        - range: {beg: 1000, end: 1000}
-          alt: C
-          to: 0
-        - range: {beg: 1000, end: 1001}
-          alt: CC
-          to: 0
         - range: {beg: 1000, end: 1001}
           alt: T
           to: 1

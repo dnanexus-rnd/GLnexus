@@ -308,8 +308,7 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
     return Status::OK();
 }
 
-/// Unify the alleles at one site. The given ALT alleles must all share at
-/// least one position in common.
+/// Unify the alleles at one site.
 Status unify_alleles(const unifier_config& cfg, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
                      unified_site& ans) {
@@ -349,9 +348,6 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     // problematic because the copy numbers in discovered_alleles omit nearly
     // all homozygous ref genotypes.
     us.copy_number.push_back(0.0);
-    for (const auto& ref : refs) {
-        us.unification[ref.first] = 0;
-    }
     for (int i = 1; i <= valts.size(); i++) {
         const minimized_allele& p = valts[i-1];
         UNPAIR(p, alt, alt_info);

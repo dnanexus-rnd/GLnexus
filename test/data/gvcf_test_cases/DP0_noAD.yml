@@ -54,9 +54,6 @@ truth_unified_sites:
       copy_number: [0, 1.4987]
       unification:
         - range: {beg: 1000, end: 1000}
-          alt: C
-          to: 0
-        - range: {beg: 1000, end: 1000}
           alt: CG
           to: 1
 

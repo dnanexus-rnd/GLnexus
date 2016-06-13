@@ -408,9 +408,6 @@ range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 copy_number: [100, 51]
 unification:
-  - range: {beg: 100, end: 100}
-    alt: A
-    to: 0
 )";
         n = YAML::Load(snp_bogus);
         REQUIRE(unified_site::of_yaml(n, contigs, us).bad());

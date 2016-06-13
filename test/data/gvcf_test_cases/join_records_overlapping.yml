@@ -44,12 +44,6 @@ truth_unified_sites:
       alleles: [AC, AA, A]
       copy_number: [0, 3.2847, 0.7153]
       unification:
-        - range: {beg: 907970, end: 907971}
-          alt: AC
-          to: 0
-        - range: {beg: 907971, end: 907971}
-          alt: C
-          to: 0
         - range: {beg: 907971, end: 907971}
           alt: A
           to: 1

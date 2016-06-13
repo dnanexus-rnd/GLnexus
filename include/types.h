@@ -333,7 +333,7 @@ struct unifier_config {
     // in the cohort. The estimated copy number is a soft estimate based on
     // the genotype likelihoods, so setting this somewhere between 0 and 1 can
     // filter out weak singleton observations.
-    float min_allele_copy_number = 0.0;
+    float min_allele_copy_number = 0.5;
 
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.
