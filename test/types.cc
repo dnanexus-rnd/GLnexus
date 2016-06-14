@@ -87,10 +87,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
+  maxGQ: 99
 )";
 
     #define VERIFY_DA(dal) \
@@ -117,10 +119,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 - range: {ref: 'bogus', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
+  maxGQ: 99
 )");
 
         discovered_alleles dal;
@@ -131,6 +135,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -141,6 +146,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -153,10 +159,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: BOGUS
   is_ref: false
   copy_number: 10.5
+  maxGQ: 99
 )");
 
         discovered_alleles dal;
@@ -170,10 +178,31 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: [x]
+  maxGQ: 99
+)");
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+    }
+
+    SECTION("bogus maxGQ") {
+        YAML::Node n = YAML::Load(1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  copy_number: 100
+  maxGQ: 99
+- range: {ref: '17', beg: 100, end: 100}
+  dna: G
+  is_ref: false
+  copy_number: 100
+  maxGQ: ['z']
 )");
 
         discovered_alleles dal;
@@ -202,10 +231,12 @@ TEST_CASE("yaml_of_discovered_alleles") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxGQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
+  maxGQ: 99
 )";
 
         YAML::Node n = YAML::Load(da_yaml);
@@ -460,6 +491,7 @@ TEST_CASE("unifier_config") {
 )";
     const char* buf2 = 1 + R"(
         {min_allele_copy_number: 5.0,
+         minGQ: 60,
          max_alleles_per_site:  1,
          preference: small}
 )";

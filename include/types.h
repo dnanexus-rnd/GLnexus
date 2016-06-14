@@ -233,6 +233,7 @@ struct allele {
 struct discovered_allele_info {
     bool is_ref;
     float copy_number;
+    int maxGQ;
 
     bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && copy_number == rhs.copy_number; }
 
@@ -334,6 +335,10 @@ struct unifier_config {
     // the genotype likelihoods, so setting this somewhere between 0 and 1 can
     // filter out weak singleton observations.
     float min_allele_copy_number = 0.5;
+
+    // Keep only alleles included in an input genotype hard-call with a GQ of
+    // at least this value.
+    int minGQ = 0;
 
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.

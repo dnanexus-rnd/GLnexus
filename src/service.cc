@@ -90,6 +90,24 @@ static Status discover_alleles_thread(const set<string>& samples,
                 continue;
             }
 
+            // for each allele, find the max GQ of any hard-call of the allele
+            vector<int> maxGQ(record->n_allele,0);
+            htsvecbox<int> gt;
+            htsvecbox<int32_t> gq;
+            int nGT = bcf_get_genotypes(dataset_header.get(), record.get(), &gt.v, &gt.capacity);
+            if (!gt.v || nGT != 2*dataset_nsamples) return Status::Failure("discover_alleles bcf_get_genotypes");
+            int nGQ = bcf_get_format_int32(dataset_header.get(), record.get(), "GQ", &gq.v, &gq.capacity);
+            for (unsigned sample : dataset_relevant_samples) {
+                #define update_maxGQ(ofs) \
+                    if (!bcf_gt_is_missing(gt[2*sample+(ofs)])) {  \
+                        int al = bcf_gt_allele(gt[2*sample+(ofs)]); \
+                        if (al < 0 || al >= record->n_allele) return Status::Failure("discover_alleles bcf_get_genotypes invalid allele"); \
+                        maxGQ[al] = std::max(maxGQ[al], nGQ == dataset_nsamples ? gq[sample] : 99); \
+                    }
+                update_maxGQ(0)
+                update_maxGQ(1)
+            }
+
             // calculate estimated allele copy numbers for this record
             // TODO: configurable bias00
             // TODO: ideally we'd compute them only for relevant samples
@@ -111,7 +129,7 @@ static Status discover_alleles_thread(const set<string>& samples,
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
                     if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
-                        discovered_allele_info ai = { false, round4(copy_number_i) };
+                        discovered_allele_info ai = { false, round4(copy_number_i), maxGQ[i] };
                         dsals.insert(make_pair(allele(rng, aldna), ai));
                         any_alt = true;
                     }
@@ -127,7 +145,7 @@ static Status discover_alleles_thread(const set<string>& samples,
                     for (unsigned sample : dataset_relevant_samples) {
                         ref_copy_number += copy_number[sample][0];
                     }
-                    discovered_allele_info ai = { true, round4(ref_copy_number) };
+                    discovered_allele_info ai = { true, round4(ref_copy_number), maxGQ[0] };
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }
             } else {

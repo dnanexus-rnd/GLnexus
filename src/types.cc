@@ -23,6 +23,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
             p->second.copy_number += ai.copy_number;
+            p->second.maxGQ += ai.maxGQ;
         }
     }
 
@@ -103,6 +104,8 @@ Status yaml_of_discovered_alleles(const discovered_alleles& dal,
             << YAML::Value << p.second.is_ref;
         out << YAML::Key << "copy_number"
             << YAML::Value << p.second.copy_number;
+        out << YAML::Key << "maxGQ"
+            << YAML::Value << p.second.maxGQ;
 
         out << YAML::EndMap;
     }
@@ -144,6 +147,11 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
         VR(n_copy_number && n_copy_number.IsScalar(), "missing/invalid 'copy_number' field in entry");
         ai.copy_number = n_copy_number.as<float>();
         VR(std::isfinite(ai.copy_number) && !std::isnan(ai.copy_number), "invalid 'copy_number' field in entry");
+
+        const auto n_maxGQ = (*p)["maxGQ"];
+        VR(n_maxGQ && n_maxGQ.IsScalar(), "missing/invalid 'maxGQ' field in entry");
+        ai.maxGQ = n_maxGQ.as<int>();
+        VR(ai.maxGQ >= 0, "invalid 'maxGQ' field in entry");
 
         VR(ans.find(al) == ans.end(), "duplicate alleles");
         ans[al] = ai;
@@ -294,6 +302,13 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
         V(ans.min_allele_copy_number >= 0, "invalid min_allele_copy_number");
     }
 
+    const auto n_minGQ = yaml["minGQ"];
+    if (n_minGQ) {
+        V(n_minGQ.IsScalar(), "invalid minGQ");
+        ans.minGQ = n_minGQ.as<int>();
+        V(ans.minGQ >= 0, "invalid minGQ");
+    }
+
     const auto n_max_alleles_per_site = yaml["max_alleles_per_site"];
     if (n_max_alleles_per_site) {
         V(n_max_alleles_per_site.IsScalar(), "invalid max_alleles_per_site");
@@ -322,6 +337,7 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
 Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::BeginMap;
     ans << YAML::Key << "min_allele_copy_number" << YAML::Value << min_allele_copy_number;
+    ans << YAML::Key << "minGQ" << YAML::Value << minGQ;
     ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
 
     ans << YAML::Key << "preference" << YAML::Value;

@@ -34,8 +34,10 @@ truth_discovered_alleles:
       dna: 'TA'
       is_ref: true
       copy_number: 1.0245
+      maxGQ: 16
     - range: {ref: '21', beg: 10009464, end: 10009465}
       dna: 'T'
       is_ref: false
       copy_number: 0.9755
+      maxGQ: 16
 
