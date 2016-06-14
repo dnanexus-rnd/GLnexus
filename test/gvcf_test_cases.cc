@@ -248,8 +248,17 @@ public:
         Status s = execute_discover_alleles(als, sampleset, pos);
         REQUIRE(s.ok());
 
-        // Print comparison pf dsals before failing
-        if (als != truth_dsals) {
+        bool eq = true;
+        auto lhs = als.begin(), rhs = truth_dsals.begin();
+        for (; lhs != als.end() && rhs != truth_dsals.end(); ++lhs, ++rhs) {
+            if (lhs->first != rhs->first || lhs->second != rhs->second) {
+                if (eq) print_header();
+                cout << lhs->first.str() << ":" << lhs->second.str() << endl;
+                cout << rhs->first.str() << ":" << rhs->second.str() << endl;
+                eq = false;
+            }
+        }
+        if (eq && (lhs != als.end() || rhs != truth_dsals.end())) {
             print_header();
             cout << "Expected discovered alleles \n";
             for (auto& dsal : truth_dsals) {
@@ -260,7 +269,9 @@ public:
             for (auto &dsal : als) {
                 cout << dsal.first.str() << ":" << dsal.second.str() << endl;
             }
+            eq = false;
         }
+        REQUIRE(eq);
 
         REQUIRE(als == truth_dsals);
         return Status::OK();
@@ -617,6 +628,10 @@ TEST_CASE("DP0_noAD") {
 
 TEST_CASE("min_allele_copy_number") {
     GVCFTestCase("min_allele_copy_number").perform_gvcf_test();
+}
+
+TEST_CASE("minGQ") {
+    GVCFTestCase("minGQ",true,true,true).perform_gvcf_test();
 }
 
 TEST_CASE("rs141305015") {

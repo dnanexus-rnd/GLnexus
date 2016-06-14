@@ -167,6 +167,7 @@ add_library(glnexus
             include/data.h src/data.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
+            include/discovery.h src/discovery.cc
             include/unifier.h src/unifier.cc
             include/genotyper.h src/genotyper.cc
             include/residuals.h src/residuals.cc

@@ -218,6 +218,7 @@ struct allele {
 
     /// Equality is based on identity of position and allele
     bool operator==(const allele& rhs) const noexcept { return pos == rhs.pos && dna == rhs.dna; }
+    bool operator!=(const allele& rhs) const noexcept { return !(*this == rhs); }
 
     /// Order is by pos and then allele.
     bool operator<(const allele& rhs) const noexcept { return pos < rhs.pos || (pos == rhs.pos && dna < rhs.dna); }
@@ -235,11 +236,14 @@ struct discovered_allele_info {
     float copy_number;
     int maxGQ;
 
-    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && copy_number == rhs.copy_number; }
+    bool operator==(const discovered_allele_info& rhs) const noexcept {
+        return is_ref == rhs.is_ref && fabs(copy_number - rhs.copy_number) < 0.0001 && maxGQ == rhs.maxGQ;
+    }
+    bool operator!=(const discovered_allele_info& rhs) const noexcept { return !(*this == rhs); }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << " maxGQ: " << maxGQ << "]";
         return os.str();
     }
 };
@@ -330,15 +334,16 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
+    // GQ threshold for allele inclusion: to be included in the unified sites
+    // an allele must, across all the input gVCF records, be hard-called in a
+    // genotype with at least this GQ score.
+    int minGQ = 0;
+
     // Keep only alleles with at least this estimated copy number discovered
     // in the cohort. The estimated copy number is a soft estimate based on
     // the genotype likelihoods, so setting this somewhere between 0 and 1 can
     // filter out weak singleton observations.
     float min_allele_copy_number = 0.5;
-
-    // Keep only alleles included in an input genotype hard-call with a GQ of
-    // at least this value.
-    int minGQ = 0;
 
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.

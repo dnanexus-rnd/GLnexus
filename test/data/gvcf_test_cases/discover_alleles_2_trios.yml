@@ -39,49 +39,49 @@ truth_discovered_alleles:
       dna: 'A'
       is_ref: true
       copy_number: 6
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1001, end: 1001}
       dna: 'G'
       is_ref: false
       copy_number: 6
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'C'
       is_ref: true
       copy_number: 2
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'A'
       is_ref: false
       copy_number: 6
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'G'
       is_ref: false
       copy_number: 2
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'T'
       is_ref: false
       copy_number: 2
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1011, end: 1012}
       dna: 'CC'
       is_ref: true
       copy_number: 3
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1011, end: 1012}
       dna: 'AG'
       is_ref: false
       copy_number: 3
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1011, end: 1013}
       dna: 'CCC'
       is_ref: true
       copy_number: 4
-      maxGQ: 99
+      maxGQ: 0
     - range: {ref: 'A', beg: 1011, end: 1013}
       dna: 'AGA'
       is_ref: false
       copy_number: 2
-      maxGQ: 99
+      maxGQ: 0

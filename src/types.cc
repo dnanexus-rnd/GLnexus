@@ -23,7 +23,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
             p->second.copy_number += ai.copy_number;
-            p->second.maxGQ += ai.maxGQ;
+            p->second.maxGQ = std::max(p->second.maxGQ, ai.maxGQ);
         }
     }
 

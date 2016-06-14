@@ -20,6 +20,7 @@ using discovered_allele = pair<allele,discovered_allele_info>;
 struct minimized_allele_info {
     set<allele> originals;
     float copy_number = 0.0;
+    int maxGQ = 0;
 
     string str() const {
         ostringstream os;
@@ -28,6 +29,7 @@ struct minimized_allele_info {
             os << "  " << al.str() << endl;
         }
         os << "Copy number: " << copy_number << endl;
+        os << "Max GQ: " << maxGQ << endl;
         return os.str();
     }
 };
@@ -120,17 +122,19 @@ Status minimize_alleles(const discovered_alleles& src,
         // minimize the alt allele
         S(minimize_allele(rp->second.first, alt));
 
-        // add it to alts, combining originals and copy_number with any
+        // add it to alts, combining originals, copy_number, and maxGQ with any
         // previously observed occurrences of the same minimized alt allele.
         auto ap = alts.find(alt);
         if (ap == alts.end()) {
             minimized_allele_info info;
             info.originals.insert(dal.first);
             info.copy_number = dal.second.copy_number;
+            info.maxGQ = dal.second.maxGQ;
             alts[alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
             ap->second.copy_number += dal.second.copy_number;
+            ap->second.maxGQ = std::max(ap->second.maxGQ, dal.second.maxGQ);
         }
     }
 
@@ -182,8 +186,9 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     vector<minimized_allele> valleles;
     valleles.reserve(alleles.size());
     for (const auto& allele : alleles) {
-        // filter alleles with insufficient copy number
-        if (allele.second.copy_number >= cfg.min_allele_copy_number) {
+        // filter alleles with insufficient copy number or GQ
+        if (allele.second.maxGQ >= cfg.minGQ &&
+            allele.second.copy_number >= cfg.min_allele_copy_number) {
             valleles.push_back(allele);
         }
     }
