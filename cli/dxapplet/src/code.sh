@@ -132,12 +132,11 @@ main() {
             compress_ext="lz4"
         fi
 
-        mkdir -p out/dsals
-        time numactl --interleave=all glnexus_cli discover GLnexus.db -t $(nproc) --bed ranges.bed > out/dsals/discovered_alleles.yaml
-
         # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
+        time numactl --interleave=all glnexus_cli discover_alleles GLnexus.db -t $(nproc) --bed ranges.bed > discovered_alleles.yml
+
         mkdir -p out/vcf
-        time numactl --interleave=all glnexus_cli genotype GLnexus.db $residuals_flag $config_flag -t $(nproc) -d out/dsals/discovered_alleles.yaml | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+        time numactl --interleave=all glnexus_cli genotype GLnexus.db discovered_alleles.yml $residuals_flag $config_flag -t $(nproc) | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
         # we are writing the generated VCF to stdout, so the residuals will
         # be placed in a default location.
@@ -156,9 +155,9 @@ main() {
             /bin/rm -f perf.data
         fi
 
-        # compress the discovered alleles file
-        $compressor -c out/dsals/discovered_alleles.yaml > out/dsals/discovered_alleles.yaml.${compress_ext}
-        /bin/rm -f out/dsals/discovered_alleles.yaml
+        # compress the discovered alleles file, and place it in the output directory
+        mkdir -p out/discovered_alleles
+        $compressor -c discovered_alleles.yml > out/discovered_alleles/"${output_name}.discovered_alleles.yml.${compress_ext}"
     fi
 
     # upload

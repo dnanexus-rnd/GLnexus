@@ -118,7 +118,7 @@
       "optional": true
     },
     {
-      "name": "dsals",
+      "name": "discovered_alleles",
       "class": "file",
       "optional": true
     }

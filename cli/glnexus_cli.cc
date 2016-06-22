@@ -572,7 +572,7 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
 }
 
 
-void help_discover(const char* prog) {
+void help_discover_alleles(const char* prog) {
     cerr << "usage: " << prog << " discover [options] /db/path " << endl
          << "Discover alleles in all samples in the database in the given interval. The positions" << endl
          << "are one-based, inclusive. As an alternative to providing one interval on the" << endl
@@ -583,9 +583,9 @@ void help_discover(const char* prog) {
          << endl;
 }
 
-int main_discover(int argc, char *argv[]) {
+int main_discover_alleles(int argc, char *argv[]) {
     if (argc == 2) {
-        help_discover(argv[0]);
+        help_discover_alleles(argv[0]);
         return 1;
     }
 
@@ -617,7 +617,7 @@ int main_discover(int argc, char *argv[]) {
                 break;
             case 'h':
             case '?':
-                help_discover(argv[0]);
+                help_discover_alleles(argv[0]);
                 exit(1);
                 break;
 
@@ -627,7 +627,7 @@ int main_discover(int argc, char *argv[]) {
     }
 
     if (optind > argc-1) {
-        help_discover(argv[0]);
+        help_discover_alleles(argv[0]);
         return 1;
     }
     string dbpath(argv[optind]);
@@ -635,14 +635,14 @@ int main_discover(int argc, char *argv[]) {
 
     if (bedfilename.empty()) {
         if (optind != argc-2) {
-            help_discover(argv[0]);
+            help_discover_alleles(argv[0]);
             return 1;
         }
 
         range_txt = argv[optind+1];
     } else {
         if (optind != argc-1) {
-            help_discover(argv[0]);
+            help_discover_alleles(argv[0]);
             return 1;
         }
     }
@@ -686,7 +686,7 @@ int main_discover(int argc, char *argv[]) {
     yaml << YAML::BeginSeq;
     for (const auto& dsals : valleles) {
         if (dsals.size() > 0) {
-            yaml_of_discovered_alleles(dsals, contigs, yaml);
+            H("convert discovered alleles to YAML", yaml_of_discovered_alleles(dsals, contigs, yaml));
         }
     }
     yaml << YAML::EndSeq;
@@ -757,13 +757,13 @@ GLnexus::Status load_config_preset(const std::string& name,
 }
 
 void help_genotype(const char* prog) {
-    cerr << "usage: " << prog << " genotype [options] /db/path chrom:1234-2345" << endl
-         << "Genotype all samples in the database in the given interval. The positions are" << endl
+    cerr << "usage: " << prog << " genotype [options] /db/path /discovered_alleles/path chrom:1234-2345" << endl
+         << "Genotype all samples in the database in the given interval. Discovered alleles" << endl
+         << "should be provided as a file in yaml format. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
          << "command line, you can provide a three-column BED file using --bed." << endl
          << "Options:" << endl
          << "  --residuals, -r      generate detailed residuals output file" << endl
-         << "  --discovered_alleles, -d  file with discovered alleles in yaml format" << endl
          << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
          << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
@@ -778,7 +778,6 @@ int main_genotype(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"residuals", no_argument, 0, 'r'},
-        {"discovered_alleles", required_argument, 0, 'd'},
         {"config", required_argument, 0, 'c'},
         {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
@@ -786,13 +785,12 @@ int main_genotype(int argc, char *argv[]) {
 
     string bedfilename;
     string config_preset;
-    string discovered_alleles_file;
     bool residuals = false;
     size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hrc:t:d:",
+    while (-1 != (c = getopt_long(argc, argv, "hrc:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'r':
@@ -800,9 +798,6 @@ int main_genotype(int argc, char *argv[]) {
                 break;
             case 'c':
                 config_preset = string(optarg);
-                break;
-            case 'd':
-                discovered_alleles_file = string(optarg);
                 break;
             case 't':
                 threads = strtoul(optarg, nullptr, 10);
@@ -824,8 +819,8 @@ int main_genotype(int argc, char *argv[]) {
         return 1;
     }
     string dbpath(argv[optind]);
-
-    if (optind != argc-1) {
+    string discovered_alleles_file(argv[optind + 1]);
+    if (optind != argc-2) {
         help_genotype(argv[0]);
         return 1;
     }
@@ -954,11 +949,11 @@ void help(const char* prog) {
     cerr << "usage: " << prog << " <command> [options]" << endl
              << endl
              << "commands:" << endl
-             << "  init     initialize new database" << endl
-             << "  load     load a gVCF file into an existing database" << endl
-             << "  discover discover alleles in the database  " << endl
-             << "  genotype genotype samples in the database" << endl
-             << "  iter_compare compare the two BCF iterator impelementations" << endl
+             << "  init             initialize new database" << endl
+             << "  load             load a gVCF file into an existing database" << endl
+             << "  discover_alleles discover alleles in the database  " << endl
+             << "  genotype         genotype samples in the database" << endl
+             << "  iter_compare     compare the two BCF iterator impelementations" << endl
              << endl;
 }
 
@@ -979,8 +974,8 @@ int main(int argc, char *argv[]) {
         return main_load(argc, argv);
     } else if (command == "dump") {
         return main_dump(argc, argv);
-    } else if (command == "discover") {
-        return main_discover(argc, argv);
+    } else if (command == "discover_alleles") {
+        return main_discover_alleles(argc, argv);
     } else if (command == "genotype") {
         return main_genotype(argc, argv);
     } else if (command == "iter_compare") {
