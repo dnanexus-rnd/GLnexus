@@ -573,7 +573,7 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
 
 
 void help_discover_alleles(const char* prog) {
-    cerr << "usage: " << prog << " discover [options] /db/path " << endl
+    cerr << "usage: " << prog << " discover [options] /db/path chrom:1234-2345" << endl
          << "Discover alleles in all samples in the database in the given interval. The positions" << endl
          << "are one-based, inclusive. As an alternative to providing one interval on the" << endl
          << "command line, you can provide a three-column BED file using --bed." << endl
