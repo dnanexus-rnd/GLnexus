@@ -116,6 +116,11 @@
       "name": "residuals",
       "class": "file",
       "optional": true
+    },
+    {
+      "name": "dsals",
+      "class": "file",
+      "optional": true
     }
   ],
   "runSpec": {
