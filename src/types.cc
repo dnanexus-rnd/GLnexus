@@ -31,7 +31,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
 
 
 Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
-                  const range& r, YAML::Emitter& yaml, bool omit_ref=false) {
+                  const range& r, YAML::Emitter& yaml, bool omit_ref) {
     if (!omit_ref && (r.rid < 0 || r.rid >= contigs.size())) {
         return Status::NotFound("range_yaml: invalid rid", r.str());
     }
@@ -47,7 +47,7 @@ Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
 }
 
 Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
-                     range& ans, int default_rid = -1) {
+                     range& ans, int default_rid) {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("range_of_yaml: " msg)
 
     V(yaml.IsMap(), "not a map at top level");

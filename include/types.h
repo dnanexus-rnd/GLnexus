@@ -207,6 +207,16 @@ struct range {
     }
 };
 
+Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
+                  const range& r,
+                  YAML::Emitter& yaml,
+                  bool omit_ref = false);
+
+Status range_of_yaml(const YAML::Node& yaml,
+                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                     range& ans,
+                     int default_rid = -1);
+
 struct allele {
     range pos;
     std::string dna;

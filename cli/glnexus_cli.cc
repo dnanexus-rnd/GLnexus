@@ -491,9 +491,10 @@ int main_dump(int argc, char *argv[]) {
 }
 
 
-GLnexus::Status load_discovered_alleles(const std::string& name,
-                                        const std::vector<std::pair<std::string,size_t> > &contigs,
-                                        vector<GLnexus::discovered_alleles> &valleles) {
+GLnexus::Status load_discovered_alleles_and_ranges(const std::string& name,
+                                                   const std::vector<std::pair<std::string,size_t> > &contigs,
+                                                   vector<GLnexus::range> &ranges,
+                                                   vector<GLnexus::discovered_alleles> &valleles) {
     GLnexus::Status s;
     if (name.size() == 0) {
         return GLnexus::Status::Invalid("The discovered alleles file must be specified");
@@ -504,12 +505,24 @@ GLnexus::Status load_discovered_alleles(const std::string& name,
     if (!yaml) {
         return GLnexus::Status::NotFound("bad discovered alleles file", name);
     }
-    if (!yaml.IsSequence()) {
-        return GLnexus::Status::Invalid("not a sequence at top level");
+    if (!yaml.IsMap()) {
+        return GLnexus::Status::Invalid("not a map at top level");
     }
 
+    ranges.clear();
     valleles.clear();
-    for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
+
+    const auto n_ranges = yaml["ranges"];
+    for (YAML::const_iterator p = n_ranges.begin(); p != n_ranges.end(); ++p) {
+        GLnexus::range rng(-1,-1,-1);
+        s = range_of_yaml(*p, contigs, rng);
+        if (s.bad()) return s;
+        ranges.push_back(rng);
+    }
+    console->info() << "read " << ranges.size() << " ranges";
+
+    const auto n_dsals = yaml["discovered_alleles"];
+    for (YAML::const_iterator p = n_dsals.begin(); p != n_dsals.end(); ++p) {
         GLnexus::discovered_alleles dsals;
         s = discovered_alleles_of_yaml(*p, contigs, dsals);
         if (s.bad()) return s;
@@ -567,6 +580,46 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
             console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
         }
     }
+
+    return GLnexus::Status::OK();
+}
+
+
+GLnexus::Status yaml_of_discovered_alleles_and_ranges(const vector<GLnexus::range> &ranges,
+                                                      const vector<GLnexus::discovered_alleles> &valleles,
+                                                      const vector<pair<string,size_t> > &contigs,
+                                                      YAML::Emitter &yaml) {
+    GLnexus::Status s;
+
+    assert(ranges.size() == valleles.size());
+    size_t n_elem = ranges.size();
+
+    // Note: we need to be careful here, to write out only non empty sites.
+    vector<int> indexes;
+    for (int i=0; i < n_elem; ++i) {
+        if (valleles[i].size() > 0)
+            indexes.push_back(i);
+    }
+
+    yaml << YAML::BeginMap;
+    yaml << YAML::Key << "ranges";
+    yaml << YAML::Value;
+    yaml << YAML::BeginSeq;
+    for (int i : indexes) {
+        s = range_yaml(contigs, ranges[i], yaml);
+        if (s.bad()) return s;
+    }
+    yaml << YAML::EndSeq;
+
+    yaml << YAML::Key << "discovered_alleles";
+    yaml << YAML::Value;
+    yaml << YAML::BeginSeq;
+    for (int i : indexes) {
+        s = yaml_of_discovered_alleles(valleles[i], contigs, yaml);
+        if (s.bad()) return s;
+    }
+    yaml << YAML::EndSeq;
+    yaml << YAML::EndMap;
 
     return GLnexus::Status::OK();
 }
@@ -683,15 +736,8 @@ int main_discover_alleles(int argc, char *argv[]) {
 
     // Write the discovered alleles to stdout
     YAML::Emitter yaml;
-    yaml << YAML::BeginSeq;
-    for (const auto& dsals : valleles) {
-        if (dsals.size() > 0) {
-            H("convert discovered alleles to YAML", yaml_of_discovered_alleles(dsals, contigs, yaml));
-        }
-    }
-    yaml << YAML::EndSeq;
+    H("write results as yaml", yaml_of_discovered_alleles_and_ranges(ranges, valleles, contigs, yaml));
     cout << yaml.c_str() << endl;
-
     return 0;
 }
 
@@ -845,9 +891,10 @@ int main_genotype(int argc, char *argv[]) {
         std::vector<std::pair<std::string,size_t> > contigs;
         H("read contig metadata", data->contigs(contigs));
 
+        vector<GLnexus::range> ranges;
         vector<GLnexus::discovered_alleles> valleles;
-        H("load discovered alleles",
-          load_discovered_alleles(discovered_alleles_file, contigs, valleles));
+        H("load discovered alleles and ranges",
+          load_discovered_alleles_and_ranges(discovered_alleles_file, contigs, ranges, valleles));
 
         // start service, discover alleles, unify sites, genotype sites
         GLnexus::service_config svccfg;
@@ -860,10 +907,9 @@ int main_genotype(int argc, char *argv[]) {
         console->info() << "found sample set " << sampleset;
 
         vector<GLnexus::unified_site> sites;
-        GLnexus::range dummy_range(-1,-1,-1);
         for (int i = 0; i < valleles.size(); i++) {
             vector<GLnexus::unified_site> sites_i;
-            H("unify sites", GLnexus::unified_sites(unifier_cfg, valleles[i], sites_i, dummy_range));
+            H("unify sites", GLnexus::unified_sites(unifier_cfg, valleles[i], sites_i, ranges[i]));
             sites.insert(sites.end(), sites_i.begin(), sites_i.end());
         }
         console->info() << "unified to " << sites.size() << " sites";
