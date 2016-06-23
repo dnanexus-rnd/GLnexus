@@ -630,8 +630,8 @@ TEST_CASE("min_allele_copy_number") {
     GVCFTestCase("min_allele_copy_number").perform_gvcf_test();
 }
 
-TEST_CASE("minGQ") {
-    GVCFTestCase("minGQ",true,true,true).perform_gvcf_test();
+TEST_CASE("minAQ") {
+    GVCFTestCase("minAQ",true,true,true).perform_gvcf_test();
 }
 
 TEST_CASE("rs141305015") {

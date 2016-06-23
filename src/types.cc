@@ -23,7 +23,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
             p->second.copy_number += ai.copy_number;
-            p->second.maxGQ = std::max(p->second.maxGQ, ai.maxGQ);
+            p->second.maxAQ = std::max(p->second.maxAQ, ai.maxAQ);
         }
     }
 
@@ -104,8 +104,8 @@ Status yaml_of_discovered_alleles(const discovered_alleles& dal,
             << YAML::Value << p.second.is_ref;
         out << YAML::Key << "copy_number"
             << YAML::Value << p.second.copy_number;
-        out << YAML::Key << "maxGQ"
-            << YAML::Value << p.second.maxGQ;
+        out << YAML::Key << "maxAQ"
+            << YAML::Value << p.second.maxAQ;
 
         out << YAML::EndMap;
     }
@@ -148,10 +148,10 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
         ai.copy_number = n_copy_number.as<float>();
         VR(std::isfinite(ai.copy_number) && !std::isnan(ai.copy_number), "invalid 'copy_number' field in entry");
 
-        const auto n_maxGQ = (*p)["maxGQ"];
-        VR(n_maxGQ && n_maxGQ.IsScalar(), "missing/invalid 'maxGQ' field in entry");
-        ai.maxGQ = n_maxGQ.as<int>();
-        VR(ai.maxGQ >= 0, "invalid 'maxGQ' field in entry");
+        const auto n_maxAQ = (*p)["maxAQ"];
+        VR(n_maxAQ && n_maxAQ.IsScalar(), "missing/invalid 'maxAQ' field in entry");
+        ai.maxAQ = n_maxAQ.as<int>();
+        VR(ai.maxAQ >= 0, "invalid 'maxAQ' field in entry");
 
         VR(ans.find(al) == ans.end(), "duplicate alleles");
         ans[al] = ai;
@@ -302,11 +302,11 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
         V(ans.min_allele_copy_number >= 0, "invalid min_allele_copy_number");
     }
 
-    const auto n_minGQ = yaml["minGQ"];
-    if (n_minGQ) {
-        V(n_minGQ.IsScalar(), "invalid minGQ");
-        ans.minGQ = n_minGQ.as<int>();
-        V(ans.minGQ >= 0, "invalid minGQ");
+    const auto n_minAQ = yaml["minAQ"];
+    if (n_minAQ) {
+        V(n_minAQ.IsScalar(), "invalid minAQ");
+        ans.minAQ = n_minAQ.as<int>();
+        V(ans.minAQ >= 0, "invalid minAQ");
     }
 
     const auto n_max_alleles_per_site = yaml["max_alleles_per_site"];
@@ -337,7 +337,7 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
 Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::BeginMap;
     ans << YAML::Key << "min_allele_copy_number" << YAML::Value << min_allele_copy_number;
-    ans << YAML::Key << "minGQ" << YAML::Value << minGQ;
+    ans << YAML::Key << "minAQ" << YAML::Value << minAQ;
     ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
 
     ans << YAML::Key << "preference" << YAML::Value;

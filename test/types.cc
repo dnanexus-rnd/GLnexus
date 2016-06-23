@@ -87,12 +87,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
-  maxGQ: 99
+  maxAQ: 99
 )";
 
     #define VERIFY_DA(dal) \
@@ -119,12 +119,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 - range: {ref: 'bogus', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
-  maxGQ: 99
+  maxAQ: 99
 )");
 
         discovered_alleles dal;
@@ -135,7 +135,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -146,7 +146,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -159,12 +159,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: BOGUS
   is_ref: false
   copy_number: 10.5
-  maxGQ: 99
+  maxAQ: 99
 )");
 
         discovered_alleles dal;
@@ -178,12 +178,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: [x]
-  maxGQ: 99
+  maxAQ: 99
 )");
 
         discovered_alleles dal;
@@ -191,18 +191,18 @@ TEST_CASE("discovered_alleles_of_yaml") {
         REQUIRE(s.bad());
     }
 
-    SECTION("bogus maxGQ") {
+    SECTION("bogus maxAQ") {
         YAML::Node n = YAML::Load(1 + R"(
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 100
-  maxGQ: ['z']
+  maxAQ: ['z']
 )");
 
         discovered_alleles dal;
@@ -231,12 +231,12 @@ TEST_CASE("yaml_of_discovered_alleles") {
   dna: A
   is_ref: true
   copy_number: 100
-  maxGQ: 99
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
-  maxGQ: 99
+  maxAQ: 99
 )";
 
         YAML::Node n = YAML::Load(da_yaml);

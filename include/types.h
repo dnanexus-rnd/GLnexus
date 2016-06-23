@@ -234,16 +234,16 @@ struct allele {
 struct discovered_allele_info {
     bool is_ref;
     float copy_number;
-    int maxGQ;
+    int maxAQ;
 
     bool operator==(const discovered_allele_info& rhs) const noexcept {
-        return is_ref == rhs.is_ref && fabs(copy_number - rhs.copy_number) < 0.0001 && maxGQ == rhs.maxGQ;
+        return is_ref == rhs.is_ref && fabs(copy_number - rhs.copy_number) < 0.0001 && maxAQ == rhs.maxAQ;
     }
     bool operator!=(const discovered_allele_info& rhs) const noexcept { return !(*this == rhs); }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << " maxGQ: " << maxGQ << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << " maxAQ: " << maxAQ << "]";
         return os.str();
     }
 };
@@ -334,10 +334,8 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
-    // GQ threshold for allele inclusion: to be included in the unified sites
-    // an allele must, across all the input gVCF records, be hard-called in a
-    // genotype with at least this GQ score.
-    int minGQ = 0;
+    // Allele Quality threshold for consideration of an allele (phred-scaled)
+    int minAQ = 0;
 
     // Keep only alleles with at least this estimated copy number discovered
     // in the cohort. The estimated copy number is a soft estimate based on

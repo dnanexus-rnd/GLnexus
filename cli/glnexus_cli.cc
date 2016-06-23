@@ -494,7 +494,7 @@ int main_dump(int argc, char *argv[]) {
 // should reside in some user-modifiable yml file
 const char* config_presets_yml = R"eof(
 unifier_config:
-  minGQ: 60
+  minAQ: 50
 genotyper_config:
   required_dp: 1
   liftover_fields:

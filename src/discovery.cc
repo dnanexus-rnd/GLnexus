@@ -5,34 +5,6 @@ using namespace std;
 
 namespace GLnexus {
 
-// for each allele, find the max GQ of any hard-call of the allele across the given sample indices
-Status alleles_maxGQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned> samples, vector<int>& ans) {
-    auto dataset_nsamples = bcf_hdr_nsamples(hdr);
-    ans.assign(record->n_allele,0);
-
-    htsvecbox<int> gt;
-    htsvecbox<int32_t> gq;
-    int nGT = bcf_get_genotypes(hdr, record, &gt.v, &gt.capacity);
-    if (!gt.v || nGT != 2*dataset_nsamples) return Status::Failure("discover_alleles bcf_get_genotypes");
-    int nGQ = bcf_get_format_int32(hdr, record, "GQ", &gq.v, &gq.capacity);
-
-    if (nGQ != dataset_nsamples) return Status::OK();
-
-    for (unsigned sample : samples) {
-        assert(sample < dataset_nsamples);
-        #define update_maxGQ(ofs) \
-            if (!bcf_gt_is_missing(gt[2*sample+(ofs)])) {  \
-                int al = bcf_gt_allele(gt[2*sample+(ofs)]); \
-                if (al < 0 || al >= record->n_allele) return Status::Failure("discover_alleles bcf_get_genotypes invalid allele"); \
-                ans[al] = std::max(ans[al], gq[sample]); \
-            }
-        update_maxGQ(0)
-        update_maxGQ(1)
-    }
-
-    return Status::OK();
-}
-
 Status discover_alleles_from_iterator(const set<string>& samples,
                                       const range& pos,
                                       RangeBCFIterator& iterator,
@@ -71,9 +43,9 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 continue;
             }
 
-            // find the max GQ for each allele
-            vector<int> maxGQ;
-            S(alleles_maxGQ(dataset_header.get(), record.get(), dataset_relevant_samples, maxGQ));
+            // find the max AQ for each allele
+            vector<int> maxAQ;
+            S(diploid::bcf_alleles_maxAQ(dataset_header.get(), record.get(), dataset_relevant_samples, maxAQ));
 
             // calculate estimated allele copy numbers for this record
             // TODO: configurable bias00
@@ -96,7 +68,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
                     if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
-                        discovered_allele_info ai = { false, round4(copy_number_i), maxGQ[i] };
+                        discovered_allele_info ai = { false, round4(copy_number_i), maxAQ[i] };
                         dsals.insert(make_pair(allele(rng, aldna), ai));
                         any_alt = true;
                     }
@@ -112,7 +84,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                     for (unsigned sample : dataset_relevant_samples) {
                         ref_copy_number += copy_number[sample][0];
                     }
-                    discovered_allele_info ai = { true, round4(ref_copy_number), maxGQ[0] };
+                    discovered_allele_info ai = { true, round4(ref_copy_number), maxAQ[0] };
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }
             } else {

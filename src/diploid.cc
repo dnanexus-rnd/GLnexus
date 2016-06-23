@@ -41,33 +41,41 @@ pair<unsigned,unsigned> gt_alleles(unsigned gt) {
     return make_pair(i,j);
 }
 
-GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, double bias00, vector<vector<double>>& ans) {
-    ans.resize(record->n_sample);
+GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *record, vector<double>& gl) {
     unsigned nGT = genotypes(record->n_allele);
+    gl.resize(record->n_sample*nGT);
 
-    // buffers for genotype likelihoods
+     // try loading genotype likelihoods from PL
     htsvecbox<int32_t> igl;
-    htsvecbox<float> fgl;
-    vector<double> gl(record->n_sample*nGT);
-
-    // try loading genotype likelihoods from PL
     if (bcf_get_format_int32(header, record, "PL", &igl.v, &igl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
             assert(igl[ik] >= 0.0);
             gl[ik] = exp10(double(igl[ik])/(-10.0));
         }
-/*
-    // couldn't load PL; try GL
-    } else if (bcf_get_format_float(header, record, "GL", &fgl.v, &fgl.capacity) == record->n_sample*nGT) {
-        for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
-            assert(fgl[ik] <= 0.0);
-            gl[ik] = exp10(gl[ik]));
-        } */
-    } else {
-        gl.clear();
+        return Status::OK();
     }
 
-    if (!gl.empty()) {
+    // couldn't load PL; try GL
+    htsvecbox<float> fgl;
+    if (bcf_get_format_float(header, record, "GL", &fgl.v, &fgl.capacity) == record->n_sample*nGT) {
+        for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
+            assert(fgl[ik] <= 0.0);
+            gl[ik] = exp10(gl[ik]);
+        }
+        return Status::OK();
+    }
+
+    return Status::NotFound();
+}
+
+GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, double bias00, vector<vector<double>>& ans) {
+    ans.resize(record->n_sample);
+    unsigned nGT = genotypes(record->n_allele);
+
+    vector<double> gl;
+    GLnexus::Status s = bcf_get_genotype_likelihoods(header, record, gl);
+
+    if (s.ok()) {
         for (unsigned i = 0; i < record->n_sample; i++) {
             double *gl_i = &(gl[i*nGT]);
             vector<double>& ans_i = ans[i];
@@ -88,6 +96,8 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
                 ans_i[j] /= total_likelihood;
             }
         }
+    } else if (s != GLnexus::StatusCode::NOT_FOUND) {
+        return s;
     } else {
         // couldn't find any genotype likelihoods; set copy number based on
         // the hard genotype calls
@@ -108,6 +118,43 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
                 }
             }
         }
+    }
+
+    return Status::OK();
+}
+
+// for each allele, find the max AQ across the given sample indices
+GLnexus::Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples, vector<int>& ans) {
+    unsigned nGT = genotypes(record->n_allele);
+    ans.assign(record->n_allele,0);;
+
+    vector<double> gl;
+    GLnexus::Status s = bcf_get_genotype_likelihoods(hdr, record, gl);
+
+    if (s.ok()) {
+        assert(gl.size() == record->n_sample*nGT);
+        for (unsigned i : samples) {
+            double *gl_i = gl.data() + i*nGT;
+            vector<double> maxL_with(record->n_allele, 0.0);
+            vector<double> maxL_without(record->n_allele, 0.0);
+
+            for (unsigned k = 0; k < nGT; k++) {
+                auto p = gt_alleles(k);
+                for (unsigned al = 0; al < record->n_allele; al++) {
+                    if (al == p.first || al == p.second) {
+                        maxL_with[al] = std::max(maxL_with[al], gl_i[k]);
+                    } else {
+                        maxL_without[al] = std::max(maxL_without[al], gl_i[k]);
+                    }
+                }
+            }
+            for (unsigned al = 0; al < record->n_allele; al++) {
+                double AQLR = std::max(1.0, maxL_with[al]/maxL_without[al]);
+                ans[al] = std::max(ans[al], (int)round(10.0*log(AQLR)/log(10.0)));
+            }
+        }
+    } else if (s != GLnexus::StatusCode::NOT_FOUND) {
+        return s;
     }
 
     return Status::OK();
