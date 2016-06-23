@@ -123,41 +123,57 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
     return Status::OK();
 }
 
-// for each allele, find the max AQ across the given sample indices
-GLnexus::Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples, vector<int>& ans) {
-    unsigned nGT = genotypes(record->n_allele);
-    ans.assign(record->n_allele,0);;
+// for each allele, find the max AQ across the given sample indices, given valid genotype likelihoods
+GLnexus::Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const vector<unsigned>& samples,
+                              const vector<double>& gl, vector<int>& ans) {
+    unsigned nGT = genotypes(n_allele);
+    if (gl.size() != n_sample*nGT) {
+        return Status::Invalid("alleles_maxAQ");
+    }
+    ans.assign(n_allele,0);
 
+    for (unsigned i : samples) {
+        assert(i < n_sample);
+        const double *gl_i = gl.data() + i*nGT;
+        vector<double> maxL_with(n_allele, 0.0);    // max likelihood of a genotype carrying each allele
+        vector<double> maxL_without(n_allele, 0.0); // max likelihood of a genotype NOT carrying each allele
+
+        for (unsigned k = 0; k < nGT; k++) { // for each genotype
+            auto p = gt_alleles(k);          // indices of the two alleles in this genotype
+            for (unsigned al = 0; al < n_allele; al++) {
+                if (al == p.first || al == p.second) {
+                    // genotype contains this allele -- update maxL_with
+                    maxL_with[al] = std::max(maxL_with[al], gl_i[k]);
+                } else {
+                    // genotype doesn't contain this allele -- update maxL_without
+                    maxL_without[al] = std::max(maxL_without[al], gl_i[k]);
+                }
+            }
+        }
+        for (unsigned al = 0; al < n_allele; al++) {
+            // phred scale likelihood ratio
+            double AQLR = std::max(1.0, maxL_with[al]/maxL_without[al]);
+            ans[al] = std::max(ans[al], (int)round(10.0*log(AQLR)/log(10.0)));
+        }
+    }
+
+    return Status::OK();
+}
+
+// for each allele, find the max AQ across the given sample indices, from the BCF record
+// if no genotype likelihoods can be found in the record, then return [0, 0, ...]
+GLnexus::Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples, vector<int>& ans) {
+    ans.assign(record->n_allele,0);
     vector<double> gl;
     GLnexus::Status s = bcf_get_genotype_likelihoods(hdr, record, gl);
 
     if (s.ok()) {
-        assert(gl.size() == record->n_sample*nGT);
-        for (unsigned i : samples) {
-            double *gl_i = gl.data() + i*nGT;
-            vector<double> maxL_with(record->n_allele, 0.0);
-            vector<double> maxL_without(record->n_allele, 0.0);
-
-            for (unsigned k = 0; k < nGT; k++) {
-                auto p = gt_alleles(k);
-                for (unsigned al = 0; al < record->n_allele; al++) {
-                    if (al == p.first || al == p.second) {
-                        maxL_with[al] = std::max(maxL_with[al], gl_i[k]);
-                    } else {
-                        maxL_without[al] = std::max(maxL_without[al], gl_i[k]);
-                    }
-                }
-            }
-            for (unsigned al = 0; al < record->n_allele; al++) {
-                double AQLR = std::max(1.0, maxL_with[al]/maxL_without[al]);
-                ans[al] = std::max(ans[al], (int)round(10.0*log(AQLR)/log(10.0)));
-            }
-        }
-    } else if (s != GLnexus::StatusCode::NOT_FOUND) {
-        return s;
+        return alleles_maxAQ(record->n_allele, record->n_sample, samples, gl, ans);
+    } else if (s == GLnexus::StatusCode::NOT_FOUND) {
+        return Status::OK();
     }
 
-    return Status::OK();
+    return s;
 }
 
 namespace trio {
