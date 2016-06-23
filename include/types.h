@@ -207,6 +207,16 @@ struct range {
     }
 };
 
+Status range_yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
+                  const range& r,
+                  YAML::Emitter& yaml,
+                  bool omit_ref = false);
+
+Status range_of_yaml(const YAML::Node& yaml,
+                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                     range& ans,
+                     int default_rid = -1);
+
 struct allele {
     range pos;
     std::string dna;
@@ -246,10 +256,10 @@ using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);
 
 Status yaml_of_discovered_alleles(const discovered_alleles&,
-                                  const std::vector<std::pair<std::string,size_t> >&,
+                                  const std::vector<std::pair<std::string,size_t> >& contigs,
                                   YAML::Emitter&);
 Status discovered_alleles_of_yaml(const YAML::Node&,
-                                  const std::vector<std::pair<std::string,size_t> >&,
+                                  const std::vector<std::pair<std::string,size_t> >& contigs,
                                   discovered_alleles&);
 
 struct unified_site {

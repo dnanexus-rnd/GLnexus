@@ -490,6 +490,249 @@ int main_dump(int argc, char *argv[]) {
     return 0;
 }
 
+
+GLnexus::Status load_discovered_alleles_and_ranges(const std::string& name,
+                                                   const std::vector<std::pair<std::string,size_t> > &contigs,
+                                                   vector<GLnexus::range> &ranges,
+                                                   vector<GLnexus::discovered_alleles> &valleles) {
+    GLnexus::Status s;
+    if (name.size() == 0) {
+        return GLnexus::Status::Invalid("The discovered alleles file must be specified");
+    }
+
+    cerr << "Loading discovered alleles "<< endl;
+    YAML::Node yaml = YAML::LoadFile(name);
+    if (!yaml) {
+        return GLnexus::Status::NotFound("bad discovered alleles file", name);
+    }
+    if (!yaml.IsSequence()) {
+        return GLnexus::Status::Invalid("not a sequence at top level");
+    }
+
+    ranges.clear();
+    valleles.clear();
+
+    for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
+        const auto n_range = (*p)["containing_range"];
+        GLnexus::range rng(-1,-1,-1);
+        s = range_of_yaml(n_range, contigs, rng);
+        if (s.bad()) return s;
+        ranges.push_back(rng);
+
+        const auto n_dsals = (*p)["discovered_alleles"];
+        GLnexus::discovered_alleles dsals;
+        s = discovered_alleles_of_yaml(n_dsals, contigs, dsals);
+        if (s.bad()) return s;
+        valleles.push_back(dsals);
+    }
+
+    console->info() << "read " << ranges.size() << " ranges";
+
+    unsigned discovered_allele_count=0;
+    for (const auto& dsals : valleles) {
+        discovered_allele_count += dsals.size();
+    }
+    console->info() << "read " << discovered_allele_count << " discovered alleles";
+
+    return GLnexus::Status::OK();
+}
+
+GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
+                                           const string &range_txt,
+                                           const std::vector<std::pair<std::string,size_t> > &contigs,
+                                           vector<GLnexus::range> &ranges) {
+    if (bedfilename.empty()) {
+        // single range from the command line
+        GLnexus::range range(-1,-1,-1);
+        if (!parse_range(contigs, range_txt, range)) {
+            return GLnexus::Status::Invalid("range: ", range_txt);
+        }
+        ranges.push_back(range);
+    } else {
+        // read BED file
+        string rname, beg_txt, end_txt;
+        ifstream bedfile(bedfilename);
+        while (bedfile >> rname >> beg_txt >> end_txt) {
+            int rid = 0;
+            for(; rid<contigs.size(); rid++)
+                if (contigs[rid].first == rname)
+                    break;
+            if (rid == contigs.size()) {
+                return GLnexus::Status::Invalid("Unknown contig ", rname);
+            }
+            ranges.push_back(GLnexus::range(rid,
+                                            strtol(beg_txt.c_str(), nullptr, 10),
+                                            strtol(end_txt.c_str(), nullptr, 10)));
+        }
+        if (bedfile.bad() || !bedfile.eof()) {
+            return GLnexus::Status::IOError( "Error reading ", bedfilename);
+        }
+    }
+
+    sort(ranges.begin(), ranges.end());
+    for (auto& query : ranges) {
+        if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
+            return GLnexus::Status::Invalid("query range ", query.str(contigs));
+        }
+        if (query.end > contigs[query.rid].second) {
+            query.end = contigs[query.rid].second;
+            console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+        }
+    }
+
+    return GLnexus::Status::OK();
+}
+
+
+GLnexus::Status yaml_of_discovered_alleles_and_ranges(const vector<GLnexus::range> &ranges,
+                                                      const vector<GLnexus::discovered_alleles> &valleles,
+                                                      const vector<pair<string,size_t> > &contigs,
+                                                      YAML::Emitter &yaml) {
+    GLnexus::Status s;
+
+    assert(ranges.size() == valleles.size());
+    size_t n_elem = ranges.size();
+
+    // Note: we need to be careful here, to write out only non empty sites.
+    yaml << YAML::BeginSeq;
+    for (int i=0; i < n_elem; ++i) {
+        if (valleles[i].size() == 0) continue;
+
+        yaml << YAML::BeginMap;
+        yaml << YAML::Key << "containing_range";
+        yaml << YAML::Value;
+        s = range_yaml(contigs, ranges[i], yaml);
+        if (s.bad()) return s;
+
+        yaml << YAML::Key << "discovered_alleles";
+        yaml << YAML::Value;
+        s = yaml_of_discovered_alleles(valleles[i], contigs, yaml);
+        if (s.bad()) return s;
+        yaml << YAML::EndMap;
+    }
+    yaml << YAML::EndSeq;
+
+    return GLnexus::Status::OK();
+}
+
+
+void help_discover_alleles(const char* prog) {
+    cerr << "usage: " << prog << " discover [options] /db/path chrom:1234-2345" << endl
+         << "Discover alleles in all samples in the database in the given interval. The positions" << endl
+         << "are one-based, inclusive. As an alternative to providing one interval on the" << endl
+         << "command line, you can provide a three-column BED file using --bed." << endl
+         << "Options:" << endl
+         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+         << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
+         << endl;
+}
+
+int main_discover_alleles(int argc, char *argv[]) {
+    if (argc == 2) {
+        help_discover_alleles(argv[0]);
+        return 1;
+    }
+
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"bed", required_argument, 0, 'b'},
+        {"threads", required_argument, 0, 't'},
+        {0, 0, 0, 0}
+    };
+
+    string bedfilename;
+    size_t threads = 0;
+
+    int c;
+    optind = 2; // force optind past command positional argument
+    while (-1 != (c = getopt_long(argc, argv, "hb:t:",
+                                  long_options, nullptr))) {
+        switch (c) {
+            case 'b':
+                bedfilename = string(optarg);
+                if (bedfilename.size() == 0) {
+                    cerr <<  "invalid BED filename" << endl;
+                    return 1;
+                }
+                break;
+            case 't':
+                threads = strtoul(optarg, nullptr, 10);
+                console->info() << "pooling " << threads << " threads for genotyping";
+                break;
+            case 'h':
+            case '?':
+                help_discover_alleles(argv[0]);
+                exit(1);
+                break;
+
+            default:
+                abort ();
+        }
+    }
+
+    if (optind > argc-1) {
+        help_discover_alleles(argv[0]);
+        return 1;
+    }
+    string dbpath(argv[optind]);
+    string range_txt;
+
+    if (bedfilename.empty()) {
+        if (optind != argc-2) {
+            help_discover_alleles(argv[0]);
+            return 1;
+        }
+
+        range_txt = argv[optind+1];
+    } else {
+        if (optind != argc-1) {
+            help_discover_alleles(argv[0]);
+            return 1;
+        }
+    }
+
+
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    unique_ptr<GLnexus::BCFKeyValueData> data;
+
+    // open the database in read-only mode
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+
+    std::vector<std::pair<std::string,size_t> > contigs;
+    H("read contig metadata", data->contigs(contigs));
+
+    vector<GLnexus::range> ranges;
+    H("Parsing range argument", parse_ranges_from_cmd_line(bedfilename, range_txt, contigs, ranges));
+
+    // start service, discover alleles
+    GLnexus::service_config svccfg;
+    svccfg.threads = threads;
+    unique_ptr<GLnexus::Service> svc;
+    H("start GLnexus service", GLnexus::Service::Start(svccfg, *data, *data, svc));
+
+    string sampleset;
+    H("list all samples", data->all_samples_sampleset(sampleset));
+    console->info() << "found sample set " << sampleset;
+
+    console->info() << "discovering alleles in " << ranges.size() << " range(s)";
+    vector<GLnexus::discovered_alleles> valleles;
+    H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
+    unsigned discovered_allele_count=0;
+    for (const auto& dsals : valleles) {
+        discovered_allele_count += dsals.size();
+    }
+    console->info() << "discovered " << discovered_allele_count << " alleles";
+
+    // Write the discovered alleles to stdout
+    YAML::Emitter yaml;
+    H("write results as yaml", yaml_of_discovered_alleles_and_ranges(ranges, valleles, contigs, yaml));
+    cout << yaml.c_str() << endl;
+    return 0;
+}
+
+
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
 const char* config_presets_yml = R"eof(
@@ -550,15 +793,14 @@ GLnexus::Status load_config_preset(const std::string& name,
     return GLnexus::Status::OK();
 }
 
-
 void help_genotype(const char* prog) {
-    cerr << "usage: " << prog << " genotype [options] /db/path chrom:1234-2345" << endl
-         << "Genotype all samples in the database in the given interval. The positions are" << endl
+    cerr << "usage: " << prog << " genotype [options] /db/path /discovered_alleles/path" << endl
+         << "Genotype all samples in the database in the given interval. Discovered alleles" << endl
+         << "should be provided as a file in yaml format. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
          << "command line, you can provide a three-column BED file using --bed." << endl
          << "Options:" << endl
          << "  --residuals, -r      generate detailed residuals output file" << endl
-         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
          << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
          << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
@@ -573,7 +815,6 @@ int main_genotype(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"residuals", no_argument, 0, 'r'},
-        {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
         {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
@@ -586,16 +827,9 @@ int main_genotype(int argc, char *argv[]) {
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hrb:c:t:",
+    while (-1 != (c = getopt_long(argc, argv, "hrc:t:",
                                   long_options, nullptr))) {
         switch (c) {
-            case 'b':
-                bedfilename = string(optarg);
-                if (bedfilename.size() == 0) {
-                    cerr <<  "invalid BED filename" << endl;
-                    return 1;
-                }
-                break;
             case 'r':
                 residuals = true;
                 break;
@@ -622,20 +856,10 @@ int main_genotype(int argc, char *argv[]) {
         return 1;
     }
     string dbpath(argv[optind]);
-    string range_txt;
-
-    if (bedfilename.empty()) {
-        if (optind != argc-2) {
-            help_genotype(argv[0]);
-            return 1;
-        }
-
-        range_txt = argv[optind+1];
-    } else {
-        if (optind != argc-1) {
-            help_genotype(argv[0]);
-            return 1;
-        }
+    string discovered_alleles_file(argv[optind + 1]);
+    if (optind != argc-2) {
+        help_genotype(argv[0]);
+        return 1;
     }
 
     GLnexus::unifier_config unifier_cfg;
@@ -643,11 +867,10 @@ int main_genotype(int argc, char *argv[]) {
     if (config_preset.size()) {
         H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
     }
-    genotyper_cfg.output_residuals = residuals;
 
+    genotyper_cfg.output_residuals = residuals;
     cerr << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields." << endl;
     unique_ptr<GLnexus::KeyValue::DB> db;
-    unique_ptr<GLnexus::BCFKeyValueData> data;
 
     // open the database in read-only mode
     H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
@@ -659,86 +882,35 @@ int main_genotype(int argc, char *argv[]) {
         std::vector<std::pair<std::string,size_t> > contigs;
         H("read contig metadata", data->contigs(contigs));
 
-        // parse ranges
         vector<GLnexus::range> ranges;
-        if (bedfilename.empty()) {
-            // single range from the command line
-            GLnexus::range range(-1,-1,-1);
-            if (!parse_range(contigs, range_txt, range)) {
-                console->error() << "Invalid range: " << range_txt;
-                return 1;
-            }
-            ranges.push_back(range);
-        } else {
-            // read BED file
-            string rname, beg_txt, end_txt;
-            ifstream bedfile(bedfilename);
-            while (bedfile >> rname >> beg_txt >> end_txt) {
-                int rid = 0;
-                for(; rid<contigs.size(); rid++)
-                    if (contigs[rid].first == rname)
-                        break;
-                if (rid == contigs.size()) {
-                    console->error() << "Unknown contig " << rname;
-                    return 1;
-                }
-                ranges.push_back(GLnexus::range(rid,
-                                                strtol(beg_txt.c_str(), nullptr, 10),
-                                                strtol(end_txt.c_str(), nullptr, 10)));
-            }
-            if (bedfile.bad() || !bedfile.eof()) {
-                console->error() << "Error reading " << bedfilename;
-                return 1;
-            }
+        vector<GLnexus::discovered_alleles> valleles;
+        H("load discovered alleles and ranges",
+          load_discovered_alleles_and_ranges(discovered_alleles_file, contigs, ranges, valleles));
+
+        // start service, discover alleles, unify sites, genotype sites
+        GLnexus::service_config svccfg;
+        svccfg.threads = threads;
+        unique_ptr<GLnexus::Service> svc;
+        H("start GLnexus service", GLnexus::Service::Start(svccfg, *data, *data, svc));
+
+        string sampleset;
+        H("list all samples", data->all_samples_sampleset(sampleset));
+        console->info() << "found sample set " << sampleset;
+
+        vector<GLnexus::unified_site> sites;
+        for (int i = 0; i < valleles.size(); i++) {
+            vector<GLnexus::unified_site> sites_i;
+            H("unify sites", GLnexus::unified_sites(unifier_cfg, valleles[i], sites_i, ranges[i]));
+            sites.insert(sites.end(), sites_i.begin(), sites_i.end());
         }
+        console->info() << "unified to " << sites.size() << " sites";
 
-        sort(ranges.begin(), ranges.end());
-        for (auto& query : ranges) {
-            if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
-                cerr << "Invalid query range " << query.str(contigs) << endl;
-                return 1;
-            }
-            if (query.end > contigs[query.rid].second) {
-                query.end = contigs[query.rid].second;
-                console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
-            }
-        }
+        GLnexus::genotyper_config genoCfg = GLnexus::genotyper_config();
+        genoCfg.output_residuals = residuals;
 
-        {
-            // start service, discover alleles, unify sites, genotype sites
-            GLnexus::service_config svccfg;
-            svccfg.threads = threads;
-            unique_ptr<GLnexus::Service> svc;
-            H("start GLnexus service", GLnexus::Service::Start(svccfg, *data, *data, svc));
-
-            string sampleset;
-            H("list all samples", data->all_samples_sampleset(sampleset));
-            console->info() << "found sample set " << sampleset;
-
-            console->info() << "discovering alleles in " << ranges.size() << " range(s)";
-            vector<GLnexus::discovered_alleles> valleles;
-            H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
-            unsigned discovered_allele_count=0;
-            for (const auto& dsals : valleles) {
-                discovered_allele_count += dsals.size();
-            }
-            console->info() << "discovered " << discovered_allele_count << " alleles";
-
-            vector<GLnexus::unified_site> sites;
-            for (int i = 0; i < valleles.size(); i++) {
-                vector<GLnexus::unified_site> sites_i;
-                H("unify sites", GLnexus::unified_sites(unifier_cfg, valleles[i], sites_i, ranges[i]));
-                sites.insert(sites.end(), sites_i.begin(), sites_i.end());
-            }
-            console->info() << "unified to " << sites.size() << " sites";
-
-            GLnexus::genotyper_config genoCfg = GLnexus::genotyper_config();
-            genoCfg.output_residuals = residuals;
-
-            H("genotype sites",
-              svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-")));
-            console->info("genotyping complete!");
-        }
+        H("genotype sites",
+          svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-")));
+        console->info("genotyping complete!");
 
         std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
         cerr << statsRq->str() << endl;
@@ -814,10 +986,11 @@ void help(const char* prog) {
     cerr << "usage: " << prog << " <command> [options]" << endl
              << endl
              << "commands:" << endl
-             << "  init     initialize new database" << endl
-             << "  load     load a gVCF file into an existing database" << endl
-             << "  genotype genotype samples in the database" << endl
-             << "  iter_compare compare the two BCF iterator impelementations" << endl
+             << "  init             initialize new database" << endl
+             << "  load             load a gVCF file into an existing database" << endl
+             << "  discover_alleles discover alleles in the database  " << endl
+             << "  genotype         genotype samples in the database" << endl
+             << "  iter_compare     compare the two BCF iterator impelementations" << endl
              << endl;
 }
 
@@ -838,6 +1011,8 @@ int main(int argc, char *argv[]) {
         return main_load(argc, argv);
     } else if (command == "dump") {
         return main_dump(argc, argv);
+    } else if (command == "discover_alleles") {
+        return main_discover_alleles(argc, argv);
     } else if (command == "genotype") {
         return main_genotype(argc, argv);
     } else if (command == "iter_compare") {

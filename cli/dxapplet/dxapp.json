@@ -116,6 +116,11 @@
       "name": "residuals",
       "class": "file",
       "optional": true
+    },
+    {
+      "name": "discovered_alleles",
+      "class": "file",
+      "optional": true
     }
   ],
   "runSpec": {
