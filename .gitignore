@@ -49,3 +49,6 @@ cscope*
 # htslib stuff
 mem:*
 src/1.*.zip
+
+# Packages used by the applet
+lz4-r131.tar
