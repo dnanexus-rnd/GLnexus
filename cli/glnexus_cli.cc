@@ -505,29 +505,28 @@ GLnexus::Status load_discovered_alleles_and_ranges(const std::string& name,
     if (!yaml) {
         return GLnexus::Status::NotFound("bad discovered alleles file", name);
     }
-    if (!yaml.IsMap()) {
-        return GLnexus::Status::Invalid("not a map at top level");
+    if (!yaml.IsSequence()) {
+        return GLnexus::Status::Invalid("not a sequence at top level");
     }
 
     ranges.clear();
     valleles.clear();
 
-    const auto n_ranges = yaml["ranges"];
-    for (YAML::const_iterator p = n_ranges.begin(); p != n_ranges.end(); ++p) {
+    for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
+        const auto n_range = (*p)["containing_range"];
         GLnexus::range rng(-1,-1,-1);
-        s = range_of_yaml(*p, contigs, rng);
+        s = range_of_yaml(n_range, contigs, rng);
         if (s.bad()) return s;
         ranges.push_back(rng);
-    }
-    console->info() << "read " << ranges.size() << " ranges";
 
-    const auto n_dsals = yaml["discovered_alleles"];
-    for (YAML::const_iterator p = n_dsals.begin(); p != n_dsals.end(); ++p) {
+        const auto n_dsals = (*p)["discovered_alleles"];
         GLnexus::discovered_alleles dsals;
-        s = discovered_alleles_of_yaml(*p, contigs, dsals);
+        s = discovered_alleles_of_yaml(n_dsals, contigs, dsals);
         if (s.bad()) return s;
         valleles.push_back(dsals);
     }
+
+    console->info() << "read " << ranges.size() << " ranges";
 
     unsigned discovered_allele_count=0;
     for (const auto& dsals : valleles) {
@@ -595,31 +594,23 @@ GLnexus::Status yaml_of_discovered_alleles_and_ranges(const vector<GLnexus::rang
     size_t n_elem = ranges.size();
 
     // Note: we need to be careful here, to write out only non empty sites.
-    vector<int> indexes;
-    for (int i=0; i < n_elem; ++i) {
-        if (valleles[i].size() > 0)
-            indexes.push_back(i);
-    }
-
-    yaml << YAML::BeginMap;
-    yaml << YAML::Key << "ranges";
-    yaml << YAML::Value;
     yaml << YAML::BeginSeq;
-    for (int i : indexes) {
+    for (int i=0; i < n_elem; ++i) {
+        if (valleles[i].size() == 0) continue;
+
+        yaml << YAML::BeginMap;
+        yaml << YAML::Key << "containing_range";
+        yaml << YAML::Value;
         s = range_yaml(contigs, ranges[i], yaml);
         if (s.bad()) return s;
-    }
-    yaml << YAML::EndSeq;
 
-    yaml << YAML::Key << "discovered_alleles";
-    yaml << YAML::Value;
-    yaml << YAML::BeginSeq;
-    for (int i : indexes) {
+        yaml << YAML::Key << "discovered_alleles";
+        yaml << YAML::Value;
         s = yaml_of_discovered_alleles(valleles[i], contigs, yaml);
         if (s.bad()) return s;
+        yaml << YAML::EndMap;
     }
     yaml << YAML::EndSeq;
-    yaml << YAML::EndMap;
 
     return GLnexus::Status::OK();
 }
@@ -803,7 +794,7 @@ GLnexus::Status load_config_preset(const std::string& name,
 }
 
 void help_genotype(const char* prog) {
-    cerr << "usage: " << prog << " genotype [options] /db/path /discovered_alleles/path chrom:1234-2345" << endl
+    cerr << "usage: " << prog << " genotype [options] /db/path /discovered_alleles/path" << endl
          << "Genotype all samples in the database in the given interval. Discovered alleles" << endl
          << "should be provided as a file in yaml format. The positions are" << endl
          << "one-based, inclusive. As an alternative to providing one interval on the" << endl
