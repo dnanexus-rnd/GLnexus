@@ -799,7 +799,6 @@ GLnexus::Status yaml_of_unified_sites(const vector<GLnexus::unified_site> &sites
                                       YAML::Emitter &yaml) {
     GLnexus::Status s;
 
-    // Note: we need to be careful here, to write out only non empty sites.
     yaml << YAML::BeginSeq;
     for (auto& u_site : sites) {
         s = u_site.yaml(contigs, yaml);

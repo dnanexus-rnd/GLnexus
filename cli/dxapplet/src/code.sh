@@ -133,12 +133,12 @@ main() {
         fi
 
         # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
-        time numactl --interleave=all glnexus_cli discover_alleles GLnexus.db --bed ranges.bed > discovered_alleles.yml
+        time numactl --interleave=all glnexus_cli discover_alleles GLnexus.db --bed ranges.bed -t $(nproc) > discovered_alleles.yml
 
-        time numactl --interleave=all glnexus_cli unify_sites GLnexus.db discovered_alleles.yml > unified_sites.yml
+        time numactl --interleave=all glnexus_cli unify_sites GLnexus.db discovered_alleles.yml -t $(nproc) > unified_sites.yml
 
         mkdir -p out/vcf
-        time numactl --interleave=all glnexus_cli genotype GLnexus.db unified_sites.yml $residuals_flag $config_flag | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+        time numactl --interleave=all glnexus_cli genotype GLnexus.db unified_sites.yml $residuals_flag $config_flag -t $(nproc) | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
         # we are writing the generated VCF to stdout, so the residuals will
         # be placed in a default location.
