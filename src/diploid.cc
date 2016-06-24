@@ -42,6 +42,38 @@ pair<unsigned,unsigned> gt_alleles(unsigned gt) {
     return make_pair(i,j);
 }
 
+Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::vector<unsigned>& samples,
+                          vector<zygosity_by_GQ>& ans) {
+    htsvecbox<int> gt;
+    int nGT = bcf_get_genotypes(header, record, &gt.v, &gt.capacity);
+    if (gt.empty() || nGT != 2*record->n_sample) return Status::Failure("bcf_get_genotypes");
+
+    htsvecbox<int32_t> gq;
+    int nGQ = bcf_get_format_int32(header, record, "GQ", &gq.v, &gq.capacity);
+    if (gq.empty() || nGQ != record->n_sample) {
+        gq.clear();
+    }
+
+    ans.clear();
+    ans.resize(record->n_allele);
+
+    for (auto sample : samples) {
+        auto sample_gq = gq.empty() ? 0 : gq[sample];
+        auto als = gt_alleles(gt[sample]);
+
+        for (int i = 0; i < zygosity_by_GQ::ROWS && sample_gq >= i*10; i++) {
+            if (als.first == als.second) {
+                ans[als.first].M[i][1]++;
+            } else {
+                ans[als.first].M[i][0]++;
+                ans[als.second].M[i][0]++;
+            }
+        }
+    }
+
+    return Status::OK();
+}
+
 GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *record, vector<double>& gl) {
     unsigned nGT = genotypes(record->n_allele);
     gl.resize(record->n_sample*nGT);
@@ -67,61 +99,6 @@ GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *re
     }
 */
     return Status::NotFound();
-}
-
-GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, double bias00, vector<vector<double>>& ans) {
-    ans.resize(record->n_sample);
-    unsigned nGT = genotypes(record->n_allele);
-
-    vector<double> gl;
-    GLnexus::Status s = bcf_get_genotype_likelihoods(header, record, gl);
-
-    if (s.ok()) {
-        for (unsigned i = 0; i < record->n_sample; i++) {
-            double *gl_i = &(gl[i*nGT]);
-            vector<double>& ans_i = ans[i];
-            ans_i.resize(record->n_allele);
-            memset(ans_i.data(), 0, record->n_allele*sizeof(double));
-
-            // based on genotype likelihoods and specified bias,
-            // calculate expected # of copies of each allele
-            double total_likelihood = 0.0;
-            for (unsigned k = 0; k < nGT; k++) {
-                double gl_ik = gl_i[k] * (k == 0 ? bias00 : 1.0);
-                total_likelihood += gl_ik;
-                auto p = gt_alleles(k);
-                ans_i[p.first] += gl_ik;
-                ans_i[p.second] += gl_ik;
-            }
-            for (unsigned j = 0; j < record->n_allele; j++) {
-                ans_i[j] /= total_likelihood;
-            }
-        }
-    } else if (s != GLnexus::StatusCode::NOT_FOUND) {
-        return s;
-    } else {
-        // couldn't find any genotype likelihoods; set copy number based on
-        // the hard genotype calls
-        htsvecbox<int> gt;
-        if (bcf_get_genotypes(header, record, &gt.v, &gt.capacity) != 2*record->n_sample) {
-            return Status::Invalid("diploid::estimate_copy_number: couldn't load PL, GL, nor genotypes", range(record).str());
-        }
-
-        for (unsigned i = 0; i < record->n_sample; i++) {
-            vector<double>& ans_i = ans[i];
-            ans_i.resize(record->n_allele);
-            memset(ans_i.data(), 0, record->n_allele*sizeof(double));
-            for (unsigned ofs : {0, 1}) {
-                if (!bcf_gt_is_missing(gt[i*2+ofs])) {
-                    unsigned j = bcf_gt_allele(gt[i*2+ofs]);
-                    assert(j < record->n_allele);
-                    ans_i[j] += 1.0;
-                }
-            }
-        }
-    }
-
-    return Status::OK();
 }
 
 // for each allele, find the max AQ across the given sample indices, given valid genotype likelihoods

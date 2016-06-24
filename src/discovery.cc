@@ -47,11 +47,9 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             vector<int> maxAQ;
             S(diploid::bcf_alleles_maxAQ(dataset_header.get(), record.get(), dataset_relevant_samples, maxAQ));
 
-            // calculate estimated allele copy numbers for this record
-            // TODO: configurable bias00
-            // TODO: ideally we'd compute them only for relevant samples
-            S(diploid::estimate_allele_copy_number(dataset_header.get(), record.get(), 1.0, copy_number));
-            #define round4(x) (float(round(x*10000.0)/10000.0))
+            // find zygosity_by_GQ for each allele
+            vector<zygosity_by_GQ> zGQ;
+            S(diploid::bcf_zygosity_by_GQ(dataset_header.get(), record.get(), dataset_relevant_samples, zGQ));
 
             // FIXME -- minor potential bug -- double-counting copy number of
             // alleles that span multiple discovery ranges
@@ -60,15 +58,11 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // In particular this excludes gVCF <NON_REF> symbolic alleles
             bool any_alt = false;
             for (int i = 1; i < record->n_allele; i++) {
-                double copy_number_i = 0.0;
-                for (unsigned sample : dataset_relevant_samples) {
-                    copy_number_i += copy_number[sample][i];
-                }
-                if (copy_number_i) {
+                if (zGQ[i].copy_number() > 0) {
                     string aldna(record->d.allele[i]);
                     transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
                     if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
-                        discovered_allele_info ai = { false, round4(copy_number_i), maxAQ[i] };
+                        discovered_allele_info ai = { false, maxAQ[i], zGQ[i] };
                         dsals.insert(make_pair(allele(rng, aldna), ai));
                         any_alt = true;
                     }
@@ -80,11 +74,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
             if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
                 if (any_alt) {
-                    double ref_copy_number = 0.0;
-                    for (unsigned sample : dataset_relevant_samples) {
-                        ref_copy_number += copy_number[sample][0];
-                    }
-                    discovered_allele_info ai = { true, round4(ref_copy_number), maxAQ[0] };
+                    discovered_allele_info ai = { true, maxAQ[0], zGQ[0] };
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }
             } else {

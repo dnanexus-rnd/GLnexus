@@ -19,8 +19,8 @@ using discovered_allele = pair<allele,discovered_allele_info>;
 // original representations.
 struct minimized_allele_info {
     set<allele> originals;
-    float copy_number = 0.0;
     int maxAQ = 0;
+    unsigned copy_number = 0;
 
     string str() const {
         ostringstream os;
@@ -28,8 +28,8 @@ struct minimized_allele_info {
         for (auto& al : originals) {
             os << "  " << al.str() << endl;
         }
-        os << "Copy number: " << copy_number << endl;
         os << "Max AQ: " << maxAQ << endl;
+        os << "Copy number: " << copy_number << endl;
         return os.str();
     }
 };
@@ -122,19 +122,22 @@ Status minimize_alleles(const discovered_alleles& src,
         // minimize the alt allele
         S(minimize_allele(rp->second.first, alt));
 
+        // TODO: configured minGQ for estimating copy number
+        unsigned copy_number = dal.second.zGQ.copy_number();
+
         // add it to alts, combining originals, copy_number, and maxAQ with any
         // previously observed occurrences of the same minimized alt allele.
         auto ap = alts.find(alt);
         if (ap == alts.end()) {
             minimized_allele_info info;
             info.originals.insert(dal.first);
-            info.copy_number = dal.second.copy_number;
             info.maxAQ = dal.second.maxAQ;
+            info.copy_number = copy_number;
             alts[alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
-            ap->second.copy_number += dal.second.copy_number;
             ap->second.maxAQ = std::max(ap->second.maxAQ, dal.second.maxAQ);
+            ap->second.copy_number += copy_number;
         }
     }
 
