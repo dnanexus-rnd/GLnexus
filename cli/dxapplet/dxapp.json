@@ -121,6 +121,11 @@
       "name": "discovered_alleles",
       "class": "file",
       "optional": true
+    },
+    {
+      "name": "unified_sites",
+      "class": "file",
+      "optional": true
     }
   ],
   "runSpec": {
