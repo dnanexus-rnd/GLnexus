@@ -21,6 +21,7 @@ unsigned alleles_gt(unsigned i, unsigned j) {
 }
 
 // given a genotype index, return a pair with the indices of the constituent n_allele
+// TODO: memoize for small values of n_allele...
 pair<unsigned,unsigned> gt_alleles(unsigned gt) {
     /*
       0 1 2
@@ -54,7 +55,7 @@ GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *re
         }
         return Status::OK();
     }
-
+/*
     // couldn't load PL; try GL
     htsvecbox<float> fgl;
     if (bcf_get_format_float(header, record, "GL", &fgl.v, &fgl.capacity) == record->n_sample*nGT) {
@@ -64,7 +65,7 @@ GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *re
         }
         return Status::OK();
     }
-
+*/
     return Status::NotFound();
 }
 
@@ -127,9 +128,7 @@ GLnexus::Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *rec
 GLnexus::Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const vector<unsigned>& samples,
                               const vector<double>& gl, vector<int>& ans) {
     unsigned nGT = genotypes(n_allele);
-    if (gl.size() != n_sample*nGT) {
-        return Status::Invalid("alleles_maxAQ");
-    }
+    if (gl.size() != n_sample*nGT) return Status::Invalid("alleles_maxAQ");
     ans.assign(n_allele,0);
 
     for (unsigned i : samples) {

@@ -22,7 +22,14 @@ unsigned alleles_gt(unsigned a1, unsigned a2);
 // genotypes [0/0, 0/1, 1/1, ...] is proportional to [bias00, 1, 1, ..].
 // Otherwise, copy numbers are filled in based on the hard genotype calls.
 Status estimate_allele_copy_number(const bcf_hdr_t* header, bcf1_t *record, double bias00, std::vector<std::vector<double>>& ans);
+
+// This function finds the maximum AQ of each allele in the record, across the given
+// subset of sample indices. (see types.h for the definition of AQ)
 Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const std::vector<unsigned>& samples, std::vector<int>& ans);
+
+// exposed for testing: find alleles' maxAQ for given multi-sample genotype likelihood
+// vector
+Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const std::vector<unsigned>& samples, const std::vector<double>& gl, std::vector<int>& ans);
 
 namespace trio {
 int mendelian_inconsistencies(int gt_p1, int gt_p2, int gt_ch);

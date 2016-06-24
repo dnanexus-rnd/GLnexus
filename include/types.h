@@ -234,6 +234,14 @@ struct allele {
 struct discovered_allele_info {
     bool is_ref;
     float copy_number;
+
+    // *Allele Quality (AQ)* of an allele in a VCF genotype call is defined in terms of
+    // the genotype likelihoods as follows: (the maximum likelihood of any genotype
+    // containing an allele / the maximum likelihood of any genotype not containing that
+    // allele), expressed on phred scale and truncated below zero.
+    //
+    // maxAQ is the maximum AQ observed for this allelee across all genotype calls in the
+    // cohort.
     int maxAQ;
 
     bool operator==(const discovered_allele_info& rhs) const noexcept {
