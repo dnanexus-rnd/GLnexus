@@ -233,7 +233,7 @@ struct allele {
 
 // zygosity_by_GQ: holds information about how many times an allele is observed
 // during the discovery process, stratified by genotype quality.
-// A 10x2 matrix (M), the rows correspond to ten bands of phred-scaled GQ:
+// A 10x2 matrix (M), the GQ_BANDS correspond to ten bands of phred-scaled GQ:
 // 0 <= GQ < 10, 10 <= GQ < 20, ..., 90 <= GQ. The two columns correspond to
 // allele zygosity (heterozygotes and homozygotes, or alelle copy number 1 & 2).
 // The entries are how many genotype calls with the corresponding zygosity of
@@ -241,28 +241,28 @@ struct allele {
 //
 // For example, z.M[5][1] is the number of homozygous calls with 50 <= GQ < 60.
 struct zygosity_by_GQ {
-    static const unsigned ROWS = 10;
-    static const unsigned COLS = 2;
+    static const unsigned GQ_BANDS = 10;
+    static const unsigned PLOIDY = 2;
 
-    unsigned M[ROWS][COLS] __attribute__ ((aligned));
+    unsigned M[GQ_BANDS][PLOIDY] __attribute__ ((aligned));
 
     zygosity_by_GQ() {
-        memset(&M, 0, sizeof(int)*ROWS*COLS);
+        memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
     }
 
     void add(unsigned zygosity, int GQ) {
-        assert(zygosity >= 1 && zygosity <= COLS);
-        unsigned i = std::min(unsigned(std::max(GQ, 0))/10U,ROWS-1U);
+        assert(zygosity >= 1 && zygosity <= PLOIDY);
+        unsigned i = std::min(unsigned(std::max(GQ, 0))/10U,GQ_BANDS-1U);
         M[i][zygosity-1]++;
     }
 
     bool operator==(const zygosity_by_GQ& rhs) const {
-        return memcmp(M, rhs.M, sizeof(int)*ROWS*COLS) == 0;
+        return memcmp(M, rhs.M, sizeof(int)*GQ_BANDS*PLOIDY) == 0;
     }
 
     void operator+=(const zygosity_by_GQ& rhs) {
-        for (unsigned i = 0; i < ROWS; i++) {
-            for (unsigned j = 0; j < COLS; j++) {
+        for (unsigned i = 0; i < GQ_BANDS; i++) {
+            for (unsigned j = 0; j < PLOIDY; j++) {
                 M[i][j] += rhs.M[i][j];
             }
         }
@@ -271,10 +271,10 @@ struct zygosity_by_GQ {
     // estimate allele copy number in called genotypes with GQ >= minGQ 
     unsigned copy_number(int minGQ = 0) const {
         unsigned ans = 0;
-        unsigned i_lo = std::min(unsigned(std::max(minGQ, 0))/10U,ROWS-1U);
+        unsigned i_lo = std::min(unsigned(std::max(minGQ, 0))/10U,GQ_BANDS-1U);
 
-        for (unsigned i = i_lo; i < ROWS; i++) {
-             for (unsigned j = 0; j < COLS; j++) {
+        for (unsigned i = i_lo; i < GQ_BANDS; i++) {
+             for (unsigned j = 0; j < PLOIDY; j++) {
                 ans += M[i][j]*(j+1);
             }
         }

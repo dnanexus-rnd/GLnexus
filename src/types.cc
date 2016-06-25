@@ -107,9 +107,9 @@ Status yaml_of_discovered_alleles(const discovered_alleles& dal,
 
         out << YAML::Key << "zygosity_by_GQ"
             << YAML::Value << YAML::BeginSeq;
-        for (unsigned i = 0; i < zygosity_by_GQ::ROWS; i++) {
+        for (unsigned i = 0; i < zygosity_by_GQ::GQ_BANDS; i++) {
             out << YAML::BeginSeq;
-            for (unsigned j = 0; j < zygosity_by_GQ::COLS; j++) {
+            for (unsigned j = 0; j < zygosity_by_GQ::PLOIDY; j++) {
                 out << p.second.zGQ.M[i][j];
             }
             out << YAML::EndSeq;
@@ -159,11 +159,11 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
 
         const auto n_zygosity_by_GQ = (*p)["zygosity_by_GQ"];
         VR(n_zygosity_by_GQ && n_zygosity_by_GQ.IsSequence(), "missing/invalid 'zygosity_by_GQ' field in entry");
-        VR(n_zygosity_by_GQ.size() == zygosity_by_GQ::ROWS, "unexpected row count in zygosity_by_GQ");
+        VR(n_zygosity_by_GQ.size() == zygosity_by_GQ::GQ_BANDS, "unexpected row count in zygosity_by_GQ");
         unsigned i = 0;
         for (YAML::const_iterator q = n_zygosity_by_GQ.begin(); q != n_zygosity_by_GQ.end(); ++q, ++i) {
             VR(q->IsSequence(), "invalid row in zygosity_by_GQ");
-            VR(q->size() == zygosity_by_GQ::COLS, "unexpected row size in zygosity_by_GQ");
+            VR(q->size() == zygosity_by_GQ::PLOIDY, "unexpected row size in zygosity_by_GQ");
             unsigned j = 0;
             for (YAML::const_iterator r = q->begin(); r != q->end(); ++r, ++j) {
                 VR(r->IsScalar() && r->as<int>() >= 0, "invalid entry in zygosity_by_GQ");
