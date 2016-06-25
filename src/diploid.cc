@@ -59,14 +59,18 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
 
     for (auto sample : samples) {
         auto sample_gq = gq.empty() ? 0 : gq[sample];
-        auto als = gt_alleles(gt[sample]);
+        auto pres1 = bcf_gt_is_missing(gt[sample*2]), pres2 = bcf_gt_is_missing(gt[sample*2]+1);
+        auto al1 = pres1 ? bcf_gt_allele(gt[sample*2]) : -1;
+        auto al2 = pres2 ? bcf_gt_allele(gt[sample*2+1]) : -1;
 
-        for (int i = 0; i < zygosity_by_GQ::ROWS && sample_gq >= i*10; i++) {
-            if (als.first == als.second) {
-                ans[als.first].M[i][1]++;
-            } else {
-                ans[als.first].M[i][0]++;
-                ans[als.second].M[i][0]++;
+        if (pres1 && pres2 && al1 == al2) {
+            ans[al1].add(2,sample_gq);
+        } else {
+            if (pres1) {
+                ans[al1].add(1,sample_gq);
+            }
+            if (pres2) {
+                ans[al2].add(1,sample_gq);
             }
         }
     }

@@ -232,23 +232,28 @@ struct allele {
 };
 
 // zygosity_by_GQ: holds information about how many times an allele is observed
-// during the discovery process, broken down by genotype quality.
-// A 10x2 matrix (M), the rows correspond to ten thresholds on phred-scaled GQ:
-// GQ >= 0, GQ >= 10, ..., GQ >= 90. The two columns correspond to allele
-// zygosity (heterozygotes and homozygotes, or alelle copy number 1 and 2). The
-// entries are how many genotype calls with the corresponding zygosity of the
-// allele were observed in the cohort at or above the GQ threshold.
+// during the discovery process, stratified by genotype quality.
+// A 10x2 matrix (M), the rows correspond to ten bands of phred-scaled GQ:
+// 0 <= GQ < 10, 10 <= GQ < 20, ..., 90 <= GQ. The two columns correspond to
+// allele zygosity (heterozygotes and homozygotes, or alelle copy number 1 & 2).
+// The entries are how many genotype calls with the corresponding zygosity of
+// the allele were observed in the cohort with GQ in the corresponding band.
 //
-// For example, z.M[5][1] is the number of homozygous calls with GQ >= 50. The
-// implied allele copy number at that GQ threshold is z.M[5][0]+2*z.M[5][1].
+// For example, z.M[5][1] is the number of homozygous calls with 50 <= GQ < 60.
 struct zygosity_by_GQ {
     static const unsigned ROWS = 10;
     static const unsigned COLS = 2;
 
-    unsigned M[ROWS][COLS];
+    unsigned M[ROWS][COLS] __attribute__ ((aligned));
 
     zygosity_by_GQ() {
         memset(&M, 0, sizeof(int)*ROWS*COLS);
+    }
+
+    void add(unsigned zygosity, int GQ) {
+        assert(zygosity >= 1 && zygosity <= COLS);
+        unsigned i = std::min(unsigned(std::max(GQ, 0))/10U,ROWS-1U);
+        M[i][zygosity-1]++;
     }
 
     bool operator==(const zygosity_by_GQ& rhs) const {
@@ -263,12 +268,17 @@ struct zygosity_by_GQ {
         }
     }
 
+    // estimate allele copy number in called genotypes with GQ >= minGQ 
     unsigned copy_number(int minGQ = 0) const {
-        unsigned i = std::min(unsigned(std::max(minGQ, 0)),ROWS*10U-1U)/10U;
         unsigned ans = 0;
-        for (unsigned j = 0; j < COLS; j++) {
-            ans += M[i][j]*(j+1);
+        unsigned i_lo = std::min(unsigned(std::max(minGQ, 0))/10U,ROWS-1U);
+
+        for (unsigned i = i_lo; i < ROWS; i++) {
+             for (unsigned j = 0; j < COLS; j++) {
+                ans += M[i][j]*(j+1);
+            }
         }
+
         return ans;
     }
 };
