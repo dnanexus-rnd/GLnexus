@@ -557,10 +557,12 @@ GLnexus::Status yaml_of_contigs_alleles_ranges(const vector<pair<string,size_t> 
         {
             yaml << YAML::BeginSeq;
             for (const std::pair<string,size_t> &pr : contigs) {
+                yaml << YAML::BeginMap;
                 yaml << YAML::Key << "name";
                 yaml << YAML::Value << pr.first;
                 yaml << YAML::Key << "size";
                 yaml << YAML::Value << pr.second;
+                yaml << YAML::EndMap;
             }
             yaml << YAML::EndSeq;
         }
@@ -619,6 +621,7 @@ GLnexus::Status load_contigs_discovered_alleles_ranges(const std::string& name,
     valleles.clear();
 
     // read contigs
+    console->info() << "Reading configs";
     auto n_contigs = yaml["contigs"];
     if (!n_contigs.IsSequence()) {
         return GLnexus::Status::Invalid("contigs should be a yaml sequence");
@@ -630,6 +633,7 @@ GLnexus::Status load_contigs_discovered_alleles_ranges(const std::string& name,
     }
 
     // read ranges and alleles
+    console->info() << "Reading ranges+alleles";
     auto n_ranges_alleles = yaml["ranges_alleles"];
     if (!n_ranges_alleles.IsSequence()) {
         return GLnexus::Status::Invalid("ranges and alleles should be a yaml sequence");
@@ -713,7 +717,7 @@ int main_discover_alleles(int argc, char *argv[]) {
         }
     }
 
-    if (optind > argc-1) {
+    if (optind != argc-1) {
         help_discover_alleles(argv[0]);
         return 1;
     }
@@ -928,7 +932,7 @@ int main_unify_sites(int argc, char *argv[]) {
         }
     }
 
-    if (optind != argc-1) {
+    if (optind > argc-1) {
         help_unify_sites(argv[0]);
         return 1;
     }
