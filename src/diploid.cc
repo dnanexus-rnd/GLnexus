@@ -50,7 +50,7 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
 
     htsvecbox<int32_t> gq;
     int nGQ = bcf_get_format_int32(header, record, "GQ", &gq.v, &gq.capacity);
-    if (gq.empty() || nGQ != record->n_sample) {
+    if (nGQ != record->n_sample) {
         gq.clear();
     }
 
@@ -59,18 +59,24 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
 
     for (auto sample : samples) {
         auto sample_gq = gq.empty() ? 0 : gq[sample];
-        auto pres1 = bcf_gt_is_missing(gt[sample*2]), pres2 = bcf_gt_is_missing(gt[sample*2]+1);
+        auto pres1 = !bcf_gt_is_missing(gt[sample*2]), pres2 = !bcf_gt_is_missing(gt[sample*2+1]);
         auto al1 = pres1 ? bcf_gt_allele(gt[sample*2]) : -1;
         auto al2 = pres2 ? bcf_gt_allele(gt[sample*2+1]) : -1;
 
         if (pres1 && pres2 && al1 == al2) {
+            assert(al1 >= 0 && al1 < record->n_allele);
             ans[al1].add(2,sample_gq);
+            assert(ans[al1].copy_number() > 0);
         } else {
             if (pres1) {
+                assert(al1 >= 0 && al1 < record->n_allele);
                 ans[al1].add(1,sample_gq);
+                assert(ans[al1].copy_number() > 0);
             }
             if (pres2) {
+                assert(al2 >= 0 && al2 < record->n_allele);
                 ans[al2].add(1,sample_gq);
+                assert(ans[al2].copy_number() > 0);
             }
         }
     }

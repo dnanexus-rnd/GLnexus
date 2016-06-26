@@ -301,6 +301,12 @@ struct discovered_allele_info {
         return is_ref == rhs.is_ref && maxAQ == rhs.maxAQ && zGQ == rhs.zGQ;
     }
     bool operator!=(const discovered_allele_info& rhs) const noexcept { return !(*this == rhs); }
+
+    std::string str() const {
+        std::ostringstream os;
+        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << zGQ.copy_number() << "]";
+        return os.str();
+    }
 };
 using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);

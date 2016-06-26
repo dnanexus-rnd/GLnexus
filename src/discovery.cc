@@ -58,14 +58,12 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // In particular this excludes gVCF <NON_REF> symbolic alleles
             bool any_alt = false;
             for (int i = 1; i < record->n_allele; i++) {
-                if (zGQ[i].copy_number() > 0) {
-                    string aldna(record->d.allele[i]);
-                    transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-                    if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
-                        discovered_allele_info ai = { false, maxAQ[i], zGQ[i] };
-                        dsals.insert(make_pair(allele(rng, aldna), ai));
-                        any_alt = true;
-                    }
+                string aldna(record->d.allele[i]);
+                transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
+                if (aldna.size() > 0 && regex_match(aldna, regex_dna) && zGQ[i].copy_number() > 0) {
+                    discovered_allele_info ai = { false, maxAQ[i], zGQ[i] };
+                    dsals.insert(make_pair(allele(rng, aldna), ai));
+                    any_alt = true;
                 }
             }
 

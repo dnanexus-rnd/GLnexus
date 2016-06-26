@@ -86,23 +86,23 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
   maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: 10.5
   maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
     #define VERIFY_DA(dal) \
         REQUIRE((dal).size() == 2); \
         REQUIRE((dal).find(allele(range(1, 99, 100),"A")) != (dal).end()); \
         REQUIRE((dal)[allele(range(1, 99, 100),"A")].is_ref == true); \
-        REQUIRE((dal)[allele(range(1, 99, 100),"A")].copy_number == 100); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"A")].zGQ.copy_number() == 100); \
         REQUIRE((dal).find(allele(range(1, 99, 100),"G")) != (dal).end()); \
         REQUIRE((dal)[allele(range(1, 99, 100),"G")].is_ref == false); \
-        REQUIRE((dal)[allele(range(1, 99, 100),"G")].copy_number == 10.5);
+        REQUIRE((dal)[allele(range(1, 99, 100),"G")].zGQ.copy_number() == 20);
 
     SECTION("basic") {
         YAML::Node n = YAML::Load(da_yaml);
@@ -230,13 +230,13 @@ TEST_CASE("yaml_of_discovered_alleles") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
   maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: 10.5
   maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
         YAML::Node n = YAML::Load(da_yaml);

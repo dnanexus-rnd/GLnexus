@@ -452,10 +452,10 @@ TEST_CASE("services test: discover_alleles") {
         REQUIRE(als.size() == 7);
         auto p = als.find(allele(range(0, 1000, 1001), "G"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 4);
+        REQUIRE(p->second.zGQ.copy_number() == 4);
         p = als.find(allele(range(0, 1010, 1012), "CC"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 3);
+        REQUIRE(p->second.zGQ.copy_number() == 3);
     }
 
     SECTION("trio1 partial") {
@@ -468,7 +468,7 @@ TEST_CASE("services test: discover_alleles") {
         REQUIRE(s.ok());
 
         REQUIRE(als.size() == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.copy_number == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.zGQ.copy_number() == 3);
     }
 
     SECTION("spanning allele") {
@@ -480,7 +480,7 @@ TEST_CASE("services test: discover_alleles") {
         s = discover_allele_case.execute_discover_alleles(als, "<ALL>", range(1, 1001, 1016));
         REQUIRE(s.ok());
         REQUIRE(als.size() == 6);
-        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.copy_number == 3);
+        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.zGQ.copy_number() == 3);
     }
 
     SECTION("detect inconsistent reference alleles") {
