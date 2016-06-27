@@ -50,13 +50,20 @@ bool minimized_allele_small_lt(const minimized_allele& p1, const minimized_allel
     if (p1.first.pos.size() != p2.first.pos.size()) {
         return p1.first.pos.size() < p2.first.pos.size();
     }
-    return p2.second.copy_number < p1.second.copy_number;
+    if (p2.second.copy_number != p1.second.copy_number) {
+        return p2.second.copy_number < p1.second.copy_number;
+    }
+    return p2.second.maxAQ < p1.second.maxAQ;
 }
 
 // UnifierPreference::Common
 bool minimized_allele_common_lt(const minimized_allele& p1, const minimized_allele& p2) {
-    if (p2.second.copy_number != p1.second.copy_number)
+    if (p2.second.copy_number != p1.second.copy_number) {
         return p2.second.copy_number < p1.second.copy_number;
+    }
+    if (p2.second.maxAQ != p1.second.maxAQ) {
+        return p2.second.maxAQ < p1.second.maxAQ;
+    }
     return minimized_allele_delta_lt(p1, p2);
 }
 

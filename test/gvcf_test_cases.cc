@@ -490,23 +490,23 @@ TEST_CASE("services test: discover_alleles") {
         REQUIRE(s.str().find("allele appears as both REF and ALT") != string::npos);
     }
 
-    SECTION("only return alleles observed in desired samples") {
+    SECTION("calculate copy numbers from desired samples only") {
         // looking at all three samples in the dataset, we should receive all
         // three alleles at this position
         s = discover_allele_case.execute_discover_alleles(als, "discover_alleles_trio1", range(0, 1001, 1002));
         REQUIRE(s.ok());
         REQUIRE(als.size() == 3);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.zGQ.copy_number() == 2);
 
-        // looking only at one homozygous ref individual, we should get
-        // nothing
+        // looking only at one homozygous ref individual
         s = discover_allele_case.execute_discover_alleles(als, "trio1.fa", range(0, 1001, 1002));
         REQUIRE(s.ok());
-        REQUIRE(als.size() == 0);
-
-        // throw in a previous position as positive control
-        s = discover_allele_case.execute_discover_alleles(als, "trio1.fa", range(0, 1000, 1002));
-        REQUIRE(s.ok());
-        REQUIRE(als.size() == 2);
+        REQUIRE(als.size() == 3);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.zGQ.copy_number() == 0);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.zGQ.copy_number() == 0);
     }
 
     discover_allele_case.cleanup();

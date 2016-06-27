@@ -52,90 +52,91 @@ truth_discovered_alleles:
     - range: {ref: "21", beg: 10009460, end: 10009460}
       dna: 'T'
       is_ref: true
-      copy_number: 2.7738
       maxAQ: 240
+      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009460, end: 10009460}
       dna: 'A'
       is_ref: false
-      copy_number: 1.2262
       maxAQ: 2
+      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009461, end: 10009461}
       dna: 'T'
       is_ref: true
-      copy_number: 2.3968
       maxAQ: 240
+      zygosity_by_GQ: [[1,0],[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009461, end: 10009461}
       dna: 'A'
       is_ref: false
-      copy_number: 1.6032
       maxAQ: 20
+      zygosity_by_GQ: [[1,0],[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009462, end: 10009462}
       dna: 'T'
       is_ref: true
-      copy_number: 1.3869
       maxAQ: 240
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009462, end: 10009462}
       dna: 'A'
       is_ref: false
-      copy_number: 0.6131
       maxAQ: 2
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009464, end: 10009465}
       dna: 'TA'
       is_ref: true
-      copy_number: 1.0593
       maxAQ: 240
+      zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009464, end: 10009465}
       dna: 'TC'
       is_ref: false
       copy_number: 0.9406
       maxAQ: 12
+      zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009465, end: 10009465}
       dna: 'A'
       is_ref: true
-      copy_number: 1.3869
       maxAQ: 240
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009465, end: 10009465}
       dna: 'C'
       is_ref: false
-      copy_number: 0.6131
       maxAQ: 2
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009466, end: 10009466}
       dna: 'T'
       is_ref: true
-      copy_number: 2.4114
       maxAQ: 240
+      zygosity_by_GQ: [[1,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009466, end: 10009466}
       dna: 'A'
       is_ref: false
-      copy_number: 0.9755
       maxAQ: 16
+      zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009466, end: 10009466}
       dna: 'G'
       is_ref: false
-      copy_number: 0.6131
       maxAQ: 2
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009467, end: 10009467}
       dna: 'T'
       is_ref: true
-      copy_number: 0.8882
       maxAQ: 9
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009467, end: 10009467}
       dna: 'A'
       is_ref: false
-      copy_number: 1.1118
       maxAQ: 46
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: "21", beg: 10009461, end: 10009461}
       alleles: [T, A]
-      copy_number: [0, 1.6032]
+      copy_number: [0, 2]
       unification:
         - range: {beg: 10009461, end: 10009461}
           alt: A
           to: 1
     - range: {ref: "21", beg: 10009465, end: 10009465}
       alleles: [A, C]
-      copy_number: [0, 1.5537]
+      copy_number: [0, 2]
       unification:
         - range: {beg: 10009464, end: 10009465}
           alt: TC
@@ -145,14 +146,14 @@ truth_unified_sites:
           to: 1
     - range: {ref: 21, beg: 10009466, end: 10009466}
       alleles: [T, A]
-      copy_number: [0, 0.9755]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 10009466, end: 10009466}
           alt: A
           to: 1
     - range: {ref: 21, beg: 10009467, end: 10009467}
       alleles: [T, A]
-      copy_number: [0, 1.1118]
+      copy_number: [0, 1]
       unification:
         - range: {beg: 10009467, end: 10009467}
           alt: A

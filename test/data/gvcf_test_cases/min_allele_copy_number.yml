@@ -30,7 +30,7 @@ input:
         21	10009461	.	T	A, <NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:2:2,0,240,46,246,292:1,9,1,1
         21	10009462	.	T	<NON_REF>	.	.	END=10009463	GT:GQ:MIN_DP:PL	0/0:36:14:0,36,540
         21	10009464	.	TA	TC,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:2:2,0,240,46,246,292:1,9,1,1
-        21	10009466	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
+        21	10009466	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	1/1:10,2,0:12:16:16,240,0,46,246,292:1,9,1,1
     - NA12879.gvcf: |
         NA12879
         21	10009461	.	T	A, <NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:2:2,0,240,46,246,292:1,9,1,1
@@ -40,19 +40,19 @@ input:
         21	10009466	.	T	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:2:2,0,240,46,246,292:1,9,1,1
 
 unifier_config:
-  min_allele_copy_number: 0.9
+  min_allele_copy_number: 2
 
 truth_unified_sites:
     - range: {ref: "21", beg: 10009461, end: 10009461}
       alleles: [T, A]
-      copy_number: [0, 1.2262]
+      copy_number: [0, 2]
       unification:
         - range: {beg: 10009461, end: 10009461}
           alt: A
           to: 1
     - range: {ref: "21", beg: 10009465, end: 10009465}
       alleles: [A, C]
-      copy_number: [0, 1.2262]
+      copy_number: [0, 2]
       unification:
         - range: {beg: 10009464, end: 10009465}
           alt: TC
@@ -62,7 +62,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: 21, beg: 10009466, end: 10009466}
       alleles: [T, A]
-      copy_number: [0, 0.9755]
+      copy_number: [0, 2]
       unification:
         - range: {beg: 10009466, end: 10009466}
           alt: A
@@ -78,4 +78,4 @@ truth_output_vcf:
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
       21	10009461	.	T	A	.	.	.	GT:RNC	0/1:..	0/1:..
       21	10009465	.	A	C	.	.	.	GT:RNC	0/1:..	0/1:..
-      21	10009466	.	T	A	.	.	.	GT:RNC	0/1:..	0/.:.L
+      21	10009466	.	T	A	.	.	.	GT:RNC	1/1:..	0/.:.L

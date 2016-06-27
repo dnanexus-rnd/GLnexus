@@ -250,10 +250,15 @@ struct zygosity_by_GQ {
         memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
     }
 
-    void add(unsigned zygosity, int GQ) {
+    zygosity_by_GQ(unsigned zygosity, int GQ, unsigned count=1) {
+        memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
+        add(zygosity, GQ, count);
+    }
+
+    void add(unsigned zygosity, int GQ, unsigned count=1) {
         assert(zygosity >= 1 && zygosity <= PLOIDY);
         unsigned i = std::min(unsigned(std::max(GQ, 0))/10U,GQ_BANDS-1U);
-        M[i][zygosity-1]++;
+        M[i][zygosity-1] += count;
     }
 
     bool operator==(const zygosity_by_GQ& rhs) const {
