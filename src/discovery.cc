@@ -61,7 +61,10 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 string aldna(record->d.allele[i]);
                 transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
                 if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
-                    discovered_allele_info ai({ false, maxAQ[i], zGQ[i] });
+                    discovered_allele_info ai;
+                    ai.is_ref = false;
+                    ai.maxAQ = maxAQ[i];
+                    ai.zGQ = zGQ[i];
                     dsals.insert(make_pair(allele(rng, aldna), ai));
                     any_alt = true;
                 }
@@ -72,7 +75,10 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
             if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
                 if (any_alt) {
-                    discovered_allele_info ai({ true, maxAQ[0], zGQ[0] });
+                    discovered_allele_info ai;
+                    ai.is_ref = true;
+                    ai.maxAQ = maxAQ[0];
+                    ai.zGQ = zGQ[0];
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }
             } else {
