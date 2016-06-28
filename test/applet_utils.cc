@@ -79,4 +79,74 @@ TEST_CASE("applet_utils") {
             REQUIRE(valleles[i] == valleles2[i]);
         }
     }
+
+
+    const char* snp = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles: [A, G]
+copy_number: [100, 51]
+unification:
+  - range: {ref: '17', beg: 100, end: 100}
+    alt: A
+    to: 0
+  - range: {ref: '17', beg: 100, end: 100}
+    alt: G
+    to: 1
+)";
+
+
+    const char* del = 1 + R"(
+range: {ref: '17', beg: 1000, end: 1001}
+alleles: [AG, AC, C]
+copy_number: [100, 50, 1]
+unification:
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: AG
+    to: 0
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: AC
+    to: 1
+  - range: {ref: '17', beg: 1000, end: 1001}
+    alt: C
+    to: 2
+  - range: {ref: '17', beg: 1001, end: 1001}
+    alt: C
+    to: 1
+)";
+
+    SECTION("yaml_of_unified_sites") {
+        // generate a vector of sites
+        vector<unified_site> sites;
+        {
+            YAML::Node n = YAML::Load(snp);
+            unified_site us(range(-1,-1,-1));
+            Status s = unified_site::of_yaml(n, contigs, us);
+            REQUIRE(s.ok());
+            sites.push_back(us);
+
+            n = YAML::Load(del);
+            s = unified_site::of_yaml(n, contigs, us);
+            REQUIRE(s.ok());
+            sites.push_back(us);
+        }
+
+        // convert to yaml
+        YAML::Emitter yaml;
+        {
+            Status s = utils::yaml_of_unified_sites(sites, contigs, yaml);
+            REQUIRE(s.ok());
+        }
+
+        // convert back and compare
+        {
+            YAML::Node n = YAML::Load(yaml.c_str());
+            vector<unified_site> sites2;
+            Status s = utils::unified_sites_of_yaml(n, contigs, sites2);
+            REQUIRE(s.ok());
+            REQUIRE(sites.size() == sites2.size());
+            for (int i=0; i < sites.size(); i++) {
+                REQUIRE(sites[i] == sites2[i]);
+            }
+        }
+    }
 }
