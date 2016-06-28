@@ -751,3 +751,23 @@ liftover_fields:
         }
     }
 }
+
+TEST_CASE("zygosity_by_GQ") {
+    for (int gq = 0; gq <= 100; gq++) {
+        for (int z = 1; z <= zygosity_by_GQ::PLOIDY; z++) {
+            zygosity_by_GQ zGQ;
+            zGQ.add(z, gq);
+            REQUIRE(zGQ.M[std::min(gq/10,int(zygosity_by_GQ::GQ_BANDS-1))][z-1] == 1);
+            REQUIRE(zGQ.copy_number() == z);
+            REQUIRE(zGQ.copy_number(gq) == z);
+            if (gq < 90) REQUIRE(zGQ.copy_number(gq+10) == 0);
+
+            for (int gq2 = 0; gq2 < zygosity_by_GQ::GQ_BANDS; gq2++) {
+                zygosity_by_GQ zGQ2;
+                zGQ2.add(1, gq2);
+                zGQ2 += zGQ;
+                REQUIRE(zGQ2.copy_number() == z+1);
+            }
+        }
+    }
+}

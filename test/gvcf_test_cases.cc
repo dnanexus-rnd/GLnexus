@@ -635,7 +635,7 @@ TEST_CASE("min_quality") {
 }
 
 TEST_CASE("rs141305015") {
-    GVCFTestCase("rs141305015").perform_gvcf_test();
+    GVCFTestCase("rs141305015",true).perform_gvcf_test();
 }
 
 TEST_CASE("rs11429009 allele unifier test") {
