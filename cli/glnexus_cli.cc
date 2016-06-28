@@ -3,9 +3,9 @@
 // an always-on "server"
 
 #include <iostream>
+#include <exception>
 #include <fstream>
 #include <getopt.h>
-#include <regex>
 #include <sstream>
 #include "vcf.h"
 #include "hfile.h"
@@ -16,8 +16,10 @@
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
 #include "compare_iter.h"
+#include "cli_utils.h"
 
 using namespace std;
+using namespace GLnexus::cli;
 
 auto console = spdlog::stderr_logger_mt("GLnexus");
 GLnexus::Status s;
@@ -34,6 +36,21 @@ static GLnexus::RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
         p = make_unique<GLnexus::RocksKeyValue::prefix_spec>("bcf", GLnexus::BCFKeyValueDataPrefixLength());
     }
     return p.get();
+}
+
+static GLnexus::Status LoadYAMLFile(const string& filename, YAML::Node &node) {
+    if (filename.size() == 0)
+        return GLnexus::Status::Invalid("The YAML file must be specified");
+
+    try {
+        node = YAML::LoadFile(filename);
+    } catch (exception &e) {
+        return GLnexus::Status::Invalid("Error loading yaml file ", filename);
+    }
+
+    if (!node)
+        return GLnexus::Status::NotFound("bad YAML file", filename);
+    return GLnexus::Status::OK();
 }
 
 void help_init(const char* prog) {
@@ -130,57 +147,6 @@ int main_init(int argc, char *argv[]) {
     cout << endl;
 
     return 0;
-}
-
-// Parse a range like chr1:1000-2000. The item can also just be the name of a
-// contig, in which case it gets mapped to the contig's full length.
-bool parse_range(const vector<pair<string,size_t> >& contigs,
-                 const string& range_txt, GLnexus::range& ans) {
-    static regex re_range("([^:]+):([0-9,]+)-([0-9,]+)");
-
-    string contig = range_txt;
-    size_t beg=1, end=0;
-
-    smatch sm;
-    if (regex_match(range_txt, sm, re_range)) {
-        assert(sm.size() == 4);
-        contig = sm[1];
-        string sbeg = sm[2], send = sm[3];
-        sbeg.erase(std::remove(sbeg.begin(), sbeg.end(), ','), sbeg.end());
-        send.erase(std::remove(send.begin(), send.end(), ','), send.end());
-        beg = strtoul(sbeg.c_str(), nullptr, 10);
-        end = strtoul(send.c_str(), nullptr, 10);
-    }
-
-    int rid=0;
-    while (rid < contigs.size() && contig != contigs[rid].first) rid++;
-    if (rid >= contigs.size()) {
-        return false;
-    }
-    end = end>0 ? end : contigs[rid].second;
-    if (beg < 1 || beg >= end) {
-        return false;
-    }
-    ans = GLnexus::range(rid, beg-1, end);
-    return true;
-}
-
-// parse a comma-separated list of ranges
-bool parse_ranges(const vector<pair<string,size_t> >& contigs,
-                  const string& ranges, vector<GLnexus::range>& ans) {
-    ans.clear();
-
-    string item;
-    stringstream ss(ranges);
-    while (std::getline(ss, item, ',')) {
-        GLnexus::range range(-1,-1,-1);
-        if (!parse_range(contigs, item, range)) {
-            return false;
-        }
-        ans.push_back(range);
-    }
-
-    return true;
 }
 
 void help_load(const char* prog) {
@@ -296,7 +262,7 @@ int main_load(int argc, char *argv[]) {
             set<GLnexus::range> ranges;
             if (!ranges_txt.empty()) {
                 vector<GLnexus::range> vranges;
-                if (!parse_ranges(contigs, ranges_txt, vranges) || vranges.empty()) {
+                if (!utils::parse_ranges(contigs, ranges_txt, vranges) || vranges.empty()) {
                     console->error() << "empty, invalid, or out-of-bound range(s): " << ranges_txt;
                     return 1;
                 }
@@ -452,7 +418,7 @@ int main_dump(int argc, char *argv[]) {
             // parse desired range
             const auto& contigs = metadata->contigs();
             GLnexus::range query(-1,-1,-1);
-            if (!parse_range(contigs, range_txt, query)) {
+            if (!utils::parse_range(contigs, range_txt, query)) {
                 cerr << "Invalid range: " << range_txt << endl;
                 return 1;
             }
@@ -498,7 +464,7 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
     if (bedfilename.empty()) {
         // single range from the command line
         GLnexus::range range(-1,-1,-1);
-        if (!parse_range(contigs, range_txt, range)) {
+        if (!utils::parse_range(contigs, range_txt, range)) {
             return GLnexus::Status::Invalid("range: ", range_txt);
         }
         ranges.push_back(range);
@@ -533,132 +499,6 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
             console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
         }
     }
-
-    return GLnexus::Status::OK();
-}
-
-
-
-GLnexus::Status yaml_of_contigs_alleles_ranges(const vector<pair<string,size_t> > &contigs,
-                                               const vector<GLnexus::range> &ranges,
-                                               const vector<GLnexus::discovered_alleles> &valleles,
-                                               YAML::Emitter &yaml) {
-    GLnexus::Status s;
-
-    assert(ranges.size() == valleles.size());
-    size_t nm_elem = ranges.size();
-
-    yaml << YAML::BeginMap;
-
-    {
-        // write contigs
-        yaml << YAML::Key << "contigs";
-        yaml << YAML::Value;
-        {
-            yaml << YAML::BeginSeq;
-            for (const std::pair<string,size_t> &pr : contigs) {
-                yaml << YAML::BeginMap;
-                yaml << YAML::Key << "name";
-                yaml << YAML::Value << pr.first;
-                yaml << YAML::Key << "size";
-                yaml << YAML::Value << pr.second;
-                yaml << YAML::EndMap;
-            }
-            yaml << YAML::EndSeq;
-        }
-    }
-
-    {
-        // Write ranges and alleles
-        yaml << YAML::Key << "ranges_alleles";
-        yaml << YAML::Value;
-        {
-            // Note: we need to be careful here, to write out only non empty sites.
-            yaml << YAML::BeginSeq;
-            for (int i=0; i < nm_elem; ++i) {
-                if (valleles[i].size() == 0) continue;
-
-                yaml << YAML::BeginMap;
-                yaml << YAML::Key << "containing_range";
-                yaml << YAML::Value;
-                s = range_yaml(contigs, ranges[i], yaml);
-                if (s.bad()) return s;
-
-                yaml << YAML::Key << "discovered_alleles";
-                yaml << YAML::Value;
-                s = yaml_of_discovered_alleles(valleles[i], contigs, yaml);
-                if (s.bad()) return s;
-                yaml << YAML::EndMap;
-            }
-            yaml << YAML::EndSeq;
-        }
-    }
-    yaml << YAML::EndMap;
-
-    return GLnexus::Status::OK();
-}
-
-GLnexus::Status load_contigs_discovered_alleles_ranges(const std::string& name,
-                                                       std::vector<std::pair<std::string,size_t> > &contigs,
-                                                       vector<GLnexus::range> &ranges,
-                                                       vector<GLnexus::discovered_alleles> &valleles) {
-    GLnexus::Status s;
-    if (name.size() == 0) {
-        return GLnexus::Status::Invalid("The discovered alleles file must be specified");
-    }
-
-    console->info() << "Loading discovered alleles ";
-    YAML::Node yaml = YAML::LoadFile(name);
-    if (!yaml) {
-        return GLnexus::Status::NotFound("bad discovered alleles file", name);
-    }
-    if (!yaml.IsMap()) {
-        return GLnexus::Status::Invalid("not a map at top level");
-    }
-
-    contigs.clear();
-    ranges.clear();
-    valleles.clear();
-
-    // read contigs
-    console->info() << "Reading configs";
-    auto n_contigs = yaml["contigs"];
-    if (!n_contigs.IsSequence()) {
-        return GLnexus::Status::Invalid("contigs should be a yaml sequence");
-    }
-    for (auto p = n_contigs.begin(); p != n_contigs.end(); ++p) {
-        const std::string name = (*p)["name"].as<std::string>();
-        size_t size = (*p)["size"].as<size_t>();
-        contigs.push_back(make_pair(name, size));
-    }
-
-    // read ranges and alleles
-    console->info() << "Reading ranges+alleles";
-    auto n_ranges_alleles = yaml["ranges_alleles"];
-    if (!n_ranges_alleles.IsSequence()) {
-        return GLnexus::Status::Invalid("ranges and alleles should be a yaml sequence");
-    }
-    for (YAML::const_iterator p = n_ranges_alleles.begin(); p != n_ranges_alleles.end(); ++p) {
-        const auto n_range = (*p)["containing_range"];
-        GLnexus::range rng(-1,-1,-1);
-        s = range_of_yaml(n_range, contigs, rng);
-        if (s.bad()) return s;
-        ranges.push_back(rng);
-
-        const auto n_dsals = (*p)["discovered_alleles"];
-        GLnexus::discovered_alleles dsals;
-        s = discovered_alleles_of_yaml(n_dsals, contigs, dsals);
-        if (s.bad()) return s;
-        valleles.push_back(dsals);
-    }
-
-    console->info() << "read " << ranges.size() << " ranges";
-
-    unsigned discovered_allele_count=0;
-    for (const auto& dsals : valleles) {
-        discovered_allele_count += dsals.size();
-    }
-    console->info() << "read " << discovered_allele_count << " discovered alleles";
 
     return GLnexus::Status::OK();
 }
@@ -774,7 +614,8 @@ int main_discover_alleles(int argc, char *argv[]) {
 
     // Write the discovered alleles to stdout
     YAML::Emitter yaml;
-    H("write results as yaml", yaml_of_contigs_alleles_ranges(contigs, ranges, valleles, yaml));
+    H("write results as yaml",
+      utils::yaml_of_contigs_alleles_ranges(contigs, ranges, valleles, yaml));
     cout << yaml.c_str() << endl;
     return 0;
 }
@@ -840,53 +681,6 @@ GLnexus::Status load_config_preset(const std::string& name,
     return GLnexus::Status::OK();
 }
 
-// Serialize the unified sites to yaml format.
-//
-GLnexus::Status yaml_of_unified_sites(const vector<GLnexus::unified_site> &sites,
-                                      const vector<pair<string,size_t> > &contigs,
-                                      YAML::Emitter &yaml) {
-    GLnexus::Status s;
-
-    yaml << YAML::BeginSeq;
-    for (auto& u_site : sites) {
-        s = u_site.yaml(contigs, yaml);
-        if (s.bad()) return s;
-    }
-    yaml << YAML::EndSeq;
-
-    return GLnexus::Status::OK();
-}
-
-// Load the unified-sites from a file in yaml format.
-//
-GLnexus::Status load_unified_sites(const std::string& name,
-                                   const std::vector<std::pair<std::string,size_t> > &contigs,
-                                   vector<GLnexus::unified_site> &sites) {
-    GLnexus::Status s;
-    if (name.size() == 0) {
-        return GLnexus::Status::Invalid("The unified sites file must be specified");
-    }
-
-    console->info() << "Loading unified sites ";
-    YAML::Node yaml = YAML::LoadFile(name);
-    if (!yaml) {
-        return GLnexus::Status::NotFound("bad unified sites file", name);
-    }
-    if (!yaml.IsSequence()) {
-        return GLnexus::Status::Invalid("not a sequence at top level");
-    }
-
-    sites.clear();
-    for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
-        GLnexus::unified_site u_site(GLnexus::range(-1, -1, -1));
-        s = GLnexus::unified_site::of_yaml(*p, contigs, u_site);
-        if (s.bad()) return s;
-        sites.push_back(u_site);
-    }
-    console->info() << "read " << sites.size() << " sites";
-
-    return GLnexus::Status::OK();
-}
 
 
 void help_unify_sites(const char* prog) {
@@ -947,8 +741,12 @@ int main_unify_sites(int argc, char *argv[]) {
     vector<pair<string,size_t> > contigs;
     vector<GLnexus::range> ranges;
     vector<GLnexus::discovered_alleles> valleles;
-    H("load contigs, discovered alleles, and ranges",
-      load_contigs_discovered_alleles_ranges(discovered_alleles_file, contigs, ranges, valleles));
+    {
+        YAML::Node node;
+        H("Load discovered alleles file", LoadYAMLFile(discovered_alleles_file, node));
+        H("parse contigs, discovered alleles, and ranges",
+          utils::contigs_alleles_ranges_of_yaml(node, contigs, ranges, valleles));
+    }
 
     vector<GLnexus::unified_site> sites;
     for (int i = 0; i < valleles.size(); i++) {
@@ -960,7 +758,7 @@ int main_unify_sites(int argc, char *argv[]) {
 
     // Write the unified sites to stdout
     YAML::Emitter yaml;
-    H("write results as yaml", yaml_of_unified_sites(sites, contigs, yaml));
+    H("write results as yaml", utils::yaml_of_unified_sites(sites, contigs, yaml));
     cout << yaml.c_str() << endl;
 
     return 0;
@@ -1054,8 +852,12 @@ int main_genotype(int argc, char *argv[]) {
         H("read contig metadata", data->contigs(contigs));
 
         vector<GLnexus::unified_site> sites;
-        H("load unified sites",
-          load_unified_sites(unified_sites_file, contigs, sites));
+        {
+            YAML::Node node;
+            H("Load discovered alleles file", LoadYAMLFile(unified_sites_file, node));
+            H("load unified sites",
+              utils::unified_sites_of_yaml(node, contigs, sites));
+        }
 
         // start service, discover alleles, unify sites, genotype sites
         GLnexus::service_config svccfg;
