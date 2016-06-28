@@ -7,14 +7,22 @@ using namespace GLnexus;
 
 TEST_CASE("unifier max_alleles_per_site") {
     discovered_alleles dal;
+    discovered_allele_info dai;
 
-    dal[allele(range(0, 100, 101), "A")] = discovered_allele_info({true, 99, zygosity_by_GQ(1,0,100)});
-    dal[allele(range(0, 100, 101), "G")] = discovered_allele_info({false, 99, zygosity_by_GQ(1,0,100)});
-    dal[allele(range(0, 100, 101), "C")] = discovered_allele_info({false, 99, zygosity_by_GQ(1,0,10)});
-    dal[allele(range(0, 100, 101), "T")] = discovered_allele_info({false, 99, zygosity_by_GQ(1,0,10)});
-    dal[allele(range(0, 100, 102), "AA")] = discovered_allele_info({true, 99, zygosity_by_GQ(1,0,100)});
-    dal[allele(range(0, 100, 102), "GG")] = discovered_allele_info({false, 99, zygosity_by_GQ(1,0,100)});
-    dal[allele(range(0, 100, 102), "GC")] = discovered_allele_info({false, 99, zygosity_by_GQ(1,0,1)});
+    dai.is_ref = true; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,100);
+    dal[allele(range(0, 100, 101), "A")] = dai;
+    dai.is_ref = false; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,100);
+    dal[allele(range(0, 100, 101), "G")] = dai;
+    dai.is_ref = false; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,10);
+    dal[allele(range(0, 100, 101), "C")] = dai;
+    dai.is_ref = false; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,10);
+    dal[allele(range(0, 100, 101), "T")] = dai;
+    dai.is_ref = true; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,100);
+    dal[allele(range(0, 100, 102), "AA")] = dai;
+    dai.is_ref = false; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,100);
+    dal[allele(range(0, 100, 102), "GG")] = dai;
+    dai.is_ref = false; dai.maxAQ = 99; dai.zGQ = zygosity_by_GQ(1,0,1);
+    dal[allele(range(0, 100, 102), "GC")] = dai;
 
     unifier_config cfg;
     vector<unified_site> sites;
