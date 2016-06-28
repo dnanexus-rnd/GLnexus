@@ -100,7 +100,7 @@ Status minimize_allele(const allele& ref, allele& alt) {
 }
 
 // Separate discovered alleles into the REF alleles and minimized ALT alleles
-Status minimize_alleles(const discovered_alleles& src,
+Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src,
                         discovered_alleles& refs, minimized_alleles& alts) {
     Status s;
 
@@ -129,8 +129,7 @@ Status minimize_alleles(const discovered_alleles& src,
         // minimize the alt allele
         S(minimize_allele(rp->second.first, alt));
 
-        // TODO: configured minGQ for estimating copy number
-        unsigned copy_number = dal.second.zGQ.copy_number();
+        unsigned copy_number = dal.second.zGQ.copy_number(cfg.min_quality);
 
         // add it to alts, combining originals, copy_number, and maxAQ with any
         // previously observed occurrences of the same minimized alt allele.
@@ -197,7 +196,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     valleles.reserve(alleles.size());
     for (const auto& allele : alleles) {
         // filter alleles with insufficient copy number or AQ
-        if (allele.second.maxAQ >= cfg.minAQ &&
+        if (allele.second.maxAQ >= cfg.min_quality &&
             allele.second.copy_number >= cfg.min_allele_copy_number) {
             valleles.push_back(allele);
         }
@@ -264,7 +263,7 @@ Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alle
         // minimize the alt alleles
         discovered_alleles refs;
         minimized_alleles alts, pruned;
-        S(minimize_alleles(active_region.second, refs, alts));
+        S(minimize_alleles(cfg, active_region.second, refs, alts));
 
         // prune alt alleles as necessary to yield sites
         auto sites = prune_alleles(cfg, alts, pruned);

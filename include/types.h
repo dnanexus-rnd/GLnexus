@@ -309,7 +309,7 @@ struct discovered_allele_info {
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << zGQ.copy_number() << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " maxAQ: " << maxAQ << " copy number: " << zGQ.copy_number() << "]";
         return os.str();
     }
 };
@@ -400,14 +400,18 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
-    // Allele Quality threshold for consideration of an allele (phred-scaled)
-    int minAQ = 0;
+    // Phred quality score threshold, used in two ways:
+    // 1) minimum Allele Quality in the cohort for the unifier to include an allele
+    // 2) minimum Genotype Quality for an input genotype call to "count" towards
+    //    copy number estimates for the constituent alleles.
+    // All else equal, increasing min_quality will increase specificity and reduce
+    // sensitivity, and also speed up the genotyper (as fewer weak sites will be
+    // considered)
+    int min_quality = 0;
 
     // Keep only alleles with at least this estimated copy number discovered
-    // in the cohort. The estimated copy number is a soft estimate based on
-    // the genotype likelihoods, so setting this somewhere between 0 and 1 can
-    // filter out weak singleton observations.
-    float min_allele_copy_number = 0.5;
+    // in the cohort.
+    int min_allele_copy_number = 1;
 
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.

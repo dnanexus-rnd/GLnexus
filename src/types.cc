@@ -320,11 +320,11 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
         V(ans.min_allele_copy_number >= 0, "invalid min_allele_copy_number");
     }
 
-    const auto n_minAQ = yaml["minAQ"];
-    if (n_minAQ) {
-        V(n_minAQ.IsScalar(), "invalid minAQ");
-        ans.minAQ = n_minAQ.as<int>();
-        V(ans.minAQ >= 0, "invalid minAQ");
+    const auto n_min_quality = yaml["min_quality"];
+    if (n_min_quality) {
+        V(n_min_quality.IsScalar(), "invalid min_quality");
+        ans.min_quality = n_min_quality.as<int>();
+        V(ans.min_quality >= 0, "invalid min_quality");
     }
 
     const auto n_max_alleles_per_site = yaml["max_alleles_per_site"];
@@ -355,7 +355,7 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
 Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::BeginMap;
     ans << YAML::Key << "min_allele_copy_number" << YAML::Value << min_allele_copy_number;
-    ans << YAML::Key << "minAQ" << YAML::Value << minAQ;
+    ans << YAML::Key << "min_quality" << YAML::Value << min_quality;
     ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
 
     ans << YAML::Key << "preference" << YAML::Value;
