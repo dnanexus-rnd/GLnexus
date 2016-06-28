@@ -3,13 +3,13 @@
 #include <fstream>
 #include <sstream>
 #include <regex>
-#include "applet_utils.h"
+#include "cli_utils.h"
 
 // This file has utilities employed by the glnexus applet.
 using namespace std;
 
 namespace GLnexus {
-namespace applet {
+namespace cli {
 namespace utils {
 
 // Parse a range like chr1:1000-2000. The item can also just be the name of a

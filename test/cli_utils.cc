@@ -1,13 +1,13 @@
 #include <iostream>
 #include <memory>
-#include "applet_utils.h"
+#include "cli_utils.h"
 #include "catch.hpp"
 
 using namespace std;
 using namespace GLnexus;
-using namespace GLnexus::applet;
+using namespace GLnexus::cli;
 
-TEST_CASE("applet_utils") {
+TEST_CASE("cli_utils") {
     vector<pair<string,size_t>> contigs;
     contigs.push_back(make_pair("16",12345));
     contigs.push_back(make_pair("17",23456));

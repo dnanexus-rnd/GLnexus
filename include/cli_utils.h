@@ -7,7 +7,7 @@
 #include "types.h"
 
 namespace GLnexus {
-namespace applet {
+namespace cli {
 namespace utils {
 
 // contig, in which case it gets mapped to the contig's full length.
