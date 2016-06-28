@@ -16,10 +16,10 @@
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
 #include "compare_iter.h"
-#include "applet_utils.h"
+#include "cli_utils.h"
 
 using namespace std;
-using namespace GLnexus::applet;
+using namespace GLnexus::cli;
 
 auto console = spdlog::stderr_logger_mt("GLnexus");
 GLnexus::Status s;
@@ -793,7 +793,6 @@ int main_unify_sites(int argc, char *argv[]) {
             merge_discovered_alleles(valleles2[i], valleles[i]);
         }
     }
-
 
     vector<GLnexus::unified_site> sites;
     for (int i = 0; i < valleles.size(); i++) {
