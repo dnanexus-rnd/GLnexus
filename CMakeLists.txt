@@ -174,6 +174,7 @@ add_library(glnexus
             include/BCFSerialize.h src/BCFSerialize.cc
             include/BCFKeyValueData.h src/BCFKeyValueData.cc
             include/RocksKeyValue.h src/RocksKeyValue.cc
+            include/applet_utils.h src/applet_utils.cc
             test/utils.cc)
 add_dependencies(glnexus htslib)
 add_dependencies(glnexus rocksdb)
@@ -227,7 +228,8 @@ if (test)
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc
                  test/compare_iter.cc
-                 test/unifier.cc)
+                 test/unifier.cc
+                 test/applet_utils.cc)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
