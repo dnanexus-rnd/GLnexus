@@ -41,6 +41,13 @@ TEST_CASE("applet_utils") {
 
         range_txt = "20:10000-30000";
         REQUIRE(!utils::parse_range(contigs, range_txt, query));
+
+        string cmdline("xxx yyy");
+        vector<range> ranges;
+        REQUIRE(!utils::parse_ranges(contigs, cmdline, ranges));
+
+        cmdline = string("16:10-37,17:901-3220");
+        REQUIRE(utils::parse_ranges(contigs, cmdline, ranges));
     }
 
     SECTION("yaml_discovered_alleles") {
