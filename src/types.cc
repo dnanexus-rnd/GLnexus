@@ -106,9 +106,9 @@ Status yaml_of_discovered_alleles(const discovered_alleles& dal,
             << YAML::Value << p.second.maxAQ;
 
         out << YAML::Key << "zygosity_by_GQ"
-            << YAML::Value << YAML::BeginSeq;
+            << YAML::Value << YAML::Flow << YAML::BeginSeq;
         for (unsigned i = 0; i < zygosity_by_GQ::GQ_BANDS; i++) {
-            out << YAML::BeginSeq;
+            out << YAML::Flow << YAML::BeginSeq;
             for (unsigned j = 0; j < zygosity_by_GQ::PLOIDY; j++) {
                 out << p.second.zGQ.M[i][j];
             }
