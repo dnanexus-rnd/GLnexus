@@ -53,6 +53,68 @@ static GLnexus::Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     return GLnexus::Status::OK();
 }
 
+
+// hard-coded configuration presets for unifier & genotyper. TODO: these
+// should reside in some user-modifiable yml file
+static const char* config_presets_yml = R"eof(
+unifier_config:
+  min_allele_copy_number: 0.99
+genotyper_config:
+  required_dp: 1
+  liftover_fields:
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_to_zero: true
+      count: 0
+    - orig_names: [SB]
+      name: SB
+      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.\">'
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
+)eof";
+
+static GLnexus::Status load_config_preset(const std::string& name,
+                                          GLnexus::unifier_config& unifier_cfg,
+                                          GLnexus::genotyper_config& genotyper_cfg) {
+    GLnexus::Status s;
+    cerr << "Loading config "<< endl << config_presets_yml;
+    YAML::Node yaml = YAML::Load(config_presets_yml);
+    if (!yaml) {
+        return GLnexus::Status::NotFound("unknown configuration preset", name);
+    }
+    if (!yaml.IsMap()) {
+        return GLnexus::Status::Invalid("configuration presets");
+    }
+    if (yaml["unifier_config"]) {
+        S(GLnexus::unifier_config::of_yaml(yaml["unifier_config"], unifier_cfg));
+    }
+    if (yaml["genotyper_config"]) {
+        S(GLnexus::genotyper_config::of_yaml(yaml["genotyper_config"], genotyper_cfg));
+    }
+    return GLnexus::Status::OK();
+}
+
+
 void help_init(const char* prog) {
     cerr << "usage: " << prog << " init [options] /desired/db/path exemplar.gvcf[.gz]" << endl
          << "Initializes a new GLnexus database in the specified directory; the parent directory" << endl
@@ -510,6 +572,7 @@ void help_discover_alleles(const char* prog) {
          << "command line, you can provide a three-column BED file using --bed." << endl
          << "Options:" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+         << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
          << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
 }
@@ -523,16 +586,18 @@ int main_discover_alleles(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
+        {"config", required_argument, 0, 'c'},
         {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
+    string config_preset;
     size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:t:",
+    while (-1 != (c = getopt_long(argc, argv, "hb:c:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -541,6 +606,9 @@ int main_discover_alleles(int argc, char *argv[]) {
                     cerr <<  "invalid BED filename" << endl;
                     return 1;
                 }
+                break;
+            case 'c':
+                config_preset = string(optarg);
                 break;
             case 't':
                 threads = strtoul(optarg, nullptr, 10);
@@ -578,6 +646,11 @@ int main_discover_alleles(int argc, char *argv[]) {
         }
     }
 
+    GLnexus::unifier_config unifier_cfg;
+    GLnexus::genotyper_config genotyper_cfg;
+    if (config_preset.size()) {
+        H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
+    }
 
     unique_ptr<GLnexus::KeyValue::DB> db;
     unique_ptr<GLnexus::BCFKeyValueData> data;
@@ -619,68 +692,6 @@ int main_discover_alleles(int argc, char *argv[]) {
     cout << yaml.c_str() << endl;
     return 0;
 }
-
-
-// hard-coded configuration presets for unifier & genotyper. TODO: these
-// should reside in some user-modifiable yml file
-const char* config_presets_yml = R"eof(
-unifier_config:
-  min_quality: 50
-genotyper_config:
-  required_dp: 1
-  liftover_fields:
-    - orig_names: [GQ]
-      name: GQ
-      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">'
-      type: int
-      number: basic
-      combi_method: min
-      count: 1
-    - orig_names: [DP, MIN_DP]
-      name: DP
-      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
-      type: int
-      combi_method: min
-      number: basic
-      count: 1
-    - orig_names: [AD]
-      name: AD
-      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">'
-      type: int
-      number: alleles
-      combi_method: min
-      default_to_zero: true
-      count: 0
-    - orig_names: [SB]
-      name: SB
-      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.\">'
-      type: int
-      combi_method: max
-      number: basic
-      count: 4
-)eof";
-
-GLnexus::Status load_config_preset(const std::string& name,
-                                   GLnexus::unifier_config& unifier_cfg,
-                                   GLnexus::genotyper_config& genotyper_cfg) {
-    GLnexus::Status s;
-    cerr << "Loading config "<< endl << config_presets_yml;
-    YAML::Node yaml = YAML::Load(config_presets_yml);
-    if (!yaml) {
-        return GLnexus::Status::NotFound("unknown configuration preset", name);
-    }
-    if (!yaml.IsMap()) {
-        return GLnexus::Status::Invalid("configuration presets");
-    }
-    if (yaml["unifier_config"]) {
-        S(GLnexus::unifier_config::of_yaml(yaml["unifier_config"], unifier_cfg));
-    }
-    if (yaml["genotyper_config"]) {
-        S(GLnexus::genotyper_config::of_yaml(yaml["genotyper_config"], genotyper_cfg));
-    }
-    return GLnexus::Status::OK();
-}
-
 
 
 void help_unify_sites(const char* prog) {
