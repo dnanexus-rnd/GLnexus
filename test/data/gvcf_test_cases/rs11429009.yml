@@ -41,23 +41,17 @@ input:
         17	15643383	.	A	<NON_REF>	.	.	END=15643383	GT:DP:GQ:MIN_DP:PL	0/0:82:0:82:0,0,784
 truth_unified_sites:
     - range: {ref: 17, beg: 15643381, end: 15643382}
-      alleles: [CA, C, CAA, CAC]
+      alleles: [CA, C, CAC, CAA]
       copy_number: [0, 2, 1, 1]
       unification:
       - range: {beg: 15643381, end: 15643382}
-        alt: CA
-        to: 0
-      - range: {beg: 15643382, end: 15643382}
-        alt: A
-        to: 0
-      - range: {beg: 15643381, end: 15643382}
         alt: C
         to: 1
-      - range: {beg: 15643381, end: 15643382}
-        alt: CAA
-        to: 2
       - range: {beg: 15643382, end: 15643382}
         alt: AC
+        to: 2
+      - range: {beg: 15643381, end: 15643382}
+        alt: CAA
         to: 3
 truth_output_vcf:
   - truth.vcf: |
@@ -67,4 +61,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=17,length=20000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      17	15643381	.	CA	C,CAA,CAC	0	.	.	GT:RNC	0/1:..	0/1:..	0/2:..	0/3:..
+      17	15643381	.	CA	C,CAC,CAA	0	.	.	GT:RNC	0/1:..	0/1:..	0/3:..	0/2:..

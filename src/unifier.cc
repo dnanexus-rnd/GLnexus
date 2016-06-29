@@ -19,7 +19,8 @@ using discovered_allele = pair<allele,discovered_allele_info>;
 // original representations.
 struct minimized_allele_info {
     set<allele> originals;
-    float copy_number = 0.0;
+    int maxAQ = 0;
+    unsigned copy_number = 0;
 
     string str() const {
         ostringstream os;
@@ -27,6 +28,7 @@ struct minimized_allele_info {
         for (auto& al : originals) {
             os << "  " << al.str() << endl;
         }
+        os << "Max AQ: " << maxAQ << endl;
         os << "Copy number: " << copy_number << endl;
         return os.str();
     }
@@ -48,13 +50,20 @@ bool minimized_allele_small_lt(const minimized_allele& p1, const minimized_allel
     if (p1.first.pos.size() != p2.first.pos.size()) {
         return p1.first.pos.size() < p2.first.pos.size();
     }
-    return p2.second.copy_number < p1.second.copy_number;
+    if (p2.second.copy_number != p1.second.copy_number) {
+        return p2.second.copy_number < p1.second.copy_number;
+    }
+    return p2.second.maxAQ < p1.second.maxAQ;
 }
 
 // UnifierPreference::Common
 bool minimized_allele_common_lt(const minimized_allele& p1, const minimized_allele& p2) {
-    if (p2.second.copy_number != p1.second.copy_number)
+    if (p2.second.copy_number != p1.second.copy_number) {
         return p2.second.copy_number < p1.second.copy_number;
+    }
+    if (p2.second.maxAQ != p1.second.maxAQ) {
+        return p2.second.maxAQ < p1.second.maxAQ;
+    }
     return minimized_allele_delta_lt(p1, p2);
 }
 
@@ -91,7 +100,7 @@ Status minimize_allele(const allele& ref, allele& alt) {
 }
 
 // Separate discovered alleles into the REF alleles and minimized ALT alleles
-Status minimize_alleles(const discovered_alleles& src,
+Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src,
                         discovered_alleles& refs, minimized_alleles& alts) {
     Status s;
 
@@ -120,17 +129,21 @@ Status minimize_alleles(const discovered_alleles& src,
         // minimize the alt allele
         S(minimize_allele(rp->second.first, alt));
 
-        // add it to alts, combining originals and copy_number with any
+        unsigned copy_number = dal.second.zGQ.copy_number(cfg.min_quality);
+
+        // add it to alts, combining originals, copy_number, and maxAQ with any
         // previously observed occurrences of the same minimized alt allele.
         auto ap = alts.find(alt);
         if (ap == alts.end()) {
             minimized_allele_info info;
             info.originals.insert(dal.first);
-            info.copy_number = dal.second.copy_number;
+            info.maxAQ = dal.second.maxAQ;
+            info.copy_number = copy_number;
             alts[alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
-            ap->second.copy_number += dal.second.copy_number;
+            ap->second.maxAQ = std::max(ap->second.maxAQ, dal.second.maxAQ);
+            ap->second.copy_number += copy_number;
         }
     }
 
@@ -182,8 +195,9 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     vector<minimized_allele> valleles;
     valleles.reserve(alleles.size());
     for (const auto& allele : alleles) {
-        // filter alleles with insufficient copy number
-        if (allele.second.copy_number >= cfg.min_allele_copy_number) {
+        // filter alleles with insufficient copy number or AQ
+        if (allele.second.maxAQ >= cfg.min_quality &&
+            allele.second.copy_number >= cfg.min_allele_copy_number) {
             valleles.push_back(allele);
         }
     }
@@ -249,7 +263,7 @@ Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alle
         // minimize the alt alleles
         discovered_alleles refs;
         minimized_alleles alts, pruned;
-        S(minimize_alleles(active_region.second, refs, alts));
+        S(minimize_alleles(cfg, active_region.second, refs, alts));
 
         // prune alt alleles as necessary to yield sites
         auto sites = prune_alleles(cfg, alts, pruned);
@@ -308,8 +322,7 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
     return Status::OK();
 }
 
-/// Unify the alleles at one site. The given ALT alleles must all share at
-/// least one position in common.
+/// Unify the alleles at one site.
 Status unify_alleles(const unifier_config& cfg, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
                      unified_site& ans) {
@@ -349,9 +362,6 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     // problematic because the copy numbers in discovered_alleles omit nearly
     // all homozygous ref genotypes.
     us.copy_number.push_back(0.0);
-    for (const auto& ref : refs) {
-        us.unification[ref.first] = 0;
-    }
     for (int i = 1; i <= valts.size(); i++) {
         const minimized_allele& p = valts[i-1];
         UNPAIR(p, alt, alt_info);

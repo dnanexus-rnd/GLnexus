@@ -228,6 +228,7 @@ struct allele {
 
     /// Equality is based on identity of position and allele
     bool operator==(const allele& rhs) const noexcept { return pos == rhs.pos && dna == rhs.dna; }
+    bool operator!=(const allele& rhs) const noexcept { return !(*this == rhs); }
 
     /// Order is by pos and then allele.
     bool operator<(const allele& rhs) const noexcept { return pos < rhs.pos || (pos == rhs.pos && dna < rhs.dna); }
@@ -240,15 +241,85 @@ struct allele {
     }
 };
 
-struct discovered_allele_info {
-    bool is_ref;
-    float copy_number;
+// zygosity_by_GQ: holds information about how many times an allele is observed
+// during the discovery process, stratified by genotype quality.
+// A 10x2 matrix (M), the GQ_BANDS correspond to ten bands of phred-scaled GQ:
+// 0 <= GQ < 10, 10 <= GQ < 20, ..., 90 <= GQ. The two columns correspond to
+// allele zygosity (heterozygotes and homozygotes, or alelle copy number 1 & 2).
+// The entries are how many genotype calls with the corresponding zygosity of
+// the allele were observed in the cohort with GQ in the corresponding band.
+//
+// For example, z.M[5][1] is the number of homozygous calls with 50 <= GQ < 60.
+struct zygosity_by_GQ {
+    static const unsigned GQ_BANDS = 10;
+    static const unsigned PLOIDY = 2;
 
-    bool operator==(const discovered_allele_info& rhs) const noexcept { return is_ref == rhs.is_ref && copy_number == rhs.copy_number; }
+    unsigned M[GQ_BANDS][PLOIDY] __attribute__ ((aligned));
+
+    zygosity_by_GQ() {
+        memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
+    }
+
+    zygosity_by_GQ(unsigned zygosity, int GQ, unsigned count=1) {
+        memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
+        add(zygosity, GQ, count);
+    }
+
+    void add(unsigned zygosity, int GQ, unsigned count=1) {
+        assert(zygosity >= 1 && zygosity <= PLOIDY);
+        unsigned i = std::min(unsigned(std::max(GQ, 0))/10U,GQ_BANDS-1U);
+        M[i][zygosity-1] += count;
+    }
+
+    bool operator==(const zygosity_by_GQ& rhs) const {
+        return memcmp(M, rhs.M, sizeof(int)*GQ_BANDS*PLOIDY) == 0;
+    }
+
+    void operator+=(const zygosity_by_GQ& rhs) {
+        for (unsigned i = 0; i < GQ_BANDS; i++) {
+            for (unsigned j = 0; j < PLOIDY; j++) {
+                M[i][j] += rhs.M[i][j];
+            }
+        }
+    }
+
+    // estimate allele copy number in called genotypes with GQ >= minGQ 
+    unsigned copy_number(int minGQ = 0) const {
+        unsigned ans = 0;
+        unsigned i_lo = std::min(unsigned(std::max(minGQ, 0))/10U,GQ_BANDS-1U);
+
+        for (unsigned i = i_lo; i < GQ_BANDS; i++) {
+             for (unsigned j = 0; j < PLOIDY; j++) {
+                ans += M[i][j]*(j+1);
+            }
+        }
+
+        return ans;
+    }
+};
+
+struct discovered_allele_info {
+    bool is_ref = false;
+
+    // *Allele Quality (AQ)* of an allele in a VCF genotype call is defined in terms of
+    // the genotype likelihoods as follows: (the maximum likelihood of any genotype
+    // containing an allele / the maximum likelihood of any genotype not containing that
+    // allele), expressed on phred scale, truncated below zero.
+    //
+    // maxAQ is the maximum AQ observed for this allele across all genotype calls in the
+    // cohort.
+    int maxAQ = 0;
+
+    zygosity_by_GQ zGQ;
+
+    bool operator==(const discovered_allele_info& rhs) const noexcept {
+        return is_ref == rhs.is_ref && maxAQ == rhs.maxAQ && zGQ == rhs.zGQ;
+    }
+    bool operator!=(const discovered_allele_info& rhs) const noexcept { return !(*this == rhs); }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " copy number: " << copy_number << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " maxAQ: " << maxAQ << " copy number: " << zGQ.copy_number() << "]";
         return os.str();
     }
 };
@@ -339,11 +410,18 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
+    // Phred quality score threshold, used in two ways:
+    // 1) minimum Allele Quality in the cohort for the unifier to include an allele
+    // 2) minimum Genotype Quality for an input genotype call to "count" towards
+    //    copy number estimates for the constituent alleles.
+    // All else equal, increasing min_quality will increase specificity and reduce
+    // sensitivity, and also speed up the genotyper (as fewer weak sites will be
+    // considered)
+    int min_quality = 0;
+
     // Keep only alleles with at least this estimated copy number discovered
-    // in the cohort. The estimated copy number is a soft estimate based on
-    // the genotype likelihoods, so setting this somewhere between 0 and 1 can
-    // filter out weak singleton observations.
-    float min_allele_copy_number = 0.0;
+    // in the cohort.
+    int min_allele_copy_number = 1;
 
     /// Maximum number of alleles per unified site; excess alleles will be
     /// pruned. If zero, then no specific limit is enforced.
@@ -470,7 +548,7 @@ struct genotyper_config {
 // used with htslib functions that reuse/realloc the buffer
 template<class T> struct htsvecbox {
     T *v = nullptr;
-    int capacity = 0;
+    int capacity = 0; // in number of elements, NOT bytes
     bool empty() const { return v == nullptr; }
     T& operator[](unsigned i) { return v[i]; }
     void clear() {

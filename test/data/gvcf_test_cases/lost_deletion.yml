@@ -55,15 +55,6 @@ truth_unified_sites:
       alleles: [TGGGGCCG, T, TGGAGCCG]
       copy_number: [0, 4, 2]
       unification:
-        - range: {beg: 608819, end: 608843}
-          alt: AGGGACTGGGGCCGGGACCGGGACC
-          to: 0
-        - range: {beg: 608825, end: 608832}
-          alt: TGGGGCCG
-          to: 0
-        - range: {beg: 608828, end: 608828}
-          alt: G
-          to: 0
         - range: {beg: 608825, end: 608832}
           alt: T
           to: 1
@@ -74,12 +65,6 @@ truth_unified_sites:
       alleles: [ACCGGGACCGGGACTGGG, A]
       copy_number: [0, 4]
       unification:
-        - range: {beg: 608819, end: 608843}
-          alt: AGGGACTGGGGCCGGGACCGGGACC
-          to: 0
-        - range: {beg: 608835, end: 608852}
-          alt: ACCGGGACCGGGACTGGG
-          to: 0
         - range: {beg: 608835, end: 608852}
           alt: A
           to: 1

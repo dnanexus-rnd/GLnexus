@@ -1,5 +1,7 @@
 readme: |
   This tests the treatment of "pseudo" reference confidence records that don't all overlap a variant record.
+
+  Also performs a detailed check of zygosity_by_GQ tabulation.
 input:
   header : |-
       ##fileformat=VCFv4.2
@@ -29,14 +31,58 @@ input:
         C
         A	36643699	.	A	<NON_REF>	.	.	END=36645699	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
 
+truth_discovered_alleles:
+    - range: {ref: A, beg: 36643697, end: 36643700}
+      dna: 'AACG'
+      is_ref: true
+      maxAQ: 2757
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: A, beg: 36643697, end: 36643700}
+      dna: 'A'
+      is_ref: false
+      maxAQ: 0
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: A, beg: 36643699, end: 36643702}
+      dna: 'CGAG'
+      is_ref: true
+      maxAQ: 2011
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1]]
+    - range: {ref: A, beg: 36643699, end: 36643702}
+      dna: 'C'
+      is_ref: false
+      maxAQ: 0
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: A, beg: 36643700, end: 36643703}
+      dna: 'GAGA'
+      is_ref: true
+      maxAQ: 1026
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[1,0]]
+    - range: {ref: A, beg: 36643700, end: 36643703}
+      dna: 'G'
+      is_ref: false
+      maxAQ: 1890
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[1,1]]
+    - range: {ref: A, beg: 36643703, end: 36643703}
+      dna: 'A'
+      is_ref: true
+      maxAQ: 2639
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1]]
+    - range: {ref: A, beg: 36643703, end: 36643703}
+      dna: 'G'
+      is_ref: false
+      maxAQ: 0
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: A, beg: 36643703, end: 36643703}
+      dna: 'T'
+      is_ref: false
+      maxAQ: 0
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+
 truth_unified_sites:
     - range: {ref: A, beg: 36643700, end: 36643703}
       alleles: [GAGA, G]
       copy_number: [0, 3]
       unification:
-        - range: {beg: 36643700, end: 36643703}
-          alt: GAGA
-          to: 0
         - range: {beg: 36643700, end: 36643703}
           alt: G
           to: 1
