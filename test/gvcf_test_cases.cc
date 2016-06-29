@@ -248,8 +248,17 @@ public:
         Status s = execute_discover_alleles(als, sampleset, pos);
         REQUIRE(s.ok());
 
-        // Print comparison pf dsals before failing
-        if (als != truth_dsals) {
+        bool eq = true;
+        auto lhs = als.begin(), rhs = truth_dsals.begin();
+        for (; lhs != als.end() && rhs != truth_dsals.end(); ++lhs, ++rhs) {
+            if (lhs->first != rhs->first || lhs->second != rhs->second) {
+                if (eq) print_header();
+                cout << lhs->first.str() << ":" << lhs->second.str() << endl;
+                cout << rhs->first.str() << ":" << rhs->second.str() << endl;
+                eq = false;
+            }
+        }
+        if (eq && (lhs != als.end() || rhs != truth_dsals.end())) {
             print_header();
             cout << "Expected discovered alleles \n";
             for (auto& dsal : truth_dsals) {
@@ -260,7 +269,9 @@ public:
             for (auto &dsal : als) {
                 cout << dsal.first.str() << ":" << dsal.second.str() << endl;
             }
+            eq = false;
         }
+        REQUIRE(eq);
 
         REQUIRE(als == truth_dsals);
         return Status::OK();
@@ -441,10 +452,10 @@ TEST_CASE("services test: discover_alleles") {
         REQUIRE(als.size() == 7);
         auto p = als.find(allele(range(0, 1000, 1001), "G"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 4);
+        REQUIRE(p->second.zGQ.copy_number() == 4);
         p = als.find(allele(range(0, 1010, 1012), "CC"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 3);
+        REQUIRE(p->second.zGQ.copy_number() == 3);
     }
 
     SECTION("trio1 partial") {
@@ -457,7 +468,7 @@ TEST_CASE("services test: discover_alleles") {
         REQUIRE(s.ok());
 
         REQUIRE(als.size() == 2);
-        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.copy_number == 3);
+        REQUIRE(als.find(allele(range(0, 1010, 1012), "CC"))->second.zGQ.copy_number() == 3);
     }
 
     SECTION("spanning allele") {
@@ -469,7 +480,7 @@ TEST_CASE("services test: discover_alleles") {
         s = discover_allele_case.execute_discover_alleles(als, "<ALL>", range(1, 1001, 1016));
         REQUIRE(s.ok());
         REQUIRE(als.size() == 6);
-        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.copy_number == 3);
+        REQUIRE(als.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.zGQ.copy_number() == 3);
     }
 
     SECTION("detect inconsistent reference alleles") {
@@ -479,23 +490,23 @@ TEST_CASE("services test: discover_alleles") {
         REQUIRE(s.str().find("allele appears as both REF and ALT") != string::npos);
     }
 
-    SECTION("only return alleles observed in desired samples") {
+    SECTION("calculate copy numbers from desired samples only") {
         // looking at all three samples in the dataset, we should receive all
         // three alleles at this position
         s = discover_allele_case.execute_discover_alleles(als, "discover_alleles_trio1", range(0, 1001, 1002));
         REQUIRE(s.ok());
         REQUIRE(als.size() == 3);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.zGQ.copy_number() == 2);
 
-        // looking only at one homozygous ref individual, we should get
-        // nothing
+        // looking only at one homozygous ref individual
         s = discover_allele_case.execute_discover_alleles(als, "trio1.fa", range(0, 1001, 1002));
         REQUIRE(s.ok());
-        REQUIRE(als.size() == 0);
-
-        // throw in a previous position as positive control
-        s = discover_allele_case.execute_discover_alleles(als, "trio1.fa", range(0, 1000, 1002));
-        REQUIRE(s.ok());
-        REQUIRE(als.size() == 2);
+        REQUIRE(als.size() == 3);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.zGQ.copy_number() == 0);
+        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.zGQ.copy_number() == 0);
     }
 
     discover_allele_case.cleanup();
@@ -619,8 +630,12 @@ TEST_CASE("min_allele_copy_number") {
     GVCFTestCase("min_allele_copy_number").perform_gvcf_test();
 }
 
+TEST_CASE("min_quality") {
+    GVCFTestCase("min_quality",true,true,true).perform_gvcf_test();
+}
+
 TEST_CASE("rs141305015") {
-    GVCFTestCase("rs141305015").perform_gvcf_test();
+    GVCFTestCase("rs141305015",true).perform_gvcf_test();
 }
 
 TEST_CASE("rs11429009 allele unifier test") {

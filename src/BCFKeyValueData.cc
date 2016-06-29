@@ -950,11 +950,10 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
         return Status::Invalid("gVCF contains record above maximum length", filename);
     }
 
-    // verify record ordering is monotonically increasing within a contig
-    if (prev_rid == bcf->rid &&
-        prev_pos >= bcf->pos) {
-        return Status::Invalid("gVCF record ordering is wrong ",
-                               filename + " " + std::to_string(prev_pos) + " >= " + range(bcf).str(contigs));
+    // verify record ordering is non-decreasing within a contig
+    if (prev_rid == bcf->rid && prev_pos > bcf->pos) {
+        return Status::Invalid("gVCF records are out-of-order ",
+                               filename + " " + std::to_string(prev_pos+1) + " >= " + range(bcf).str(contigs));
     }
 
     // verify record does not go over the length of the contig

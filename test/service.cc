@@ -69,28 +69,28 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(mals.size() == ranges.size());
 
         REQUIRE(mals[0].size() == 2);
-        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "A"))->second.copy_number == 6);
-        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "G"))->second.copy_number == 6);
+        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "A"))->second.zGQ.copy_number() == 6);
+        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "G"))->second.zGQ.copy_number() == 6);
 
         REQUIRE(mals[1].size() == 4);
-        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "A"))->second.copy_number == 6);
-        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "C"))->second.copy_number == 2);
-        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "G"))->second.copy_number == 2);
-        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "T"))->second.copy_number == 2);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "A"))->second.zGQ.copy_number() == 6);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "C"))->second.zGQ.copy_number() == 2);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "G"))->second.zGQ.copy_number() == 2);
+        REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "T"))->second.zGQ.copy_number() == 2);
 
         REQUIRE(mals[2].size() == 4);
-        REQUIRE(mals[2].find(allele(range(0, 1010, 1012), "AG"))->second.copy_number == 3);
-        REQUIRE(mals[2].find(allele(range(0, 1010, 1012), "CC"))->second.copy_number == 3);
-        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "AGA"))->second.copy_number == 2);
-        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "CCC"))->second.copy_number == 4);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1012), "AG"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1012), "CC"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "AGA"))->second.zGQ.copy_number() == 2);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "CCC"))->second.zGQ.copy_number() == 4);
 
         REQUIRE(mals[3].size() == 2);
-        REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "A"))->second.copy_number == 2);
-        REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "AA"))->second.copy_number == 4);
+        REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "A"))->second.zGQ.copy_number() == 2);
+        REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "AA"))->second.zGQ.copy_number() == 4);
 
         REQUIRE(mals[4].size() == 2);
-        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "AG"))->second.copy_number == 3);
-        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "CC"))->second.copy_number == 3);
+        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "AG"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "CC"))->second.zGQ.copy_number() == 3);
 
         REQUIRE(mals[5].empty());
     }
@@ -168,10 +168,10 @@ TEST_CASE("service::discover_alleles gVCF") {
         REQUIRE(als.size() == 2);
         auto p = als.find(allele(range(0, 10009463, 10009465), "TA"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 1.0245f);
+        REQUIRE(p->second.zGQ.copy_number() == 1);
         p = als.find(allele(range(0, 10009463, 10009465), "T"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 0.9755f);
+        REQUIRE(p->second.zGQ.copy_number() == 1);
     }
 
     SECTION("exclusion/detection of bogus alleles") {
@@ -180,10 +180,10 @@ TEST_CASE("service::discover_alleles gVCF") {
         REQUIRE(als.size() == 2);
         auto p = als.find(allele(range(1, 10009463, 10009465), "TA"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 1.0245f);
+        REQUIRE(p->second.zGQ.copy_number() == 1);
         p = als.find(allele(range(1, 10009463, 10009465), "T"));
         REQUIRE(p != als.end());
-        REQUIRE(p->second.copy_number == 0.9755f);
+        REQUIRE(p->second.zGQ.copy_number() == 1);
 
         s = svc->discover_alleles("<ALL>", range(1, 10009465, 10009466), als);
         REQUIRE(s == StatusCode::INVALID);

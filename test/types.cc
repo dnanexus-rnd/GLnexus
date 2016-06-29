@@ -86,21 +86,23 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
+  maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: 10.5
+  maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
     #define VERIFY_DA(dal) \
         REQUIRE((dal).size() == 2); \
         REQUIRE((dal).find(allele(range(1, 99, 100),"A")) != (dal).end()); \
         REQUIRE((dal)[allele(range(1, 99, 100),"A")].is_ref == true); \
-        REQUIRE((dal)[allele(range(1, 99, 100),"A")].copy_number == 100); \
+        REQUIRE((dal)[allele(range(1, 99, 100),"A")].zGQ.copy_number() == 100); \
         REQUIRE((dal).find(allele(range(1, 99, 100),"G")) != (dal).end()); \
         REQUIRE((dal)[allele(range(1, 99, 100),"G")].is_ref == false); \
-        REQUIRE((dal)[allele(range(1, 99, 100),"G")].copy_number == 10.5);
+        REQUIRE((dal)[allele(range(1, 99, 100),"G")].zGQ.copy_number() == 20);
 
     SECTION("basic") {
         YAML::Node n = YAML::Load(da_yaml);
@@ -117,10 +119,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxAQ: 99
 - range: {ref: 'bogus', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: 10.5
+  maxAQ: 99
 )");
 
         discovered_alleles dal;
@@ -131,6 +135,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - dna: A
   is_ref: true
   copy_number: 100
+  maxAQ: 99
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -141,6 +146,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxAQ: 99
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -153,10 +159,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: BOGUS
   is_ref: false
   copy_number: 10.5
+  maxAQ: 99
 )");
 
         discovered_alleles dal;
@@ -170,10 +178,31 @@ TEST_CASE("discovered_alleles_of_yaml") {
   dna: A
   is_ref: true
   copy_number: 100
+  maxAQ: 99
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
   copy_number: [x]
+  maxAQ: 99
+)");
+
+        discovered_alleles dal;
+        Status s = discovered_alleles_of_yaml(n, contigs, dal);
+        REQUIRE(s.bad());
+    }
+
+    SECTION("bogus maxAQ") {
+        YAML::Node n = YAML::Load(1 + R"(
+- range: {ref: '17', beg: 100, end: 100}
+  dna: A
+  is_ref: true
+  copy_number: 100
+  maxAQ: 99
+- range: {ref: '17', beg: 100, end: 100}
+  dna: G
+  is_ref: false
+  copy_number: 100
+  maxAQ: ['z']
 )");
 
         discovered_alleles dal;
@@ -201,11 +230,13 @@ TEST_CASE("yaml_of_discovered_alleles") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
+  maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: 10.5
+  maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
         YAML::Node n = YAML::Load(da_yaml);
@@ -408,9 +439,6 @@ range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 copy_number: [100, 51]
 unification:
-  - range: {beg: 100, end: 100}
-    alt: A
-    to: 0
 )";
         n = YAML::Load(snp_bogus);
         REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
@@ -463,6 +491,7 @@ TEST_CASE("unifier_config") {
 )";
     const char* buf2 = 1 + R"(
         {min_allele_copy_number: 5.0,
+         minGQ: 60,
          max_alleles_per_site:  1,
          preference: small}
 )";
@@ -719,6 +748,26 @@ liftover_fields:
             genotyper_config gc;
             s = genotyper_config::of_yaml(node, gc);
             REQUIRE(s.bad());
+        }
+    }
+}
+
+TEST_CASE("zygosity_by_GQ") {
+    for (int gq = 0; gq <= 100; gq++) {
+        for (int z = 1; z <= zygosity_by_GQ::PLOIDY; z++) {
+            zygosity_by_GQ zGQ;
+            zGQ.add(z, gq);
+            REQUIRE(zGQ.M[std::min(gq/10,int(zygosity_by_GQ::GQ_BANDS-1))][z-1] == 1);
+            REQUIRE(zGQ.copy_number() == z);
+            REQUIRE(zGQ.copy_number(gq) == z);
+            if (gq < 90) REQUIRE(zGQ.copy_number(gq+10) == 0);
+
+            for (int gq2 = 0; gq2 < zygosity_by_GQ::GQ_BANDS; gq2++) {
+                zygosity_by_GQ zGQ2;
+                zGQ2.add(1, gq2);
+                zGQ2 += zGQ;
+                REQUIRE(zGQ2.copy_number() == z+1);
+            }
         }
     }
 }
