@@ -16,22 +16,26 @@ TEST_CASE("cli_utils") {
 - range: {ref: '16', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
+  maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '16', beg: 113, end: 120}
   dna: G
   is_ref: false
-  copy_number: 10.5
+  maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
     const char* da_yaml2 = 1 + R"(
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
+  maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 200, end: 310}
   dna: G
   is_ref: false
-  copy_number: 10.5
+  maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
     SECTION("parse_range") {
