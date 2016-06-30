@@ -53,6 +53,32 @@ static GLnexus::Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     return GLnexus::Status::OK();
 }
 
+static GLnexus::Status check_sanity_multiple_dsals(
+    const string &file1,
+    const string &file2,
+    const vector<pair<string,size_t>> &contigs1,
+    const vector<pair<string,size_t>> &contigs2,
+    const vector<GLnexus::range> &ranges1,
+    const vector<GLnexus::range> &ranges2) {
+
+    if (contigs1.size() != contigs2.size())
+        return GLnexus::Status::Invalid("The number of contigs is different bewteen", file1 + " " + file2);
+    for (int i=0; i < contigs1.size(); ++i) {
+        if (contigs1[i] != contigs2[i])
+            return GLnexus::Status::Invalid("The contigs are different bewteen",
+                                            file1 + " " + file2 + " index=" + to_string(i));
+    }
+
+    if (ranges1.size() != ranges2.size())
+        return GLnexus::Status::Invalid("The number of ranges is different bewteen", file1 + " " + file2);
+    for (int i=0; i < ranges1.size(); ++i) {
+        if (ranges1[i] != ranges2[i])
+            return GLnexus::Status::Invalid("The ranges are different bewteen",
+                                            file1 + " " + file2 + " index=" + to_string(i));
+    }
+
+    return GLnexus::Status::OK();
+}
 
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
@@ -111,6 +137,7 @@ static GLnexus::Status load_config_preset(const std::string& name,
     if (yaml["genotyper_config"]) {
         S(GLnexus::genotyper_config::of_yaml(yaml["genotyper_config"], genotyper_cfg));
     }
+
     return GLnexus::Status::OK();
 }
 
@@ -695,9 +722,8 @@ int main_discover_alleles(int argc, char *argv[]) {
 
 
 void help_unify_sites(const char* prog) {
-    cerr << "usage: " << prog << " unify_sites [options] /discovered_alleles/path" << endl
-         << "Unify the discovered alleles, these should be provided as a file in yaml format." << endl
-         << "one-based, inclusive. " << endl
+    cerr << "usage: " << prog << " unify_sites [options] /discovered_alleles/path/1 ... /discovered_alleles/path/N" << endl
+         << "Unify the discovered allele file(s). There can be one or more files, format is YAML." << endl
          << "Options:" << endl
          << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
          << endl;
@@ -741,7 +767,14 @@ int main_unify_sites(int argc, char *argv[]) {
         help_unify_sites(argv[0]);
         return 1;
     }
-    string discovered_alleles_file(argv[optind]);
+    vector<string> discovered_allele_files;
+    for (int i = optind; i < argc; i++) {
+        discovered_allele_files.push_back(argv[i]);
+    }
+    if (discovered_allele_files.size() == 0) {
+        help_unify_sites(argv[0]);
+        return 1;
+    }
 
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
@@ -749,14 +782,37 @@ int main_unify_sites(int argc, char *argv[]) {
         H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
     }
 
+    // Load first file
     vector<pair<string,size_t> > contigs;
     vector<GLnexus::range> ranges;
     vector<GLnexus::discovered_alleles> valleles;
     {
         YAML::Node node;
-        H("Load discovered alleles file", LoadYAMLFile(discovered_alleles_file, node));
+        H("Load discovered alleles file", LoadYAMLFile(discovered_allele_files[0], node));
         H("parse contigs, discovered alleles, and ranges",
           utils::contigs_alleles_ranges_of_yaml(node, contigs, ranges, valleles));
+    }
+
+    // Load the rest of the files, and merge
+    for (int i=1; i < discovered_allele_files.size(); ++i) {
+        vector<pair<string,size_t> > contigs2;
+        vector<GLnexus::range> ranges2;
+        vector<GLnexus::discovered_alleles> valleles2;
+        YAML::Node node;
+
+        H("Load discovered alleles file", LoadYAMLFile(discovered_allele_files[i], node));
+        H("parse contigs, discovered alleles, and ranges",
+          utils::contigs_alleles_ranges_of_yaml(node, contigs2, ranges2, valleles2));
+
+        // basic sanity, the contigs and ranges should be the same
+        H("checking sanity of ranges and bed files",
+          check_sanity_multiple_dsals(discovered_allele_files[0], discovered_allele_files[i],
+                                      contigs, contigs2, ranges, ranges2));
+
+        for (int k=0; k < valleles.size(); ++k) {
+            H("merge discovered alleles file #" + to_string(i) + " index=" + to_string(k),
+              merge_discovered_alleles(valleles2[k], valleles[k]));
+        }
     }
 
     vector<GLnexus::unified_site> sites;
