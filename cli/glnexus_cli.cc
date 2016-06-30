@@ -791,6 +791,12 @@ int main_unify_sites(int argc, char *argv[]) {
         H("Load discovered alleles file", LoadYAMLFile(discovered_allele_files[0], node));
         H("parse contigs, discovered alleles, and ranges",
           utils::contigs_alleles_ranges_of_yaml(node, contigs, ranges, valleles));
+
+        unsigned ct=0;
+        for (const auto& dsals : valleles) {
+            ct += dsals.size();
+        }
+        console->info() << "loaded " << ct << " alleles from " << discovered_allele_files[0];
     }
 
     // Load the rest of the files, and merge
@@ -809,11 +815,20 @@ int main_unify_sites(int argc, char *argv[]) {
           check_sanity_multiple_dsals(discovered_allele_files[0], discovered_allele_files[i],
                                       contigs, contigs2, ranges, ranges2));
 
+        unsigned ct=0;
         for (int k=0; k < valleles.size(); ++k) {
+            ct += valleles2[k].size();
             H("merge discovered alleles file #" + to_string(i) + " index=" + to_string(k),
               merge_discovered_alleles(valleles2[k], valleles[k]));
         }
+        console->info() << "loaded " << ct << " alleles from " << discovered_allele_files[i];
     }
+
+    unsigned discovered_allele_count=0;
+    for (const auto& dsals : valleles) {
+        discovered_allele_count += dsals.size();
+    }
+    console->info() << "consolidated to " << discovered_allele_count << " alleles for site unification";
 
     vector<GLnexus::unified_site> sites;
     for (int i = 0; i < valleles.size(); i++) {
@@ -905,7 +920,7 @@ int main_genotype(int argc, char *argv[]) {
     }
 
     genotyper_cfg.output_residuals = residuals;
-    cerr << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields." << endl;
+    console->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
     unique_ptr<GLnexus::KeyValue::DB> db;
 
     // open the database in read-only mode
@@ -921,10 +936,11 @@ int main_genotype(int argc, char *argv[]) {
         vector<GLnexus::unified_site> sites;
         {
             YAML::Node node;
-            H("Load discovered alleles file", LoadYAMLFile(unified_sites_file, node));
+            H("Load unified sites file", LoadYAMLFile(unified_sites_file, node));
             H("load unified sites",
               utils::unified_sites_of_yaml(node, contigs, sites));
         }
+        console->info() << "loaded " << sites.size() << " sites from " << unified_sites_file;
 
         // start service, discover alleles, unify sites, genotype sites
         GLnexus::service_config svccfg;
