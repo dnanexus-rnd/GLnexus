@@ -809,9 +809,9 @@ int main_unify_sites(int argc, char *argv[]) {
           check_sanity_multiple_dsals(discovered_allele_files[0], discovered_allele_files[i],
                                       contigs, contigs2, ranges, ranges2));
 
-        for (int i=0; i < valleles.size(); ++i) {
-            H("merge discovered alleles file #" + to_string(i),
-              merge_discovered_alleles(valleles2[i], valleles[i]));
+        for (int k=0; k < valleles.size(); ++k) {
+            H("merge discovered alleles file #" + to_string(i) + " index=" + to_string(k),
+              merge_discovered_alleles(valleles2[k], valleles[k]));
         }
     }
 
