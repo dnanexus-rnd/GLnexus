@@ -84,16 +84,17 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
     return Status::OK();
 }
 
-GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *record, vector<double>& gl) {
+const double LOG10_E = log10(exp(1.0));
+GLnexus::Status bcf_get_genotype_log_likelihoods(const bcf_hdr_t* header, bcf1_t *record, vector<double>& gll) {
     unsigned nGT = genotypes(record->n_allele);
-    gl.resize(record->n_sample*nGT);
+    gll.resize(record->n_sample*nGT);
 
-     // try loading genotype likelihoods from PL
+    // try loading genotype likelihoods from PL
     htsvecbox<int32_t> igl;
     if (bcf_get_format_int32(header, record, "PL", &igl.v, &igl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
             assert(igl[ik] >= 0.0);
-            gl[ik] = exp10(double(igl[ik])/(-10.0));
+            gll[ik] = double(igl[ik])/(-10.0*LOG10_E);
         }
         return Status::OK();
     }
@@ -103,7 +104,7 @@ GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *re
     if (bcf_get_format_float(header, record, "GL", &fgl.v, &fgl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
             assert(fgl[ik] <= 0.0);
-            gl[ik] = exp10(gl[ik]);
+            gl[ik] = double(gl[ik])/LOG10_E;
         }
         return Status::OK();
     }
@@ -111,35 +112,35 @@ GLnexus::Status bcf_get_genotype_likelihoods(const bcf_hdr_t* header, bcf1_t *re
     return Status::NotFound();
 }
 
-// for each allele, find the max AQ across the given sample indices, given valid genotype likelihoods
+// for each allele, find the max AQ across the given sample indices, given valid genotype log-likelihoods
 GLnexus::Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const vector<unsigned>& samples,
-                              const vector<double>& gl, vector<int>& ans) {
+                              const vector<double>& gll, vector<int>& ans) {
     unsigned nGT = genotypes(n_allele);
-    if (gl.size() != n_sample*nGT) return Status::Invalid("alleles_maxAQ");
+    if (gll.size() != n_sample*nGT) return Status::Invalid("alleles_maxAQ");
     ans.assign(n_allele,0);
 
     for (unsigned i : samples) {
         assert(i < n_sample);
-        const double *gl_i = gl.data() + i*nGT;
-        vector<double> maxL_with(n_allele, 0.0);    // max likelihood of a genotype carrying each allele
-        vector<double> maxL_without(n_allele, 0.0); // max likelihood of a genotype NOT carrying each allele
+        const double *gll_i = gll.data() + i*nGT;
+        vector<double> maxLL_with(n_allele, log(0.0));    // max likelihood of a genotype carrying each allele
+        vector<double> maxLL_without(n_allele, log(0.0)); // max likelihood of a genotype NOT carrying each allele
 
         for (unsigned k = 0; k < nGT; k++) { // for each genotype
             auto p = gt_alleles(k);          // indices of the two alleles in this genotype
             for (unsigned al = 0; al < n_allele; al++) {
                 if (al == p.first || al == p.second) {
                     // genotype contains this allele -- update maxL_with
-                    maxL_with[al] = std::max(maxL_with[al], gl_i[k]);
+                    maxLL_with[al] = std::max(maxLL_with[al], gll_i[k]);
                 } else {
                     // genotype doesn't contain this allele -- update maxL_without
-                    maxL_without[al] = std::max(maxL_without[al], gl_i[k]);
+                    maxLL_without[al] = std::max(maxLL_without[al], gll_i[k]);
                 }
             }
         }
         for (unsigned al = 0; al < n_allele; al++) {
             // phred scale likelihood ratio
-            double AQLR = std::max(1.0, maxL_with[al]/maxL_without[al]);
-            ans[al] = std::max(ans[al], (int)round(10.0*log(AQLR)/log(10.0)));
+            double AQLLR = std::max(0.0, maxLL_with[al] - maxLL_without[al]);
+            ans[al] = std::max(ans[al], (int)round(10.0*AQLLR/log(10.0)));
         }
     }
 
@@ -150,11 +151,11 @@ GLnexus::Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const vector
 // if no genotype likelihoods can be found in the record, then return [0, 0, ...]
 GLnexus::Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples, vector<int>& ans) {
     ans.assign(record->n_allele,0);
-    vector<double> gl;
-    GLnexus::Status s = bcf_get_genotype_likelihoods(hdr, record, gl);
+    vector<double> gll;
+    GLnexus::Status s = bcf_get_genotype_log_likelihoods(hdr, record, gll);
 
     if (s.ok()) {
-        return alleles_maxAQ(record->n_allele, record->n_sample, samples, gl, ans);
+        return alleles_maxAQ(record->n_allele, record->n_sample, samples, gll, ans);
     } else if (s == GLnexus::StatusCode::NOT_FOUND) {
         return Status::OK();
     }

@@ -45,10 +45,11 @@ TEST_CASE("diploid::alleles_maxAQ") {
             auto al1 = diploid::gt_alleles(gt).first;
             auto al2 = diploid::gt_alleles(gt).second;
 
-            vector<double> gl(diploid::genotypes(n_allele), 0.01);
-            gl[gt] = 1.0;
+            vector<double> gll(diploid::genotypes(n_allele), log(0.01));
+            gll[gt] = log(1.0);
             vector<int> AQ;
-            Status s = diploid::alleles_maxAQ(n_allele, 1, {0}, gl, AQ);
+            Status s = diploid::alleles_maxAQ(n_allele, 1, {0}, gll, AQ);
+            REQUIRE(s.ok());
             REQUIRE(AQ.size() == n_allele);
             for (int al = 0; al<n_allele; al++) {
                 if (al == al1 || al == al2) {
@@ -72,11 +73,12 @@ TEST_CASE("diploid::alleles_maxAQ") {
                     auto al3 = diploid::gt_alleles(gt2).first;
                     auto al4 = diploid::gt_alleles(gt2).second;
 
-                    vector<double> gl(diploid::genotypes(n_allele), 0.001);
-                    gl[gt] = 1.0;
-                    gl[gt2] = 0.1;
+                    vector<double> gll(diploid::genotypes(n_allele), log(0.001));
+                    gll[gt] = log(1.0);
+                    gll[gt2] = log(0.1);
                     vector<int> AQ;
-                    Status s = diploid::alleles_maxAQ(n_allele, 1, {0}, gl, AQ);
+                    Status s = diploid::alleles_maxAQ(n_allele, 1, {0}, gll, AQ);
+                    REQUIRE(s.ok());
                     REQUIRE(AQ.size() == n_allele);
                     for (int al = 0; al<n_allele; al++) {
                          if (al == al1 || al == al2) {
@@ -92,6 +94,19 @@ TEST_CASE("diploid::alleles_maxAQ") {
                 }
             }
         }
+    }
+
+    SECTION("potential phred underflow") {
+        vector<int32_t> pl {4364,0,4983};
+        vector<double> gll;
+        for (auto pl_i : pl) {
+            gll.push_back(double(pl_i)/(-10.0)/log10(exp(1.0)));
+        }
+        vector<int> AQ;
+        Status s = diploid::alleles_maxAQ(2, 1, {0}, gll, AQ);
+        REQUIRE(s.ok());
+        REQUIRE(AQ[0] == 4983);
+        REQUIRE(AQ[1] == 4364);
     }
 
     // TODO: multi-sample tests
