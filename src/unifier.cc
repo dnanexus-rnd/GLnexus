@@ -147,6 +147,17 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
         }
     }
 
+    // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
+    // this might not be the case up until this point, in the rare case when all
+    // individuals carrying an allele have weak, homozygous-alt genotype calls
+    if (cfg.min_quality > 0) {
+        for (auto& al : alts) {
+            if (al.second.maxAQ >= cfg.min_quality) {
+                al.second.copy_number = std::max(al.second.copy_number, 1U);
+            }
+        }
+    }
+
     return Status::OK();
 }
 
