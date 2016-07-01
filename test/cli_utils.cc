@@ -276,7 +276,7 @@ unification:
         vector<pair<string,size_t>> contigs2;
         vector<range> ranges2;
         vector<discovered_alleles> valleles2;
-        Status s = utils::merge_discovered_allele_files(filenames, contigs2, ranges2, valleles2);
+        Status s = utils::merge_discovered_allele_files(nullptr, filenames, contigs2, ranges2, valleles2);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
     }
@@ -297,7 +297,7 @@ unification:
         vector<pair<string,size_t>> contigs2;
         vector<range> ranges2;
         vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(filenames, contigs2, ranges2, valleles);
+        Status s = utils::merge_discovered_allele_files(nullptr, filenames, contigs2, ranges2, valleles);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(valleles.size() == 1);
@@ -320,7 +320,7 @@ unification:
         vector<pair<string,size_t>> contigs2;
         vector<range> ranges2;
         vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(filenames, contigs2, ranges2, valleles);
+        Status s = utils::merge_discovered_allele_files(nullptr, filenames, contigs2, ranges2, valleles);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(valleles.size() == 1);

@@ -78,6 +78,18 @@ Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     return Status::OK();
 }
 
+static void log_num_alleles(std::shared_ptr<spdlog::logger> logger,
+                            const vector<discovered_alleles> &valleles,
+                            const string& filename) {
+    if (logger == nullptr)
+        return;
+    unsigned ct=0;
+    for (const auto& dsals : valleles) {
+        ct += dsals.size();
+    }
+    logger->info() << "loaded " << ct << " alleles from " << filename;
+}
+
 Status yaml_of_contigs_alleles_ranges(const vector<pair<string,size_t> > &contigs,
                                       const vector<range> &ranges,
                                       const vector<discovered_alleles> &valleles,
@@ -224,7 +236,8 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
 
 
 // Load first file
-Status merge_discovered_allele_files(const vector<string> &filenames,
+Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
+                                     const vector<string> &filenames,
                                      vector<pair<string,size_t>> &contigs,
                                      vector<range> &ranges,
                                      vector<discovered_alleles> &valleles) {
@@ -240,6 +253,7 @@ Status merge_discovered_allele_files(const vector<string> &filenames,
     const string& first_file = filenames[0];
     S(LoadYAMLFile(first_file, node));
     S(contigs_alleles_ranges_of_yaml(node, contigs, ranges, valleles));
+    log_num_alleles(logger, valleles, first_file);
 
     if (filenames.size() == 1)
         return Status::OK();
@@ -267,6 +281,7 @@ Status merge_discovered_allele_files(const vector<string> &filenames,
 
         S(LoadYAMLFile(crnt_file, node));
         S(contigs_alleles_ranges_of_yaml(node, contigs2, ranges2, valleles2));
+        log_num_alleles(logger, valleles2, crnt_file);
 
         // sanity: verify that the contigs are the same
         if (contigs.size() != contigs2.size())

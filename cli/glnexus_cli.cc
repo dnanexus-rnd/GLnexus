@@ -744,7 +744,13 @@ int main_unify_sites(int argc, char *argv[]) {
     vector<GLnexus::range> ranges;
     vector<GLnexus::discovered_alleles> valleles;
     H("merge discovered allele files",
-      utils::merge_discovered_allele_files(discovered_allele_files, contigs, ranges, valleles));
+      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, ranges, valleles));
+
+    unsigned discovered_allele_count=0;
+    for (const auto& dsals : valleles) {
+        discovered_allele_count += dsals.size();
+    }
+    console->info() << "consolidated to " << discovered_allele_count << " alleles for site unification";
 
     vector<GLnexus::unified_site> sites;
     for (int i = 0; i < valleles.size(); i++) {
@@ -836,7 +842,7 @@ int main_genotype(int argc, char *argv[]) {
     }
 
     genotyper_cfg.output_residuals = residuals;
-    cerr << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields." << endl;
+    console->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
     unique_ptr<GLnexus::KeyValue::DB> db;
 
     // open the database in read-only mode
@@ -856,6 +862,7 @@ int main_genotype(int argc, char *argv[]) {
             H("load unified sites",
               utils::unified_sites_of_yaml(node, contigs, sites));
         }
+        console->info() << "loaded " << sites.size() << " sites from " << unified_sites_file;
 
         // start service, discover alleles, unify sites, genotype sites
         GLnexus::service_config svccfg;
