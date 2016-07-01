@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <cstdio>
 #include <memory>
 #include "cli_utils.h"
 #include "catch.hpp"
@@ -6,6 +8,30 @@
 using namespace std;
 using namespace GLnexus;
 using namespace GLnexus::cli;
+
+        // create two yaml files in the right format
+static void yaml_file_of_discover_alleles(const string &filename,
+                                          const vector<pair<string,size_t>> &contigs,
+                                          const vector<range> ranges,
+                                          const char* buf) {
+    std::remove(filename.c_str());
+
+    vector<discovered_alleles> valleles;
+    YAML::Node n = YAML::Load(buf);
+    discovered_alleles dal1;
+    Status s = discovered_alleles_of_yaml(n, contigs, dal1);
+    REQUIRE(s.ok());
+    valleles.push_back(dal1);
+
+    YAML::Emitter yaml;
+    s = utils::yaml_of_contigs_alleles_ranges(contigs, ranges, valleles, yaml);
+    REQUIRE(s.ok());
+
+    ofstream fos;
+    fos.open(filename);
+    fos << yaml.c_str();
+    fos.close();
+}
 
 TEST_CASE("cli_utils") {
     vector<pair<string,size_t>> contigs;
@@ -76,7 +102,6 @@ TEST_CASE("cli_utils") {
 
         YAML::Emitter yaml;
         Status s = utils::yaml_of_contigs_alleles_ranges(contigs, ranges, valleles, yaml);
-        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         YAML::Node n = YAML::Load(yaml.c_str());
@@ -159,5 +184,110 @@ unification:
                 REQUIRE(sites[i] == sites2[i]);
             }
         }
+    }
+
+    SECTION("LoadYAMLFile") {
+        string tmp_file_name = "/tmp/xxx.yml";
+        std::remove(tmp_file_name.c_str());
+
+        // Create a trivial YAML file
+        {
+            YAML::Emitter yaml;
+
+            yaml << YAML::BeginSeq;
+            yaml << "x";
+            yaml << "y";
+            yaml << "z";
+            yaml << YAML::EndSeq;
+
+            ofstream fos;
+            fos.open(tmp_file_name);
+            fos << yaml.c_str();
+            fos.close();
+        }
+
+        // verify the file
+        {
+            YAML::Node node;
+            Status s = utils::LoadYAMLFile(tmp_file_name, node);
+            REQUIRE(s.ok());
+        }
+
+        // Create an invalid YAML file
+        std::remove(tmp_file_name.c_str());
+        {
+            ofstream fos;
+            fos.open(tmp_file_name);
+            fos << "hello: false:" << endl;
+            fos << "world: oyster" << endl;
+            fos << "movies: Dune Airplane Princess Bride" << endl;
+            fos.close();
+        }
+
+        // verify the file does not load
+        {
+            YAML::Node node;
+            Status s = utils::LoadYAMLFile(tmp_file_name, node);
+            REQUIRE(s.bad());
+        }
+
+        // Create an invalid YAML file
+        std::remove(tmp_file_name.c_str());
+        {
+            ofstream fos;
+            fos.open(tmp_file_name);
+            fos << "" << endl;
+            fos.close();
+        }
+
+        // verify the file does not load
+        {
+            YAML::Node node;
+            Status s = utils::LoadYAMLFile(tmp_file_name, node);
+            REQUIRE(s.bad());
+        }
+
+    }
+
+
+    SECTION("merging discovered allele files, case 1") {
+        vector<range> ranges;
+        ranges.push_back(range(0, 1, 1100));
+
+        string tmp_file_name1 = "/tmp/xxx_1.yml";
+        yaml_file_of_discover_alleles(tmp_file_name1, contigs, ranges, da_yaml1);
+
+        vector<string> filenames;
+        filenames.push_back(tmp_file_name1);
+
+        vector<pair<string,size_t>> contigs2;
+        vector<range> ranges2;
+        vector<discovered_alleles> valleles2;
+        Status s = utils::merge_discovered_allele_files(filenames, contigs2, ranges2, valleles2);
+        REQUIRE(s.ok());
+        REQUIRE(contigs2.size() == contigs.size());
+    }
+
+    SECTION("merging discovered allele files, case 2") {
+        vector<range> ranges;
+        ranges.push_back(range(0, 1, 1100));
+
+        string tmp_file_name1 = "/tmp/xxx_1.yml";
+        yaml_file_of_discover_alleles(tmp_file_name1, contigs, ranges, da_yaml1);
+        string tmp_file_name2 = "/tmp/xxx_2.yml";
+        yaml_file_of_discover_alleles(tmp_file_name2, contigs, ranges, da_yaml2);
+
+        vector<string> filenames;
+        filenames.push_back(tmp_file_name1);
+        filenames.push_back(tmp_file_name2);
+
+        vector<pair<string,size_t>> contigs2;
+        vector<range> ranges2;
+        vector<discovered_alleles> valleles;
+        Status s = utils::merge_discovered_allele_files(filenames, contigs2, ranges2, valleles);
+        REQUIRE(s.ok());
+        REQUIRE(contigs2.size() == contigs.size());
+        REQUIRE(valleles.size() == 1);
+        REQUIRE(valleles[0].size() == 4);
     }
 }
