@@ -33,6 +33,8 @@ static void yaml_file_of_discover_alleles(const string &filename,
     fos.close();
 }
 
+static auto console = spdlog::stderr_logger_mt("cli_utils_test");
+
 TEST_CASE("cli_utils") {
     vector<pair<string,size_t>> contigs;
     contigs.push_back(make_pair("16",12345));
@@ -85,6 +87,9 @@ TEST_CASE("cli_utils") {
         range_txt = "20:10000-30000";
         REQUIRE(!utils::parse_range(contigs, range_txt, query));
 
+        range_txt = "20:0-10000000";
+        REQUIRE(!utils::parse_range(contigs, range_txt, query));
+
         string cmdline("xxx yyy");
         vector<range> ranges;
         REQUIRE(!utils::parse_ranges(contigs, cmdline, ranges));
@@ -127,6 +132,17 @@ TEST_CASE("cli_utils") {
         for (int i=0; i < valleles.size(); i++) {
             REQUIRE(valleles[i] == valleles2[i]);
         }
+    }
+
+    SECTION("yaml_discovered_alleles, #ranges does not match #valleles") {
+        vector<range> ranges;
+        ranges.push_back(range(0, 1000, 1100));
+        ranges.push_back(range(1, 40, 70));
+
+        vector<discovered_alleles> valleles;
+        YAML::Emitter yaml;
+        Status s = utils::yaml_of_contigs_alleles_ranges(contigs, ranges, valleles, yaml);
+        REQUIRE(s.bad());
     }
 
 
@@ -203,6 +219,13 @@ unification:
         string tmp_file_name = "/tmp/xxx.yml";
         std::remove(tmp_file_name.c_str());
 
+        {
+            YAML::Node node;
+            string emptyname = "";
+            Status s = utils::LoadYAMLFile(emptyname, node);
+            REQUIRE(s.bad());
+        }
+
         // Create a trivial YAML file
         {
             YAML::Emitter yaml;
@@ -276,7 +299,7 @@ unification:
         vector<pair<string,size_t>> contigs2;
         vector<range> ranges2;
         vector<discovered_alleles> valleles2;
-        Status s = utils::merge_discovered_allele_files(nullptr, filenames, contigs2, ranges2, valleles2);
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, ranges2, valleles2);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
     }
@@ -297,7 +320,7 @@ unification:
         vector<pair<string,size_t>> contigs2;
         vector<range> ranges2;
         vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(nullptr, filenames, contigs2, ranges2, valleles);
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, ranges2, valleles);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(valleles.size() == 1);
@@ -320,7 +343,7 @@ unification:
         vector<pair<string,size_t>> contigs2;
         vector<range> ranges2;
         vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(nullptr, filenames, contigs2, ranges2, valleles);
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, ranges2, valleles);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(valleles.size() == 1);
