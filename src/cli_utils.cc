@@ -245,7 +245,9 @@ Status merge_discovered_allele_files(const vector<string> &filenames,
         return Status::OK();
 
     // We need to merge additional files. Make a map from range to
-    // discovered-allele structures.
+    // discovered-allele structures. Each discovered alleles file
+    // may have a different set of containing ranges. We want to merge alleles
+    // only when they are in the same containing range.
     map<range, discovered_alleles> range2dsal;
     for (int j=0; j < ranges.size(); ++j) {
         range2dsal[ranges[j]] = valleles[j];

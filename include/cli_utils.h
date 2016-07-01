@@ -43,6 +43,10 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
                              const std::vector<std::pair<std::string,size_t> > &contigs,
                              std::vector<unified_site> &sites);
 
+// Merge a bunch of discovered-allele files, all in YAML format.
+//
+// Note: each file could have a different set of containing ranges, and we want to merge
+// alleles in each range separately.
 Status merge_discovered_allele_files(const std::vector<std::string> &filenames,
                                      std::vector<std::pair<std::string,size_t>> &contigs,
                                      std::vector<range> &ranges,
