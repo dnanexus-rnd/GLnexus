@@ -64,6 +64,19 @@ TEST_CASE("cli_utils") {
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
+    const char* da_yaml3 = 1 + R"(
+- range: {ref: '16', beg: 107, end: 109}
+  dna: A
+  is_ref: true
+  maxAQ: 99
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+- range: {ref: '17', beg: 220, end: 330}
+  dna: G
+  is_ref: true
+  maxAQ: 99
+  zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
+)";
+
     SECTION("parse_range") {
         GLnexus::range query(-1,-1,-1);
         string range_txt = "17:100-2000";
@@ -250,7 +263,7 @@ unification:
     }
 
 
-    SECTION("merging discovered allele files, case 1") {
+    SECTION("merging discovered allele files, special case, only one file") {
         vector<range> ranges;
         ranges.push_back(range(0, 1, 1100));
 
@@ -268,7 +281,7 @@ unification:
         REQUIRE(contigs2.size() == contigs.size());
     }
 
-    SECTION("merging discovered allele files, case 2") {
+    SECTION("merging discovered allele files, 2 files") {
         vector<range> ranges;
         ranges.push_back(range(0, 1, 1100));
 
@@ -289,5 +302,28 @@ unification:
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(valleles.size() == 1);
         REQUIRE(valleles[0].size() == 4);
+    }
+
+    SECTION("merging discovered allele files, 3 files") {
+        vector<range> ranges;
+        ranges.push_back(range(0, 1, 1100));
+
+        vector<string> filenames;
+        const char* yamls[] = {da_yaml1, da_yaml2, da_yaml3};
+        const char* i_filenames[3] = {"/tmp/xxx_1.yml", "/tmp/xxx_2.yml", "/tmp/xxx_3.yml"};
+        for (int i=0; i < 3; i++) {
+            string fname = string(i_filenames[i]);
+            yaml_file_of_discover_alleles(fname, contigs, ranges, yamls[i]);
+            filenames.push_back(fname);
+        }
+
+        vector<pair<string,size_t>> contigs2;
+        vector<range> ranges2;
+        vector<discovered_alleles> valleles;
+        Status s = utils::merge_discovered_allele_files(filenames, contigs2, ranges2, valleles);
+        REQUIRE(s.ok());
+        REQUIRE(contigs2.size() == contigs.size());
+        REQUIRE(valleles.size() == 1);
+        REQUIRE(valleles[0].size() == 6);
     }
 }
