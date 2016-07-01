@@ -87,7 +87,7 @@ TEST_CASE("cli_utils") {
         range_txt = "20:10000-30000";
         REQUIRE(!utils::parse_range(contigs, range_txt, query));
 
-        range_txt = "20:0-10000000";
+        range_txt = "17:0-10000000";
         REQUIRE(!utils::parse_range(contigs, range_txt, query));
 
         string cmdline("xxx yyy");
@@ -305,13 +305,20 @@ unification:
     }
 
     SECTION("merging discovered allele files, 2 files") {
-        vector<range> ranges;
-        ranges.push_back(range(0, 1, 1100));
-
+        // create two files, with different ranges
         string tmp_file_name1 = "/tmp/xxx_1.yml";
-        yaml_file_of_discover_alleles(tmp_file_name1, contigs, ranges, da_yaml1);
+        {
+            vector<range> ranges;
+            ranges.push_back(range(0, 1, 1100));
+            yaml_file_of_discover_alleles(tmp_file_name1, contigs, ranges, da_yaml1);
+        }
+
         string tmp_file_name2 = "/tmp/xxx_2.yml";
-        yaml_file_of_discover_alleles(tmp_file_name2, contigs, ranges, da_yaml2);
+        {
+            vector<range> ranges2;
+            ranges2.push_back(range(0, 2002, 2208));
+            yaml_file_of_discover_alleles(tmp_file_name2, contigs, ranges2, da_yaml2);
+        }
 
         vector<string> filenames;
         filenames.push_back(tmp_file_name1);
@@ -323,8 +330,9 @@ unification:
         Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, ranges2, valleles);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(valleles.size() == 1);
-        REQUIRE(valleles[0].size() == 4);
+        REQUIRE(valleles.size() == 2);
+        REQUIRE(valleles[0].size() == 2);
+        REQUIRE(valleles[1].size() == 2);
     }
 
     SECTION("merging discovered allele files, 3 files") {
@@ -349,4 +357,14 @@ unification:
         REQUIRE(valleles.size() == 1);
         REQUIRE(valleles[0].size() == 6);
     }
+
+    SECTION("merging discovered allele files, error, no files provided") {
+        vector<range> ranges;
+        ranges.push_back(range(0, 1, 1100));
+        vector<string> filenames;
+        vector<discovered_alleles> valleles;
+
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, ranges, valleles);
+    }
+
 }
