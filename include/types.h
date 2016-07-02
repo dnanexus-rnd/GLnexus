@@ -458,14 +458,18 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
-    // Phred quality score threshold, used in two ways:
-    // 1) minimum Allele Quality in the cohort for the unifier to include an allele
-    // 2) minimum Genotype Quality for an input genotype call to "count" towards
-    //    copy number estimates for the constituent alleles.
-    // All else equal, increasing min_quality will increase specificity and reduce
-    // sensitivity, and also speed up the genotyper (as fewer weak sites will be
-    // considered)
-    int min_quality = 0;
+    // AQ phred score thresholds: the unifier will include alleles having any
+    // observation with AQ > min_AQ1, or having multiple observations with
+    // AQ > min_AQ2 (min_AQ1 >= min_AQ2).
+    //
+    // All else equal, increasing min_AQ will increase specificity and reduce
+    // sensitivity, and also speed up the genotyper (as fewer weak sites will
+    // be considered)
+    int min_AQ1 = 0, min_AQ2 = 0;
+
+    // GQ phred score threshold for an input genotype call to "count" towards
+    // copy number estimates for the constituent alleles.
+    int min_GQ = 0;
 
     // Keep only alleles with at least this estimated copy number discovered
     // in the cohort.

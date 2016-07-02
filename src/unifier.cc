@@ -129,7 +129,7 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
         // minimize the alt allele
         S(minimize_allele(rp->second.first, alt));
 
-        unsigned copy_number = dal.second.zGQ.copy_number(cfg.min_quality);
+        unsigned copy_number = dal.second.zGQ.copy_number(cfg.min_GQ);
 
         // add it to alts, combining originals, copy_number, and topAQ with any
         // previously observed occurrences of the same minimized alt allele.
@@ -144,17 +144,6 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
             ap->second.originals.insert(dal.first);
             ap->second.topAQ += dal.second.topAQ;
             ap->second.copy_number += copy_number;
-        }
-    }
-
-    // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
-    // this might not be the case up until this point, in the rare case when all
-    // individuals carrying an allele have weak, homozygous-alt genotype calls
-    if (cfg.min_quality > 0) {
-        for (auto& al : alts) {
-            if (al.second.topAQ.V[0] >= cfg.min_quality) {
-                al.second.copy_number = std::max(al.second.copy_number, 1U);
-            }
         }
     }
 
@@ -205,11 +194,21 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     // sort the alt alleles by decreasing copy number (+ some tiebreakers)
     vector<minimized_allele> valleles;
     valleles.reserve(alleles.size());
-    for (const auto& allele : alleles) {
-        // filter alleles with insufficient copy number or AQ
-        if (allele.second.topAQ.V[0] >= cfg.min_quality &&
-            allele.second.copy_number >= cfg.min_allele_copy_number) {
-            valleles.push_back(allele);
+    // filter alleles with insufficient copy number or AQ
+    for (auto al : alleles) {
+        // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
+        // this might not be the case up until this point, in the rare case when all
+        // individuals carrying an allele have weak, homozygous-alt genotype calls
+        if (cfg.min_AQ1 && al.second.topAQ.V[0] >= cfg.min_AQ1) {
+            al.second.copy_number = std::max(al.second.copy_number, 1U);
+        }
+        if (cfg.min_AQ2 && al.second.topAQ.V[1] >= cfg.min_AQ2) {
+            al.second.copy_number = std::max(al.second.copy_number, 2U);
+        }
+
+        if ((al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2) &&
+            al.second.copy_number >= cfg.min_allele_copy_number) {
+            valleles.push_back(al);
         }
     }
     sort(valleles.begin(), valleles.end(), minimized_allele_lt(cfg.preference));

@@ -84,7 +84,9 @@ static GLnexus::Status check_sanity_multiple_dsals(
 // should reside in some user-modifiable yml file
 static const char* config_presets_yml = R"eof(
 unifier_config:
-  min_quality: 50
+  min_AQ1: 60
+  min_AQ2: 40
+  min_GQ: 60
 genotyper_config:
   required_dp: 1
   liftover_fields:
