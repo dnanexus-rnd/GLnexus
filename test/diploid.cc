@@ -96,7 +96,58 @@ TEST_CASE("diploid::alleles_topAQ") {
         }
     }
 
-    // TODO: top_AQ rank tests
+    SECTION("top_AQ ranking") {
+        top_AQ topAQ, topAQ2;
+        auto &V = topAQ.V, &V2 = topAQ2.V;
+        vector<int> v {1, 5, 4};
+        topAQ += v;
+        REQUIRE(V[0] == 5);
+        REQUIRE(V[1] == 4);
+        REQUIRE(V[2] == 1);
+        REQUIRE(V[3] == 0);
+        v = {2, 8, 3}; topAQ += v;
+        REQUIRE(V[0] == 8);
+        REQUIRE(V[1] == 5);
+        REQUIRE(V[2] == 4);
+        REQUIRE(V[3] == 3);
+        REQUIRE(V[4] == 2);
+        REQUIRE(V[5] == 1);
+        REQUIRE(V[6] == 0);
+        v = {8, 2, 3}; topAQ += v;
+        REQUIRE(V[0] == 8);
+        REQUIRE(V[1] == 8);
+        REQUIRE(V[2] == 5);
+        REQUIRE(V[3] == 4);
+        REQUIRE(V[4] == 3);
+        REQUIRE(V[5] == 3);
+        REQUIRE(V[6] == 2);
+        REQUIRE(V[7] == 2);
+        REQUIRE(V[8] == 1);
+        REQUIRE(V[9] == 0);
+        v = {6, 7, 9, 0}; topAQ += v;
+        REQUIRE(V[0] == 9);
+        REQUIRE(V[1] == 8);
+        REQUIRE(V[2] == 8);
+        REQUIRE(V[3] == 7);
+        REQUIRE(V[4] == 6);
+        REQUIRE(V[5] == 5);
+        REQUIRE(V[6] == 4);
+        REQUIRE(V[7] == 3);
+        REQUIRE(V[8] == 3);
+        REQUIRE(V[9] == 2);
+        topAQ2 = topAQ;
+        topAQ2 += topAQ;
+        REQUIRE(V2[0] == 9);
+        REQUIRE(V2[1] == 9);
+        REQUIRE(V2[2] == 8);
+        REQUIRE(V2[3] == 8);
+        REQUIRE(V2[4] == 8);
+        REQUIRE(V2[5] == 8);
+        REQUIRE(V2[6] == 7);
+        REQUIRE(V2[7] == 7);
+        REQUIRE(V2[8] == 6);
+        REQUIRE(V2[9] == 6);
+    }
 
     SECTION("potential phred underflow") {
         vector<int32_t> pl {4364,0,4983};
