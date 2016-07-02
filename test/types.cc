@@ -86,12 +86,12 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
@@ -118,13 +118,13 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: 'bogus', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: 10.5
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
 
         discovered_alleles dal;
@@ -134,8 +134,8 @@ TEST_CASE("discovered_alleles_of_yaml") {
         n = YAML::Load(1 + R"(
 - dna: A
   is_ref: true
-  copy_number: 100
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -145,8 +145,8 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: 123
   dna: A
   is_ref: true
-  copy_number: 100
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
 
         s = discovered_alleles_of_yaml(n, contigs, dal);
@@ -158,13 +158,13 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: BOGUS
   is_ref: false
-  copy_number: 10.5
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
 
         discovered_alleles dal;
@@ -172,18 +172,18 @@ TEST_CASE("discovered_alleles_of_yaml") {
         REQUIRE(s.bad());
     }
 
-    SECTION("bogus copy_number") {
+    SECTION("bogus zygosity_by_GQ") {
         YAML::Node n = YAML::Load(1 + R"(
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: [x]
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: 100
 )");
 
         discovered_alleles dal;
@@ -191,18 +191,18 @@ TEST_CASE("discovered_alleles_of_yaml") {
         REQUIRE(s.bad());
     }
 
-    SECTION("bogus maxAQ") {
+    SECTION("bogus top_AQ") {
         YAML::Node n = YAML::Load(1 + R"(
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  copy_number: 100
-  maxAQ: 99
+  top_AQ: [99]
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  copy_number: 100
-  maxAQ: ['z']
+  top_AQ: false
+  zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
 
         discovered_alleles dal;
@@ -230,12 +230,12 @@ TEST_CASE("yaml_of_discovered_alleles") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 

@@ -33,11 +33,11 @@ truth_discovered_alleles:
     - range: {ref: '21', beg: 10009464, end: 10009465}
       dna: 'TA'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240]
       zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: '21', beg: 10009464, end: 10009465}
       dna: 'T'
       is_ref: false
-      maxAQ: 16
+      top_AQ: [16]
       zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 

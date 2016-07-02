@@ -54,8 +54,10 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
         gq.clear();
     }
 
-    ans.clear();
     ans.resize(record->n_allele);
+    for (auto& z : ans) {
+        z.clear();
+    }
 
     for (auto sample : samples) {
         auto sample_gq = gq.empty() ? 0 : gq[sample];
@@ -112,12 +114,12 @@ GLnexus::Status bcf_get_genotype_log_likelihoods(const bcf_hdr_t* header, bcf1_t
     return Status::NotFound();
 }
 
-// for each allele, find the max AQ across the given sample indices, given valid genotype log-likelihoods
-GLnexus::Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const vector<unsigned>& samples,
-                              const vector<double>& gll, vector<int>& ans) {
+// for each allele, find the max AQs across the given sample indices, given valid genotype log-likelihoods
+GLnexus::Status alleles_topAQ(unsigned n_allele, unsigned n_sample, const vector<unsigned>& samples,
+                              const vector<double>& gll, vector<top_AQ>& ans) {
     unsigned nGT = genotypes(n_allele);
-    if (gll.size() != n_sample*nGT) return Status::Invalid("alleles_maxAQ");
-    ans.assign(n_allele,0);
+    if (gll.size() != n_sample*nGT) return Status::Invalid("alleles_topAQ");
+    vector<vector<int>> obs(n_allele);
 
     for (unsigned i : samples) {
         assert(i < n_sample);
@@ -140,23 +142,33 @@ GLnexus::Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const vector
         for (unsigned al = 0; al < n_allele; al++) {
             // phred scale likelihood ratio
             double AQLLR = std::max(0.0, maxLL_with[al] - maxLL_without[al]);
-            ans[al] = std::max(ans[al], (int)round(10.0*AQLLR/log(10.0)));
+            obs[al].push_back((int)round(10.0*AQLLR/log(10.0)));
         }
+    }
+
+    ans.resize(n_allele);
+    for (unsigned i = 0; i < n_allele; i++) {
+        ans[i].clear();
+        ans[i] += obs[i];
     }
 
     return Status::OK();
 }
 
-// for each allele, find the max AQ across the given sample indices, from the BCF record
-// if no genotype likelihoods can be found in the record, then return [0, 0, ...]
-GLnexus::Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples, vector<int>& ans) {
-    ans.assign(record->n_allele,0);
+// for each allele, find the top AQs across the given sample indices, from the BCF record
+// if no genotype likelihoods can be found in the record, then return zeroes
+GLnexus::Status bcf_alleles_topAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples,
+                                  vector<top_AQ>& ans) {
     vector<double> gll;
     GLnexus::Status s = bcf_get_genotype_log_likelihoods(hdr, record, gll);
 
     if (s.ok()) {
-        return alleles_maxAQ(record->n_allele, record->n_sample, samples, gll, ans);
+        return alleles_topAQ(record->n_allele, record->n_sample, samples, gll, ans);
     } else if (s == GLnexus::StatusCode::NOT_FOUND) {
+        ans.resize(record->n_allele);
+        for (auto& v : ans) {
+            v.clear();
+        }
         return Status::OK();
     }
 

@@ -37,7 +37,7 @@ TEST_CASE("diploid::alleles_gt") {
     }
 }
 
-TEST_CASE("diploid::alleles_maxAQ") {
+TEST_CASE("diploid::alleles_topAQ") {
     // tests with one overwhelmingly likely genotype
     for (int n_allele=2; n_allele<16; n_allele++) {
         auto nGT = diploid::genotypes(n_allele);
@@ -47,15 +47,15 @@ TEST_CASE("diploid::alleles_maxAQ") {
 
             vector<double> gll(diploid::genotypes(n_allele), log(0.01));
             gll[gt] = log(1.0);
-            vector<int> AQ;
-            Status s = diploid::alleles_maxAQ(n_allele, 1, {0}, gll, AQ);
+            vector<top_AQ> AQ;
+            Status s = diploid::alleles_topAQ(n_allele, 1, {0}, gll, AQ);
             REQUIRE(s.ok());
             REQUIRE(AQ.size() == n_allele);
             for (int al = 0; al<n_allele; al++) {
                 if (al == al1 || al == al2) {
-                    REQUIRE(AQ[al] == 20);
+                    REQUIRE(AQ[al].V[0] == 20);
                 } else {
-                    REQUIRE(AQ[al] == 0);
+                    REQUIRE(AQ[al].V[0] == 0);
                 }
             }
         }
@@ -76,19 +76,19 @@ TEST_CASE("diploid::alleles_maxAQ") {
                     vector<double> gll(diploid::genotypes(n_allele), log(0.001));
                     gll[gt] = log(1.0);
                     gll[gt2] = log(0.1);
-                    vector<int> AQ;
-                    Status s = diploid::alleles_maxAQ(n_allele, 1, {0}, gll, AQ);
+                    vector<top_AQ> AQ;
+                    Status s = diploid::alleles_topAQ(n_allele, 1, {0}, gll, AQ);
                     REQUIRE(s.ok());
                     REQUIRE(AQ.size() == n_allele);
                     for (int al = 0; al<n_allele; al++) {
                          if (al == al1 || al == al2) {
                              if (al == al3 || al == al4) {
-                                 REQUIRE(AQ[al] == 30);
+                                 REQUIRE(AQ[al].V[0] == 30);
                              } else {
-                                 REQUIRE(AQ[al] == 10);
+                                 REQUIRE(AQ[al].V[0] == 10);
                              }
                         } else {
-                            REQUIRE(AQ[al] == 0);
+                            REQUIRE(AQ[al].V[0] == 0);
                         }
                     }
                 }
@@ -96,17 +96,19 @@ TEST_CASE("diploid::alleles_maxAQ") {
         }
     }
 
+    // TODO: top_AQ rank tests
+
     SECTION("potential phred underflow") {
         vector<int32_t> pl {4364,0,4983};
         vector<double> gll;
         for (auto pl_i : pl) {
             gll.push_back(double(pl_i)/(-10.0)/log10(exp(1.0)));
         }
-        vector<int> AQ;
-        Status s = diploid::alleles_maxAQ(2, 1, {0}, gll, AQ);
+        vector<top_AQ> AQ;
+        Status s = diploid::alleles_topAQ(2, 1, {0}, gll, AQ);
         REQUIRE(s.ok());
-        REQUIRE(AQ[0] == 4983);
-        REQUIRE(AQ[1] == 4364);
+        REQUIRE(AQ[0].V[0] == 4983);
+        REQUIRE(AQ[1].V[0] == 4364);
     }
 
     // TODO: multi-sample tests

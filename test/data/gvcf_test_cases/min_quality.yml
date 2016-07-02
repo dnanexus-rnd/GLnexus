@@ -52,78 +52,78 @@ truth_discovered_alleles:
     - range: {ref: "21", beg: 10009460, end: 10009460}
       dna: 'T'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240,240]
       zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009460, end: 10009460}
       dna: 'A'
       is_ref: false
-      maxAQ: 2
+      top_AQ: [2,2]
       zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009461, end: 10009461}
       dna: 'T'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240,240]
       zygosity_by_GQ: [[1,0],[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009461, end: 10009461}
       dna: 'A'
       is_ref: false
-      maxAQ: 20
+      top_AQ: [20,2]
       zygosity_by_GQ: [[1,0],[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009462, end: 10009462}
       dna: 'T'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009462, end: 10009462}
       dna: 'A'
       is_ref: false
-      maxAQ: 2
+      top_AQ: [2]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009464, end: 10009465}
       dna: 'TA'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240]
       zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009464, end: 10009465}
       dna: 'TC'
       is_ref: false
       copy_number: 0.9406
-      maxAQ: 12
+      top_AQ: [12]
       zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009465, end: 10009465}
       dna: 'A'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009465, end: 10009465}
       dna: 'C'
       is_ref: false
-      maxAQ: 2
+      top_AQ: [2]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009466, end: 10009466}
       dna: 'T'
       is_ref: true
-      maxAQ: 240
+      top_AQ: [240,240]
       zygosity_by_GQ: [[1,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009466, end: 10009466}
       dna: 'A'
       is_ref: false
-      maxAQ: 16
+      top_AQ: [16]
       zygosity_by_GQ: [[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009466, end: 10009466}
       dna: 'G'
       is_ref: false
-      maxAQ: 2
+      top_AQ: [2]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009467, end: 10009467}
       dna: 'T'
       is_ref: true
-      maxAQ: 9
+      top_AQ: [9]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "21", beg: 10009467, end: 10009467}
       dna: 'A'
       is_ref: false
-      maxAQ: 46
+      top_AQ: [46]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
