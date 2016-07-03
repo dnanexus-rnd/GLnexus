@@ -17,13 +17,15 @@ unsigned alleles_gt(unsigned a1, unsigned a2);
 Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::vector<unsigned>& samples,
                           std::vector<zygosity_by_GQ>& ans);
 
-// This function finds the maximum AQ of each allele in the record, across the given
+// This function finds the maximum AQs for each allele in the record, across the given
 // subset of sample indices. (see types.h for the definition of AQ)
-Status bcf_alleles_maxAQ(const bcf_hdr_t* hdr, bcf1_t* record, const std::vector<unsigned>& samples, std::vector<int>& ans);
+Status bcf_alleles_topAQ(const bcf_hdr_t* hdr, bcf1_t* record, const std::vector<unsigned>& samples,
+                         std::vector<top_AQ>& ans);
 
 // exposed for testing: find alleles' maxAQ for given multi-sample genotype likelihood
 // vector
-Status alleles_maxAQ(unsigned n_allele, unsigned n_sample, const std::vector<unsigned>& samples, const std::vector<double>& gl, std::vector<int>& ans);
+Status alleles_topAQ(unsigned n_allele, unsigned n_sample, const std::vector<unsigned>& samples,
+                     const std::vector<double>& gl, std::vector<top_AQ>& ans);
 
 namespace trio {
 int mendelian_inconsistencies(int gt_p1, int gt_p2, int gt_ch);

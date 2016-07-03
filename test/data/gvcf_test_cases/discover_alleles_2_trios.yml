@@ -38,50 +38,50 @@ truth_discovered_alleles:
     - range: {ref: 'A', beg: 1001, end: 1001}
       dna: 'A'
       is_ref: true
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[4,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1001, end: 1001}
       dna: 'G'
       is_ref: false
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[4,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'C'
       is_ref: true
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'A'
       is_ref: false
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[0,3],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'G'
       is_ref: false
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1002, end: 1002}
       dna: 'T'
       is_ref: false
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1011, end: 1012}
       dna: 'CC'
       is_ref: true
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[3,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1011, end: 1012}
       dna: 'AG'
       is_ref: false
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[3,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1011, end: 1013}
       dna: 'CCC'
       is_ref: true
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[2,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: 'A', beg: 1011, end: 1013}
       dna: 'AGA'
       is_ref: false
-      maxAQ: 0
+      top_AQ: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
