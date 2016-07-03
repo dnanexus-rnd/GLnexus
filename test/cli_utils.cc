@@ -44,12 +44,12 @@ TEST_CASE("cli_utils") {
 - range: {ref: '16', beg: 100, end: 100}
   dna: A
   is_ref: true
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '16', beg: 113, end: 120}
   dna: G
   is_ref: false
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
@@ -57,12 +57,12 @@ TEST_CASE("cli_utils") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 200, end: 310}
   dna: G
   is_ref: false
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 

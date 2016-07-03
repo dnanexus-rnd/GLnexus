@@ -29,6 +29,8 @@ Status discover_alleles_from_iterator(const set<string>& samples,
         }
 
         // for each BCF record
+        vector<top_AQ> topAQ;
+        vector<zygosity_by_GQ> zGQ;
         for (const auto& record : records) {
             assert(!is_gvcf_ref_record(record.get()));
             range rng(record);
@@ -44,11 +46,9 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             }
 
             // find the max AQ for each allele
-            vector<int> maxAQ;
-            S(diploid::bcf_alleles_maxAQ(dataset_header.get(), record.get(), dataset_relevant_samples, maxAQ));
+            S(diploid::bcf_alleles_topAQ(dataset_header.get(), record.get(), dataset_relevant_samples, topAQ));
 
             // find zygosity_by_GQ for each allele
-            vector<zygosity_by_GQ> zGQ;
             S(diploid::bcf_zygosity_by_GQ(dataset_header.get(), record.get(), dataset_relevant_samples, zGQ));
 
             // FIXME -- minor potential bug -- double-counting copy number of
@@ -63,7 +63,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
                     discovered_allele_info ai;
                     ai.is_ref = false;
-                    ai.maxAQ = maxAQ[i];
+                    ai.topAQ = topAQ[i];
                     ai.zGQ = zGQ[i];
                     dsals.insert(make_pair(allele(rng, aldna), ai));
                     any_alt = true;
@@ -77,7 +77,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 if (any_alt) {
                     discovered_allele_info ai;
                     ai.is_ref = true;
-                    ai.maxAQ = maxAQ[0];
+                    ai.topAQ = topAQ[0];
                     ai.zGQ = zGQ[0];
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }

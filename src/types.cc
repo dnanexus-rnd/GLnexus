@@ -11,7 +11,7 @@ regex regex_dna     ("[ACGTN]+")
     ;
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
-// updating maxAQ and combining zygosity_by_GQ
+// updating topAQ and combining zygosity_by_GQ
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest) {
     for (auto& dsal : src) {
         UNPAIR(dsal,allele,ai)
@@ -22,7 +22,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
             if (ai.is_ref != p->second.is_ref) {
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
-            p->second.maxAQ = std::max(p->second.maxAQ, ai.maxAQ);
+            p->second.topAQ += ai.topAQ;
             p->second.zGQ += ai.zGQ;
         }
     }
@@ -102,8 +102,16 @@ Status yaml_of_discovered_alleles(const discovered_alleles& dal,
             << YAML::Value << p.first.dna;
         out << YAML::Key << "is_ref"
             << YAML::Value << p.second.is_ref;
-        out << YAML::Key << "maxAQ"
-            << YAML::Value << p.second.maxAQ;
+        out << YAML::Key << "top_AQ"
+            << YAML::Value << YAML::Flow << YAML::BeginSeq;
+        for (unsigned i = 0; i < top_AQ::COUNT; i++) {
+            auto x = p.second.topAQ.V[i];
+            if (i > 0 && x <= 0) {
+                break;
+            }
+            out << x;
+        }
+        out << YAML::EndSeq;
 
         out << YAML::Key << "zygosity_by_GQ"
             << YAML::Value << YAML::Flow << YAML::BeginSeq;
@@ -152,15 +160,19 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
         VR(n_is_ref && n_is_ref.IsScalar(), "missing/invalid 'is_ref' field in entry");
         ai.is_ref = n_is_ref.as<bool>();
 
-        const auto n_maxAQ = (*p)["maxAQ"];
-        VR(n_maxAQ && n_maxAQ.IsScalar(), "missing/invalid 'maxAQ' field in entry");
-        ai.maxAQ = n_maxAQ.as<int>();
-        VR(ai.maxAQ >= 0, "invalid 'maxAQ' field in entry");
+        const auto n_topAQ = (*p)["top_AQ"];
+        VR(n_topAQ && n_topAQ.IsSequence(), "missing/invalid 'top_AQ' field in entry");
+        VR(n_topAQ.size() <= top_AQ::COUNT, "unexpected top_AQ size");
+        unsigned i = 0;
+        for (YAML::const_iterator aq = n_topAQ.begin(); aq != n_topAQ.end(); ++aq, ++i) {
+            VR(aq->IsScalar() && aq->as<int>() >= 0, "invalid entry in top_AQ");
+            ai.topAQ.V[i] = aq->as<int>();
+        }
 
         const auto n_zygosity_by_GQ = (*p)["zygosity_by_GQ"];
         VR(n_zygosity_by_GQ && n_zygosity_by_GQ.IsSequence(), "missing/invalid 'zygosity_by_GQ' field in entry");
         VR(n_zygosity_by_GQ.size() == zygosity_by_GQ::GQ_BANDS, "unexpected row count in zygosity_by_GQ");
-        unsigned i = 0;
+        i = 0;
         for (YAML::const_iterator q = n_zygosity_by_GQ.begin(); q != n_zygosity_by_GQ.end(); ++q, ++i) {
             VR(q->IsSequence(), "invalid row in zygosity_by_GQ");
             VR(q->size() == zygosity_by_GQ::PLOIDY, "unexpected row size in zygosity_by_GQ");
@@ -320,11 +332,25 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
         V(ans.min_allele_copy_number >= 0, "invalid min_allele_copy_number");
     }
 
-    const auto n_min_quality = yaml["min_quality"];
-    if (n_min_quality) {
-        V(n_min_quality.IsScalar(), "invalid min_quality");
-        ans.min_quality = n_min_quality.as<int>();
-        V(ans.min_quality >= 0, "invalid min_quality");
+    const auto n_min_AQ1 = yaml["min_AQ1"];
+    if (n_min_AQ1) {
+        V(n_min_AQ1.IsScalar(), "invalid min_AQ1");
+        ans.min_AQ1 = n_min_AQ1.as<int>();
+        V(ans.min_AQ1 >= 0, "invalid min_AQ1");
+    }
+
+    const auto n_min_AQ2 = yaml["min_AQ2"];
+    if (n_min_AQ2) {
+        V(n_min_AQ2.IsScalar(), "invalid min_AQ2");
+        ans.min_AQ2 = n_min_AQ2.as<int>();
+        V(ans.min_AQ2 >= 0, "invalid min_AQ2");
+    }
+
+    const auto n_min_GQ = yaml["min_GQ"];
+    if (n_min_GQ) {
+        V(n_min_GQ.IsScalar(), "invalid min_GQ");
+        ans.min_GQ = n_min_GQ.as<int>();
+        V(ans.min_GQ >= 0, "invalid min_GQ");
     }
 
     const auto n_max_alleles_per_site = yaml["max_alleles_per_site"];
@@ -355,7 +381,9 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
 Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::BeginMap;
     ans << YAML::Key << "min_allele_copy_number" << YAML::Value << min_allele_copy_number;
-    ans << YAML::Key << "min_quality" << YAML::Value << min_quality;
+    ans << YAML::Key << "min_AQ1" << YAML::Value << min_AQ1;
+    ans << YAML::Key << "min_AQ2" << YAML::Value << min_AQ2;
+    ans << YAML::Key << "min_GQ" << YAML::Value << min_GQ;
     ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
 
     ans << YAML::Key << "preference" << YAML::Value;

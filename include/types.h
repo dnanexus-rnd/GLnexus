@@ -241,6 +241,55 @@ struct allele {
     }
 };
 
+// *Allele Quality (AQ)* of an allele in a VCF genotype call is defined in terms of
+// the genotype likelihoods as follows: (the maximum likelihood of any genotype
+// containing an allele / the maximum likelihood of any genotype not containing that
+// allele), expressed on phred scale, truncated below zero.
+//
+// top_AQ is used to store the highest COUNT observations (descending order) of
+// AQ for an allele across all genotype calls in the cohort.
+struct top_AQ {
+    static const unsigned COUNT = 10;
+    int V[COUNT] __attribute__ ((aligned));
+    std::vector<int> addbuf;
+
+    top_AQ() {
+        clear();
+    }
+
+    top_AQ(int AQ1) {
+        clear();
+        V[0] = AQ1;
+    }
+
+    void clear() {
+        memset(&V, 0, sizeof(int)*COUNT);
+        addbuf.clear();
+    }
+
+    void add(const int* rhs, const size_t rhs_count) {
+        addbuf.resize(COUNT+rhs_count);
+        memcpy(addbuf.data(), &V, COUNT*sizeof(int));
+        memcpy(addbuf.data()+COUNT, rhs, rhs_count*sizeof(int));
+        std::partial_sort(addbuf.begin(), addbuf.begin()+COUNT, addbuf.end(), std::greater<int>());
+        memcpy(&V, addbuf.data(), COUNT*sizeof(int));
+    }
+
+    void operator+=(const top_AQ& rhs) {
+        add(rhs.V, COUNT);
+    }
+
+    void operator+=(const std::vector<int>& rhs) {
+        if (rhs.size()) {
+            add(rhs.data(), rhs.size());
+        }
+    }
+
+    bool operator==(const top_AQ& rhs) const {
+        return memcmp(V, rhs.V, sizeof(int)*COUNT) == 0;
+    }
+};
+
 // zygosity_by_GQ: holds information about how many times an allele is observed
 // during the discovery process, stratified by genotype quality.
 // A 10x2 matrix (M), the GQ_BANDS correspond to ten bands of phred-scaled GQ:
@@ -257,12 +306,16 @@ struct zygosity_by_GQ {
     unsigned M[GQ_BANDS][PLOIDY] __attribute__ ((aligned));
 
     zygosity_by_GQ() {
-        memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
+        clear();
     }
 
     zygosity_by_GQ(unsigned zygosity, int GQ, unsigned count=1) {
-        memset(&M, 0, sizeof(int)*GQ_BANDS*PLOIDY);
+        clear();
         add(zygosity, GQ, count);
+    }
+
+    void clear() {
+        memset(&M, 0, sizeof(unsigned)*GQ_BANDS*PLOIDY);
     }
 
     void add(unsigned zygosity, int GQ, unsigned count=1) {
@@ -301,25 +354,20 @@ struct zygosity_by_GQ {
 struct discovered_allele_info {
     bool is_ref = false;
 
-    // *Allele Quality (AQ)* of an allele in a VCF genotype call is defined in terms of
-    // the genotype likelihoods as follows: (the maximum likelihood of any genotype
-    // containing an allele / the maximum likelihood of any genotype not containing that
-    // allele), expressed on phred scale, truncated below zero.
-    //
-    // maxAQ is the maximum AQ observed for this allele across all genotype calls in the
-    // cohort.
-    int maxAQ = 0;
+    // top_AQ statistics are used to adjudicate allele existence 
+    top_AQ topAQ;
 
+    // zygosity_by_GQ statsitics are used to estimate allele copy number
     zygosity_by_GQ zGQ;
 
     bool operator==(const discovered_allele_info& rhs) const noexcept {
-        return is_ref == rhs.is_ref && maxAQ == rhs.maxAQ && zGQ == rhs.zGQ;
+        return is_ref == rhs.is_ref && topAQ == rhs.topAQ && zGQ == rhs.zGQ;
     }
     bool operator!=(const discovered_allele_info& rhs) const noexcept { return !(*this == rhs); }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " maxAQ: " << maxAQ << " copy number: " << zGQ.copy_number() << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " maxAQ: " << topAQ.V[0] << " copy number: " << zGQ.copy_number() << "]";
         return os.str();
     }
 };
@@ -410,14 +458,18 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
-    // Phred quality score threshold, used in two ways:
-    // 1) minimum Allele Quality in the cohort for the unifier to include an allele
-    // 2) minimum Genotype Quality for an input genotype call to "count" towards
-    //    copy number estimates for the constituent alleles.
-    // All else equal, increasing min_quality will increase specificity and reduce
-    // sensitivity, and also speed up the genotyper (as fewer weak sites will be
-    // considered)
-    int min_quality = 0;
+    // AQ phred score thresholds: the unifier will include alleles having any
+    // observation with AQ > min_AQ1, or having multiple observations with
+    // AQ > min_AQ2 (min_AQ1 >= min_AQ2).
+    //
+    // All else equal, increasing min_AQ will increase specificity and reduce
+    // sensitivity, and also speed up the genotyper (as fewer weak sites will
+    // be considered)
+    int min_AQ1 = 0, min_AQ2 = 0;
+
+    // GQ phred score threshold for an input genotype call to "count" towards
+    // copy number estimates for the constituent alleles.
+    int min_GQ = 0;
 
     // Keep only alleles with at least this estimated copy number discovered
     // in the cohort.

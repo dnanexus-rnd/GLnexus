@@ -38,7 +38,7 @@ project(GLnexus)
 # After build, double-check external/src/htslib-stamp/htslib-build-out.log
 # to make sure CFLAGS were set as expected
 ExternalProject_Add(htslib
-    URL https://github.com/samtools/htslib/archive/1.2.1.zip
+    URL https://github.com/samtools/htslib/archive/1.3.1.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -gdwarf -O3 -DNDEBUG -march=ivybridge/" Makefile
@@ -94,7 +94,7 @@ set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
 # After build, double-check external/src/yaml-cpp-stamp/yaml-cpp-build-out.log
 # to make sure CFLAGS were set as expected
 ExternalProject_Add(yaml-cpp
-    URL https://github.com/jbeder/yaml-cpp/archive/release-0.5.2.zip
+    URL https://github.com/jbeder/yaml-cpp/archive/005a6a19ee0af3e284637abe9ecea5501993fc4c.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-march=ivybridge .
     BUILD_IN_SOURCE 1
