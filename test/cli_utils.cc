@@ -70,12 +70,12 @@ TEST_CASE("cli_utils") {
 - range: {ref: '16', beg: 107, end: 109}
   dna: A
   is_ref: true
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 220, end: 330}
   dna: G
   is_ref: true
-  maxAQ: 99
+  top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
 
