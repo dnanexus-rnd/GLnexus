@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include "types.h"
+#include "spdlog/spdlog.h"
 
 namespace GLnexus {
 namespace cli {
@@ -17,6 +18,9 @@ bool parse_range(const std::vector<std::pair<std::string,size_t> >& contigs,
 // parse a comma-separated list of ranges
 bool parse_ranges(const std::vector<std::pair<std::string,size_t> >& contigs,
                   const std::string& ranges, std::vector<range>& ans);
+
+// Read from disk and parse a YAML file
+Status LoadYAMLFile(const std::string& filename, YAML::Node &node);
 
 // Serialize the contigs, ranges, and discovered alleles to YAML
 Status yaml_of_contigs_alleles_ranges(const std::vector<std::pair<std::string,size_t> > &contigs,
@@ -39,6 +43,16 @@ Status yaml_of_unified_sites(const std::vector<unified_site> &sites,
 Status unified_sites_of_yaml(const YAML::Node& yaml,
                              const std::vector<std::pair<std::string,size_t> > &contigs,
                              std::vector<unified_site> &sites);
+
+// Merge a bunch of discovered-allele files, all in YAML format.
+//
+// Note: each file could have a different set of containing ranges, and we want to merge
+// alleles in each range separately.
+Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
+                                     const std::vector<std::string> &filenames,
+                                     std::vector<std::pair<std::string,size_t>> &contigs,
+                                     std::vector<range> &ranges,
+                                     std::vector<discovered_alleles> &valleles);
 }}}
 
 #endif

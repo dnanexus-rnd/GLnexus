@@ -38,48 +38,6 @@ static GLnexus::RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
     return p.get();
 }
 
-static GLnexus::Status LoadYAMLFile(const string& filename, YAML::Node &node) {
-    if (filename.size() == 0)
-        return GLnexus::Status::Invalid("The YAML file must be specified");
-
-    try {
-        node = YAML::LoadFile(filename);
-    } catch (exception &e) {
-        return GLnexus::Status::Invalid("Error loading yaml file ", filename);
-    }
-
-    if (!node)
-        return GLnexus::Status::NotFound("bad YAML file", filename);
-    return GLnexus::Status::OK();
-}
-
-static GLnexus::Status check_sanity_multiple_dsals(
-    const string &file1,
-    const string &file2,
-    const vector<pair<string,size_t>> &contigs1,
-    const vector<pair<string,size_t>> &contigs2,
-    const vector<GLnexus::range> &ranges1,
-    const vector<GLnexus::range> &ranges2) {
-
-    if (contigs1.size() != contigs2.size())
-        return GLnexus::Status::Invalid("The number of contigs is different bewteen", file1 + " " + file2);
-    for (int i=0; i < contigs1.size(); ++i) {
-        if (contigs1[i] != contigs2[i])
-            return GLnexus::Status::Invalid("The contigs are different bewteen",
-                                            file1 + " " + file2 + " index=" + to_string(i));
-    }
-
-    if (ranges1.size() != ranges2.size())
-        return GLnexus::Status::Invalid("The number of ranges is different bewteen", file1 + " " + file2);
-    for (int i=0; i < ranges1.size(); ++i) {
-        if (ranges1[i] != ranges2[i])
-            return GLnexus::Status::Invalid("The ranges are different bewteen",
-                                            file1 + " " + file2 + " index=" + to_string(i));
-    }
-
-    return GLnexus::Status::OK();
-}
-
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
 static const char* config_presets_yml = R"eof(
@@ -784,47 +742,11 @@ int main_unify_sites(int argc, char *argv[]) {
         H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
     }
 
-    // Load first file
     vector<pair<string,size_t> > contigs;
     vector<GLnexus::range> ranges;
     vector<GLnexus::discovered_alleles> valleles;
-    {
-        YAML::Node node;
-        H("Load discovered alleles file", LoadYAMLFile(discovered_allele_files[0], node));
-        H("parse contigs, discovered alleles, and ranges",
-          utils::contigs_alleles_ranges_of_yaml(node, contigs, ranges, valleles));
-
-        unsigned ct=0;
-        for (const auto& dsals : valleles) {
-            ct += dsals.size();
-        }
-        console->info() << "loaded " << ct << " alleles from " << discovered_allele_files[0];
-    }
-
-    // Load the rest of the files, and merge
-    for (int i=1; i < discovered_allele_files.size(); ++i) {
-        vector<pair<string,size_t> > contigs2;
-        vector<GLnexus::range> ranges2;
-        vector<GLnexus::discovered_alleles> valleles2;
-        YAML::Node node;
-
-        H("Load discovered alleles file", LoadYAMLFile(discovered_allele_files[i], node));
-        H("parse contigs, discovered alleles, and ranges",
-          utils::contigs_alleles_ranges_of_yaml(node, contigs2, ranges2, valleles2));
-
-        // basic sanity, the contigs and ranges should be the same
-        H("checking sanity of ranges and bed files",
-          check_sanity_multiple_dsals(discovered_allele_files[0], discovered_allele_files[i],
-                                      contigs, contigs2, ranges, ranges2));
-
-        unsigned ct=0;
-        for (int k=0; k < valleles.size(); ++k) {
-            ct += valleles2[k].size();
-            H("merge discovered alleles file #" + to_string(i) + " index=" + to_string(k),
-              merge_discovered_alleles(valleles2[k], valleles[k]));
-        }
-        console->info() << "loaded " << ct << " alleles from " << discovered_allele_files[i];
-    }
+    H("merge discovered allele files",
+      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, ranges, valleles));
 
     unsigned discovered_allele_count=0;
     for (const auto& dsals : valleles) {
@@ -938,7 +860,7 @@ int main_genotype(int argc, char *argv[]) {
         vector<GLnexus::unified_site> sites;
         {
             YAML::Node node;
-            H("Load unified sites file", LoadYAMLFile(unified_sites_file, node));
+            H("Load discovered alleles file", utils::LoadYAMLFile(unified_sites_file, node));
             H("load unified sites",
               utils::unified_sites_of_yaml(node, contigs, sites));
         }
