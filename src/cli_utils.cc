@@ -264,7 +264,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     // only when they are in the same containing range.
     map<range, discovered_alleles> range2dsal;
     for (int j=0; j < ranges.size(); ++j) {
-        range2dsal[ranges[j]] = valleles[j];
+        range2dsal[ranges[j]] = std::move(valleles[j]);
     }
 
     // extra hygiene, the loop below fills these arrays
@@ -298,7 +298,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
 
             const auto& p = range2dsal.find(rng);
             if (p == range2dsal.end()) {
-                range2dsal[rng] = dsal;
+                range2dsal[rng] = std::move(dsal);
             } else {
                 S(merge_discovered_alleles(dsal, p->second));
             }
