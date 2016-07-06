@@ -372,8 +372,29 @@ unification:
         discovered_alleles dsals;
 
         Status s = utils::merge_discovered_allele_files(console, filenames, contigs, dsals);
+        REQUIRE(s.bad());
     }
 
+    SECTION("merging discovered allele files, error 2") {
+        // create two files, with different ranges
+        string tmp_file_name1 = "/tmp/xxx_1.yml";
+        yaml_file_of_discovered_alleles(tmp_file_name1, contigs, da_yaml1);
+
+        vector<pair<string,size_t>> contigs2;
+        contigs2.push_back(make_pair("16",550000));
+        contigs2.push_back(make_pair("17",8811991));
+        string tmp_file_name2 = "/tmp/xxx_2.yml";
+        yaml_file_of_discovered_alleles(tmp_file_name2, contigs2, da_yaml2);
+
+        vector<string> filenames;
+        filenames.push_back(tmp_file_name1);
+        filenames.push_back(tmp_file_name2);
+
+        vector<pair<string,size_t>> contigs3;
+        discovered_alleles dsals;
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs3, dsals);
+        REQUIRE(s.bad());
+    }
 
     const char* da_yaml10 = 1 + R"(
 - range: {ref: '16', beg: 107, end: 109}
@@ -493,6 +514,16 @@ TEST_CASE("find_containing_range") {
 
         // non overlapping
         pos = range(1,15,30);
+        s = utils::find_containing_range(ranges, pos, ans);
+        REQUIRE(s.bad());
+    }
+
+    SECTION("no ranges") {
+        Status s;
+        range ans(-1,-1,-1);
+        std::set<range> ranges;
+
+        range pos(1,17,18);
         s = utils::find_containing_range(ranges, pos, ans);
         REQUIRE(s.bad());
     }

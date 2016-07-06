@@ -210,8 +210,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     const string& first_file = filenames[0];
     S(LoadYAMLFile(first_file, node));
     S(contigs_alleles_of_yaml(node, contigs, dsals));
-    if (logger != nullptr)
-        logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
+    logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
 
     if (filenames.size() == 1)
         return Status::OK();
@@ -225,8 +224,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
 
         S(LoadYAMLFile(crnt_file, node));
         S(contigs_alleles_of_yaml(node, contigs2, dsals2));
-        if (logger != nullptr)
-            logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
+        logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
 
         // verify that the contigs are the same
         if (contigs.size() != contigs2.size())
