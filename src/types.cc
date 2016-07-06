@@ -187,7 +187,9 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
         ans[al] = ai;
         #undef VR
     }
-    V(ans.size() >= 1, "not enough alleles");
+
+    // We might serialize to disk an empty list of alleles for a site.
+    //V(ans.size() >= 1, "not enough alleles");
 
     #undef V
     return Status::OK();

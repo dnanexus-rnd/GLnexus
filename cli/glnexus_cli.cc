@@ -549,6 +549,15 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
         }
     }
 
+    // make an orderly pass on the ranges, and verify that there are no overlaps.
+    if (ranges.size() > 1) {
+        const GLnexus::range &prev = *(ranges.begin());
+        for (auto it = ranges.begin() + 1; it != ranges.end(); ++it) {
+            if (prev.overlaps(*it))
+                return GLnexus::Status::Invalid("overlapping ranges ", prev.str(contigs) + " " + it->str(contigs));
+        }
+    }
+
     return GLnexus::Status::OK();
 }
 
@@ -674,8 +683,7 @@ int main_discover_alleles(int argc, char *argv[]) {
 
     // Write the discovered alleles to stdout
     YAML::Emitter yaml;
-    H("write results as yaml",
-      utils::yaml_of_contigs_alleles_ranges(contigs, ranges, valleles, yaml));
+    H("write results as yaml",utils::yaml_of_contigs_alleles(contigs, valleles, yaml));
     cout << yaml.c_str() << endl;
     return 0;
 }
@@ -698,17 +706,26 @@ int main_unify_sites(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
-        {0, 0, 0}
+        {0, 0, 0, 0}
     };
 
+    string bedfilename;
     string config_preset;
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hc:",
+    while (-1 != (c = getopt_long(argc, argv, "hb:c:",
                                   long_options, nullptr))) {
         switch (c) {
+            case 'b':
+                bedfilename = string(optarg);
+                if (bedfilename.size() == 0) {
+                    cerr <<  "invalid BED filename" << endl;
+                    return 1;
+                }
+                break;
             case 'c':
                 config_preset = string(optarg);
                 break;
@@ -743,10 +760,9 @@ int main_unify_sites(int argc, char *argv[]) {
     }
 
     vector<pair<string,size_t> > contigs;
-    vector<GLnexus::range> ranges;
     vector<GLnexus::discovered_alleles> valleles;
     H("merge discovered allele files",
-      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, ranges, valleles));
+      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, valleles));
 
     unsigned discovered_allele_count=0;
     for (const auto& dsals : valleles) {
@@ -754,10 +770,27 @@ int main_unify_sites(int argc, char *argv[]) {
     }
     console->info() << "consolidated to " << discovered_allele_count << " alleles for site unification";
 
+    set<GLnexus::range> ranges;
+    if (!bedfilename.empty()) {
+        string range_txt; // empty string, the plan is to get rid of the argument
+        vector<GLnexus::range> i_ranges;
+        H("Parsing range argument", parse_ranges_from_cmd_line(bedfilename, range_txt, contigs, i_ranges));
+        for (auto &r : i_ranges)
+            ranges.insert(r);
+    }
+
     vector<GLnexus::unified_site> sites;
-    for (int i = 0; i < valleles.size(); i++) {
+    for (const auto& dsals : valleles) {
+        if (dsals.size() == 0) continue;
+
+        // find the containing range
+        const GLnexus::range &pos = dsals.begin()->first.pos;
+        GLnexus::range containing_range(-1,-1,-1);
+        H("find containing range", utils::find_containing_range(ranges, pos, containing_range));
+
         vector<GLnexus::unified_site> sites_i;
-        H("unify sites", GLnexus::unified_sites(unifier_cfg, valleles[i], sites_i, ranges[i]));
+        H("unify sites",
+          GLnexus::unified_sites(unifier_cfg, dsals, sites_i, containing_range));
         sites.insert(sites.end(), sites_i.begin(), sites_i.end());
     }
     console->info() << "unified to " << sites.size() << " sites";
