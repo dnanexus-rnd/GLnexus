@@ -78,20 +78,8 @@ Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     return Status::OK();
 }
 
-static void log_num_alleles(std::shared_ptr<spdlog::logger> logger,
-                            const vector<discovered_alleles> &valleles,
-                            const string& filename) {
-    if (logger == nullptr)
-        return;
-    unsigned ct=0;
-    for (const auto& dsals : valleles) {
-        ct += dsals.size();
-    }
-    logger->info() << "loaded " << ct << " alleles from " << filename;
-}
-
 Status yaml_of_contigs_alleles(const vector<pair<string,size_t> > &contigs,
-                               const vector<discovered_alleles> &valleles,
+                               const discovered_alleles &dsals,
                                YAML::Emitter &yaml) {
     Status s;
 
@@ -118,12 +106,8 @@ Status yaml_of_contigs_alleles(const vector<pair<string,size_t> > &contigs,
     yaml << YAML::Value;
     {
         // Note: we might write out empty sites too
-        yaml << YAML::BeginSeq;
-        for (auto &dsal : valleles) {
-            s = yaml_of_discovered_alleles(dsal, contigs, yaml);
-            if (s.bad()) return s;
-        }
-        yaml << YAML::EndSeq;
+        s = yaml_of_discovered_alleles(dsals, contigs, yaml);
+        if (s.bad()) return s;
     }
 
     yaml << YAML::EndMap;
@@ -133,14 +117,14 @@ Status yaml_of_contigs_alleles(const vector<pair<string,size_t> > &contigs,
 
 Status contigs_alleles_of_yaml(const YAML::Node& yaml,
                                std::vector<std::pair<std::string,size_t> > &contigs,
-                               vector<discovered_alleles> &valleles) {
+                               discovered_alleles &dsals) {
     Status s;
     if (!yaml.IsMap()) {
         return Status::Invalid("not a map at top level");
     }
 
     contigs.clear();
-    valleles.clear();
+    dsals.clear();
 
     // read contigs
     auto n_contigs = yaml["contigs"];
@@ -155,15 +139,8 @@ Status contigs_alleles_of_yaml(const YAML::Node& yaml,
 
     // read ranges and alleles
     auto n_ranges = yaml["alleles"];
-    if (!n_ranges.IsSequence()) {
-        return Status::Invalid("alleles should be a yaml sequence");
-    }
-    for (YAML::const_iterator p = n_ranges.begin(); p != n_ranges.end(); ++p) {
-        discovered_alleles dsals;
-        s = discovered_alleles_of_yaml((*p), contigs, dsals);
-        if (s.bad()) return s;
-        valleles.push_back(dsals);
-    }
+    s = discovered_alleles_of_yaml(n_ranges, contigs, dsals);
+    if (s.bad()) return s;
 
     return Status::OK();
 }
@@ -206,24 +183,35 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
     return Status::OK();
 }
 
+Status merge_all(const vector<discovered_alleles> &valleles,
+                 discovered_alleles &ans) {
+    Status s;
+    ans.clear();
+    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
+        S(merge_discovered_alleles(*it, ans));
+    }
+    return Status::OK();
+}
+
 
 // Load first file
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      const vector<string> &filenames,
                                      vector<pair<string,size_t>> &contigs,
-                                     vector<discovered_alleles> &valleles) {
+                                     discovered_alleles &dsals) {
     Status s;
     if (filenames.size() == 0)
         return Status::Invalid("no discovered allele files provided");
     contigs.clear();
-    valleles.clear();
+    dsals.clear();
 
     // Load the first file
     YAML::Node node;
     const string& first_file = filenames[0];
     S(LoadYAMLFile(first_file, node));
-    S(contigs_alleles_of_yaml(node, contigs, valleles));
-    log_num_alleles(logger, valleles, first_file);
+    S(contigs_alleles_of_yaml(node, contigs, dsals));
+    if (logger != nullptr)
+        logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
 
     if (filenames.size() == 1)
         return Status::OK();
@@ -231,19 +219,16 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     // Load the rest of the files, and merge
     for (auto it = filenames.begin() + 1; it != filenames.end(); ++it) {
         vector<pair<string,size_t>> contigs2;
-        vector<discovered_alleles> valleles2;
+        discovered_alleles dsals2;
         YAML::Node node;
         const string &crnt_file = *it;
 
         S(LoadYAMLFile(crnt_file, node));
-        S(contigs_alleles_of_yaml(node, contigs2, valleles2));
-        log_num_alleles(logger, valleles2, crnt_file);
+        S(contigs_alleles_of_yaml(node, contigs2, dsals2));
+        if (logger != nullptr)
+            logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
 
-        // sanity: verify that the contigs are the same, and that the number of sites
-        // is the same.
-        if (valleles.size() != valleles2.size())
-            return Status::Invalid("The number of sites is different bewteen",
-                                   first_file + " " + crnt_file);
+        // verify that the contigs are the same
         if (contigs.size() != contigs2.size())
             return Status::Invalid("The number of contigs is different bewteen",
                                    first_file + " " + crnt_file);
@@ -253,9 +238,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                        first_file + " " + crnt_file + " index=" + to_string(i));
         }
 
-        for (int i=0; i < valleles2.size(); ++i) {
-            S(merge_discovered_alleles(valleles2[i], valleles[i]));
-        }
+        S(merge_discovered_alleles(dsals2, dsals));
     }
 
     return Status::OK();

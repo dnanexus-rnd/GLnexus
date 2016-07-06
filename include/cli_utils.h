@@ -24,13 +24,13 @@ Status LoadYAMLFile(const std::string& filename, YAML::Node &node);
 
 // Serialize the contigs, and discovered alleles to YAML
 Status yaml_of_contigs_alleles(const std::vector<std::pair<std::string,size_t> > &contigs,
-                               const std::vector<discovered_alleles> &valleles,
+                               const discovered_alleles &dsals,
                                YAML::Emitter &yaml);
 
 // Load a YAML file, previously created with the above function
 Status contigs_alleles_of_yaml(const YAML::Node& yaml,
                                std::vector<std::pair<std::string,size_t> > &contigs,
-                               std::vector<discovered_alleles> &valleles);
+                               discovered_alleles &dsals);
 
 // Serialize a vector of unified-alleles to YAML.
 Status yaml_of_unified_sites(const std::vector<unified_site> &sites,
@@ -42,12 +42,15 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
                              const std::vector<std::pair<std::string,size_t> > &contigs,
                              std::vector<unified_site> &sites);
 
+Status merge_all(const std::vector<discovered_alleles> &valleles,
+                 discovered_alleles &dsals);
+
 // Merge a bunch of discovered-allele files, all in YAML format.
 //
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      const std::vector<std::string> &filenames,
                                      std::vector<std::pair<std::string,size_t>> &contigs,
-                                     std::vector<discovered_alleles> &valleles);
+                                     discovered_alleles &dsals);
 
 
 // Find which range contains [pos].

@@ -15,15 +15,13 @@ static void yaml_file_of_discovered_alleles(const string &filename,
                                           const char* buf) {
     std::remove(filename.c_str());
 
-    vector<discovered_alleles> valleles;
     YAML::Node n = YAML::Load(buf);
     discovered_alleles dal1;
     Status s = discovered_alleles_of_yaml(n, contigs, dal1);
     REQUIRE(s.ok());
-    valleles.push_back(dal1);
 
     YAML::Emitter yaml;
-    s = utils::yaml_of_contigs_alleles(contigs, valleles, yaml);
+    s = utils::yaml_of_contigs_alleles(contigs, dal1, yaml);
     REQUIRE(s.ok());
 
     ofstream fos;
@@ -109,40 +107,35 @@ TEST_CASE("cli_utils") {
         YAML::Node n = YAML::Load(yaml.c_str());
         discovered_alleles dal_empty;
         Status s = discovered_alleles_of_yaml(n, contigs, dal_empty);
-        cout << s.str() << endl;
         REQUIRE(s.ok());
     }
 
     SECTION("yaml_discovered_alleles") {
-        vector<discovered_alleles> valleles;
+        discovered_alleles dsals;
         {
             YAML::Node n = YAML::Load(da_yaml1);
             discovered_alleles dal1;
             Status s = discovered_alleles_of_yaml(n, contigs, dal1);
             REQUIRE(s.ok());
-            valleles.push_back(dal1);
+            merge_discovered_alleles(dal1, dsals);
 
             n = YAML::Load(da_yaml2);
             discovered_alleles dal2;
             s = discovered_alleles_of_yaml(n, contigs, dal2);
             REQUIRE(s.ok());
-            valleles.push_back(dal2);
-
+            merge_discovered_alleles(dal2, dsals);
         }
 
         YAML::Emitter yaml;
-        Status s = utils::yaml_of_contigs_alleles(contigs, valleles, yaml);
+        Status s = utils::yaml_of_contigs_alleles(contigs, dsals, yaml);
         REQUIRE(s.ok());
 
         YAML::Node n = YAML::Load(yaml.c_str());
         std::vector<std::pair<std::string,size_t> > contigs2;
-        std::vector<discovered_alleles> valleles2;
+        discovered_alleles dsals2;
 
-        s = utils::contigs_alleles_of_yaml(n, contigs2, valleles2);
-        REQUIRE(valleles.size() == valleles2.size());
-        for (int i=0; i < valleles.size(); i++) {
-            REQUIRE(valleles[i] == valleles2[i]);
-        }
+        s = utils::contigs_alleles_of_yaml(n, contigs2, dsals2);
+        REQUIRE(dsals.size() == dsals2.size());
     }
 
     const char* bad_yaml_1 = 1 + R"(
@@ -161,26 +154,23 @@ alleles: yyy
 
 
     SECTION("bad yaml inputs for contigs_alleles_of_yaml") {
-        std::vector<discovered_alleles> valleles;
+        discovered_alleles dsals;
         {
             YAML::Node n = YAML::Load("aaa");
-            Status s = utils::contigs_alleles_of_yaml(n, contigs, valleles);
+            Status s = utils::contigs_alleles_of_yaml(n, contigs, dsals);
             REQUIRE(s.bad());
-            cout << s.str() << endl;
         }
 
         {
             YAML::Node n = YAML::Load(bad_yaml_1);
-            Status s = utils::contigs_alleles_of_yaml(n, contigs, valleles);
+            Status s = utils::contigs_alleles_of_yaml(n, contigs, dsals);
             REQUIRE(s.bad());
-            cout << s.str() << endl;
         }
 
         {
             YAML::Node n = YAML::Load(bad_yaml_2);
-            Status s = utils::contigs_alleles_of_yaml(n, contigs, valleles);
+            Status s = utils::contigs_alleles_of_yaml(n, contigs, dsals);
             REQUIRE(s.bad());
-            cout << s.str() << endl;
         }
     }
 
@@ -333,8 +323,8 @@ unification:
         filenames.push_back(tmp_file_name1);
 
         vector<pair<string,size_t>> contigs2;
-        vector<discovered_alleles> valleles2;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, valleles2);
+        discovered_alleles dsals2;
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, dsals2);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
     }
@@ -352,12 +342,11 @@ unification:
         filenames.push_back(tmp_file_name2);
 
         vector<pair<string,size_t>> contigs2;
-        vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, valleles);
+        discovered_alleles dsals;
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, dsals);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(valleles.size() == 1);
-        REQUIRE(valleles[0].size() == 4);
+        REQUIRE(dsals.size() == 4);
     }
 
     SECTION("merging discovered allele files, 3 files") {
@@ -371,19 +360,18 @@ unification:
         }
 
         vector<pair<string,size_t>> contigs2;
-        vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, valleles);
+        discovered_alleles dsals;
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, dsals);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(valleles.size() == 1);
-        REQUIRE(valleles[0].size() == 6);
+        REQUIRE(dsals.size() == 6);
     }
 
     SECTION("merging discovered allele files, error, no files provided") {
         vector<string> filenames;
-        vector<discovered_alleles> valleles;
+        discovered_alleles dsals;
 
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, valleles);
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, dsals);
     }
 
 
@@ -423,8 +411,8 @@ unification:
             filenames.push_back(fname);
         }
 
-        vector<discovered_alleles> valleles;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, valleles);
+        discovered_alleles dsals;
+        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, dsals);
     }
 
 }

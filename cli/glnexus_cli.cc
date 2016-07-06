@@ -675,15 +675,14 @@ int main_discover_alleles(int argc, char *argv[]) {
     console->info() << "discovering alleles in " << ranges.size() << " range(s)";
     vector<GLnexus::discovered_alleles> valleles;
     H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
-    unsigned discovered_allele_count=0;
-    for (const auto& dsals : valleles) {
-        discovered_allele_count += dsals.size();
-    }
-    console->info() << "discovered " << discovered_allele_count << " alleles";
+
+    GLnexus::discovered_alleles dsals;
+    utils::merge_all(valleles, dsals);
+    console->info() << "discovered " << dsals.size() << " alleles";
 
     // Write the discovered alleles to stdout
     YAML::Emitter yaml;
-    H("write results as yaml",utils::yaml_of_contigs_alleles(contigs, valleles, yaml));
+    H("write results as yaml",utils::yaml_of_contigs_alleles(contigs, dsals, yaml));
     cout << yaml.c_str() << endl;
     return 0;
 }
@@ -760,15 +759,10 @@ int main_unify_sites(int argc, char *argv[]) {
     }
 
     vector<pair<string,size_t> > contigs;
-    vector<GLnexus::discovered_alleles> valleles;
+    GLnexus::discovered_alleles dsals;
     H("merge discovered allele files",
-      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, valleles));
-
-    unsigned discovered_allele_count=0;
-    for (const auto& dsals : valleles) {
-        discovered_allele_count += dsals.size();
-    }
-    console->info() << "consolidated to " << discovered_allele_count << " alleles for site unification";
+      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, dsals));
+    console->info() << "consolidated to " << dsals.size() << " alleles for site unification";
 
     set<GLnexus::range> ranges;
     if (!bedfilename.empty()) {
@@ -779,21 +773,21 @@ int main_unify_sites(int argc, char *argv[]) {
             ranges.insert(r);
     }
 
+    // find the containing range
+    const GLnexus::range &pos = dsals.begin()->first.pos;
+    GLnexus::range containing_range(-1,-1,-1);
+    H("find containing range", utils::find_containing_range(ranges, pos, containing_range));
+
     vector<GLnexus::unified_site> sites;
-    for (const auto& dsals : valleles) {
-        if (dsals.size() == 0) continue;
-
-        // find the containing range
-        const GLnexus::range &pos = dsals.begin()->first.pos;
-        GLnexus::range containing_range(-1,-1,-1);
-        H("find containing range", utils::find_containing_range(ranges, pos, containing_range));
-
-        vector<GLnexus::unified_site> sites_i;
-        H("unify sites",
-          GLnexus::unified_sites(unifier_cfg, dsals, sites_i, containing_range));
-        sites.insert(sites.end(), sites_i.begin(), sites_i.end());
-    }
+    H("unify sites", GLnexus::unified_sites(unifier_cfg, dsals, sites));
     console->info() << "unified to " << sites.size() << " sites";
+
+    // set the containing ranges for each site
+    for (auto &us : sites) {
+        GLnexus::Status s = utils::find_containing_range(ranges, us.pos, us.containing_target);
+        if (s.ok())
+            assert(us.containing_target.rid < 0 || us.containing_target.contains(pos));
+    }
 
     // Write the unified sites to stdout
     YAML::Emitter yaml;
