@@ -264,36 +264,23 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
 Status find_containing_range(const std::set<range> &ranges,
                              const range &pos,
                              range &ans) {
-    // deal with special cases first
-    int nm_elem = ranges.size();
-    if (nm_elem == 0) {
-        return Status::NotFound();
-    }
-    if (nm_elem == 1) {
-        auto it = ranges.begin();
-        if (it->contains(pos)) {
-            ans = *it;
-            return Status::OK();
-        }
+    if (ranges.size() == 0) {
         return Status::NotFound();
     }
 
     // The returned value here is the first element that is
     // greater or equal to [pos].
     auto it = ranges.lower_bound(pos);
-    if (it == ranges.end()) {
-        it = std::prev(ranges.end());
+    if (it == ranges.end() ||
+        (pos.rid == it->rid && pos.beg < it->beg)) {
+        // we landed one range after the one we need
+        if (it != ranges.begin()) {
+            it = std::prev(it);
+        }
     }
 
     if (it->contains(pos)) {
         // we got the right range
-        ans = *it;
-        return Status::OK();
-    }
-
-    // we landed one range after the one we need
-    it = std::prev(it);
-    if (it->contains(pos)) {
         ans = *it;
         return Status::OK();
     }

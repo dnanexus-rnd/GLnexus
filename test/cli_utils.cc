@@ -145,6 +145,45 @@ TEST_CASE("cli_utils") {
         }
     }
 
+    const char* bad_yaml_1 = 1 + R"(
+contigs: xxx
+alleles: yyy
+)";
+
+    const char* bad_yaml_2 = 1 + R"(
+contigs:
+  - name: A1
+    size: 1000
+  - name: A2
+    size: 300000
+alleles: yyy
+)";
+
+
+    SECTION("bad yaml inputs for contigs_alleles_of_yaml") {
+        std::vector<discovered_alleles> valleles;
+        {
+            YAML::Node n = YAML::Load("aaa");
+            Status s = utils::contigs_alleles_of_yaml(n, contigs, valleles);
+            REQUIRE(s.bad());
+            cout << s.str() << endl;
+        }
+
+        {
+            YAML::Node n = YAML::Load(bad_yaml_1);
+            Status s = utils::contigs_alleles_of_yaml(n, contigs, valleles);
+            REQUIRE(s.bad());
+            cout << s.str() << endl;
+        }
+
+        {
+            YAML::Node n = YAML::Load(bad_yaml_2);
+            Status s = utils::contigs_alleles_of_yaml(n, contigs, valleles);
+            REQUIRE(s.bad());
+            cout << s.str() << endl;
+        }
+    }
+
 
     const char* snp = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
