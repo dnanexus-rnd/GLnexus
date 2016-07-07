@@ -42,9 +42,6 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
                              const std::vector<std::pair<std::string,size_t> > &contigs,
                              std::vector<unified_site> &sites);
 
-Status merge_all(const std::vector<discovered_alleles> &valleles,
-                 discovered_alleles &dsals);
-
 // Merge a bunch of discovered-allele files, all in YAML format.
 //
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
@@ -53,7 +50,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      discovered_alleles &dsals);
 
 
-// Find which range contains [pos].
+// Find which range contains [pos]. The ranges are assumed to be non-overlapping.
 Status find_containing_range(const std::set<range> &ranges,
                              const range &pos,
                              range &ans);

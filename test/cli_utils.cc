@@ -435,7 +435,6 @@ unification:
         discovered_alleles dsals;
         Status s = utils::merge_discovered_allele_files(console, filenames, contigs, dsals);
     }
-
 }
 
 TEST_CASE("find_containing_range") {
@@ -463,6 +462,11 @@ TEST_CASE("find_containing_range") {
 
         // last
         pos = range(3,1200,1218);
+        s = utils::find_containing_range(ranges, pos, ans);
+        REQUIRE(s.ok());
+        REQUIRE(ans == range(3,1000,1507));
+
+        pos = range(3,1000,1000);
         s = utils::find_containing_range(ranges, pos, ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(3,1000,1507));
@@ -526,5 +530,36 @@ TEST_CASE("find_containing_range") {
         range pos(1,17,18);
         s = utils::find_containing_range(ranges, pos, ans);
         REQUIRE(s.bad());
+    }
+
+    SECTION("larger example") {
+        vector<pair<string,size_t>> contigs;
+        contigs.push_back(make_pair("1",260000000));
+        contigs.push_back(make_pair("10",140000000));
+        contigs.push_back(make_pair("11",100000000));
+
+        set<range> ranges;
+        ranges.insert(range(1,30366,30503));
+        ranges.insert(range(1,35720,35737));
+        ranges.insert(range(1,69090,70009));
+        ranges.insert(range(1,249152026,249152059));
+        ranges.insert(range(1,249208061,249208079));
+        ranges.insert(range(1,249210800,249214146));
+        ranges.insert(range(2,92996,94055));
+        ranges.insert(range(2,95121,95179));
+        ranges.insert(range(2,255828,255989));
+        ranges.insert(range(2,135480471,135481678));
+        ranges.insert(range(2,135491589,135491842));
+        ranges.insert(range(3,168957,169053));
+        ranges.insert(range(3,180208,180405));
+        ranges.insert(range(3,5685264,5685404));
+        ranges.insert(range(3,5700990,5701408));
+        ranges.insert(range(3,5717462,5717886));
+
+        range pos(1, 249211350, 249211350);
+        range ans(-1,-1,-1);
+        Status s = utils::find_containing_range(ranges,pos,ans);
+        REQUIRE(s.ok());
+        REQUIRE(ans == range(1,249210800,249214146));
     }
 }

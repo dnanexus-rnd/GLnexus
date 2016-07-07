@@ -183,17 +183,6 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
     return Status::OK();
 }
 
-Status merge_all(const vector<discovered_alleles> &valleles,
-                 discovered_alleles &ans) {
-    Status s;
-    ans.clear();
-    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
-        S(merge_discovered_alleles(*it, ans));
-    }
-    return Status::OK();
-}
-
-
 // Load first file
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      const vector<string> &filenames,
@@ -227,13 +216,8 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
         logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
 
         // verify that the contigs are the same
-        if (contigs.size() != contigs2.size())
-            return Status::Invalid("The number of contigs is different bewteen",
-                                   first_file + " " + crnt_file);
-        for (int i=0; i < contigs.size(); ++i) {
-            if (contigs[i] != contigs2[i])
-                return Status::Invalid("The contigs are different bewteen",
-                                       first_file + " " + crnt_file + " index=" + to_string(i));
+        if (contigs != contigs2) {
+            return Status::Invalid("The contigs are different bewteen", first_file + " " + crnt_file);
         }
 
         S(merge_discovered_alleles(dsals2, dsals));
@@ -252,8 +236,7 @@ Status find_containing_range(const std::set<range> &ranges,
     // The returned value here is the first element that is
     // greater or equal to [pos].
     auto it = ranges.lower_bound(pos);
-    if (it == ranges.end() ||
-        (pos.rid == it->rid && pos.beg < it->beg)) {
+    if (it == ranges.end() ||  !it->contains(pos)) {
         // we landed one range after the one we need
         if (it != ranges.begin()) {
             it = std::prev(it);

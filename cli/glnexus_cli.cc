@@ -677,7 +677,9 @@ int main_discover_alleles(int argc, char *argv[]) {
     H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
 
     GLnexus::discovered_alleles dsals;
-    utils::merge_all(valleles, dsals);
+    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
+        H("merge vectors", merge_discovered_alleles(*it, dsals));
+    }
     console->info() << "discovered " << dsals.size() << " alleles";
 
     // Write the discovered alleles to stdout
@@ -692,6 +694,7 @@ void help_unify_sites(const char* prog) {
     cerr << "usage: " << prog << " unify_sites [options] /discovered_alleles/path/1 ... /discovered_alleles/path/N" << endl
          << "Unify the discovered allele file(s). There can be one or more files, format is YAML." << endl
          << "Options:" << endl
+         << "  --bed FILE, -b FILE  path to three-column BED file, the ranges have to the same same as the discover-alleles phase" << endl
          << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
          << endl;
 }
@@ -773,20 +776,21 @@ int main_unify_sites(int argc, char *argv[]) {
             ranges.insert(r);
     }
 
-    // find the containing range
-    const GLnexus::range &pos = dsals.begin()->first.pos;
-    GLnexus::range containing_range(-1,-1,-1);
-    H("find containing range", utils::find_containing_range(ranges, pos, containing_range));
-
     vector<GLnexus::unified_site> sites;
     H("unify sites", GLnexus::unified_sites(unifier_cfg, dsals, sites));
     console->info() << "unified to " << sites.size() << " sites";
 
-    // set the containing ranges for each site
-    for (auto &us : sites) {
-        GLnexus::Status s = utils::find_containing_range(ranges, us.pos, us.containing_target);
-        if (s.ok())
-            assert(us.containing_target.rid < 0 || us.containing_target.contains(pos));
+    if (!ranges.empty()) {
+        // set the containing ranges for each site
+        for (auto &us : sites) {
+            H("find target range containing site " + us.pos.str(contigs),
+              utils::find_containing_range(ranges, us.pos, us.containing_target));
+//            s = utils::find_containing_range(ranges, us.pos, us.containing_target);
+//            if  (s.bad()) {
+//                cout << "Error " << s.str() << " find target range containing site "
+//                     << us.pos.str(contigs) << endl;
+//            }
+        }
     }
 
     // Write the unified sites to stdout
