@@ -785,11 +785,6 @@ int main_unify_sites(int argc, char *argv[]) {
         for (auto &us : sites) {
             H("find target range containing site " + us.pos.str(contigs),
               utils::find_containing_range(ranges, us.pos, us.containing_target));
-//            s = utils::find_containing_range(ranges, us.pos, us.containing_target);
-//            if  (s.bad()) {
-//                cout << "Error " << s.str() << " find target range containing site "
-//                     << us.pos.str(contigs) << endl;
-//            }
         }
     }
 
