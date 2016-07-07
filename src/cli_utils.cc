@@ -78,90 +78,53 @@ Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     return Status::OK();
 }
 
-static void log_num_alleles(std::shared_ptr<spdlog::logger> logger,
-                            const vector<discovered_alleles> &valleles,
-                            const string& filename) {
-    if (logger == nullptr)
-        return;
-    unsigned ct=0;
-    for (const auto& dsals : valleles) {
-        ct += dsals.size();
-    }
-    logger->info() << "loaded " << ct << " alleles from " << filename;
-}
-
-Status yaml_of_contigs_alleles_ranges(const vector<pair<string,size_t> > &contigs,
-                                      const vector<range> &ranges,
-                                      const vector<discovered_alleles> &valleles,
-                                      YAML::Emitter &yaml) {
+Status yaml_of_contigs_alleles(const vector<pair<string,size_t> > &contigs,
+                               const discovered_alleles &dsals,
+                               YAML::Emitter &yaml) {
     Status s;
-
-    if (ranges.size() != valleles.size())
-        return Status::Invalid("number of ranges must equal number of sites");
-    size_t nm_elem = ranges.size();
 
     yaml << YAML::BeginMap;
 
+    // write contigs
+    yaml << YAML::Key << "contigs";
+    yaml << YAML::Value;
     {
-        // write contigs
-        yaml << YAML::Key << "contigs";
-        yaml << YAML::Value;
-        {
-            yaml << YAML::BeginSeq;
-            for (const std::pair<string,size_t> &pr : contigs) {
-                yaml << YAML::BeginMap;
-                yaml << YAML::Key << "name";
-                yaml << YAML::Value << pr.first;
-                yaml << YAML::Key << "size";
-                yaml << YAML::Value << pr.second;
-                yaml << YAML::EndMap;
-            }
-            yaml << YAML::EndSeq;
+        yaml << YAML::BeginSeq;
+        for (const std::pair<string,size_t> &pr : contigs) {
+            yaml << YAML::BeginMap;
+            yaml << YAML::Key << "name";
+            yaml << YAML::Value << pr.first;
+            yaml << YAML::Key << "size";
+            yaml << YAML::Value << pr.second;
+            yaml << YAML::EndMap;
         }
+        yaml << YAML::EndSeq;
     }
 
+    // Write alleles
+    yaml << YAML::Key << "alleles";
+    yaml << YAML::Value;
     {
-        // Write ranges and alleles
-        yaml << YAML::Key << "ranges_alleles";
-        yaml << YAML::Value;
-        {
-            // Note: we need to be careful here, to write out only non empty sites.
-            yaml << YAML::BeginSeq;
-            for (int i=0; i < nm_elem; ++i) {
-                if (valleles[i].size() == 0) continue;
-
-                yaml << YAML::BeginMap;
-                yaml << YAML::Key << "containing_range";
-                yaml << YAML::Value;
-                s = range_yaml(contigs, ranges[i], yaml);
-                if (s.bad()) return s;
-
-                yaml << YAML::Key << "discovered_alleles";
-                yaml << YAML::Value;
-                s = yaml_of_discovered_alleles(valleles[i], contigs, yaml);
-                if (s.bad()) return s;
-                yaml << YAML::EndMap;
-            }
-            yaml << YAML::EndSeq;
-        }
+        // Note: we might write out empty sites too
+        s = yaml_of_discovered_alleles(dsals, contigs, yaml);
+        if (s.bad()) return s;
     }
+
     yaml << YAML::EndMap;
 
     return Status::OK();
 }
 
-Status contigs_alleles_ranges_of_yaml(const YAML::Node& yaml,
-                                      std::vector<std::pair<std::string,size_t> > &contigs,
-                                      vector<range> &ranges,
-                                      vector<discovered_alleles> &valleles) {
+Status contigs_alleles_of_yaml(const YAML::Node& yaml,
+                               std::vector<std::pair<std::string,size_t> > &contigs,
+                               discovered_alleles &dsals) {
     Status s;
     if (!yaml.IsMap()) {
         return Status::Invalid("not a map at top level");
     }
 
     contigs.clear();
-    ranges.clear();
-    valleles.clear();
+    dsals.clear();
 
     // read contigs
     auto n_contigs = yaml["contigs"];
@@ -175,23 +138,9 @@ Status contigs_alleles_ranges_of_yaml(const YAML::Node& yaml,
     }
 
     // read ranges and alleles
-    auto n_ranges_alleles = yaml["ranges_alleles"];
-    if (!n_ranges_alleles.IsSequence()) {
-        return Status::Invalid("ranges and alleles should be a yaml sequence");
-    }
-    for (YAML::const_iterator p = n_ranges_alleles.begin(); p != n_ranges_alleles.end(); ++p) {
-        const auto n_range = (*p)["containing_range"];
-        range rng(-1,-1,-1);
-        s = range_of_yaml(n_range, contigs, rng);
-        if (s.bad()) return s;
-        ranges.push_back(rng);
-
-        const auto n_dsals = (*p)["discovered_alleles"];
-        discovered_alleles dsals;
-        s = discovered_alleles_of_yaml(n_dsals, contigs, dsals);
-        if (s.bad()) return s;
-        valleles.push_back(dsals);
-    }
+    auto n_ranges = yaml["alleles"];
+    s = discovered_alleles_of_yaml(n_ranges, contigs, dsals);
+    if (s.bad()) return s;
 
     return Status::OK();
 }
@@ -234,84 +183,72 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
     return Status::OK();
 }
 
-
 // Load first file
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      const vector<string> &filenames,
                                      vector<pair<string,size_t>> &contigs,
-                                     vector<range> &ranges,
-                                     vector<discovered_alleles> &valleles) {
+                                     discovered_alleles &dsals) {
     Status s;
     if (filenames.size() == 0)
         return Status::Invalid("no discovered allele files provided");
     contigs.clear();
-    ranges.clear();
-    valleles.clear();
+    dsals.clear();
 
     // Load the first file
     YAML::Node node;
     const string& first_file = filenames[0];
     S(LoadYAMLFile(first_file, node));
-    S(contigs_alleles_ranges_of_yaml(node, contigs, ranges, valleles));
-    log_num_alleles(logger, valleles, first_file);
+    S(contigs_alleles_of_yaml(node, contigs, dsals));
+    logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
 
     if (filenames.size() == 1)
         return Status::OK();
 
-    // We need to merge additional files. Make a map from range to
-    // discovered-allele structures. Each discovered alleles file
-    // may have a different set of containing ranges. We want to merge alleles
-    // only when they are in the same containing range.
-    map<range, discovered_alleles> range2dsal;
-    for (int j=0; j < ranges.size(); ++j) {
-        range2dsal[ranges[j]] = std::move(valleles[j]);
-    }
-
-    // extra hygiene, the loop below fills these arrays
-    ranges.clear();
-    valleles.clear();
-
     // Load the rest of the files, and merge
-    for (int i=1; i < filenames.size(); ++i) {
+    for (auto it = filenames.begin() + 1; it != filenames.end(); ++it) {
         vector<pair<string,size_t>> contigs2;
-        vector<range> ranges2;
-        vector<discovered_alleles> valleles2;
+        discovered_alleles dsals2;
         YAML::Node node;
-        const string &crnt_file = filenames[i];
+        const string &crnt_file = *it;
 
         S(LoadYAMLFile(crnt_file, node));
-        S(contigs_alleles_ranges_of_yaml(node, contigs2, ranges2, valleles2));
-        log_num_alleles(logger, valleles2, crnt_file);
+        S(contigs_alleles_of_yaml(node, contigs2, dsals2));
+        logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
 
-        // sanity: verify that the contigs are the same
-        if (contigs.size() != contigs2.size())
-            return Status::Invalid("The number of contigs is different bewteen", first_file + " " + crnt_file);
-        for (int j=0; j < contigs.size(); ++j) {
-            if (contigs[j] != contigs2[j])
-                return Status::Invalid("The contigs are different bewteen",
-                                       first_file + " " + crnt_file + " index=" + to_string(j));
+        // verify that the contigs are the same
+        if (contigs != contigs2) {
+            return Status::Invalid("The contigs are different bewteen", first_file + " " + crnt_file);
         }
 
-        for (int k=0; k < ranges2.size(); ++k) {
-            range &rng = ranges2[k];
-            discovered_alleles &dsal = valleles2[k];
-
-            const auto& p = range2dsal.find(rng);
-            if (p == range2dsal.end()) {
-                range2dsal[rng] = std::move(dsal);
-            } else {
-                S(merge_discovered_alleles(dsal, p->second));
-            }
-        }
-    }
-
-    // convert map to result arrays
-    for (const auto kv : range2dsal) {
-        ranges.push_back(kv.first);
-        valleles.push_back(kv.second);
+        S(merge_discovered_alleles(dsals2, dsals));
     }
 
     return Status::OK();
+}
+
+Status find_containing_range(const std::set<range> &ranges,
+                             const range &pos,
+                             range &ans) {
+    if (ranges.size() == 0) {
+        return Status::NotFound();
+    }
+
+    // The returned value here is the first element that is
+    // greater or equal to [pos].
+    auto it = ranges.lower_bound(pos);
+    if (it == ranges.end() ||  !it->contains(pos)) {
+        // we landed one range after the one we need
+        if (it != ranges.begin()) {
+            it = std::prev(it);
+        }
+    }
+
+    if (it->contains(pos)) {
+        // we got the right range
+        ans = *it;
+        return Status::OK();
+    }
+    return Status::NotFound();
 }
 
 }}}

@@ -22,17 +22,15 @@ bool parse_ranges(const std::vector<std::pair<std::string,size_t> >& contigs,
 // Read from disk and parse a YAML file
 Status LoadYAMLFile(const std::string& filename, YAML::Node &node);
 
-// Serialize the contigs, ranges, and discovered alleles to YAML
-Status yaml_of_contigs_alleles_ranges(const std::vector<std::pair<std::string,size_t> > &contigs,
-                                      const std::vector<range> &ranges,
-                                      const std::vector<discovered_alleles> &valleles,
-                                      YAML::Emitter &yaml);
+// Serialize the contigs, and discovered alleles to YAML
+Status yaml_of_contigs_alleles(const std::vector<std::pair<std::string,size_t> > &contigs,
+                               const discovered_alleles &dsals,
+                               YAML::Emitter &yaml);
 
 // Load a YAML file, previously created with the above function
-Status contigs_alleles_ranges_of_yaml(const YAML::Node& yaml,
-                                      std::vector<std::pair<std::string,size_t> > &contigs,
-                                      std::vector<range> &ranges,
-                                      std::vector<discovered_alleles> &valleles);
+Status contigs_alleles_of_yaml(const YAML::Node& yaml,
+                               std::vector<std::pair<std::string,size_t> > &contigs,
+                               discovered_alleles &dsals);
 
 // Serialize a vector of unified-alleles to YAML.
 Status yaml_of_unified_sites(const std::vector<unified_site> &sites,
@@ -46,13 +44,17 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
 
 // Merge a bunch of discovered-allele files, all in YAML format.
 //
-// Note: each file could have a different set of containing ranges, and we want to merge
-// alleles in each range separately.
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      const std::vector<std::string> &filenames,
                                      std::vector<std::pair<std::string,size_t>> &contigs,
-                                     std::vector<range> &ranges,
-                                     std::vector<discovered_alleles> &valleles);
+                                     discovered_alleles &dsals);
+
+
+// Find which range contains [pos]. The ranges are assumed to be non-overlapping.
+Status find_containing_range(const std::set<range> &ranges,
+                             const range &pos,
+                             range &ans);
+
 }}}
 
 #endif

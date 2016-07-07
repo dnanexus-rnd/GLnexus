@@ -395,8 +395,7 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
 
 Status unified_sites(const unifier_config& cfg,
                      const discovered_alleles& alleles,
-                     vector<unified_site>& ans,
-                     range containing_target) {
+                     vector<unified_site>& ans) {
     Status s;
 
     map<range,pair<discovered_alleles,minimized_alleles>> sites;
@@ -408,8 +407,6 @@ Status unified_sites(const unifier_config& cfg,
         UNPAIR(site_alleles, ref_alleles, alt_alleles);
         unified_site us(pos);
         S(unify_alleles(cfg, pos, ref_alleles, alt_alleles, us));
-        assert(containing_target.rid < 0 || containing_target.contains(pos));
-        us.containing_target = containing_target;
         ans.push_back(us);
     }
     return Status::OK();

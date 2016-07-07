@@ -135,7 +135,7 @@ main() {
         # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
         time numactl --interleave=all glnexus_cli discover_alleles GLnexus.db --bed ranges.bed $config_flag > discovered_alleles.yml
 
-        time numactl --interleave=all glnexus_cli unify_sites discovered_alleles.yml $config_flag > unified_sites.yml
+        time numactl --interleave=all glnexus_cli unify_sites discovered_alleles.yml --bed ranges.bed $config_flag > unified_sites.yml
 
         mkdir -p out/vcf
         time numactl --interleave=all glnexus_cli genotype GLnexus.db unified_sites.yml $residuals_flag $config_flag | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
