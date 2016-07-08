@@ -185,6 +185,7 @@ static YAML::Node yaml_get_next_document(std::istream &is, bool skip_first_line 
         // a YAML node and return.
         return std::move(YAML::Load(ss.str()));
     } catch (exception e) {
+        cout << "exception " << e.what() << " is caught" << endl;
         return YAML::Node();
     }
 }
