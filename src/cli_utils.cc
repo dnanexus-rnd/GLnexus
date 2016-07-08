@@ -78,69 +78,139 @@ Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     return Status::OK();
 }
 
-Status yaml_of_contigs_alleles(const vector<pair<string,size_t> > &contigs,
-                               const discovered_alleles &dsals,
-                               YAML::Emitter &yaml) {
-    Status s;
-
-    yaml << YAML::BeginMap;
-
-    // write contigs
-    yaml << YAML::Key << "contigs";
-    yaml << YAML::Value;
-    {
-        yaml << YAML::BeginSeq;
-        for (const std::pair<string,size_t> &pr : contigs) {
-            yaml << YAML::BeginMap;
-            yaml << YAML::Key << "name";
-            yaml << YAML::Value << pr.first;
-            yaml << YAML::Key << "size";
-            yaml << YAML::Value << pr.second;
-            yaml << YAML::EndMap;
-        }
-        yaml << YAML::EndSeq;
+Status yaml_of_contigs(const std::vector<std::pair<std::string,size_t> > &contigs,
+                       YAML::Emitter &yaml) {
+    yaml << YAML::BeginSeq;
+    for (const std::pair<string,size_t> &pr : contigs) {
+        yaml << YAML::BeginMap;
+        yaml << YAML::Key << "name";
+        yaml << YAML::Value << pr.first;
+        yaml << YAML::Key << "size";
+        yaml << YAML::Value << pr.second;
+        yaml << YAML::EndMap;
     }
-
-    // Write alleles
-    yaml << YAML::Key << "alleles";
-    yaml << YAML::Value;
-    {
-        // Note: we might write out empty sites too
-        s = yaml_of_discovered_alleles(dsals, contigs, yaml);
-        if (s.bad()) return s;
-    }
-
-    yaml << YAML::EndMap;
+    yaml << YAML::EndSeq;
 
     return Status::OK();
 }
 
-Status contigs_alleles_of_yaml(const YAML::Node& yaml,
-                               std::vector<std::pair<std::string,size_t> > &contigs,
-                               discovered_alleles &dsals) {
-    Status s;
-    if (!yaml.IsMap()) {
-        return Status::Invalid("not a map at top level");
-    }
-
+Status contigs_of_yaml(const YAML::Node& yaml,
+                       std::vector<std::pair<std::string,size_t> > &contigs) {
     contigs.clear();
-    dsals.clear();
 
     // read contigs
-    auto n_contigs = yaml["contigs"];
-    if (!n_contigs.IsSequence()) {
+    if (!yaml.IsSequence()) {
         return Status::Invalid("contigs should be a yaml sequence");
     }
-    for (auto p = n_contigs.begin(); p != n_contigs.end(); ++p) {
+    for (auto p = yaml.begin(); p != yaml.end(); ++p) {
         const std::string name = (*p)["name"].as<std::string>();
         size_t size = (*p)["size"].as<size_t>();
         contigs.push_back(make_pair(name, size));
     }
 
-    // read ranges and alleles
-    auto n_ranges = yaml["alleles"];
-    s = discovered_alleles_of_yaml(n_ranges, contigs, dsals);
-    if (s.bad()) return s;
+    return Status::OK();
+}
+
+// We write the stream as follows:
+//
+// ---
+// contigs
+// ---
+// allele 1
+// ---
+// allele 2
+// ---
+// etc.
+// allele N
+// ...
+//
+// Each element is transformed to YAML, and then written to the output stream.
+// This generates the document in pieces, while keeping it valid YAML.
+Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string,size_t> > &contigs,
+                                         const discovered_alleles &dsals,
+                                         std::ostream &os) {
+    Status s;
+
+    // write the contigs
+    {
+        os << "---" << endl;
+        YAML::Emitter yaml;
+        S(yaml_of_contigs(contigs, yaml));
+        os << yaml.c_str() << endl;
+    }
+
+    // Write alleles
+    for (auto &pr : dsals) {
+        os << "---" << endl;
+        YAML::Emitter yaml;
+        S(yaml_of_one_discovered_allele(pr.first, pr.second, contigs, yaml));
+        os << yaml.c_str() << endl;
+    }
+
+    // special notation for end-of-file
+    os << "..." << endl;
+
+    return Status::OK();
+}
+
+
+static YAML::Node yaml_get_next_document(std::istream &is, bool skip_first_line = false) {
+    try {
+        char buf[200];
+        stringstream ss;
+        if (skip_first_line) {
+            // the document starts with a "---", skip it
+            is.getline(buf, 200);
+        }
+
+        while (is.good() && !is.eof()) {
+            is.getline(buf, 200);
+            size_t buf_len = strlen(buf);
+
+            if (buf_len == 3) {
+                // check if we reached the end of this top level document
+                string marker(buf);
+                if (marker == "---" || marker == "...")
+                    break;
+            }
+            ss.write(buf, buf_len);
+            ss.write("\n", 1);
+        }
+
+        // We have the entire document in memory. Convert to
+        // a YAML node and return.
+        return std::move(YAML::Load(ss.str()));
+    } catch (exception e) {
+        return YAML::Node();
+    }
+}
+
+
+Status discovered_alleles_of_yaml_stream(std::istream &is,
+                                         std::vector<std::pair<std::string,size_t> > &contigs,
+                                         discovered_alleles &dsals) {
+    Status s;
+    contigs.clear();
+    dsals.clear();
+
+    // The first top-level document is the contigs
+    YAML::Node doc = yaml_get_next_document(is, true);
+    S(contigs_of_yaml(doc, contigs));
+
+    // All other documents are discovered-alleles
+    for (doc = yaml_get_next_document(is);
+         !doc.IsNull();
+         doc = yaml_get_next_document(is)) {
+        allele allele(range(-1,-1,-1), "A");
+        discovered_allele_info ainfo;
+
+        S(one_discovered_allele_of_yaml(doc, contigs, allele, ainfo));
+        dsals[allele] = ainfo;
+    }
+    if (contigs.size() == 0)
+        return Status::Invalid("Empty contigs");
+    if (dsals.size() == 0)
+        return Status::Invalid("empty discovered alleles");
 
     return Status::OK();
 }
@@ -154,8 +224,7 @@ Status yaml_of_unified_sites(const vector<unified_site> &sites,
 
     yaml << YAML::BeginSeq;
     for (auto& u_site : sites) {
-        s = u_site.yaml(contigs, yaml);
-        if (s.bad()) return s;
+        S(u_site.yaml(contigs, yaml));
     }
     yaml << YAML::EndSeq;
 
@@ -175,8 +244,7 @@ Status unified_sites_of_yaml(const YAML::Node& yaml,
     sites.clear();
     for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
         unified_site u_site(range(-1, -1, -1));
-        s = unified_site::of_yaml(*p, contigs, u_site);
-        if (s.bad()) return s;
+        S(unified_site::of_yaml(*p, contigs, u_site));
         sites.push_back(u_site);
     }
 
@@ -195,11 +263,13 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     dsals.clear();
 
     // Load the first file
-    YAML::Node node;
     const string& first_file = filenames[0];
-    S(LoadYAMLFile(first_file, node));
-    S(contigs_alleles_of_yaml(node, contigs, dsals));
-    logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
+    {
+        std::ifstream ifs(first_file.c_str());
+        S(discovered_alleles_of_yaml_stream(ifs, contigs, dsals));
+        logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
+        ifs.close();
+    }
 
     if (filenames.size() == 1)
         return Status::OK();
@@ -208,16 +278,16 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     for (auto it = filenames.begin() + 1; it != filenames.end(); ++it) {
         vector<pair<string,size_t>> contigs2;
         discovered_alleles dsals2;
-        YAML::Node node;
         const string &crnt_file = *it;
+        std::ifstream ifs(crnt_file.c_str());
 
-        S(LoadYAMLFile(crnt_file, node));
-        S(contigs_alleles_of_yaml(node, contigs2, dsals2));
+        S(discovered_alleles_of_yaml_stream(ifs, contigs2, dsals2));
         logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
+        ifs.close();
 
         // verify that the contigs are the same
         if (contigs != contigs2) {
-            return Status::Invalid("The contigs are different bewteen", first_file + " " + crnt_file);
+            return Status::Invalid("The contigs are different between", first_file + " " + crnt_file);
         }
 
         S(merge_discovered_alleles(dsals2, dsals));

@@ -9,24 +9,22 @@ using namespace std;
 using namespace GLnexus;
 using namespace GLnexus::cli;
 
-        // create two yaml files in the right format
+// create a yaml file in the right format
 static void yaml_file_of_discovered_alleles(const string &filename,
-                                          const vector<pair<string,size_t>> &contigs,
-                                          const char* buf) {
+                                            const vector<pair<string,size_t>> &contigs,
+                                            const char* buf) {
     std::remove(filename.c_str());
+    stringstream iss(buf, ios_base::in);
 
-    YAML::Node n = YAML::Load(buf);
-    discovered_alleles dal1;
-    Status s = discovered_alleles_of_yaml(n, contigs, dal1);
-    REQUIRE(s.ok());
-
-    YAML::Emitter yaml;
-    s = utils::yaml_of_contigs_alleles(contigs, dal1, yaml);
+    YAML::Node node = YAML::Load(buf);
+    discovered_alleles dals;
+    Status s = discovered_alleles_of_yaml(node, contigs, dals);
     REQUIRE(s.ok());
 
     ofstream fos;
     fos.open(filename);
-    fos << yaml.c_str();
+    s = utils::yaml_stream_of_discovered_alleles(contigs, dals, fos);
+    REQUIRE(s.ok());
     fos.close();
 }
 
@@ -97,17 +95,17 @@ TEST_CASE("cli_utils") {
 
     SECTION("yaml_discovered_alleles, an empty list") {
         // an empty list
-        YAML::Emitter yaml;
+        std::stringstream ss;
         {
             GLnexus::discovered_alleles dsals;
-            Status s = yaml_of_discovered_alleles(dsals, contigs, yaml);
+            Status s = utils::yaml_stream_of_discovered_alleles(contigs, dsals, ss);
             REQUIRE(s.ok());
         }
-
-        YAML::Node n = YAML::Load(yaml.c_str());
         discovered_alleles dal_empty;
-        Status s = discovered_alleles_of_yaml(n, contigs, dal_empty);
-        REQUIRE(s.ok());
+        vector<pair<string,size_t>> contigs2;
+        Status s = utils::discovered_alleles_of_yaml_stream(ss, contigs2, dal_empty);
+        REQUIRE(s.bad());
+        REQUIRE(contigs == contigs2);
     }
 
     SECTION("yaml_discovered_alleles") {
@@ -126,15 +124,14 @@ TEST_CASE("cli_utils") {
             merge_discovered_alleles(dal2, dsals);
         }
 
-        YAML::Emitter yaml;
-        Status s = utils::yaml_of_contigs_alleles(contigs, dsals, yaml);
+        std::stringstream ss;
+        Status s = utils::yaml_stream_of_discovered_alleles(contigs, dsals, ss);
         REQUIRE(s.ok());
 
-        YAML::Node n = YAML::Load(yaml.c_str());
         std::vector<std::pair<std::string,size_t> > contigs2;
         discovered_alleles dsals2;
-
-        s = utils::contigs_alleles_of_yaml(n, contigs2, dsals2);
+        s = utils::discovered_alleles_of_yaml_stream(ss, contigs2, dsals2);
+        REQUIRE(contigs == contigs2);
         REQUIRE(dsals.size() == dsals2.size());
     }
 
@@ -156,20 +153,20 @@ alleles: yyy
     SECTION("bad yaml inputs for contigs_alleles_of_yaml") {
         discovered_alleles dsals;
         {
-            YAML::Node n = YAML::Load("aaa");
-            Status s = utils::contigs_alleles_of_yaml(n, contigs, dsals);
+            stringstream ss("aaa");
+            Status s = utils::discovered_alleles_of_yaml_stream(ss, contigs, dsals);
             REQUIRE(s.bad());
         }
 
         {
-            YAML::Node n = YAML::Load(bad_yaml_1);
-            Status s = utils::contigs_alleles_of_yaml(n, contigs, dsals);
+            stringstream ss(bad_yaml_1);
+            Status s = utils::discovered_alleles_of_yaml_stream(ss, contigs, dsals);
             REQUIRE(s.bad());
         }
 
         {
-            YAML::Node n = YAML::Load(bad_yaml_2);
-            Status s = utils::contigs_alleles_of_yaml(n, contigs, dsals);
+            stringstream ss(bad_yaml_2);
+            Status s = utils::discovered_alleles_of_yaml_stream(ss, contigs, dsals);
             REQUIRE(s.bad());
         }
     }

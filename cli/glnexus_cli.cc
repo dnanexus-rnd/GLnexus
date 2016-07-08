@@ -683,9 +683,7 @@ int main_discover_alleles(int argc, char *argv[]) {
     console->info() << "discovered " << dsals.size() << " alleles";
 
     // Write the discovered alleles to stdout
-    YAML::Emitter yaml;
-    H("write results as yaml",utils::yaml_of_contigs_alleles(contigs, dsals, yaml));
-    cout << yaml.c_str() << endl;
+    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(contigs, dsals, cout));
     return 0;
 }
 

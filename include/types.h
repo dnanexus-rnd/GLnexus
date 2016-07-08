@@ -336,7 +336,7 @@ struct zygosity_by_GQ {
         }
     }
 
-    // estimate allele copy number in called genotypes with GQ >= minGQ 
+    // estimate allele copy number in called genotypes with GQ >= minGQ
     unsigned copy_number(int minGQ = 0) const {
         unsigned ans = 0;
         unsigned i_lo = std::min(unsigned(std::max(minGQ, 0))/10U,GQ_BANDS-1U);
@@ -354,7 +354,7 @@ struct zygosity_by_GQ {
 struct discovered_allele_info {
     bool is_ref = false;
 
-    // top_AQ statistics are used to adjudicate allele existence 
+    // top_AQ statistics are used to adjudicate allele existence
     top_AQ topAQ;
 
     // zygosity_by_GQ statsitics are used to estimate allele copy number
@@ -374,12 +374,22 @@ struct discovered_allele_info {
 using discovered_alleles = std::map<allele,discovered_allele_info>;
 Status merge_discovered_alleles(const discovered_alleles& src, discovered_alleles& dest);
 
+Status yaml_of_one_discovered_allele(const allele& allele,
+                                     const discovered_allele_info& ainfo,
+                                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                                     YAML::Emitter& out);
+Status one_discovered_allele_of_yaml(const YAML::Node&,
+                                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                                     allele& allele,
+                                     discovered_allele_info& ainfo);
+
 Status yaml_of_discovered_alleles(const discovered_alleles&,
                                   const std::vector<std::pair<std::string,size_t> >& contigs,
                                   YAML::Emitter&);
 Status discovered_alleles_of_yaml(const YAML::Node&,
                                   const std::vector<std::pair<std::string,size_t> >& contigs,
                                   discovered_alleles&);
+
 
 struct unified_site {
     range pos;
