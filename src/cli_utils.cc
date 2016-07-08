@@ -154,6 +154,10 @@ Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string
 }
 
 
+// In a YAML document built out of top-level sub-documents, get the next document.
+//
+// Notes:
+// -  Catch any exceptions, and return an empty node.
 static YAML::Node yaml_get_next_document(std::istream &is, bool skip_first_line = false) {
     try {
         char buf[200];
