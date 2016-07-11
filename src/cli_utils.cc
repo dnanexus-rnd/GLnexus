@@ -154,38 +154,56 @@ Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string
 }
 
 
-// In a YAML document built out of top-level sub-documents, get the next document.
+static string yaml_begin_doc = "---";
+static string yaml_end_doc_list = "...";
+
+static Status yaml_verify_begin_doc_list(std::istream &is) {
+    try {
+        string marker;
+        std::getline(is, marker);
+        if (marker != yaml_begin_doc)
+            return Status::Invalid("document does not start with `---`");
+        return Status::OK();
+    } catch (exception e) {
+        string err = e.what();
+        return Status::Failure("exception caught in yaml_verify_begin_doc_list: ", err);
+    }
+}
+
+// In a YAML document built as a of document list, get the next document.
 //
 // Notes:
-// -  Catch any exceptions, and return an empty node.
-static YAML::Node yaml_get_next_document(std::istream &is, bool skip_first_line = false) {
+// -  Catch any exceptions, and convert to bad status
+static Status yaml_get_next_document(std::istream &is,
+                                     YAML::Node &ans,
+                                     string& next_marker) {
     try {
-        char buf[200];
         stringstream ss;
-        if (skip_first_line) {
-            // the document starts with a "---", skip it
-            is.getline(buf, 200);
-        }
 
         while (is.good() && !is.eof()) {
-            is.getline(buf, 200);
-            size_t buf_len = strlen(buf);
+            string line;
+            std::getline(is, line);
 
-            if (buf_len == 3) {
+            if (line.size() == 3) {
                 // check if we reached the end of this top level document
-                string marker(buf);
-                if (marker == "---" || marker == "...")
-                    break;
+                if (line == yaml_begin_doc ||
+                    line == yaml_end_doc_list) {
+                    // We have the entire document in memory. Convert to
+                    // a YAML node and return.
+                    next_marker = line;
+                    ans = std::move(YAML::Load(ss.str()));
+                    return Status::OK();
+                }
             }
-            ss.write(buf, buf_len);
+
+            ss.write(line.c_str(), line.size());
             ss.write("\n", 1);
         }
 
-        // We have the entire document in memory. Convert to
-        // a YAML node and return.
-        return std::move(YAML::Load(ss.str()));
+        return Status::Invalid("premature end of document, did not find End-of-Doc/End-of-File marker");
     } catch (exception e) {
-        return YAML::Node();
+        string err = e.what();
+        return Status::Failure("exception caught in yaml_get_next_document: ", err);
     }
 }
 
@@ -194,28 +212,31 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
                                          std::vector<std::pair<std::string,size_t> > &contigs,
                                          discovered_alleles &dsals) {
     Status s;
+    string next_marker;
+    YAML::Node doc;
+
     contigs.clear();
     dsals.clear();
+    S(yaml_verify_begin_doc_list(is));
 
     // The first top-level document is the contigs
-    YAML::Node doc = yaml_get_next_document(is, true);
+    S(yaml_get_next_document(is, doc, next_marker));
     S(contigs_of_yaml(doc, contigs));
 
     // All other documents are discovered-alleles
-    for (doc = yaml_get_next_document(is);
-         !doc.IsNull();
-         doc = yaml_get_next_document(is)) {
+    while (next_marker != yaml_end_doc_list) {
+        S(yaml_get_next_document(is, doc, next_marker));
+
         allele allele(range(-1,-1,-1), "A");
         discovered_allele_info ainfo;
 
         S(one_discovered_allele_of_yaml(doc, contigs, allele, ainfo));
         dsals[allele] = ainfo;
     }
+    if (next_marker != yaml_end_doc_list)
+        return Status::Invalid("Document does not end with an End-of-doc marker '...'");
     if (contigs.size() == 0)
         return Status::Invalid("Empty contigs");
-    if (dsals.size() == 0)
-        return Status::Invalid("empty discovered alleles");
-
     return Status::OK();
 }
 

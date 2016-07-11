@@ -104,7 +104,7 @@ TEST_CASE("cli_utils") {
         discovered_alleles dal_empty;
         vector<pair<string,size_t>> contigs2;
         Status s = utils::discovered_alleles_of_yaml_stream(ss, contigs2, dal_empty);
-        REQUIRE(s.bad());
+        REQUIRE(s.ok());
         REQUIRE(contigs == contigs2);
     }
 
