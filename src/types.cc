@@ -87,47 +87,114 @@ Status range_of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >&
     #undef V
 }
 
-Status yaml_of_discovered_alleles(const discovered_alleles& dal,
-                                  const std::vector<std::pair<std::string,size_t> >& contigs,
-                                  YAML::Emitter& out) {
+Status yaml_of_one_discovered_allele(const allele& allele,
+                                     const discovered_allele_info& ainfo,
+                                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                                     YAML::Emitter& out) {
     Status s;
+    out << YAML::BeginMap;
 
-    out << YAML::BeginSeq;
-    for (const auto& p : dal) {
-        out << YAML::BeginMap;
-
-        out << YAML::Key << "range" << YAML::Value;
-        S(range_yaml(contigs, p.first.pos, out));
-        out << YAML::Key << "dna"
-            << YAML::Value << p.first.dna;
-        out << YAML::Key << "is_ref"
-            << YAML::Value << p.second.is_ref;
-        out << YAML::Key << "top_AQ"
-            << YAML::Value << YAML::Flow << YAML::BeginSeq;
-        for (unsigned i = 0; i < top_AQ::COUNT; i++) {
-            auto x = p.second.topAQ.V[i];
-            if (i > 0 && x <= 0) {
-                break;
-            }
-            out << x;
+    out << YAML::Key << "range" << YAML::Value;
+    S(range_yaml(contigs, allele.pos, out));
+    out << YAML::Key << "dna"
+        << YAML::Value << allele.dna;
+    out << YAML::Key << "is_ref"
+        << YAML::Value << ainfo.is_ref;
+    out << YAML::Key << "top_AQ"
+        << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (unsigned i = 0; i < top_AQ::COUNT; i++) {
+        auto x = ainfo.topAQ.V[i];
+        if (i > 0 && x <= 0) {
+            break;
         }
-        out << YAML::EndSeq;
-
-        out << YAML::Key << "zygosity_by_GQ"
-            << YAML::Value << YAML::Flow << YAML::BeginSeq;
-        for (unsigned i = 0; i < zygosity_by_GQ::GQ_BANDS; i++) {
-            out << YAML::Flow << YAML::BeginSeq;
-            for (unsigned j = 0; j < zygosity_by_GQ::PLOIDY; j++) {
-                out << p.second.zGQ.M[i][j];
-            }
-            out << YAML::EndSeq;
-        }
-        out << YAML::EndSeq;
-
-        out << YAML::EndMap;
+        out << x;
     }
     out << YAML::EndSeq;
 
+    out << YAML::Key << "zygosity_by_GQ"
+        << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (unsigned i = 0; i < zygosity_by_GQ::GQ_BANDS; i++) {
+        out << YAML::Flow << YAML::BeginSeq;
+        for (unsigned j = 0; j < zygosity_by_GQ::PLOIDY; j++) {
+            out << ainfo.zGQ.M[i][j];
+        }
+        out << YAML::EndSeq;
+    }
+    out << YAML::EndSeq;
+
+    out << YAML::EndMap;
+    return Status::OK();
+}
+
+Status yaml_of_discovered_alleles(const discovered_alleles& dals,
+                                  const std::vector<std::pair<std::string,size_t> >& contigs,
+                                  YAML::Emitter& yaml) {
+    Status s;
+
+    yaml << YAML::BeginSeq;
+    for (const auto& p : dals) {
+        yaml_of_one_discovered_allele(p.first, p.second, contigs, yaml);
+    }
+    yaml << YAML::EndSeq;
+
+    return Status::OK();
+}
+
+
+Status one_discovered_allele_of_yaml(const YAML::Node& yaml,
+                                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                                     allele& dsal,
+                                     discovered_allele_info &ainfo) {
+    Status s;
+    #define V(pred,msg) if (!(pred)) return Status::Invalid("discovered_alleles_of_yaml: " msg)
+
+    V(yaml.IsMap(), "invalid entry");
+
+    range rng(-1,-1,-1);
+    const auto n_range = yaml["range"];
+    V(n_range, "missing 'range' field in entry");
+    S(range_of_yaml(n_range, contigs, rng));
+    #define VR(pred,msg) if (!(pred)) return Status::Invalid("discovered_alleles_of_yaml: " msg, rng.str(contigs))
+
+    const auto n_dna = yaml["dna"];
+    VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
+    const string& dna = n_dna.Scalar();
+    VR(dna.size() > 0, "empty 'dna' in entry");
+    VR(regex_match(dna, regex_dna), "invalid allele DNA");
+    allele al(rng, dna);
+    dsal = std::move(al);
+
+    discovered_allele_info ai;
+    const auto n_is_ref = yaml["is_ref"];
+    VR(n_is_ref && n_is_ref.IsScalar(), "missing/invalid 'is_ref' field in entry");
+    ai.is_ref = n_is_ref.as<bool>();
+
+    const auto n_topAQ = yaml["top_AQ"];
+    VR(n_topAQ && n_topAQ.IsSequence(), "missing/invalid 'top_AQ' field in entry");
+    VR(n_topAQ.size() <= top_AQ::COUNT, "unexpected top_AQ size");
+    unsigned i = 0;
+    for (YAML::const_iterator aq = n_topAQ.begin(); aq != n_topAQ.end(); ++aq, ++i) {
+        VR(aq->IsScalar() && aq->as<int>() >= 0, "invalid entry in top_AQ");
+        ai.topAQ.V[i] = aq->as<int>();
+    }
+
+    const auto n_zygosity_by_GQ = yaml["zygosity_by_GQ"];
+    VR(n_zygosity_by_GQ && n_zygosity_by_GQ.IsSequence(), "missing/invalid 'zygosity_by_GQ' field in entry");
+    VR(n_zygosity_by_GQ.size() == zygosity_by_GQ::GQ_BANDS, "unexpected row count in zygosity_by_GQ");
+    i = 0;
+    for (YAML::const_iterator q = n_zygosity_by_GQ.begin(); q != n_zygosity_by_GQ.end(); ++q, ++i) {
+        VR(q->IsSequence(), "invalid row in zygosity_by_GQ");
+        VR(q->size() == zygosity_by_GQ::PLOIDY, "unexpected row size in zygosity_by_GQ");
+        unsigned j = 0;
+        for (YAML::const_iterator r = q->begin(); r != q->end(); ++r, ++j) {
+            VR(r->IsScalar() && r->as<int>() >= 0, "invalid entry in zygosity_by_GQ");
+            ai.zGQ.M[i][j] = (unsigned) r->as<int>();
+        }
+    }
+    #undef VR
+    #undef V
+
+    ainfo = std::move(ai);
     return Status::OK();
 }
 
@@ -142,58 +209,18 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
     for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
         V(p->IsMap(), "invalid entry");
 
-        range rng(-1,-1,-1);
-        const auto n_range = (*p)["range"];
-        V(n_range, "missing 'range' field in entry");
-        S(range_of_yaml(n_range, contigs, rng));
-        #define VR(pred,msg) if (!(pred)) return Status::Invalid("discovered_alleles_of_yaml: " msg, rng.str(contigs))
+        allele dsal(range(-1,-1,-1), "A");
+        discovered_allele_info ainfo;
+        S(one_discovered_allele_of_yaml((*p), contigs, dsal, ainfo));
 
-        const auto n_dna = (*p)["dna"];
-        VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
-        const string& dna = n_dna.Scalar();
-        VR(dna.size() > 0, "empty 'dna' in entry");
-        VR(regex_match(dna, regex_dna), "invalid allele DNA");
-        allele al(rng, dna);
-
-        discovered_allele_info ai;
-        const auto n_is_ref = (*p)["is_ref"];
-        VR(n_is_ref && n_is_ref.IsScalar(), "missing/invalid 'is_ref' field in entry");
-        ai.is_ref = n_is_ref.as<bool>();
-
-        const auto n_topAQ = (*p)["top_AQ"];
-        VR(n_topAQ && n_topAQ.IsSequence(), "missing/invalid 'top_AQ' field in entry");
-        VR(n_topAQ.size() <= top_AQ::COUNT, "unexpected top_AQ size");
-        unsigned i = 0;
-        for (YAML::const_iterator aq = n_topAQ.begin(); aq != n_topAQ.end(); ++aq, ++i) {
-            VR(aq->IsScalar() && aq->as<int>() >= 0, "invalid entry in top_AQ");
-            ai.topAQ.V[i] = aq->as<int>();
-        }
-
-        const auto n_zygosity_by_GQ = (*p)["zygosity_by_GQ"];
-        VR(n_zygosity_by_GQ && n_zygosity_by_GQ.IsSequence(), "missing/invalid 'zygosity_by_GQ' field in entry");
-        VR(n_zygosity_by_GQ.size() == zygosity_by_GQ::GQ_BANDS, "unexpected row count in zygosity_by_GQ");
-        i = 0;
-        for (YAML::const_iterator q = n_zygosity_by_GQ.begin(); q != n_zygosity_by_GQ.end(); ++q, ++i) {
-            VR(q->IsSequence(), "invalid row in zygosity_by_GQ");
-            VR(q->size() == zygosity_by_GQ::PLOIDY, "unexpected row size in zygosity_by_GQ");
-            unsigned j = 0;
-            for (YAML::const_iterator r = q->begin(); r != q->end(); ++r, ++j) {
-                VR(r->IsScalar() && r->as<int>() >= 0, "invalid entry in zygosity_by_GQ");
-                ai.zGQ.M[i][j] = (unsigned) r->as<int>();
-            }
-        }
-
-        VR(ans.find(al) == ans.end(), "duplicate alleles");
-        ans[al] = ai;
-        #undef VR
+        V(ans.find(dsal) == ans.end(), "duplicate alleles");
+        ans[dsal] = ainfo;
     }
-
-    // We might serialize to disk an empty list of alleles for a site.
-    //V(ans.size() >= 1, "not enough alleles");
 
     #undef V
     return Status::OK();
 }
+
 
 Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
                           YAML::Emitter& ans) const {
