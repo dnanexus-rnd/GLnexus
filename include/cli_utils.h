@@ -42,14 +42,14 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
                                          discovered_alleles &dsals);
 
 // Serialize a vector of unified-alleles to YAML.
-Status yaml_of_unified_sites(const std::vector<unified_site> &sites,
-                             const std::vector<std::pair<std::string,size_t> > &contigs,
-                             YAML::Emitter &yaml);
+Status yaml_stream_of_unified_sites(const std::vector<unified_site> &sites,
+                                    const std::vector<std::pair<std::string,size_t> > &contigs,
+                                    std::ostream &os);
 
 // Load from a file, data previously serialized with the above function
-Status unified_sites_of_yaml(const YAML::Node& yaml,
-                             const std::vector<std::pair<std::string,size_t> > &contigs,
-                             std::vector<unified_site> &sites);
+Status unified_sites_of_yaml_stream(std::istream &is,
+                                    const std::vector<std::pair<std::string,size_t> > &contigs,
+                                    std::vector<unified_site> &sites);
 
 // Merge a bunch of discovered-allele files, all in YAML format.
 //

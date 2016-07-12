@@ -157,6 +157,7 @@ Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string
 static string yaml_begin_doc = "---";
 static string yaml_end_doc_list = "...";
 
+// Verify the document begins with '---' line. Move the stream position to the next line.
 static Status yaml_verify_begin_doc_list(std::istream &is) {
     try {
         string marker;
@@ -216,7 +217,7 @@ static Status yaml_get_next_document(std::istream &is,
         }
 
         if (!is.good())
-            return Status::Failure("IO error");
+            return Status::IOError("reading yaml stream");
         return Status::Invalid("premature end of document, did not find end-of-document marker");
     } catch (exception e) {
         string err = e.what();
@@ -259,37 +260,43 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
 
 // Serialize the unified sites to yaml format.
 //
-Status yaml_of_unified_sites(const vector<unified_site> &sites,
-                             const vector<pair<string,size_t> > &contigs,
-                             YAML::Emitter &yaml) {
+Status yaml_stream_of_unified_sites(const std::vector<unified_site> &sites,
+                                    const std::vector<std::pair<std::string,size_t> > &contigs,
+                                    std::ostream &os) {
     Status s;
-
-    yaml << YAML::BeginSeq;
     for (auto& u_site : sites) {
+        os << "---" << endl;
+        YAML::Emitter yaml;
         S(u_site.yaml(contigs, yaml));
+        os << yaml.c_str() << endl;
     }
-    yaml << YAML::EndSeq;
 
+    // special notation for end-of-file
+    os << "..." << endl;
     return Status::OK();
 }
 
 // Load the unified-sites from a file in yaml format.
 //
-Status unified_sites_of_yaml(const YAML::Node& yaml,
-                             const std::vector<std::pair<std::string,size_t> > &contigs,
-                             vector<unified_site> &sites) {
+Status unified_sites_of_yaml_stream(std::istream &is,
+                                    const std::vector<std::pair<std::string,size_t> > &contigs,
+                                    std::vector<unified_site> &sites) {
     Status s;
-    if (!yaml.IsSequence()) {
-        return Status::Invalid("not a sequence at top level");
-    }
-
+    string next_marker;
     sites.clear();
-    for (YAML::const_iterator p = yaml.begin(); p != yaml.end(); ++p) {
-        unified_site u_site(range(-1, -1, -1));
-        S(unified_site::of_yaml(*p, contigs, u_site));
-        sites.push_back(u_site);
-    }
 
+    S(yaml_verify_begin_doc_list(is));
+
+    // Read a list of documents representing unified-sites
+    do {
+        YAML::Node doc;
+        S(yaml_get_next_document(is, doc, next_marker));
+        unified_site u_site(range(-1, -1, -1));
+        S(unified_site::of_yaml(doc, contigs, u_site));
+        sites.push_back(u_site);
+    } while (next_marker != yaml_end_doc_list);
+
+    S(yaml_verify_eof(is));
     return Status::OK();
 }
 

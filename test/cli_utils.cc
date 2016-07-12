@@ -271,17 +271,16 @@ unification:
         }
 
         // convert to yaml
-        YAML::Emitter yaml;
+        stringstream ss;
         {
-            Status s = utils::yaml_of_unified_sites(sites, contigs, yaml);
+            Status s = utils::yaml_stream_of_unified_sites(sites, contigs, ss);
             REQUIRE(s.ok());
         }
 
         // convert back and compare
         {
-            YAML::Node n = YAML::Load(yaml.c_str());
             vector<unified_site> sites2;
-            Status s = utils::unified_sites_of_yaml(n, contigs, sites2);
+            Status s = utils::unified_sites_of_yaml_stream(ss, contigs, sites2);
             REQUIRE(s.ok());
             REQUIRE(sites.size() == sites2.size());
             for (int i=0; i < sites.size(); i++) {

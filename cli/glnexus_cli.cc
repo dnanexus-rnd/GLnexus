@@ -787,9 +787,7 @@ int main_unify_sites(int argc, char *argv[]) {
     }
 
     // Write the unified sites to stdout
-    YAML::Emitter yaml;
-    H("write results as yaml", utils::yaml_of_unified_sites(sites, contigs, yaml));
-    cout << yaml.c_str() << endl;
+    H("write results as yaml", utils::yaml_stream_of_unified_sites(sites, contigs, cout));
 
     return 0;
 }
@@ -883,10 +881,15 @@ int main_genotype(int argc, char *argv[]) {
 
         vector<GLnexus::unified_site> sites;
         {
-            YAML::Node node;
-            H("Load discovered alleles file", utils::LoadYAMLFile(unified_sites_file, node));
+            std::ifstream ifs;
+            ifs.open(unified_sites_file, std::ifstream::in);
+            if (!ifs.good()) {
+                console->info() << "Error opening file " << unified_sites_file;
+                return 1;
+            }
             H("load unified sites",
-              utils::unified_sites_of_yaml(node, contigs, sites));
+              utils::unified_sites_of_yaml_stream(ifs, contigs, sites));
+            ifs.close();
         }
         console->info() << "loaded " << sites.size() << " sites from " << unified_sites_file;
 
