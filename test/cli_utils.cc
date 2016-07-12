@@ -111,11 +111,7 @@ TEST_CASE("cli_utils") {
     SECTION("yaml_discovered_alleles, an empty contigs") {
         Status s;
 
-        //YAML::Node n = YAML::Load(da_yaml1);
         discovered_alleles dal1;
-        // s = discovered_alleles_of_yaml(n, contigs, dal1);
-        //REQUIRE(s.ok());
-
         vector<pair<string,size_t>> contigs_empty;
         std::stringstream ss;
         s = utils::yaml_stream_of_discovered_alleles(contigs_empty, dal1, ss);
@@ -198,6 +194,24 @@ alleles: yyy
             ss.write("----\n", 5);
             ss.write("zzz\n", 4);
             ss.write("...\n", 5);
+
+            discovered_alleles dal_empty;
+            vector<pair<string,size_t>> contigs2;
+            Status s = utils::discovered_alleles_of_yaml_stream(ss, contigs2, dal_empty);
+            REQUIRE(s.bad());
+        }
+
+        // Good contigs, but bad discovered alleles
+        {
+            std::stringstream ss;
+            {
+                GLnexus::discovered_alleles dsals;
+                Status s = utils::yaml_stream_of_discovered_alleles(contigs, dsals, ss);
+                REQUIRE(s.ok());
+            }
+
+            // Extra characters after EOF, that should not be there
+            ss << "ssss" << endl;
 
             discovered_alleles dal_empty;
             vector<pair<string,size_t>> contigs2;

@@ -170,6 +170,23 @@ static Status yaml_verify_begin_doc_list(std::istream &is) {
     }
 }
 
+// Verify that we have reached the end of the file
+static Status yaml_verify_eof(std::istream &is) {
+    try {
+        // The end-of-file flag is lit up only after reading past the
+        // end of file
+        char c;
+        is.get(c);
+        if (!is.eof()) {
+            return Status::Invalid("Found YAML end-of-document marker, but there is unread data");
+        }
+        return Status::OK();
+    } catch (exception e) {
+        string err = e.what();
+        return Status::Failure("exception caught in yaml_verify_eof: ", err);
+    }
+}
+
 // In a YAML document built as a of document list, get the next document.
 //
 // Notes:
@@ -183,7 +200,6 @@ static Status yaml_get_next_document(std::istream &is,
         while (is.good() && !is.eof()) {
             string line;
             std::getline(is, line);
-
             if (line.size() == 3) {
                 // check if we reached the end of this top level document
                 if (line == yaml_begin_doc ||
@@ -195,12 +211,13 @@ static Status yaml_get_next_document(std::istream &is,
                     return Status::OK();
                 }
             }
-
             ss.write(line.c_str(), line.size());
             ss.write("\n", 1);
         }
 
-        return Status::Invalid("premature end of document, did not find End-of-Doc/End-of-File marker");
+        if (!is.good())
+            return Status::Failure("IO error");
+        return Status::Invalid("premature end of document, did not find end-of-document marker");
     } catch (exception e) {
         string err = e.what();
         return Status::Failure("exception caught in yaml_get_next_document: ", err);
@@ -233,8 +250,8 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
         S(one_discovered_allele_of_yaml(doc, contigs, allele, ainfo));
         dsals[allele] = ainfo;
     }
-    if (next_marker != yaml_end_doc_list)
-        return Status::Invalid("Document does not end with an End-of-doc marker '...'");
+    S(yaml_verify_eof(is));
+
     if (contigs.size() == 0)
         return Status::Invalid("Empty contigs");
     return Status::OK();
