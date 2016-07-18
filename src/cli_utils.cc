@@ -231,18 +231,21 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
                                          discovered_alleles &dsals) {
     Status s;
     string next_marker;
-    YAML::Node doc;
 
     contigs.clear();
     dsals.clear();
     S(yaml_verify_begin_doc_list(is));
 
     // The first top-level document is the contigs
-    S(yaml_get_next_document(is, doc, next_marker));
-    S(contigs_of_yaml(doc, contigs));
+    {
+        YAML::Node doc;
+        S(yaml_get_next_document(is, doc, next_marker));
+        S(contigs_of_yaml(doc, contigs));
+    }
 
     // All other documents are discovered-alleles
     while (next_marker != yaml_end_doc_list) {
+        YAML::Node doc;
         S(yaml_get_next_document(is, doc, next_marker));
 
         allele allele(range(-1,-1,-1), "A");
