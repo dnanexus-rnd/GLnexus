@@ -182,6 +182,7 @@ add_dependencies(glnexus rocksdb)
 add_dependencies(glnexus yaml-cpp)
 add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
+add_dependencies(glnexus spdlog)
 add_library(libglnexus ALIAS glnexus)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge -static-libstdc++ -pthread")
@@ -192,7 +193,6 @@ target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a li
 
 add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
-add_dependencies(glnexus_cli spdlog)
 target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
 install(TARGETS playground DESTINATION bin)
