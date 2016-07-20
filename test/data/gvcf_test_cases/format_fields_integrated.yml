@@ -75,35 +75,35 @@ truth_unified_sites:
       copy_number: [0, 2]
       unification:
         - range: {beg: 10009461, end: 10009461}
-          alt: A
+          dna: A
           to: 1
     - range: {ref: "21", beg: 10009462, end: 10009462}
       alleles: [T, A]
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009462, end: 10009462}
-          alt: A
+          dna: A
           to: 1
     - range: {ref: "21", beg: 10009463, end: 10009463}
       alleles: [C, G]
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009463, end: 10009463}
-          alt: G
+          dna: G
           to: 1
     - range: {ref: "21", beg: 10009464, end: 10009465}
       alleles: [TA, T]
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009464, end: 10009465}
-          alt: T
+          dna: T
           to: 1
     - range: {ref: "21", beg: 10009466, end: 10009467}
       alleles: [AA, GT]
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009466, end: 10009467}
-          alt: GT
+          dna: GT
           to: 1
 
 truth_output_vcf:

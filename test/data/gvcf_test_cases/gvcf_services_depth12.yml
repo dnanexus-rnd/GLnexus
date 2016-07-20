@@ -45,21 +45,21 @@ truth_unified_sites:
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009464, end: 10009465}
-          alt: T
+          dna: T
           to: 1
     - range: {ref: "21", beg: 10009466, end: 10009466}
       alleles: [A, G]
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009466, end: 10009466}
-          alt: G
+          dna: G
           to: 1
     - range: {ref: "21", beg: 10009467, end: 10009467}
       alleles: [A, C]
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009467, end: 10009467}
-          alt: C
+          dna: C
           to: 1
 
 truth_output_vcf:

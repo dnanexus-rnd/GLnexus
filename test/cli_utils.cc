@@ -227,10 +227,10 @@ alleles: [A, G]
 copy_number: [100, 51]
 unification:
   - range: {ref: '17', beg: 100, end: 100}
-    alt: A
+    dna: A
     to: 0
   - range: {ref: '17', beg: 100, end: 100}
-    alt: G
+    dna: G
     to: 1
 )";
 
@@ -241,16 +241,16 @@ alleles: [AG, AC, C]
 copy_number: [100, 50, 1]
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
-    alt: AG
+    dna: AG
     to: 0
   - range: {ref: '17', beg: 1000, end: 1001}
-    alt: AC
+    dna: AC
     to: 1
   - range: {ref: '17', beg: 1000, end: 1001}
-    alt: C
+    dna: C
     to: 2
   - range: {ref: '17', beg: 1001, end: 1001}
-    alt: C
+    dna: C
     to: 1
 )";
 

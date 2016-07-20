@@ -46,22 +46,22 @@ truth_unified_sites:
       copy_number: [0, 4, 1, 1]
       unification:
         - range: {beg: 1000, end: 1001}
-          alt: TAA
+          dna: TAA
           to: 1
         - range: {beg: 1000, end: 1002}
-          alt: TAAA
+          dna: TAAA
           to: 1
         - range: {beg: 1000, end: 1003}
-          alt: TAAAA
+          dna: TAAAA
           to: 1
         - range: {beg: 1000, end: 1001}
-          alt: TAAA
+          dna: TAAA
           to: 2
         - range: {beg: 1000, end: 1001}
-          alt: T
+          dna: T
           to: 3
         - range: {beg: 1000, end: 1002}
-          alt: TA
+          dna: TA
           to: 3
 
 truth_output_vcf:

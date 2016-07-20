@@ -54,7 +54,7 @@ truth_unified_sites:
       copy_number: [0, 2]
       unification:
         - range: {beg: 1000, end: 1000}
-          alt: CG
+          dna: CG
           to: 1
 
 truth_output_vcf:
