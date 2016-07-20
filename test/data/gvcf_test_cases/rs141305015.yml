@@ -84,7 +84,7 @@ truth_unified_sites:
       copy_number: [0, 3]
       unification:
         - range: {beg: 36643700, end: 36643703}
-          alt: G
+          dna: G
           to: 1
 
 truth_output_vcf:

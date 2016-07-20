@@ -252,7 +252,7 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
 
     ans << YAML::Key << "unification";
     ans << YAML::Value << YAML::BeginSeq;
-    // sort unification entries by to, then by range, then by alt
+    // sort unification entries by to, then by range, then by dna
     vector<pair<allele,int>> u(unification.begin(), unification.end());
     sort(u.begin(), u.end(),
          [] (const pair<allele,int>& p1, const pair<allele,int>& p2) {
@@ -264,7 +264,7 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
         ans << YAML::BeginMap;
         ans << YAML::Key << "range" << YAML::Value;
         S(range_yaml(contigs, p.first.pos, ans, true));
-        ans << YAML::Key << "alt";
+        ans << YAML::Key << "dna";
         ans << YAML::Value << p.first.dna;
         ans << YAML::Key << "to";
         ans << YAML::Value << p.second;
@@ -314,17 +314,17 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
         S(range_of_yaml(n_urange, contigs, urange, ans.pos.rid));
         VR(ans.pos.overlaps(urange), "unification entry range does not overlap site range");
 
-        const auto n_ualt = (*p)["alt"];
-        VR(n_ualt && n_ualt.IsScalar(), "missing/invalid 'alt' field in unification entry");
-        const string& alt = n_ualt.Scalar();
-        VR(alt.size() > 0, "empty 'alt' in unification entry");
+        const auto n_udna = (*p)["dna"];
+        VR(n_udna && n_udna.IsScalar(), "missing/invalid 'dna' field in unification entry");
+        const string& dna = n_udna.Scalar();
+        VR(dna.size() > 0, "empty 'dna' in unification entry");
 
         const auto n_uto = (*p)["to"];
         VR(n_uto && n_uto.IsScalar(), "missing/invalid 'to' field in unification entry");
         int to = n_uto.as<int>();
         VR(to >= 0 && to < ans.alleles.size(), "invalid 'to' field in unification entry");
 
-        allele al(urange,alt);
+        allele al(urange,dna);
         VR(ans.unification.find(al) == ans.unification.end(), "duplicate unification entries");
         ans.unification[al] = to;
     }

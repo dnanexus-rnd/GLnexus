@@ -39,51 +39,51 @@ truth_unified_sites:
       copy_number: [0, 6]
       unification:
         - range: {beg: 1001, end: 1001}
-          alt: G
+          dna: G
           to: 1
     - range: {ref: "A", beg: 1002, end: 1002}
       alleles: [C, A, G, T]
       copy_number: [0, 6, 2, 2]
       unification:
         - range: {beg: 1002, end: 1002}
-          alt: A
+          dna: A
           to: 1
         - range: {beg: 1002, end: 1002}
-          alt: G
+          dna: G
           to: 2
         - range: {beg: 1002, end: 1002}
-          alt: T
+          dna: T
           to: 3
     - range: {ref: "A", beg: 1011, end: 1013}
       alleles: [CCC, AGC, AGA]
       copy_number: [0, 3, 2]
       unification:
         - range: {beg: 1011, end: 1012}
-          alt: AG
+          dna: AG
           to: 1
         - range: {beg: 1011, end: 1013}
-          alt: AGA
+          dna: AGA
           to: 2
     - range: {ref: "A", beg: 1101, end: 1101}
       alleles: [C, A]
       copy_number: [0, 3]
       unification:
         - range: {beg: 1101, end: 1101}
-          alt: A
+          dna: A
           to: 1
     - range: {ref: "A", beg: 1103, end: 1103}
       alleles: [C, G]
       copy_number: [0, 3]
       unification:
         - range: {beg: 1103, end: 1103}
-          alt: G
+          dna: G
           to: 1
     - range: {ref: "A", beg: 1201, end: 1201}
       alleles: [C, A]
       copy_number: [0, 3]
       unification:
         - range: {beg: 1201, end: 1201}
-          alt: A
+          dna: A
           to: 1
 
 truth_output_vcf:

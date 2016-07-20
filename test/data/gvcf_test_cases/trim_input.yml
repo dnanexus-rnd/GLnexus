@@ -45,10 +45,10 @@ truth_unified_sites:
       copy_number: [0, 8]
       unification:
         - range: {beg: 1000, end: 1001}
-          alt: A
+          dna: A
           to: 1
         - range: {beg: 1000, end: 1002}
-          alt: AT
+          dna: AT
           to: 1
 
 truth_output_vcf:

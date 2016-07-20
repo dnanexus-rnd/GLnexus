@@ -43,7 +43,7 @@ truth_unified_sites:
       copy_number: [0, 1]
       unification:
         - range: {beg: 10009464, end: 10009465}
-          alt: T
+          dna: T
           to: 1
 
 truth_output_vcf:

@@ -65,10 +65,10 @@ truth_unified_sites:
       copy_number: [0, 2, 1]
       unification:
         - range: {beg: 1000, end: 1001}
-          alt: T
+          dna: T
           to: 1
         - range: {beg: 1000, end: 1000}
-          alt: T
+          dna: T
           to: 2
 
 truth_output_vcf:

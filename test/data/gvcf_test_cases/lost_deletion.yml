@@ -56,17 +56,17 @@ truth_unified_sites:
       copy_number: [0, 4, 2]
       unification:
         - range: {beg: 608825, end: 608832}
-          alt: T
+          dna: T
           to: 1
         - range: {beg: 608828, end: 608828}
-          alt: A
+          dna: A
           to: 2
     - range: {ref: A, beg: 608835, end: 608852}
       alleles: [ACCGGGACCGGGACTGGG, A]
       copy_number: [0, 4]
       unification:
         - range: {beg: 608835, end: 608852}
-          alt: A
+          dna: A
           to: 1
 
 truth_output_vcf:

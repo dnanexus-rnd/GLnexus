@@ -40,14 +40,14 @@ truth_unified_sites:
       copy_number: [0, 1]
       unification:
         - range: {beg: 1000, end: 1000}
-          alt: A
+          dna: A
           to: 1
     - range: {ref: A, beg: 1002, end: 1002}
       alleles: [C, G]
       copy_number: [0, 1]
       unification:
         - range: {beg: 1002, end: 1002}
-          alt: G
+          dna: G
           to: 1
 
 truth_output_vcf:
