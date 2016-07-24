@@ -61,6 +61,9 @@ public:
                           const std::vector<unified_site>& sites,
                           const std::string& filename,
                           std::atomic<bool>* abort = nullptr);
+
+
+    unsigned threads_stalled_ms() const;
 };
 
 }

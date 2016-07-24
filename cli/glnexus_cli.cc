@@ -918,6 +918,11 @@ int main_genotype(int argc, char *argv[]) {
           svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-")));
         console->info("genotyping complete!");
 
+        auto stalls_ms = svc->threads_stalled_ms();
+        if (stalls_ms) {
+            console->info() << "worker threads were cumulatively stalled for " << stalls_ms << "ms";
+        }
+
         std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
         cerr << statsRq->str() << endl;
     }
