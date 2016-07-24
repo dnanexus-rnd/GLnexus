@@ -598,6 +598,20 @@ TEST_CASE("liftover field: AD_fall_back") {
     format_fields_AD.perform_gvcf_test();
 }
 
+TEST_CASE("liftover field: default_type=missing") {
+    vector<string> v_formats = {"GT", "RNC", "AD", "SB", "SBF"};
+    vector<string> v_infos = {};
+    GVCFTestCase format_field_missing("format_fields_default_missing", v_formats, v_infos);
+    format_field_missing.perform_gvcf_test();
+}
+
+TEST_CASE("liftover field: default_type=none") {
+    vector<string> v_formats = {"GT", "RNC", "AD", "SB"};
+    vector<string> v_infos = {};
+    GVCFTestCase format_field_none("format_fields_default_none", v_formats, v_infos);
+    format_field_none.perform_gvcf_test();
+}
+
 TEST_CASE("liftover field: integration") {
 
     vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};

@@ -1,6 +1,6 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
-  This is an integrated test targeting a variety of handling including default_to_zero, combining records and resolution by alleles
+  This is an integrated test targeting a variety of handling including default_type = zero, combining records and resolution by alleles
 
 input:
   header : |-
@@ -66,7 +66,7 @@ genotyper_config:
       type: int
       number: alleles
       combi_method: min
-      default_to_zero: true
+      default_type: zero
       count: 0
 
 truth_unified_sites:

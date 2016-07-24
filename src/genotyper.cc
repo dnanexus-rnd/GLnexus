@@ -108,14 +108,46 @@ class FormatFieldHelper : public IFormatFieldHelper {
         return ans;
     }
 
+    Status get_default_value(T* val) {
+        if (field_info.default_type == DefaultValueFiller::ZERO) {
+            *val = 0;
+        } else if (field_info.default_type == DefaultValueFiller::MISSING) {
+            switch (field_info.type) {
+                case RetainedFieldType::INT:
+                    *val = bcf_int32_missing;
+                    break;
+                case RetainedFieldType::FLOAT:
+                {
+                    float tmp = 0;
+                    bcf_float_set_missing(tmp);
+                    assert(bcf_float_is_missing(tmp));
+                    *val = tmp;
+                    break;
+                }
+                default:
+                    return Status::Invalid("genotyper: encountered unknown field_info.type");
+            }
+        } else {
+            return Status::Invalid("genotyper: encountered unknown default value filler type");
+        }
+        return Status::OK();
+    }
     Status combine_format_data(vector<T>& ans) {
-        if (field_info.default_to_zero) {
+        Status s;
+
+        if (field_info.default_type != DefaultValueFiller::NONE ) {
+            // Templatized default value
+            T default_value;
+            S(get_default_value(&default_value));
+
             for (auto& v : format_v) {
                 if (v.empty()) {
-                    v.push_back(0);
+                    v.push_back(default_value);
                 }
             }
         }
+
+        // TODO: Handling of default to missing case here
 
         if( any_of(format_v.begin(), format_v.end(), [](vector<T> v){return v.empty();})) {
             // At least one of the sample is missing a value in this format field.
@@ -319,8 +351,6 @@ public:
         }
         return Status::OK();
     }
-
-
 };
 
 Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpers,

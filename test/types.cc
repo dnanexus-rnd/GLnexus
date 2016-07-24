@@ -548,7 +548,7 @@ TEST_CASE("retained_format_field") {
          description: foobar,
          type: int,
          number: genotype,
-         default_to_zero: false,
+         default_type: none,
          count: 5,
          combi_method: max}
 )";
@@ -584,17 +584,30 @@ TEST_CASE("retained_format_field") {
         }
     }
 
+    // Test bad combi_method
     const char* buf4 = 1 + R"(
         {orig_names: [XXX, YYY],
          name: AAA,
          description: foobar,
          type: int,
          number: GENOTYPE,
-         default_to_zero: false,
+         default_type: none,
          count: 5,
          combi_method: zzzzz}
 )";
-    const char* bad_examples[] = {buf4};
+
+    // Test bad default_type
+    const char* buf5 = 1 + R"(
+        {orig_names: [XXX, YYY],
+         name: AAA,
+         description: foobar,
+         type: int,
+         number: GENOTYPE,
+         default_type: zebra,
+         count: 5,
+         combi_method: min}
+)";
+    const char* bad_examples[] = {buf4, buf5};
 
     SECTION("bad examples") {
         Status s;
@@ -607,7 +620,6 @@ TEST_CASE("retained_format_field") {
         }
     }
 }
-
 
 TEST_CASE("genotyper_config") {
     const char* buf1 = 1 + R"(
@@ -641,7 +653,7 @@ liftover_fields:
     description: foobar
     type: int
     number: genotype
-    default_to_zero: false
+    default_type: none
     count: 5
     combi_method: max
     orig_names: [XXX, YYY]
@@ -650,7 +662,7 @@ liftover_fields:
     description: xxx
     type: int
     number: genotype
-    default_to_zero: false
+    default_type: missing
     count: 5
     combi_method: max
     orig_names: [uuu, zzz]
@@ -691,6 +703,7 @@ liftover_fields:
         }
     }
 
+    // Check bad output_residuals field
     const char* bad_buf1 = 1 + R"(
          {required_dp: -1,
          allele_dp_format: AD,
@@ -700,6 +713,7 @@ liftover_fields:
          output_format: BCF}
 )";
 
+    // Check bad output_format field
     const char* bad_buf2 = 1 + R"(
          required_dp: 2
          allele_dp_format: AD
@@ -709,6 +723,7 @@ liftover_fields:
          output_format: xxxxxxxxx
 )";
 
+    // Check bad number field
      const char* bad_buf3 = 1 + R"(
 required_dp: 0
 allele_dp_format: AD
@@ -722,7 +737,7 @@ liftover_fields:
     description: foobar
     type: int
     number: cat
-    default_to_zero: false
+    default_type: missing
     count: 5
     combi_method: max
     orig_names: [XXX, YYY]
@@ -731,18 +746,47 @@ liftover_fields:
     description: xxx
     type: int
     number: cow
-    default_to_zero: false
+    default_type: missing
     count: 5
     combi_method: max
     orig_names: [uuu, zzz]
 
  )";
 
-    const char* bad_examples[] = {bad_buf1, bad_buf2, bad_buf3};
+    // check bad default_type field
+     const char* bad_buf4 = 1 + R"(
+required_dp: 0
+allele_dp_format: AD
+ref_symbolic_allele: <NON_REF>
+ref_dp_format: MIN_DP
+output_residuals: false
+output_format: BCF
+liftover_fields:
+
+  - name: CCC
+    description: foobar
+    type: int
+    number: alleles
+    default_type: hippo
+    count: 5
+    combi_method: max
+    orig_names: [XXX, YYY]
+
+  - name: DDD
+    description: xxx
+    type: int
+    number: alleles
+    default_type: turtle
+    count: 5
+    combi_method: max
+    orig_names: [uuu, zzz]
+
+ )";
+
+    const char* bad_examples[] = {bad_buf1, bad_buf2, bad_buf3, bad_buf4};
 
     SECTION("bad examples") {
         Status s;
-
         for (const char* buf : bad_examples) {
             YAML::Node node = YAML::Load(buf);
             genotyper_config gc;

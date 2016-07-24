@@ -540,6 +540,18 @@ enum class RetainedFieldNumber {
 
 };
 
+enum class DefaultValueFiller {
+    // Fill with "missing" values as default (applicable to most)
+    MISSING = 0,
+
+    // Fill with 0 values as default (applicable to AD)
+    ZERO,
+
+    // Do not fill with default values (FORMAT field will be dropped
+    // when >=1 sample(s) have no values according to VCF spec)
+    NONE
+};
+
 struct retained_format_field {
     // Original names for this lifted-over field, found in input gvcf
     // Acepts a vector as confidence records and vcf records may use
@@ -552,26 +564,32 @@ struct retained_format_field {
     // description of format field to be inserted into header
     std::string description;
 
+    // Value type of retained field (int, float)
     RetainedFieldType type;
 
+    // NUMBER of INFO/FORMAT field,
+    // translated from VCF spec
     RetainedFieldNumber number;
 
-    // We use a bool here to sidestep the trouble of setting
-    // the appropriate type for float, int default values
-    bool default_to_zero;
-
-    // Applicable when number ==BASIC
+    // Applicable when number == BASIC
     int count;
 
+    // Handling of "missing" values by using default
+    // values, or leaving as empty, as instructed
+    DefaultValueFiller default_type;
+
+    // Handling of "combining" the same field
+    // from multiple records
     FieldCombinationMethod combi_method;
 
+    // Constructor
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
-        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, bool default_to_zero_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_to_zero(default_to_zero_), count(count_), combi_method(combi_method_) {
+        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, DefaultValueFiller default_type_=DefaultValueFiller::NONE)
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_type(default_type_), count(count_), combi_method(combi_method_) {
         // Keep the names in sorted order, so that the comparison operator
         // will compare orig_name vectors element-wise.
         std::sort(orig_names.begin(), orig_names.end());
-    }
+    };
 
     Status yaml(YAML::Emitter &out) const;
     static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);
