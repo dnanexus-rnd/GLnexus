@@ -50,21 +50,21 @@ genotyper_config:
   liftover_fields:
     - orig_names: [GQ]
       name: GQ
-      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">'
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
       type: int
       number: basic
       combi_method: min
       count: 1
     - orig_names: [DP, MIN_DP]
       name: DP
-      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
       type: int
       combi_method: min
       number: basic
       count: 1
     - orig_names: [AD]
       name: AD
-      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">'
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
       type: int
       number: alleles
       combi_method: min
@@ -72,7 +72,7 @@ genotyper_config:
       count: 0
     - orig_names: [SB]
       name: SB
-      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.\">'
+      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
       type: int
       combi_method: max
       number: basic
