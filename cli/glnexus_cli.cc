@@ -694,6 +694,7 @@ void help_unify_sites(const char* prog) {
          << "Options:" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file, the ranges have to the same same as the discover-alleles phase" << endl
          << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
+         << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
 }
 
@@ -708,11 +709,13 @@ int main_unify_sites(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
+        {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
     string config_preset;
+    size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
@@ -728,6 +731,10 @@ int main_unify_sites(int argc, char *argv[]) {
                 break;
             case 'c':
                 config_preset = string(optarg);
+                break;
+            case 't':
+                threads = strtoul(optarg, nullptr, 10);
+                console->info() << "pooling " << threads << " threads for site unification";
                 break;
             case 'h':
             case '?':
@@ -762,7 +769,7 @@ int main_unify_sites(int argc, char *argv[]) {
     vector<pair<string,size_t> > contigs;
     GLnexus::discovered_alleles dsals;
     H("merge discovered allele files",
-      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, dsals));
+      utils::merge_discovered_allele_files(console, threads, discovered_allele_files, contigs, dsals));
     console->info() << "consolidated to " << dsals.size() << " alleles for site unification";
 
     set<GLnexus::range> ranges;

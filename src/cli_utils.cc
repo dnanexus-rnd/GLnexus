@@ -308,12 +308,18 @@ Status unified_sites_of_yaml_stream(std::istream &is,
 
 // Load first file
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
+                                     size_t nr_threads,
                                      const vector<string> &filenames,
                                      vector<pair<string,size_t>> &contigs,
                                      discovered_alleles &dsals) {
     Status s;
     mutex mu;
-    ctpl::thread_pool threadpool(thread::hardware_concurrency());
+
+    if (nr_threads == 0) {
+        // by default, we use the number of cores for the thread pool size.
+        nr_threads = thread::hardware_concurrency();
+    }
+    ctpl::thread_pool threadpool(nr_threads);
 
     if (filenames.size() == 0)
         return Status::Invalid("no discovered allele files provided");
