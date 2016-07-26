@@ -755,6 +755,57 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
+Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_header, const map<int,int>& sample_mapping,
+                            const unified_site& site, vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
+                            vector<shared_ptr<bcf1_t>>& records, vector<shared_ptr<bcf1_t>>& variant_records) {
+
+    Status s;
+    vector<shared_ptr<bcf1_t>> *records_p;
+    vector<vector<int>> *allele_mappings_p;
+    vector<vector<int>> allele_mappings_all;
+    vector<vector<int>> allele_mappings_variant;
+
+    // Populate allele_mapping arrays so we don't have to redo this work
+    for (auto& record : records) {
+        vector<int> allele_mapping(record->n_allele, -1);
+        vector<bool> deletion_allele(record->n_allele, false);
+        S(find_allele_mapping(site, record.get(), allele_mapping, deletion_allele));
+        allele_mappings_all.push_back(allele_mapping);
+    }
+    for (auto& v_record : variant_records) {
+        vector<int> allele_mapping(v_record->n_allele, -1);
+        vector<bool> deletion_allele(v_record->n_allele, false);
+        S(find_allele_mapping(site, v_record.get(), allele_mapping, deletion_allele));
+        allele_mappings_variant.push_back(allele_mapping);
+    }
+
+    // Update format helpers
+    for (auto& format_helper : format_helpers) {
+        if (format_helper->field_info.ignore_non_variants) {
+            // Only care about variant records, loop through variant_records
+            records_p = &variant_records;
+            allele_mappings_p = &allele_mappings_variant;
+        } else {
+            // Look through all records (variant and non_variant)
+            records_p = &records;
+            allele_mappings_p = &allele_mappings_all;
+        }
+
+        // Loop through the records and their allele_mappings in sync
+        assert (records_p->size() == allele_mappings_p->size());
+        auto i_record = records_p->begin();
+        auto i_allele_mapping = allele_mappings_p->begin();
+        for (; i_record != records_p->end()
+             and i_allele_mapping != allele_mappings_p->end()
+             ; ++i_record, ++i_allele_mapping) {
+
+            S(format_helper->add_record_data(dataset, dataset_header, i_record->get(),
+                                               sample_mapping, *i_allele_mapping));
+        }
+    }
+    return Status::OK();
+}
+
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans,
@@ -845,18 +896,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                   genotypes));
         }
 
-        // Update format fields
-        for (auto& record : records) {
-            vector<int> allele_mapping(record->n_allele, -1);
-            vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
+        update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers, records, variant_records);
 
-            S(find_allele_mapping(site, record.get(), allele_mapping, deletion_allele))
-
-            for (auto& format_helper : format_helpers) {
-                S(format_helper->add_record_data(dataset, dataset_header.get(), record.get(),
-                                               sample_mapping, allele_mapping));
-            }
-        }
 
         // Handle residuals
         if (residualsFlag) {

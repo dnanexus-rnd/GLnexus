@@ -550,7 +550,8 @@ TEST_CASE("retained_format_field") {
          number: genotype,
          default_type: missing,
          count: 5,
-         combi_method: max}
+         combi_method: max,
+         ignore_non_variants: true}
 )";
 
     const char* good_examples[] = {buf1};
@@ -593,7 +594,8 @@ TEST_CASE("retained_format_field") {
          number: GENOTYPE,
          default_type: missing,
          count: 5,
-         combi_method: zzzzz}
+         combi_method: zzzzz,
+         ignore_non_variants: true}
 )";
 
     // Test bad default_type
@@ -605,9 +607,24 @@ TEST_CASE("retained_format_field") {
          number: GENOTYPE,
          default_type: zebra,
          count: 5,
-         combi_method: min}
+         combi_method: min,
+         ignore_non_variants: true}
 )";
-    const char* bad_examples[] = {buf4, buf5};
+
+    // Test bad ignore_non_variants
+        const char* buf6 = 1 + R"(
+        {orig_names: [XXX, YYY],
+         name: AAA,
+         description: foobar,
+         type: int,
+         number: GENOTYPE,
+         default_type: zero,
+         count: 5,
+         combi_method: min,
+         ignore_non_variants: maybe}
+)";
+
+    const char* bad_examples[] = {buf4, buf5, buf6};
 
     SECTION("bad examples") {
         Status s;

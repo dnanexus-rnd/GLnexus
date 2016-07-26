@@ -486,6 +486,13 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         return Status::Invalid("retained_format_field::yaml: invalid combi_method");
     }
 
+    ans << YAML::Key << "ignore_non_variants" << YAML::Value;
+    if (ignore_non_variants) {
+        ans << "true";
+    } else {
+        ans << "false";
+    }
+
     ans << YAML::EndMap;
 
     return Status::OK();
@@ -561,7 +568,7 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         } else if (s_default_type == "zero") {
             default_type = DefaultValueFiller::ZERO;
         } else {
-            V(false, "invalid default_type value")
+            V(false, "invalid default_type value");
         }
     }
 
@@ -576,7 +583,23 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
     } else {
         V(false, "invalid combi_method");
     }
-    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_type));
+
+    bool ignore_non_variants = false;
+    const auto n_ignore_non_variants = yaml["ignore_non_variants"];
+    if (n_ignore_non_variants) {
+        V(n_ignore_non_variants.IsScalar(), "invalid ignore_non_variants value");
+        string s_ignore_non_varaints = n_ignore_non_variants.Scalar();
+
+        if (s_ignore_non_varaints == "true") {
+            ignore_non_variants = true;
+        } else if (s_ignore_non_varaints == "false") {
+            ignore_non_variants = false;
+        } else {
+            V(false, "invalid ignore_non_variants value");
+        }
+    }
+
+    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_type, ignore_non_variants));
     ans->description = description;
     #undef V
     return Status::OK();
