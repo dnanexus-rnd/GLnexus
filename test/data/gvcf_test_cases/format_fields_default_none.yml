@@ -1,8 +1,8 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
-  This test echoes closely format_fields_default_missing.yml, but explicitly tests the behavior of default_type: none. While it replicates the input
-  of format_fields_default_missing.yml, the SB field is set as default_type: none in the config, which should cause the field to be dropped in the output,
-  since the genotyped site is missing SB information in sample A.
+  This test echoes closely format_fields_default_missing.yml, but explicitly tests the behavior of default_type: missing when all samples do not posses a field.
+  In particular, we expect the SB field, despite its specification of default_type: missing; to be dropped in the output because no sample have SB field
+  specified at the site.
 
 input:
   header: |-
@@ -30,7 +30,7 @@ input:
     - B.gvcf: |
         B
         A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
-        A	1000	.	C	CG,<NON_REF>	1.38	.	.	GT:GQ:AD:PL:SB	1/1:3:1,19,0:35,3,0,35,3,35:1,2,3,4
+        A	1000	.	C	CG,<NON_REF>	1.38	.	.	GT:GQ:AD:PL	1/1:3:1,19,0:35,3,0,35,3,35
         A	1001	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
 
 genotyper_config:
@@ -56,7 +56,7 @@ genotyper_config:
       type: int
       number: basic
       combi_method: min
-      default_type: none
+      default_type: missing
       count: 4
 
 truth_unified_sites:

@@ -548,7 +548,7 @@ TEST_CASE("retained_format_field") {
          description: foobar,
          type: int,
          number: genotype,
-         default_type: none,
+         default_type: missing,
          count: 5,
          combi_method: max}
 )";
@@ -591,7 +591,7 @@ TEST_CASE("retained_format_field") {
          description: foobar,
          type: int,
          number: GENOTYPE,
-         default_type: none,
+         default_type: missing,
          count: 5,
          combi_method: zzzzz}
 )";
@@ -653,7 +653,7 @@ liftover_fields:
     description: foobar
     type: int
     number: genotype
-    default_type: none
+    default_type: missing
     count: 5
     combi_method: max
     orig_names: [XXX, YYY]

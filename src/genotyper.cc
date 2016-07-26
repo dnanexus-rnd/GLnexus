@@ -135,30 +135,28 @@ class FormatFieldHelper : public IFormatFieldHelper {
     Status combine_format_data(vector<T>& ans) {
         Status s;
 
-        if (field_info.default_type != DefaultValueFiller::NONE ) {
-            // Templatized default value
-            T default_value;
-            S(get_default_value(&default_value));
+        int n_empty_samples = 0;
+        // Templatized default value
+        T default_value;
+        S(get_default_value(&default_value));
 
-            for (auto& v : format_v) {
-                if (v.empty()) {
-                    v.push_back(default_value);
-                }
+        for (auto& v : format_v) {
+            if (v.empty()) {
+                n_empty_samples++;
+                v.push_back(default_value);
             }
         }
 
-        // TODO: Handling of default to missing case here
-
-        if( any_of(format_v.begin(), format_v.end(), [](vector<T> v){return v.empty();})) {
-            // At least one of the sample is missing a value in this format field.
-            // For vcf spec compliance, we drop this format field for the output row by 
-            // clearing out the format_v vector
+        // If all samples are missing values for this format field, we should
+        // drop it instead of filling in with default value
+        if (n_empty_samples == format_v.size()) {
             ans.clear();
             return Status::OK();
-            // return Status::Invalid("genotyper: one or more sample has missing FORMAT field for the intended output field", field_info.name);
         }
+
         assert(format_v.size() == n_samples * count);
 
+        // Combine values using the combine_f function given
         for (auto& format_one : format_v) {
             ans.push_back(combine_f(format_one));
         }

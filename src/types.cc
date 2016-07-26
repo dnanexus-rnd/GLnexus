@@ -467,14 +467,12 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
     }
 
     ans << YAML::Key << "default_type" << YAML::Value;
-    if (default_type == DefaultValueFiller::NONE) {
-        ans << "none";
-    } else if (default_type == DefaultValueFiller::MISSING) {
+    if (default_type == DefaultValueFiller::MISSING) {
         ans << "missing";
     } else if (default_type == DefaultValueFiller::ZERO) {
         ans << "zero";
     } else {
-        return Status::Invalid("reatined_format_field::yaml: invalid default_type");
+        return Status::Invalid("retained_format_field::yaml: invalid default_type");
     }
 
     ans << YAML::Key << "count" << YAML::Value << count;
@@ -552,15 +550,13 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         count = n_count.as<int>();
     }
 
-    DefaultValueFiller default_type = DefaultValueFiller::NONE;
+    DefaultValueFiller default_type = DefaultValueFiller::MISSING;
     const auto n_default_type = yaml["default_type"];
     if (n_default_type) {
         V(n_default_type.IsScalar(), "invalid default_type value");
         string s_default_type = n_default_type.Scalar();
 
-        if (s_default_type == "none") {
-            default_type = DefaultValueFiller::NONE;
-        } else if (s_default_type == "missing") {
+        if (s_default_type == "missing") {
             default_type = DefaultValueFiller::MISSING;
         } else if (s_default_type == "zero") {
             default_type = DefaultValueFiller::ZERO;

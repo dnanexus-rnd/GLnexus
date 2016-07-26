@@ -1,6 +1,6 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
-  This test explicitly tests the behavior of default_type: missing, as applied to the SB field. The output includes a site that has no defined
+  This test explicitly tests the behavior of , as applied to the SB field. The output includes a site that has no defined
   SB field in sample A, and we expect the output SB field to be filled by "missing" value (ie a period '.').
 
 input:

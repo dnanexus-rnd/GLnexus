@@ -546,10 +546,6 @@ enum class DefaultValueFiller {
 
     // Fill with 0 values as default (applicable to AD)
     ZERO,
-
-    // Do not fill with default values (FORMAT field will be dropped
-    // when >=1 sample(s) have no values according to VCF spec)
-    NONE
 };
 
 struct retained_format_field {
@@ -584,7 +580,7 @@ struct retained_format_field {
 
     // Constructor
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
-        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, DefaultValueFiller default_type_=DefaultValueFiller::NONE)
+        FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0, DefaultValueFiller default_type_=DefaultValueFiller::MISSING)
         : orig_names(orig_names_), name(name_), type(type_), number(number_), default_type(default_type_), count(count_), combi_method(combi_method_) {
         // Keep the names in sorted order, so that the comparison operator
         // will compare orig_name vectors element-wise.
