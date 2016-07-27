@@ -117,13 +117,12 @@ class FormatFieldHelper : public IFormatFieldHelper {
                     *val = bcf_int32_missing;
                     break;
                 case RetainedFieldType::FLOAT:
-                {
-                    float tmp = 0;
-                    bcf_float_set_missing(tmp);
-                    assert(bcf_float_is_missing(tmp));
-                    *val = tmp;
+                    // Union construct to side-step compiler warnings about type checking
+                    // For reference, refer to bcf_float_set function in htslib/vcf.h
+                    union {uint32_t i; float f; } u;
+                    u.i = bcf_float_missing;
+                    *val = u.f;
                     break;
-                }
                 default:
                     return Status::Invalid("genotyper: encountered unknown field_info.type");
             }
