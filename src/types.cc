@@ -488,9 +488,9 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
 
     ans << YAML::Key << "ignore_non_variants" << YAML::Value;
     if (ignore_non_variants) {
-        ans << "true";
+        ans << true;
     } else {
-        ans << "false";
+        ans << false;
     }
 
     ans << YAML::EndMap;
@@ -588,13 +588,9 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
     const auto n_ignore_non_variants = yaml["ignore_non_variants"];
     if (n_ignore_non_variants) {
         V(n_ignore_non_variants.IsScalar(), "invalid ignore_non_variants value");
-        string s_ignore_non_varaints = n_ignore_non_variants.Scalar();
-
-        if (s_ignore_non_varaints == "true") {
-            ignore_non_variants = true;
-        } else if (s_ignore_non_varaints == "false") {
-            ignore_non_variants = false;
-        } else {
+        try {
+            ignore_non_variants = n_ignore_non_variants.as<bool>();
+        } catch (YAML::Exception e) {
             V(false, "invalid ignore_non_variants value");
         }
     }
