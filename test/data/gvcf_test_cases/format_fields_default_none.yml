@@ -1,8 +1,8 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
-  This test echoes closely format_fields_default_missing.yml, but explicitly tests the behavior of default_type: missing when all samples do not posses a field.
-  In particular, we expect the SB field, despite its specification of default_type: missing; to be dropped in the output because no sample have SB field
-  specified at the site.
+  This test echoes closely format_fields_default_missing.yml, but explicitly tests the behavior of default_type: missing when all samples do not possess a field.
+  In particular, we expect the SB field to be retained despite all samples missing this field. This behavior is currently upheld for predictability of emission
+  for sharding vs sequential genotyping. However, it is possible that we may need to rethink this behavior down the road.
 
 input:
   header: |-
@@ -79,4 +79,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	C	CG	0	.	.	GT:AD:RNC	0/0:1,0:..	1/1:1,19:..
+      A	1000	.	C	CG	0	.	.	GT:AD:SB:RNC	0/0:1,0:.,.,.,.:..	1/1:1,19:.,.,.,.:..
