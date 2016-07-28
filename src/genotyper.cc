@@ -146,13 +146,6 @@ class FormatFieldHelper : public IFormatFieldHelper {
             }
         }
 
-        // If all samples are missing values for this format field, we should
-        // drop it instead of filling in with default value
-        if (n_empty_samples == format_v.size()) {
-            ans.clear();
-            return Status::OK();
-        }
-
         assert(format_v.size() == n_samples * count);
 
         // Combine values using the combine_f function given
