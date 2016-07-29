@@ -55,6 +55,7 @@ genotyper_config:
       number: basic
       combi_method: min
       count: 1
+      ignore_non_variants: true
     - orig_names: [DP, MIN_DP]
       name: DP
       description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth (reads with MQ=255 or with bad mates are filtered)\">'
@@ -68,7 +69,7 @@ genotyper_config:
       type: int
       number: alleles
       combi_method: min
-      default_to_zero: true
+      default_type: zero
       count: 0
     - orig_names: [SB]
       name: SB
