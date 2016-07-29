@@ -1,7 +1,10 @@
 readme: |
   This is a gvcf testing of the service workflow (discover_alleles, unified_sites, genotype_sites), with inclusion of FORMAT field liftover.
   In particular, this test ascertains the behavior of ignore_non_variants: true for the GQ field, whereby values from ref / pseudo-ref records
-  will be ignored in the combi method routine. This test-case was modified from real observations of poorly-understood "GQ=0" ref.
+  will be ignored in the combi method routine. This test-case was modified from real observations of poorly-understood "GQ=0" ref. We additionally test
+  the fall back behavior, where for sites with no variant records, we will fall back on using non_variant records.
+  (This is so we do not drop GQ field from confidence records, see sample C)
+ 
 input:
   header: |-
       ##fileformat=VCFv4.1
@@ -33,6 +36,9 @@ input:
         A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
         A	1000	.	GA	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:2:20:3,17,0:35,3,0,35,2,35:1,2,3,4
         A	1002	.	A	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+    - C.gvcf: |
+        C
+        A	900	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:23:34:20:0,34,200
 
 genotyper_config:
   liftover_fields:
@@ -90,5 +96,5 @@ truth_output_vcf:
       ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
-      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	GA	GAA,T	0	.	.	GT:GQ:SB:DP:AD:RNC	1/1:99:5,18,4,20:47:3,44,0:..	0/2:2:1,2,3,4:20:3,0,17:..
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
+      A	1000	.	GA	GAA,T	0	.	.	GT:GQ:SB:DP:AD:RNC	1/1:99:5,18,4,20:47:3,44,0:..	0/2:2:1,2,3,4:20:3,0,17:..	0/0:34:.,.,.,.:23:20,0,0:..

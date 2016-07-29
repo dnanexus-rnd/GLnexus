@@ -774,7 +774,7 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
 
     // Update format helpers
     for (auto& format_helper : format_helpers) {
-        if (format_helper->field_info.ignore_non_variants) {
+        if (format_helper->field_info.ignore_non_variants && !variant_records.empty()) {
             // Only care about variant records, loop through variant_records
             records_p = &variant_records;
             allele_mappings_p = &allele_mappings_variant;
