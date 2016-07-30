@@ -47,7 +47,7 @@ genotyper_config:
       type: int
       number: alleles
       combi_method: min
-      default_to_zero: true
+      default_type: zero
       count: 0
 
 truth_unified_sites:
