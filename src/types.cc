@@ -466,7 +466,15 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         return Status::Invalid("retained_format_field::yaml: invalid number");
     }
 
-    ans << YAML::Key << "default_to_zero" << YAML::Value << default_to_zero;
+    ans << YAML::Key << "default_type" << YAML::Value;
+    if (default_type == DefaultValueFiller::MISSING) {
+        ans << "missing";
+    } else if (default_type == DefaultValueFiller::ZERO) {
+        ans << "zero";
+    } else {
+        return Status::Invalid("retained_format_field::yaml: invalid default_type");
+    }
+
     ans << YAML::Key << "count" << YAML::Value << count;
 
     ans << YAML::Key << "combi_method" << YAML::Value;
@@ -476,6 +484,13 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "max";
     } else {
         return Status::Invalid("retained_format_field::yaml: invalid combi_method");
+    }
+
+    ans << YAML::Key << "ignore_non_variants" << YAML::Value;
+    if (ignore_non_variants) {
+        ans << true;
+    } else {
+        ans << false;
     }
 
     ans << YAML::EndMap;
@@ -542,18 +557,18 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         count = n_count.as<int>();
     }
 
-    bool default_to_zero = false;
-    const auto n_default_to_zero = yaml["default_to_zero"];
-    if (n_default_to_zero) {
-        V(n_default_to_zero.IsScalar(), "invalid default_to_zero value");
-        string s_default_to_zero = n_default_to_zero.Scalar();
+    DefaultValueFiller default_type = DefaultValueFiller::MISSING;
+    const auto n_default_type = yaml["default_type"];
+    if (n_default_type) {
+        V(n_default_type.IsScalar(), "invalid default_type value");
+        string s_default_type = n_default_type.Scalar();
 
-        if (s_default_to_zero == "true") {
-            default_to_zero = true;
-        } else if (s_default_to_zero == "false") {
-            default_to_zero = false;
+        if (s_default_type == "missing") {
+            default_type = DefaultValueFiller::MISSING;
+        } else if (s_default_type == "zero") {
+            default_type = DefaultValueFiller::ZERO;
         } else {
-            V(false, "invalid default_to_zero value")
+            V(false, "invalid default_type value");
         }
     }
 
@@ -568,7 +583,19 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
     } else {
         V(false, "invalid combi_method");
     }
-    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_to_zero));
+
+    bool ignore_non_variants = false;
+    const auto n_ignore_non_variants = yaml["ignore_non_variants"];
+    if (n_ignore_non_variants) {
+        V(n_ignore_non_variants.IsScalar(), "invalid ignore_non_variants value");
+        try {
+            ignore_non_variants = n_ignore_non_variants.as<bool>();
+        } catch (YAML::Exception e) {
+            V(false, "invalid ignore_non_variants value");
+        }
+    }
+
+    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_type, ignore_non_variants));
     ans->description = description;
     #undef V
     return Status::OK();

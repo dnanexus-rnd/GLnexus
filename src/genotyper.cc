@@ -108,25 +108,47 @@ class FormatFieldHelper : public IFormatFieldHelper {
         return ans;
     }
 
+    Status get_default_value(T* val) {
+        if (field_info.default_type == DefaultValueFiller::ZERO) {
+            *val = 0;
+        } else if (field_info.default_type == DefaultValueFiller::MISSING) {
+            switch (field_info.type) {
+                case RetainedFieldType::INT:
+                    *val = bcf_int32_missing;
+                    break;
+                case RetainedFieldType::FLOAT:
+                    // Union construct to side-step compiler warnings about type checking
+                    // For reference, refer to bcf_float_set function in htslib/vcf.h
+                    union {uint32_t i; float f; } u;
+                    u.i = bcf_float_missing;
+                    *val = u.f;
+                    break;
+                default:
+                    return Status::Invalid("genotyper: encountered unknown field_info.type");
+            }
+        } else {
+            return Status::Invalid("genotyper: encountered unknown default value filler type");
+        }
+        return Status::OK();
+    }
     Status combine_format_data(vector<T>& ans) {
-        if (field_info.default_to_zero) {
-            for (auto& v : format_v) {
-                if (v.empty()) {
-                    v.push_back(0);
-                }
+        Status s;
+
+        int n_empty_samples = 0;
+        // Templatized default value
+        T default_value;
+        S(get_default_value(&default_value));
+
+        for (auto& v : format_v) {
+            if (v.empty()) {
+                n_empty_samples++;
+                v.push_back(default_value);
             }
         }
 
-        if( any_of(format_v.begin(), format_v.end(), [](vector<T> v){return v.empty();})) {
-            // At least one of the sample is missing a value in this format field.
-            // For vcf spec compliance, we drop this format field for the output row by 
-            // clearing out the format_v vector
-            ans.clear();
-            return Status::OK();
-            // return Status::Invalid("genotyper: one or more sample has missing FORMAT field for the intended output field", field_info.name);
-        }
         assert(format_v.size() == n_samples * count);
 
+        // Combine values using the combine_f function given
         for (auto& format_one : format_v) {
             ans.push_back(combine_f(format_one));
         }
@@ -319,8 +341,6 @@ public:
         }
         return Status::OK();
     }
-
-
 };
 
 Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
@@ -728,6 +748,57 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     return Status::OK();
 }
 
+Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_header, const map<int,int>& sample_mapping,
+                            const unified_site& site, vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
+                            vector<shared_ptr<bcf1_t>>& records, vector<shared_ptr<bcf1_t>>& variant_records) {
+
+    Status s;
+    vector<shared_ptr<bcf1_t>> *records_p;
+    vector<vector<int>> *allele_mappings_p;
+    vector<vector<int>> allele_mappings_all;
+    vector<vector<int>> allele_mappings_variant;
+
+    // Populate allele_mapping arrays so we don't have to redo this work
+    for (auto& record : records) {
+        vector<int> allele_mapping(record->n_allele, -1);
+        vector<bool> deletion_allele(record->n_allele, false);
+        S(find_allele_mapping(site, record.get(), allele_mapping, deletion_allele));
+        allele_mappings_all.push_back(allele_mapping);
+    }
+    for (auto& v_record : variant_records) {
+        vector<int> allele_mapping(v_record->n_allele, -1);
+        vector<bool> deletion_allele(v_record->n_allele, false);
+        S(find_allele_mapping(site, v_record.get(), allele_mapping, deletion_allele));
+        allele_mappings_variant.push_back(allele_mapping);
+    }
+
+    // Update format helpers
+    for (auto& format_helper : format_helpers) {
+        if (format_helper->field_info.ignore_non_variants && !variant_records.empty()) {
+            // Only care about variant records, loop through variant_records
+            records_p = &variant_records;
+            allele_mappings_p = &allele_mappings_variant;
+        } else {
+            // Look through all records (variant and non_variant)
+            records_p = &records;
+            allele_mappings_p = &allele_mappings_all;
+        }
+
+        // Loop through the records and their allele_mappings in sync
+        assert (records_p->size() == allele_mappings_p->size());
+        auto i_record = records_p->begin();
+        auto i_allele_mapping = allele_mappings_p->begin();
+        for (; i_record != records_p->end()
+             and i_allele_mapping != allele_mappings_p->end()
+             ; ++i_record, ++i_allele_mapping) {
+
+            S(format_helper->add_record_data(dataset, dataset_header, i_record->get(),
+                                               sample_mapping, *i_allele_mapping));
+        }
+    }
+    return Status::OK();
+}
+
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data, const unified_site& site,
                      const std::string& sampleset, const vector<string>& samples,
                      const bcf_hdr_t* hdr, shared_ptr<bcf1_t>& ans,
@@ -818,18 +889,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                   genotypes));
         }
 
-        // Update format fields
-        for (auto& record : records) {
-            vector<int> allele_mapping(record->n_allele, -1);
-            vector<bool> deletion_allele(record->n_allele, false); // which alleles are deletions
+        update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers, records, variant_records);
 
-            S(find_allele_mapping(site, record.get(), allele_mapping, deletion_allele))
-
-            for (auto& format_helper : format_helpers) {
-                S(format_helper->add_record_data(dataset, dataset_header.get(), record.get(),
-                                               sample_mapping, allele_mapping));
-            }
-        }
 
         // Handle residuals
         if (residualsFlag) {
