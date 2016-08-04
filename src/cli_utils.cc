@@ -13,8 +13,6 @@ namespace GLnexus {
 namespace cli {
 namespace utils {
 
-int const MAX_CONCURRENCY = 8;
-
 // Parse a range like chr1:1000-2000. The item can also just be the name of a
 // contig, in which case it gets mapped to the contig's full length.
 bool parse_range(const vector<pair<string,size_t> >& contigs,
