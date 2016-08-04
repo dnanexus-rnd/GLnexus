@@ -54,6 +54,7 @@ Status unified_sites_of_yaml_stream(std::istream &is,
 // Merge a bunch of discovered-allele files, all in YAML format.
 //
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
+                                     size_t nr_threads,
                                      const std::vector<std::string> &filenames,
                                      std::vector<std::pair<std::string,size_t>> &contigs,
                                      discovered_alleles &dsals);

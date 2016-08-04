@@ -369,7 +369,7 @@ unification:
 
         vector<pair<string,size_t>> contigs2;
         discovered_alleles dsals2;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, dsals2);
+        Status s = utils::merge_discovered_allele_files(console, 0, filenames, contigs2, dsals2);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
     }
@@ -388,7 +388,7 @@ unification:
 
         vector<pair<string,size_t>> contigs2;
         discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, dsals);
+        Status s = utils::merge_discovered_allele_files(console, 0, filenames, contigs2, dsals);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(dsals.size() == 4);
@@ -406,7 +406,7 @@ unification:
 
         vector<pair<string,size_t>> contigs2;
         discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs2, dsals);
+        Status s = utils::merge_discovered_allele_files(console, 0, filenames, contigs2, dsals);
         REQUIRE(s.ok());
         REQUIRE(contigs2.size() == contigs.size());
         REQUIRE(dsals.size() == 6);
@@ -416,7 +416,7 @@ unification:
         vector<string> filenames;
         discovered_alleles dsals;
 
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, dsals);
+        Status s = utils::merge_discovered_allele_files(console, 0, filenames, contigs, dsals);
         REQUIRE(s.bad());
     }
 
@@ -437,7 +437,7 @@ unification:
 
         vector<pair<string,size_t>> contigs3;
         discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs3, dsals);
+        Status s = utils::merge_discovered_allele_files(console, 0, filenames, contigs3, dsals);
         REQUIRE(s.bad());
     }
 
@@ -478,7 +478,7 @@ unification:
         }
 
         discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, filenames, contigs, dsals);
+        Status s = utils::merge_discovered_allele_files(console, 0, filenames, contigs, dsals);
     }
 }
 
