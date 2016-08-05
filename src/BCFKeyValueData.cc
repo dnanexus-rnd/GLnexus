@@ -947,7 +947,7 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     }
 
     if (bcf->rlen > rangeHelper.interval_len) {
-        return Status::Invalid("gVCF contains record above maximum length", filename);
+        return Status::Invalid("gVCF contains record above maximum length", filename + " " + range(bcf).str(contigs));
     }
 
     // verify record ordering is non-decreasing within a contig
