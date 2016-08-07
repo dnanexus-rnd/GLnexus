@@ -675,7 +675,8 @@ int main_discover_alleles(int argc, char *argv[]) {
 
     console->info() << "discovering alleles in " << ranges.size() << " range(s)";
     vector<GLnexus::discovered_alleles> valleles;
-    H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
+    unsigned N;
+    H("discover alleles", svc->discover_alleles(sampleset, ranges, N, valleles));
 
     GLnexus::discovered_alleles dsals;
     for (auto it = valleles.begin(); it != valleles.end(); ++it) {
@@ -684,7 +685,7 @@ int main_discover_alleles(int argc, char *argv[]) {
     console->info() << "discovered " << dsals.size() << " alleles";
 
     // Write the discovered alleles to stdout
-    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(contigs, dsals, cout));
+    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
     return 0;
 }
 
@@ -767,11 +768,12 @@ int main_unify_sites(int argc, char *argv[]) {
         H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
     }
 
+    unsigned N;
     vector<pair<string,size_t> > contigs;
     GLnexus::discovered_alleles dsals;
     H("merge discovered allele files",
-      utils::merge_discovered_allele_files(console, threads, discovered_allele_files, contigs, dsals));
-    console->info() << "consolidated to " << dsals.size() << " alleles for site unification";
+      utils::merge_discovered_allele_files(console, threads, discovered_allele_files, N, contigs, dsals));
+    console->info() << "consolidated to " << dsals.size() << " alleles for site unification; N = " << N;
 
     set<GLnexus::range> ranges;
     if (!bedfilename.empty()) {

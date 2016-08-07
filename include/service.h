@@ -44,7 +44,7 @@ public:
     /// other thread), then it will cleanly shut down and return status
     /// ABORTED.
     Status discover_alleles(const std::string& sampleset, const range& pos,
-                            discovered_alleles& ans,
+                            unsigned& N, discovered_alleles& ans,
                             std::atomic<bool>* abort = nullptr);
 
     /// Discover all the alleles contained within each of the given disjoint
@@ -53,7 +53,7 @@ public:
     /// target capture regions). However, attention should be paid to the
     /// anticipated size of the results.
     Status discover_alleles(const std::string& sampleset, const std::vector<range>& ranges,
-                            std::vector<discovered_alleles>& ans,
+                            unsigned& N, std::vector<discovered_alleles>& ans,
                             std::atomic<bool>* abort = nullptr);
 
     /// Genotype a set of samples at the given sites, producing a BCF file.

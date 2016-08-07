@@ -54,6 +54,7 @@ TEST_CASE("service::discover_alleles") {
     REQUIRE(s.ok());
 
     discovered_alleles als;
+    unsigned N;
 
     SECTION("multiple ranges") {
         vector<range> ranges;
@@ -64,9 +65,10 @@ TEST_CASE("service::discover_alleles") {
         ranges.push_back(range(1, 1010, 1012));
         ranges.push_back(range(1, 2000, 2100));
         vector<discovered_alleles> mals;
-        s = svc->discover_alleles("<ALL>", ranges, mals);
+        s = svc->discover_alleles("<ALL>", ranges, N, mals);
         REQUIRE(s.ok());
         REQUIRE(mals.size() == ranges.size());
+        REQUIRE(N == 6);
 
         REQUIRE(mals[0].size() == 2);
         REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "A"))->second.zGQ.copy_number() == 6);
@@ -106,7 +108,7 @@ TEST_CASE("service::discover_alleles") {
             s = Service::Start(service_config(), *data, *faildata, svc);
             REQUIRE(s.ok());
 
-            s = svc->discover_alleles("<ALL>", range(0, 0, 1099), als);
+            s = svc->discover_alleles("<ALL>", range(0, 0, 1099), N, als);
             if (faildata->failed_once()) {
                 worked = true;
                 REQUIRE(s == StatusCode::IO_ERROR);
@@ -137,7 +139,7 @@ TEST_CASE("service::discover_alleles") {
             ranges.push_back(range(1, 1000, 1001));
             ranges.push_back(range(1, 1010, 1012));
             vector<discovered_alleles> mals;
-            s = svc->discover_alleles("<ALL>", ranges, mals);
+            s = svc->discover_alleles("<ALL>", ranges, N, mals);
             if (faildata->failed_once()) {
                 worked = true;
                 REQUIRE(s == StatusCode::IO_ERROR);
@@ -161,10 +163,12 @@ TEST_CASE("service::discover_alleles gVCF") {
     REQUIRE(s.ok());
 
     discovered_alleles als;
+    unsigned N;
 
     SECTION("exclude symbolic alleles") {
-        s = svc->discover_alleles("<ALL>", range(0, 10000000, 10010000), als);
+        s = svc->discover_alleles("<ALL>", range(0, 10000000, 10010000), N, als);
 
+        REQUIRE(N == 2);
         REQUIRE(als.size() == 2);
         auto p = als.find(allele(range(0, 10009463, 10009465), "TA"));
         REQUIRE(p != als.end());
@@ -175,8 +179,9 @@ TEST_CASE("service::discover_alleles gVCF") {
     }
 
     SECTION("exclusion/detection of bogus alleles") {
-        s = svc->discover_alleles("<ALL>", range(1, 10009463, 10009465), als);
+        s = svc->discover_alleles("<ALL>", range(1, 10009463, 10009465), N, als);
 
+        REQUIRE(N == 2);
         REQUIRE(als.size() == 2);
         auto p = als.find(allele(range(1, 10009463, 10009465), "TA"));
         REQUIRE(p != als.end());
@@ -185,7 +190,7 @@ TEST_CASE("service::discover_alleles gVCF") {
         REQUIRE(p != als.end());
         REQUIRE(p->second.zGQ.copy_number() == 1);
 
-        s = svc->discover_alleles("<ALL>", range(1, 10009465, 10009466), als);
+        s = svc->discover_alleles("<ALL>", range(1, 10009465, 10009466), N, als);
         REQUIRE(s == StatusCode::INVALID);
     }
 }
@@ -199,10 +204,12 @@ TEST_CASE("unified_sites") {
     REQUIRE(s.ok());
 
     discovered_alleles als;
+    unsigned N;
 
     SECTION("trio1") {
-        s = svc->discover_alleles("discover_alleles_trio1", range(0, 0, 1000000), als);
+        s = svc->discover_alleles("discover_alleles_trio1", range(0, 0, 1000000), N, als);
         REQUIRE(s.ok());
+        REQUIRE(N == 3);
 
         vector<unified_site> sites;
         s = unified_sites(unifier_config(), als, sites);
@@ -278,8 +285,9 @@ TEST_CASE("unified_sites") {
     }
 
     SECTION("2 trios") {
-        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), N, als);
         REQUIRE(s.ok());
+        REQUIRE(N == 6);
 
         vector<unified_site> sites;
         s = unified_sites(unifier_config(), als, sites);
@@ -389,14 +397,16 @@ TEST_CASE("genotyper placeholder") {
     REQUIRE(s.ok());
 
     discovered_alleles als;
+    unsigned N;
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
 
     SECTION("simulate I/O errors") {
         s = Service::Start(service_config(), *data, *data, svc);
         REQUIRE(s.ok());
-        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), N, als);
         REQUIRE(s.ok());
+        REQUIRE(N == 6);
         vector<unified_site> sites;
         s = unified_sites(unifier_config(), als, sites);
         REQUIRE(s.ok());
@@ -426,11 +436,12 @@ TEST_CASE("genotyper placeholder") {
 
     SECTION("unification with multiple contigs") {
         discovered_alleles als0, als1;
+        unsigned N;
 
-        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als0);
+        s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), N, als0);
         REQUIRE(s.ok());
 
-        s = svc->discover_alleles("<ALL>", range(1, 0, 1000000), als1);
+        s = svc->discover_alleles("<ALL>", range(1, 0, 1000000), N, als1);
         REQUIRE(s.ok());
 
         als.clear();
@@ -562,7 +573,8 @@ TEST_CASE("genotype residuals") {
     REQUIRE(s.ok());
 
     discovered_alleles als;
-    s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), als);
+    unsigned N;
+    s = svc->discover_alleles("<ALL>", range(0, 0, 1000000), N, als);
     REQUIRE(s.ok());
 
     vector<unified_site> sites;

@@ -241,7 +241,8 @@ public:
     }
 
     Status execute_discover_alleles(discovered_alleles& als, const string sampleset, range pos) {
-        return svc->discover_alleles(sampleset, pos, als);
+        unsigned N;
+        return svc->discover_alleles(sampleset, pos, N, als);
     }
 
     Status check_discovered_alleles(discovered_alleles& als, const string sampleset="<ALL>", range pos=range(0, 0, 1000000000)) {
@@ -281,7 +282,8 @@ public:
     // the expected "truth"
     Status check_unify_sites() {
         discovered_alleles als;
-        Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), als);
+        unsigned N;
+        Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), N, als);
         REQUIRE(s.ok());
 
         s = unified_sites(unifier_cfg, als, sites);
