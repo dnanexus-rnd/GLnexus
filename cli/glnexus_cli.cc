@@ -785,7 +785,7 @@ int main_unify_sites(int argc, char *argv[]) {
     }
 
     vector<GLnexus::unified_site> sites;
-    H("unify sites", GLnexus::unified_sites(unifier_cfg, dsals, sites));
+    H("unify sites", GLnexus::unified_sites(unifier_cfg, N, dsals, sites));
     // sanity check, sites are in-order and non-overlapping
     if (sites.size() > 1) {
         auto p = sites.begin();

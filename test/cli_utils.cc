@@ -227,7 +227,7 @@ alleles: yyy
     const char* snp = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.51]
 unification:
   - range: {ref: '17', beg: 100, end: 100}
     dna: A
@@ -241,7 +241,7 @@ unification:
     const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
 alleles: [AG, AC, C]
-copy_number: [100, 50, 1]
+allele_frequencies: [.nan, 0.50, 0.1]
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG

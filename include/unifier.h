@@ -9,7 +9,7 @@ namespace GLnexus {
 
 /// Compute unified sites from all discovered alleles in some genomic region
 Status unified_sites(const unifier_config& cfg,
-                     const discovered_alleles& alleles,
+                     unsigned N, const discovered_alleles& alleles,
                      std::vector<unified_site>& ans);
 }
 
