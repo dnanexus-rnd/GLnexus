@@ -56,11 +56,13 @@ Status Service::Start(const service_config& cfg, Metadata& metadata, BCFData& da
 }
 
 Status Service::discover_alleles(const string& sampleset, const range& pos,
-                                 discovered_alleles& ans, atomic<bool>* ext_abort) {
+                                 unsigned& N, discovered_alleles& ans,
+                                 atomic<bool>* ext_abort) {
     // Find the data sets containing the samples in the sample set.
     shared_ptr<const set<string>> samples, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     Status s;
+    N = 0;
 
     // Query for (iterators to) records overlapping pos in all the data sets.
     // We query for variant records only (excluding reference confidence records
@@ -74,6 +76,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
     };
     S(body_->data_.sampleset_range(*(body_->metadata_), sampleset, pos, predicate,
                                    samples, datasets, iterators));
+    N = samples->size();
 
     // Enqueue processing of each dataset on the thread pool.
     // TODO: improve cache-friendliness for long ranges
@@ -131,10 +134,11 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
 }
 
 Status Service::discover_alleles(const string& sampleset, const vector<range>& ranges,
-                                 vector<discovered_alleles>& ans, atomic<bool>* ext_abort) {
+                                 unsigned& N, vector<discovered_alleles>& ans, atomic<bool>* ext_abort) {
     atomic<bool> abort(false);
     vector<future<Status>> statuses;
     vector<discovered_alleles> results(ranges.size());
+    N = 0;
 
     size_t i = 0;
     for (const auto& range : ranges) {
@@ -145,8 +149,15 @@ Status Service::discover_alleles(const string& sampleset, const vector<range>& r
             }
 
             discovered_alleles dsals;
-            Status ls = discover_alleles(sampleset, range, dsals, &abort);
-            results[i] = move(dsals);
+            unsigned tmpN;
+            Status ls = discover_alleles(sampleset, range, tmpN, dsals, &abort);
+            if (ls.ok()) {
+                if (i == 0) {
+                    // tmpN should be the same across all ranges
+                    N = tmpN;
+                }
+                results[i] = move(dsals);
+            }
             return ls;
         });
 

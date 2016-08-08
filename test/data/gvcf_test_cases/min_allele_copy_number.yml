@@ -45,14 +45,14 @@ unifier_config:
 truth_unified_sites:
     - range: {ref: "21", beg: 10009461, end: 10009461}
       alleles: [T, A]
-      copy_number: [0, 2]
+      allele_frequencies: [.nan, 0.5]
       unification:
         - range: {beg: 10009461, end: 10009461}
           dna: A
           to: 1
     - range: {ref: "21", beg: 10009465, end: 10009465}
       alleles: [A, C]
-      copy_number: [0, 2]
+      allele_frequencies: [.nan, 0.5]
       unification:
         - range: {beg: 10009464, end: 10009465}
           dna: TC
@@ -62,7 +62,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: 21, beg: 10009466, end: 10009466}
       alleles: [T, A]
-      copy_number: [0, 2]
+      allele_frequencies: [.nan, 0.5]
       unification:
         - range: {beg: 10009466, end: 10009466}
           dna: A

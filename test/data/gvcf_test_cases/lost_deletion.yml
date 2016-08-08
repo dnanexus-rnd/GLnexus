@@ -53,7 +53,7 @@ input:
 truth_unified_sites:
     - range: {ref: A, beg: 608825, end: 608832}
       alleles: [TGGGGCCG, T, TGGAGCCG]
-      copy_number: [0, 4, 2]
+      allele_frequencies: [.nan, 0.5, 0.25]
       unification:
         - range: {beg: 608825, end: 608832}
           dna: T
@@ -63,7 +63,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: A, beg: 608835, end: 608852}
       alleles: [ACCGGGACCGGGACTGGG, A]
-      copy_number: [0, 4]
+      allele_frequencies: [.nan, 0.5]
       unification:
         - range: {beg: 608835, end: 608852}
           dna: A

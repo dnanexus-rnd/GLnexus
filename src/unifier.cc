@@ -333,7 +333,7 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
 }
 
 /// Unify the alleles at one site.
-Status unify_alleles(const unifier_config& cfg, const range& pos,
+Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
                      unified_site& ans) {
     Status s;
@@ -368,10 +368,12 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     // fill out the unification
     unified_site us(pos);
     us.alleles.push_back(ref.dna);
-    // We don't attempt to specify the ref copy number for now. It's
+    // We don't attempt to specify the ref allele frequency for now. It's
     // problematic because the copy numbers in discovered_alleles omit nearly
-    // all homozygous ref genotypes.
-    us.copy_number.push_back(0.0);
+    // all homozygous ref genotypes. We also shouldn't just do 1 - (sum of ALT
+    // frequencies) because we may have pruned some ALT alleles, and currently
+    // haven't preserved their frequency information (but in principle we could)
+    us.allele_frequencies.push_back(NAN);
     for (int i = 1; i <= valts.size(); i++) {
         const minimized_allele& p = valts[i-1];
         UNPAIR(p, alt, alt_info);
@@ -381,20 +383,19 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
         assert(unified_alt.pos == ref.pos);
 
         us.alleles.push_back(unified_alt.dna);
-        us.copy_number.push_back(alt_info.copy_number);
+        // TODO: configurable ploidy setting
+        float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
+        us.allele_frequencies.push_back(roundf(freq*1e6f)/1e6f);
         for (const auto& original : alt_info.originals) {
             us.unification[original] = i;
         }
     }
     ans = std::move(us);
     return Status::OK();
-    // TODO: will need some representation for copy number of pruned
-    // alleles. but maybe counting samples (+ploidy config) in
-    // discovered_alleles will suffice.
 }
 
 Status unified_sites(const unifier_config& cfg,
-                     const discovered_alleles& alleles,
+                     unsigned N, const discovered_alleles& alleles,
                      vector<unified_site>& ans) {
     Status s;
 
@@ -406,7 +407,7 @@ Status unified_sites(const unifier_config& cfg,
         UNPAIR(site, pos, site_alleles);
         UNPAIR(site_alleles, ref_alleles, alt_alleles);
         unified_site us(pos);
-        S(unify_alleles(cfg, pos, ref_alleles, alt_alleles, us));
+        S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, us));
         ans.push_back(us);
     }
     return Status::OK();
