@@ -383,7 +383,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         assert(unified_alt.pos == ref.pos);
 
         us.alleles.push_back(unified_alt.dna);
-        // TODO: better source of ploidy count
+        // TODO: configurable ploidy setting
         float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
         us.allele_frequencies.push_back(roundf(freq*1e6f)/1e6f);
         for (const auto& original : alt_info.originals) {
@@ -392,9 +392,6 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     }
     ans = std::move(us);
     return Status::OK();
-    // TODO: will need some representation for copy number of pruned
-    // alleles. but maybe counting samples (+ploidy config) in
-    // discovered_alleles will suffice.
 }
 
 Status unified_sites(const unifier_config& cfg,

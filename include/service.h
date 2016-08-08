@@ -39,6 +39,8 @@ public:
     /// overlapping; the set is generally used as input to allele
     /// "unification"
     ///
+    /// Sets N = sample count (size of sampleset)
+    ///
     /// If the abort flag is non-null, then from time to time the algorithm
     /// checks its contents; if it finds the flag set (presumably by some
     /// other thread), then it will cleanly shut down and return status
@@ -62,7 +64,9 @@ public:
                           const std::string& filename,
                           std::atomic<bool>* abort = nullptr);
 
-
+    // Report cumulative time (milliseconds) worker threads in the above
+    // operations have spent 'stalled' waiting on single-threaded processing
+    // steps (e.g. output serialization)
     unsigned threads_stalled_ms() const;
 };
 

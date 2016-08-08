@@ -153,6 +153,7 @@ Status Service::discover_alleles(const string& sampleset, const vector<range>& r
             Status ls = discover_alleles(sampleset, range, tmpN, dsals, &abort);
             if (ls.ok()) {
                 if (i == 0) {
+                    // tmpN should be the same across all ranges
                     N = tmpN;
                 }
                 results[i] = move(dsals);
