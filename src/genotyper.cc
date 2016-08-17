@@ -49,20 +49,30 @@ public:
     // output
     const int count;
 
-     IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
+    // Boolean vector of length n_samples * count, set to true
+    // if value at correpsonding index in ans and format_v
+    // should be set to "missing" due to specification on
+    // missing_on_rnc specification. Default to false
+    vector<bool> set_as_missing;
 
-     IFormatFieldHelper() = default;
+    IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {
+        for (int i=0; i<n_samples * count; i++) {
+            set_as_missing.push_back(false);
+        }
+    }
 
-     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+    IFormatFieldHelper() = default;
+
+    virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                                     const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                                    const vector<string>& field_names, int n_val_per_sample) = 0;
+                                    const NoCallReason rnc, const vector<string>& field_names, int n_val_per_sample) = 0;
 
-      virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                const map<int, int>& sample_mapping, const vector<int> allele_mapping) = 0;
+    virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                                const map<int, int>& sample_mapping, const vector<int> allele_mapping, const NoCallReason rnc) = 0;
 
-     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
+    virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
-     virtual ~IFormatFieldHelper() = default;
+    virtual ~IFormatFieldHelper() = default;
 
 };
 
@@ -131,17 +141,37 @@ class FormatFieldHelper : public IFormatFieldHelper {
         }
         return Status::OK();
     }
+
+    Status get_missing_value(T* val) {
+    switch (field_info.type) {
+            case RetainedFieldType::INT:
+                *val = bcf_int32_missing;
+                break;
+            case RetainedFieldType::FLOAT:
+                // Union construct to side-step compiler warnings about type checking
+                // For reference, refer to bcf_float_set function in htslib/vcf.h
+                union {uint32_t i; float f; } u;
+                u.i = bcf_float_missing;
+                *val = u.f;
+                break;
+            default:
+                return Status::Invalid("genotyper: encountered unknown field_info.type");
+        }
+
+        return Status::OK();
+    }
+
     Status combine_format_data(vector<T>& ans) {
         Status s;
 
-        int n_empty_samples = 0;
-        // Templatized default value
-        T default_value;
+        // Templatized default & missing value
+        T default_value, missing_value;
         S(get_default_value(&default_value));
+        S(get_missing_value(&missing_value));
 
+        // We passed the RNC test, process the field by sample
         for (auto& v : format_v) {
             if (v.empty()) {
-                n_empty_samples++;
                 v.push_back(default_value);
             }
         }
@@ -149,8 +179,15 @@ class FormatFieldHelper : public IFormatFieldHelper {
         assert(format_v.size() == n_samples * count);
 
         // Combine values using the combine_f function given
-        for (auto& format_one : format_v) {
-            ans.push_back(combine_f(format_one));
+        // Or clear as missing value if this dataset has a RNC
+        // that matches one specified in missing_on_rnc
+        for (int i=0; i<format_v.size(); i++){
+            auto& format_one = format_v[i];
+            if (set_as_missing[i]) {
+                ans.push_back(missing_value);
+            } else {
+                ans.push_back(combine_f(format_one));
+            }
         }
 
         return Status::OK();
@@ -177,7 +214,10 @@ class FormatFieldHelper : public IFormatFieldHelper {
     /// index of the this format field in the output.
     /// Returns a negative value if this value cannot be mapped to the output
     /// (e.g. allele-specific info for a trimmed allele), and raises error
-    /// if the sample cannot be mapped
+    /// if the sample cannot be mapped.
+    /// **Special use: if unmapped_j is passed in as a negative value, returns
+    /// **the out ind of the 1st element of the sample unmapped_i
+    /// **(useful when locating a sample, and clearing out all values of that sample)
     int get_out_ind_of_value(int unmapped_i, int unmapped_j,
                              const map<int, int>& sample_mapping,
                              const vector<int> allele_mapping) {
@@ -185,6 +225,10 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
         // Sample should always be mappable
         assert (mapped_i >= 0);
+
+        if (unmapped_j < 0) {
+            return mapped_i * count;
+        }
 
         switch (field_info.number){
             case RetainedFieldNumber::ALT:
@@ -234,14 +278,15 @@ public:
     // Wrapper with default values populated for
     // field_names and n_val_per_sample
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping) {
+                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                                    const NoCallReason rnc) {
 
-        return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {}, -1);
+        return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, rnc, {}, -1);
     }
 
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                            const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                           const vector<string>& field_names={}, int n_val_per_sample=-1) {
+                           const NoCallReason rnc, const vector<string>& field_names={}, int n_val_per_sample=-1) {
 
         bool found = false;
         if (n_val_per_sample < 0) {
@@ -251,6 +296,18 @@ public:
         const vector<string> * names_to_search = &field_names;
         if (names_to_search->empty()) {
             names_to_search = &(field_info.orig_names);
+        }
+
+        if (rnc != NoCallReason::N_A && field_info.missing_on_rnc.find(rnc) != field_info.missing_on_rnc.end()) {
+            for (int i=0; i<record->n_sample; i++) {
+                int sample_out_ind = get_out_ind_of_value(i, -1, sample_mapping, allele_mapping);
+                // Iterate through all values for this sample
+                for (int j=0; j<count; j++) {
+                    int out_ind = sample_out_ind + j;
+                    assert(out_ind < set_as_missing.size());
+                    set_as_missing[out_ind] = true;
+                } // close for j loop
+            } // close for i loop
         }
 
         for (auto& field_name : *names_to_search) {
@@ -304,7 +361,7 @@ public:
             handled_AD_field = true;
 
             // Call add_record_data again, searching for DP, MIN_DP, override n_val_per_sample to 1
-            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"MIN_DP", "DP"}, 1);
+            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, rnc, {"MIN_DP", "DP"}, 1);
 
             // Reset flag for next dataset
             handled_AD_field = false;
@@ -750,7 +807,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
 Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_header, const map<int,int>& sample_mapping,
                             const unified_site& site, vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
-                            vector<shared_ptr<bcf1_t>>& records, vector<shared_ptr<bcf1_t>>& variant_records) {
+                            vector<shared_ptr<bcf1_t>>& records, vector<shared_ptr<bcf1_t>>& variant_records,
+                            NoCallReason rnc) {
 
     Status s;
     vector<shared_ptr<bcf1_t>> *records_p;
@@ -793,7 +851,7 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
              ; ++i_record, ++i_allele_mapping) {
 
             S(format_helper->add_record_data(dataset, dataset_header, i_record->get(),
-                                               sample_mapping, *i_allele_mapping));
+                                               sample_mapping, *i_allele_mapping, rnc));
         }
     }
     return Status::OK();
@@ -875,6 +933,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         S(find_variant_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                sample_mapping, records, adh, rnc, min_ref_depth, variant_records));
 
+        update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers, records, variant_records, rnc);
+
         if (rnc != NoCallReason::N_A) {
             // no call for the samples in this dataset (several possible
             // reasons)
@@ -888,8 +948,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                   sample_mapping, variant_records, adh, min_ref_depth,
                                   genotypes));
         }
-
-        update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers, records, variant_records);
 
 
         // Handle residuals

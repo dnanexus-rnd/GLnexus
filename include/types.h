@@ -506,6 +506,44 @@ struct unifier_config {
     static Status of_yaml(const YAML::Node& yaml, unifier_config& ans);
 };
 
+// Reasons for emitting a non-call (.), encoded in the RNC FORMAT field in the
+// output VCF
+enum class NoCallReason {
+    N_A,                  /// not applicable (the genotype *is* called)
+    MissingData,          /// no gVCF coverage at all
+    PartialData,          /// partial gVCF coverage
+    InsufficientDepth,    /// insufficient depth of coverage
+    LostDeletion,         /// unrepresentable overlapping deletion
+    LostAllele,           /// unrepresentable allele (other than overlapping deletion)
+    UnphasedVariants,     /// site spans multiple unphased variants
+    OverlappingVariants   /// site spans multiple variants which overlap each other
+};
+
+const std::map<std::string, NoCallReason> rnc_map = {
+    {"N_A", NoCallReason::N_A},
+    {"MissingData", NoCallReason::MissingData},
+    {"PartialData", NoCallReason::PartialData},
+    {"InsufficientDepth", NoCallReason::InsufficientDepth},
+    {"LostDeletion", NoCallReason::LostDeletion},
+    {"LostAllele", NoCallReason::LostAllele},
+    {"UnphasedVariants", NoCallReason::UnphasedVariants},
+    {"OverlappingVariants", NoCallReason::OverlappingVariants}
+};
+
+const std::map<NoCallReason, std::string> rnc_str_map = {
+    {NoCallReason::N_A, "N_A"},
+    {NoCallReason::MissingData, "MissingData"},
+    {NoCallReason::PartialData, "PartialData"},
+    {NoCallReason::InsufficientDepth, "InsufficientDepth"},
+    {NoCallReason::LostDeletion, "LostDeletion"},
+    {NoCallReason::LostAllele, "LostAllele"},
+    {NoCallReason::UnphasedVariants, "UnphasedVariants"},
+    {NoCallReason::OverlappingVariants, "OverlappingVariants"}
+};
+
+Status get_rnc_string(const NoCallReason rnc, std::string& rnc_string);
+Status parse_rnc_string(const std::string& rnc_string, NoCallReason& rnc);
+
 enum class GLnexusOutputFormat {
     /// Compressed bcf (default option)
     BCF,
@@ -585,11 +623,17 @@ struct retained_format_field {
     // Ignore non-variant records (as produced by genotyper::find_variant_records)
     bool ignore_non_variants;
 
+    // Clear the format field and mark it as "Missing" when RNC
+    // matches an entry in this list
+    std::set<NoCallReason> missing_on_rnc;
+
     // Constructor
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0,
-        DefaultValueFiller default_type_=DefaultValueFiller::MISSING, bool ignore_non_variants_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_type(default_type_), count(count_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_) {
+        DefaultValueFiller default_type_=DefaultValueFiller::MISSING, bool ignore_non_variants_=false,
+        std::set<NoCallReason> missing_on_rnc_=std::set<NoCallReason>())
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_type(default_type_),
+        count(count_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_), missing_on_rnc(missing_on_rnc_) {
         // Keep the names in sorted order, so that the comparison operator
         // will compare orig_name vectors element-wise.
         std::sort(orig_names.begin(), orig_names.end());
