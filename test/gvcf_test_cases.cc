@@ -295,18 +295,34 @@ public:
         // Print debug comparison before failing
         if (sites != truth_sites) {
             print_header();
-            cout << "Expected truth sites \n";
+            cout << "Non-matching truth sites \n";
             for (auto& site : truth_sites) {
-                YAML::Emitter yaml;
-                REQUIRE(site.yaml(contigs, yaml).ok());
-                cout << yaml.c_str() << endl;
+                bool match = false;
+                for (auto& rhs : sites) {
+                    if (site == rhs) {
+                        match = true;
+                    }
+                }
+                if (!match) {
+                    YAML::Emitter yaml;
+                    REQUIRE(site.yaml(contigs, yaml).ok());
+                    cout << yaml.c_str() << endl;
+                }
             }
 
-            cout << "Generated unified sites \n";
+            cout << "Non-matching generated sites \n";
             for (auto& site: sites) {
-                YAML::Emitter yaml;
-                REQUIRE(site.yaml(contigs, yaml).ok());
-                cout << yaml.c_str() << endl;
+                bool match = false;
+                for (auto& rhs : truth_sites) {
+                    if (site == rhs) {
+                        match = true;
+                    }
+                }
+                if (!match) {
+                    YAML::Emitter yaml;
+                    REQUIRE(site.yaml(contigs, yaml).ok());
+                    cout << yaml.c_str() << endl;
+                }
             }
         }
         REQUIRE(sites == truth_sites);

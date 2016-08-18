@@ -261,6 +261,7 @@ TEST_CASE("unified_site::of_yaml") {
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
+lost_allele_frequency: 0.001
 unification:
   - range: {ref: '17', beg: 100, end: 100}
     dna: A

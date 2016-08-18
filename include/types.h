@@ -410,11 +410,12 @@ struct unified_site {
     std::map<allele,int> unification;
 
     std::vector<float> allele_frequencies;
-    //std::vector<float> genotype_prior;
+    float lost_allele_frequency = 0.0f;
 
     bool operator==(const unified_site& rhs) const noexcept {
         if (!(pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
-              && allele_frequencies.size() == rhs.allele_frequencies.size())) {
+              && allele_frequencies.size() == rhs.allele_frequencies.size()
+              && lost_allele_frequency == rhs.lost_allele_frequency)) {
             return false;
         }
         // nan-tolerant comparison of allele_frequencies

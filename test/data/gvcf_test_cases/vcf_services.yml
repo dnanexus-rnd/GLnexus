@@ -67,6 +67,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1101, end: 1101}
       alleles: [C, A]
       allele_frequencies: [.nan, 0.25]
+      lost_allele_frequency: 0.166667
       unification:
         - range: {beg: 1101, end: 1101}
           dna: A
@@ -74,6 +75,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1103, end: 1103}
       alleles: [C, G]
       allele_frequencies: [.nan, 0.25]
+      lost_allele_frequency: 0.166667
       unification:
         - range: {beg: 1103, end: 1103}
           dna: G

@@ -54,6 +54,7 @@ truth_unified_sites:
     - range: {ref: A, beg: 608825, end: 608832}
       alleles: [TGGGGCCG, T, TGGAGCCG]
       allele_frequencies: [.nan, 0.5, 0.25]
+      lost_allele_frequency: 0.25
       unification:
         - range: {beg: 608825, end: 608832}
           dna: T
@@ -64,6 +65,7 @@ truth_unified_sites:
     - range: {ref: A, beg: 608835, end: 608852}
       alleles: [ACCGGGACCGGGACTGGG, A]
       allele_frequencies: [.nan, 0.5]
+      lost_allele_frequency: 0.25
       unification:
         - range: {beg: 608835, end: 608852}
           dna: A
