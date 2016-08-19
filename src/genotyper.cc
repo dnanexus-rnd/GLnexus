@@ -1,26 +1,13 @@
 #include <assert.h>
 #include <algorithm>
 #include "genotyper.h"
+#include "diploid.h"
 
 using namespace std;
 
-// Here we implement a v1 early algorithm for genotyping individual samples
-// at unified sites. It's currently capable of substituting in hard genotype
-// calls for exactly matching alleles from our gVCF input data, with reference
-// padding using neighboring gvcf reference records (where necessary). It does
-// not handle joining of multiple variant records within a single site.
-// Basic filtering based on coverage is supported.
-// It does not handle genotype likelihoods, or carry over other fields besides
-// GT (and RNC for accountability). Also it assumes diploid.
 namespace GLnexus {
 
-/// Detect an idiosyncratic class of records from certain HaplotypeCaller
-/// versions which have QUAL == 0.0 and 0/0 genotype calls...we treat these as
-/// "pseudo" reference confidence records.
-static bool is_pseudo_ref_record(const bcf_hdr_t* hdr, bcf1_t* record) {
-    if (record->qual != 0.0) {
-        return false;
-    }
+static bool is_homozygous_ref(const bcf_hdr_t* hdr, bcf1_t* record) {
     htsvecbox<int> gt;
     int nGT = bcf_get_genotypes(hdr, record, &gt.v, &gt.capacity);
     for (int i = 0; i < record->n_sample; i++) {
@@ -31,6 +18,96 @@ static bool is_pseudo_ref_record(const bcf_hdr_t* hdr, bcf1_t* record) {
         }
     }
     return true;
+}
+
+// Re-call the genotypes (with adjusted GQ) in the input gVCF record based on
+// the genotype likelihoods and the unified allele frequencies
+static Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const map<int, int>& sample_mapping,
+                               const bcf_hdr_t* hdr, bcf1_t* record) {
+    unsigned nGT = diploid::genotypes(record->n_allele);
+    range rng(record);
+
+    // extract input genotype likelihoods, GT, and GQ
+    vector<double> gll;
+    Status s = diploid::bcf_get_genotype_log_likelihoods(hdr, record, gll);
+    if (!s.ok()) {
+        if (s == StatusCode::NOT_FOUND) return Status::OK(); else return s;
+    }
+    assert(gll.size() == nGT*record->n_sample);
+    htsvecbox<int> gt;
+    if(bcf_get_genotypes(hdr, record, &gt.v, &gt.capacity) != 2*record->n_sample || !gt.v) {
+        return Status::Failure("genotyper::revise_genotypes: unexpected result from bcf_get_genotypes");
+    }
+    assert(gt.capacity >= 2*record->n_sample);
+    htsvecbox<int32_t> gq;
+    if(bcf_get_format_int32(hdr, record, "GQ", &gq.v, &gq.capacity) != record->n_sample || !gq.v) {
+        return Status::Failure("genotyper::revise_genotypes: unexpected result from bcf_get_format_int32 GQ");
+    }
+    assert(gq.capacity >= record->n_sample);
+
+    // construct "prior" over input ALT alleles by lifting back frequencies from unified site.
+    // any 'lost' alleles are lumped together.
+    const float lost_log_prior = log(std::max(us.lost_allele_frequency, cfg.min_assumed_allele_frequency));
+    vector<double> gt_log_prior(diploid::genotypes(record->n_allele), lost_log_prior);
+    for (int i = 1; i < record->n_allele-1; i++) {
+        string al(record->d.allele[i]);
+        assert(regex_match(al, regex_dna));
+        auto p = us.unification.find(allele(rng, al));
+        if (p != us.unification.end()) {
+            assert(p->second < record->n_allele);
+            auto freq = us.allele_frequencies[p->second];
+            gt_log_prior[i] = log(std::max(freq, cfg.min_assumed_allele_frequency));
+        }
+    }
+
+    // estimate the REF prior
+    double us_alt_freq = 0.0;
+    for (int i = 1; i < us.allele_frequencies.size(); i++) {
+        us_alt_freq += us.allele_frequencies[i];
+    }
+    us_alt_freq += us.lost_allele_frequency;
+    gt_log_prior[0] = log(std::max(1.0 - us_alt_freq, (double) cfg.min_assumed_allele_frequency));
+
+    // proceed through designated samples
+    for (const auto& sample : sample_mapping) {
+        assert(sample.first < record->n_sample);
+        // add "priors" to genotype likelihoods; keep track of MAP and 2nd (silver)
+        double* sample_gll = gll.data() + sample.first*nGT;
+        double map_gll = log(0), silver_gll = log(0);
+        int map_gt = -1;
+        for (int g = 0; g < nGT; g++) {
+            const auto alleles = diploid::gt_alleles(g);
+            // conservative approximation -- use the smaller of the priors on the two alleles,
+            // rather than their product.
+            auto g_ll = sample_gll[g] + std::min(gt_log_prior[alleles.first], gt_log_prior[alleles.second]);
+            if (g_ll > map_gll) {
+                silver_gll = map_gll;
+                map_gll = g_ll;
+                map_gt = g;
+            } else if (g_ll > silver_gll) {
+                silver_gll = g_ll;
+            }
+        }
+        assert(map_gt >= 0 && map_gt < nGT);
+        assert(map_gll >= silver_gll);
+        assert(silver_gll > log(0));
+
+        // find MAP genotype and recalculate GQ
+        const auto revised_alleles = diploid::gt_alleles(map_gt);
+        gt.v[sample.first*2] = bcf_gt_unphased(revised_alleles.first);
+        gt.v[sample.first*2+1] = bcf_gt_unphased(revised_alleles.second);
+        gq.v[sample.first] = (int) 10.0*(map_gll - silver_gll)/log(10.0);
+    }
+
+    // write GT and GQ back into record
+    if (bcf_update_format_int32(hdr, record, "GQ", gq.v, record->n_sample)) {
+        return Status::Failure("genotyper::revise_genotypes: bcf_update_format_int32 GQ failed");
+    }
+    if (bcf_update_genotypes(hdr, record, gt.v, 2*record->n_sample)) {
+        return Status::Failure("genotyper::revise_genotypes: bcf_update_genotypes failed");
+    }
+
+    return Status::OK();
 }
 
 class IFormatFieldHelper {
@@ -591,8 +668,24 @@ Status find_variant_records(const genotyper_config& cfg, const unified_site& sit
     vector<shared_ptr<bcf1_t>> ref_records;
     ref_records.reserve(records.size());
     for (auto& record : records) {
-        (is_gvcf_ref_record(record.get()) || is_pseudo_ref_record(hdr, record.get())
-            ? ref_records : variant_records).push_back(record);
+        if (is_gvcf_ref_record(record.get())) {
+            ref_records.push_back(record);
+        } else {
+            shared_ptr<bcf1_t> eff_record;
+            if (cfg.revise_genotypes) {
+                shared_ptr<bcf1_t> record2(bcf_dup(record.get()), &bcf_destroy);
+                S(revise_genotypes(cfg, site, sample_mapping, hdr, record2.get()));
+                eff_record = record2;
+            } else {
+                eff_record = record;
+            }
+
+            if (is_homozygous_ref(hdr, eff_record.get())) {
+                ref_records.push_back(eff_record);
+            } else {
+                variant_records.push_back(eff_record);
+            }
+        }
     }
 
     // compute min_ref_depth across the reference confidence records

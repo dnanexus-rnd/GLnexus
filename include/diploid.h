@@ -12,6 +12,9 @@ unsigned genotypes(unsigned n_allele);
 std::pair<unsigned,unsigned> gt_alleles(unsigned gt);
 unsigned alleles_gt(unsigned a1, unsigned a2);
 
+// Extract genotype log-likelihoods, or Status::NOT_FOUND
+Status bcf_get_genotype_log_likelihoods(const bcf_hdr_t* header, bcf1_t *record, std::vector<double>& gll);
+
 // Find zygosity_by_GQ for each allele based on the GT and GQ of the record in
 // specified samples. (see types.h for the definition of zygosity_by_GQ)
 Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::vector<unsigned>& samples,

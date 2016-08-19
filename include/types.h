@@ -616,6 +616,14 @@ struct retained_format_field {
 };
 
 struct genotyper_config {
+    /// Use genotype likelihoods and unified allele frequencies to revise
+    /// genotype calls
+    bool revise_genotypes = false;
+
+    /// Minimum assumed allele frequency to use in genotype revision; increasing
+    /// this typically increases sensitivity to borderline ALT allele calls.
+    float min_assumed_allele_frequency = 0.0001;
+
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
 
