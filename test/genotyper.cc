@@ -97,105 +97,63 @@ unification:
     shared_ptr<bcf_hdr_t> hdr;
     shared_ptr<bcf1_t> rec;
 
+    #define REVISE_GENOTYPES_CASE(expected_allele1,expected_allele2,expected_gq,vcf_txt) { \
+        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec); \
+        REQUIRE(s.ok()); \
+        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get()); \
+        REQUIRE(s.ok()); \
+        htsvecbox<int> gt; \
+        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2); \
+        REQUIRE(!bcf_gt_is_missing(gt[0])); \
+        REQUIRE(bcf_gt_allele(gt[0]) == expected_allele1); \
+        REQUIRE(!bcf_gt_is_missing(gt[1])); \
+        REQUIRE(bcf_gt_allele(gt[1]) == expected_allele2); \
+        htsvecbox<int32_t> gq; \
+        REQUIRE(bcf_get_format_int32(hdr.get(), rec.get(), "GQ", &gq.v, &gq.capacity) == 1); \
+        REQUIRE(gq[0] == expected_gq); \
+    }
+
     SECTION("revision") {
-        const char* vcf_txt = "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1";
-        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec);
-        REQUIRE(s.ok());
-
-        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get());
-        REQUIRE(s.ok());
-
-        htsvecbox<int> gt;
-        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2);
-        REQUIRE(!bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_allele(gt[0]) == 0);
-        REQUIRE(!bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_allele(gt[1]) == 0);
-
-        htsvecbox<int32_t> gq;
-        REQUIRE(bcf_get_format_int32(hdr.get(), rec.get(), "GQ", &gq.v, &gq.capacity) == 1);
-        REQUIRE(gq[0] == 4);
+        REVISE_GENOTYPES_CASE(0, 0, 4, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1");
     }
 
     SECTION("no revision") {
-        const char* vcf_txt = "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,10,0:20:60:60,0,240,80,246,292";
-        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec);
-        REQUIRE(s.ok());
-
-        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get());
-        REQUIRE(s.ok());
-
-        htsvecbox<int> gt;
-        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2);
-        REQUIRE(!bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_allele(gt[0]) == 0);
-        REQUIRE(!bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_allele(gt[1]) == 1);
-
-        htsvecbox<int32_t> gq;
-        REQUIRE(bcf_get_format_int32(hdr.get(), rec.get(), "GQ", &gq.v, &gq.capacity) == 1);
-        REQUIRE(gq[0] == 40);
+        REVISE_GENOTYPES_CASE(0, 1, 40, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,10,0:20:60:60,0,240,80,246,292");
     }
 
     SECTION("min_assumed_allele_frequency revision") {
-        const char* vcf_txt = "21	1000	.	T	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1";
-        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec);
-        REQUIRE(s.ok());
-
-        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get());
-        REQUIRE(s.ok());
-
-        htsvecbox<int> gt;
-        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2);
-        REQUIRE(!bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_allele(gt[0]) == 0);
-        REQUIRE(!bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_allele(gt[1]) == 0);
-
         // likelihood is adjusted by -40 even though unified allele frequency corresponds to -50
-        htsvecbox<int32_t> gq;
-        REQUIRE(bcf_get_format_int32(hdr.get(), rec.get(), "GQ", &gq.v, &gq.capacity) == 1);
-        REQUIRE(gq[0] == 24);
+        REVISE_GENOTYPES_CASE(0, 0, 24, "21	1000	.	T	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1");
     }
 
     SECTION("min_assumed_allele_frequency no revision") {
-        const char* vcf_txt = "21	1000	.	T	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,6,0:16:45:45,0,240,86,246,292";
-        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec);
-        REQUIRE(s.ok());
-
-        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get());
-        REQUIRE(s.ok());
-
-        htsvecbox<int> gt;
-        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2);
-        REQUIRE(!bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_allele(gt[0]) == 0);
-        REQUIRE(!bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_allele(gt[1]) == 1);
-
         // likelihood is adjusted by -40 even though unified allele frequency corresponds to -50
-        htsvecbox<int32_t> gq;
-        REQUIRE(bcf_get_format_int32(hdr.get(), rec.get(), "GQ", &gq.v, &gq.capacity) == 1);
-        REQUIRE(gq[0] == 5);
+        REVISE_GENOTYPES_CASE(0, 1, 5, "21	1000	.	T	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,6,0:16:45:45,0,240,86,246,292");
     }
 
     SECTION("lost allele") {
-        const char* vcf_txt = "21	1000	.	T	C,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,86,246,292";
-        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec);
-        REQUIRE(s.ok());
+        REVISE_GENOTYPES_CASE(0, 1, 15, "21	1000	.	T	C,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,86,246,292");
+    }
 
-        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get());
-        REQUIRE(s.ok());
+    SECTION("double ALT") {
+        REVISE_GENOTYPES_CASE(1, 2, 26, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	1/2:0,6,6:12:16:240,46,240,46,0,80");
+    }
 
-        htsvecbox<int> gt;
-        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2);
-        REQUIRE(!bcf_gt_is_missing(gt[0]));
-        REQUIRE(bcf_gt_allele(gt[0]) == 0);
-        REQUIRE(!bcf_gt_is_missing(gt[1]));
-        REQUIRE(bcf_gt_allele(gt[1]) == 1);
+    const char* us_yml2 = 1 + R"(
+range: {ref: "21", beg: 1000, end: 1000}
+alleles: [T, A]
+allele_frequencies: [.nan, 0.99]
+lost_allele_frequency: 0.001
+unification:
+- range: {beg: 1000, end: 1000}
+  dna: A
+  to: 1
+)";
+    yaml = YAML::Load(us_yml2);
+    s = unified_site::of_yaml(yaml, {make_pair(string("21"),10000)}, us);
+    REQUIRE(s.ok());
 
-        htsvecbox<int32_t> gq;
-        REQUIRE(bcf_get_format_int32(hdr.get(), rec.get(), "GQ", &gq.v, &gq.capacity) == 1);
-        REQUIRE(gq[0] == 15);
+    SECTION("minor REF") {
+        REVISE_GENOTYPES_CASE(0, 1, 16, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,2,0:12:16:16,0,240,46,246,292");
     }
 }

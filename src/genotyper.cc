@@ -49,14 +49,15 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
     // any 'lost' alleles are lumped together.
     const float lost_log_prior = log(std::max(us.lost_allele_frequency, cfg.min_assumed_allele_frequency));
     vector<double> gt_log_prior(diploid::genotypes(record->n_allele), lost_log_prior);
-    for (int i = 1; i < record->n_allele-1; i++) {
+    for (int i = 1; i < record->n_allele; i++) {
         string al(record->d.allele[i]);
-        assert(regex_match(al, regex_dna));
-        auto p = us.unification.find(allele(rng, al));
-        if (p != us.unification.end()) {
-            assert(p->second < record->n_allele);
-            auto freq = us.allele_frequencies[p->second];
-            gt_log_prior[i] = log(std::max(freq, cfg.min_assumed_allele_frequency));
+        if (regex_match(al, regex_dna)) { // symbolic alleles would be treated as lost
+            auto p = us.unification.find(allele(rng, al));
+            if (p != us.unification.end()) {
+                assert(p->second < record->n_allele);
+                auto freq = us.allele_frequencies[p->second];
+                gt_log_prior[i] = log(std::max(freq, cfg.min_assumed_allele_frequency));
+            }
         }
     }
 
@@ -77,8 +78,10 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
         int map_gt = -1;
         for (int g = 0; g < nGT; g++) {
             const auto alleles = diploid::gt_alleles(g);
-            // conservative approximation -- use the smaller of the priors on the two alleles,
-            // rather than their product.
+            // Use the smaller of the priors on the two alleles and not their product.
+            // If we view this as "penalizing" the likelihoods of genotypes which include
+            // rare alleles, this is a conservative formulation of the genotype prior where
+            // we are not assuming complete independence of the alleles.
             auto g_ll = sample_gll[g] + std::min(gt_log_prior[alleles.first], gt_log_prior[alleles.second]);
             if (g_ll > map_gll) {
                 silver_gll = map_gll;
@@ -100,7 +103,6 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
     }
 
     // write GT and GQ back into record
-    // TODO: write PL back too?
     if (bcf_update_format_int32(hdr, record, "GQ", gq.v, record->n_sample)) {
         return Status::Failure("genotyper::revise_genotypes: bcf_update_format_int32 GQ failed");
     }
@@ -598,15 +600,19 @@ static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* datas
 }
 
 /// Given a unified site and the set of gVCF records overlapping it in some
-/// dataset, separate the variant records from surrounding reference
-/// confidence records. Ideally and often there's either zero or one variant
-/// records -- zero if the dataset exhibits no variation at the site, and one
-/// if it does. Unfortunately, there are a number of circumstances under which
-/// some variant callers produce multiple overlapping records. The variant
-/// records should all share at least one reference position in common.
+/// dataset, re-call their genotypes based on the genotype likelihoods and
+/// allele frequencies (if so configured), then separate the variant records
+/// from surrounding reference confidence or homozygous-ref records.
 ///
-/// The variant records, if any, are returned through variant_records. It is
-/// then the job of translate_genotypes to figure out what to do with the
+/// Ideally and often there's either zero or one variant records -- zero if
+/// the dataset exhibits no variation at the site, and one if it does.
+/// Unfortunately, there are a number of circumstances under which some
+/// variant callers produce multiple overlapping records. The variant records
+/// should all share at least one reference position in common.
+///
+/// The variant records, if any, are returned through variant_records. They
+/// may be distinct from the input records if genotype revision is performed.
+/// It is then the job of translate_genotypes to figure out what to do with the
 /// cluster of variant records.
 ///
 /// This function also modifies min_ref_depth which tracks the minimum depth
@@ -631,14 +637,14 @@ static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* datas
 /// Records span entire range, and include multiple variant records which
 /// don't all share at least one reference position
 ///      variant_records empty, min_ref_depth updated accordingly, rnc = UnphasedVariants
-Status find_variant_records(const genotyper_config& cfg, const unified_site& site,
-                            const string& dataset, const bcf_hdr_t* hdr, int bcf_nsamples,
-                            const map<int, int>& sample_mapping,
-                            const vector<shared_ptr<bcf1_t>>& records,
-                            AlleleDepthHelper& depth,
-                            NoCallReason& rnc,
-                            vector<int>& min_ref_depth,
-                            vector<shared_ptr<bcf1_t>>& variant_records) {
+Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& site,
+                               const string& dataset, const bcf_hdr_t* hdr, int bcf_nsamples,
+                               const map<int, int>& sample_mapping,
+                               const vector<shared_ptr<bcf1_t>>& records,
+                               AlleleDepthHelper& depth,
+                               NoCallReason& rnc,
+                               vector<int>& min_ref_depth,
+                               vector<shared_ptr<bcf1_t>>& variant_records) {
     // initialize outputs
     rnc = NoCallReason::MissingData;
     variant_records.clear();
@@ -672,21 +678,17 @@ Status find_variant_records(const genotyper_config& cfg, const unified_site& sit
         if (is_gvcf_ref_record(record.get())) {
             ref_records.push_back(record);
         } else {
-            shared_ptr<bcf1_t> eff_record;
+            shared_ptr<bcf1_t> record2 = record;
             if (cfg.revise_genotypes) {
-                // TODO: refactor so that revise_genotypes isn't a weird side effect
-                // of find_variant_records
-                shared_ptr<bcf1_t> record2(bcf_dup(record.get()), &bcf_destroy);
+                // copy the record and re-call genotypes
+                record2 = shared_ptr<bcf1_t>(bcf_dup(record.get()), &bcf_destroy);
                 S(revise_genotypes(cfg, site, sample_mapping, hdr, record2.get()));
-                eff_record = record2;
-            } else {
-                eff_record = record;
             }
 
-            if (is_homozygous_ref(hdr, eff_record.get())) {
-                ref_records.push_back(eff_record);
+            if (is_homozygous_ref(hdr, record2.get())) {
+                ref_records.push_back(record2);
             } else {
-                variant_records.push_back(eff_record);
+                variant_records.push_back(record2);
             }
         }
     }
@@ -744,7 +746,7 @@ static Status find_allele_mapping(const unified_site& site, const bcf1_t *record
 }
 
 /// Based on the cluster of variant records and min_ref_depth produced by
-/// find_variant_records, fill genotypes for this dataset's samples with
+/// prepare_dataset_records, fill genotypes for this dataset's samples with
 /// appropriate calls (currently by translation of the input hard-calls).
 /// Updates genotypes and may modify min_ref_depth.
 static Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
@@ -968,7 +970,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         vector<int> min_ref_depth(samples.size(), -1);
         vector<shared_ptr<bcf1_t>> variant_records;
         NoCallReason rnc = NoCallReason::MissingData;
-        S(find_variant_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
+        S(prepare_dataset_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                sample_mapping, records, adh, rnc, min_ref_depth, variant_records));
 
         if (rnc != NoCallReason::N_A) {
