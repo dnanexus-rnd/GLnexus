@@ -61,5 +61,10 @@ struct one_call {
         return !(*this <= rhs);
     }
 };
+
+// exposed for unit testing
+Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const std::map<int, int>& sample_mapping,
+                        const bcf_hdr_t* hdr, bcf1_t* record);
+
 } // namespace GLnexus
 #endif

@@ -22,8 +22,8 @@ static bool is_homozygous_ref(const bcf_hdr_t* hdr, bcf1_t* record) {
 
 // Re-call the genotypes (with adjusted GQ) in the input gVCF record based on
 // the genotype likelihoods and the unified allele frequencies
-static Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const map<int, int>& sample_mapping,
-                               const bcf_hdr_t* hdr, bcf1_t* record) {
+Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const map<int, int>& sample_mapping,
+                        const bcf_hdr_t* hdr, bcf1_t* record) {
     unsigned nGT = diploid::genotypes(record->n_allele);
     range rng(record);
 
@@ -96,7 +96,7 @@ static Status revise_genotypes(const genotyper_config& cfg, const unified_site& 
         const auto revised_alleles = diploid::gt_alleles(map_gt);
         gt.v[sample.first*2] = bcf_gt_unphased(revised_alleles.first);
         gt.v[sample.first*2+1] = bcf_gt_unphased(revised_alleles.second);
-        gq.v[sample.first] = (int) 10.0*(map_gll - silver_gll)/log(10.0);
+        gq.v[sample.first] = (int) round(10.0*(map_gll - silver_gll)/log(10.0));
     }
 
     // write GT and GQ back into record
