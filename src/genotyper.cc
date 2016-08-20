@@ -92,7 +92,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
         assert(map_gll >= silver_gll);
         assert(silver_gll > log(0));
 
-        // find MAP genotype and recalculate GQ
+        // record MAP genotype and recalculate GQ
         const auto revised_alleles = diploid::gt_alleles(map_gt);
         gt.v[sample.first*2] = bcf_gt_unphased(revised_alleles.first);
         gt.v[sample.first*2+1] = bcf_gt_unphased(revised_alleles.second);
@@ -100,6 +100,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
     }
 
     // write GT and GQ back into record
+    // TODO: write PL back too?
     if (bcf_update_format_int32(hdr, record, "GQ", gq.v, record->n_sample)) {
         return Status::Failure("genotyper::revise_genotypes: bcf_update_format_int32 GQ failed");
     }
@@ -673,6 +674,8 @@ Status find_variant_records(const genotyper_config& cfg, const unified_site& sit
         } else {
             shared_ptr<bcf1_t> eff_record;
             if (cfg.revise_genotypes) {
+                // TODO: refactor so that revise_genotypes isn't a weird side effect
+                // of find_variant_records
                 shared_ptr<bcf1_t> record2(bcf_dup(record.get()), &bcf_destroy);
                 S(revise_genotypes(cfg, site, sample_mapping, hdr, record2.get()));
                 eff_record = record2;
