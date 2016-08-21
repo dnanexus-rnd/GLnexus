@@ -681,3 +681,10 @@ TEST_CASE("rs141305015") {
 TEST_CASE("rs11429009 allele unifier test") {
     GVCFTestCase("rs11429009").perform_gvcf_test();
 }
+
+TEST_CASE("revise_overlapping") {
+    vector<string> v_formats = {"GT", "RNC", "GQ"};
+    vector<string> v_infos = {};
+    GVCFTestCase revise_overlapping_case("revise_overlapping", v_formats, v_infos);
+    revise_overlapping_case.perform_gvcf_test();
+}

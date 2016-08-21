@@ -99,7 +99,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
         const auto revised_alleles = diploid::gt_alleles(map_gt);
         gt.v[sample.first*2] = bcf_gt_unphased(revised_alleles.first);
         gt.v[sample.first*2+1] = bcf_gt_unphased(revised_alleles.second);
-        gq.v[sample.first] = (int) round(10.0*(map_gll - silver_gll)/log(10.0));
+        gq.v[sample.first] = std::min(99, (int) round(10.0*(map_gll - silver_gll)/log(10.0)));
     }
 
     // write GT and GQ back into record
@@ -610,10 +610,13 @@ static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* datas
 /// variant callers produce multiple overlapping records. The variant records
 /// should all share at least one reference position in common.
 ///
-/// The variant records, if any, are returned through variant_records. They
-/// may be distinct from the input records if genotype revision is performed.
-/// It is then the job of translate_genotypes to figure out what to do with the
+/// The variant records, if any, are returned through variant_records. It is
+/// then the job of translate_genotypes to figure out what to do with the
 /// cluster of variant records.
+///
+/// The input records vector may be changed (by pointer replacement) as a side-
+/// effect of genotype revision. The variant_records will be a subset of the
+/// records.
 ///
 /// This function also modifies min_ref_depth which tracks the minimum depth
 /// of ref-records for a given sample. min_ref_depth is expected to be
@@ -640,7 +643,7 @@ static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* datas
 Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& site,
                                const string& dataset, const bcf_hdr_t* hdr, int bcf_nsamples,
                                const map<int, int>& sample_mapping,
-                               const vector<shared_ptr<bcf1_t>>& records,
+                               vector<shared_ptr<bcf1_t>>& records,
                                AlleleDepthHelper& depth,
                                NoCallReason& rnc,
                                vector<int>& min_ref_depth,
@@ -674,21 +677,26 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
     // record(s) and the surrounding reference confidence records.
     vector<shared_ptr<bcf1_t>> ref_records;
     ref_records.reserve(records.size());
-    for (auto& record : records) {
+    for (int i = 0; i < records.size(); i++) {
+        shared_ptr<bcf1_t>& record = records[i];
         if (is_gvcf_ref_record(record.get())) {
             ref_records.push_back(record);
         } else {
-            shared_ptr<bcf1_t> record2 = record;
             if (cfg.revise_genotypes) {
-                // copy the record and re-call genotypes
-                record2 = shared_ptr<bcf1_t>(bcf_dup(record.get()), &bcf_destroy);
-                S(revise_genotypes(cfg, site, sample_mapping, hdr, record2.get()));
+                // The bcf1_t objects in records should be considered immutable (see data.h)
+                // so we copy them before revising the genotypes, replacing the pointer in
+                // the records vector with the copy. As a result of re-calling, a variant
+                // record might be revised to a homozygous ref record, or vice versa.
+                record = shared_ptr<bcf1_t>(bcf_dup(record.get()), &bcf_destroy);
+                if (bcf_unpack(record.get(), BCF_UN_ALL)) return Status::Failure("genotyper::prepare_dataset_records bcf_unpack");
+                S(revise_genotypes(cfg, site, sample_mapping, hdr, record.get()));
+                assert(records[i].get() == record.get());
             }
 
-            if (is_homozygous_ref(hdr, record2.get())) {
-                ref_records.push_back(record2);
+            if (is_homozygous_ref(hdr, record.get())) {
+                ref_records.push_back(record);
             } else {
-                variant_records.push_back(record2);
+                variant_records.push_back(record);
             }
         }
     }
@@ -966,7 +974,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
 
         // find the variant records and process the surrounding reference
-        // confidence records
+        // confidence records. NB, the records vector may be modified as a
+        // side effect.
         vector<int> min_ref_depth(samples.size(), -1);
         vector<shared_ptr<bcf1_t>> variant_records;
         NoCallReason rnc = NoCallReason::MissingData;
