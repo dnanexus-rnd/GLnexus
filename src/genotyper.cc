@@ -600,7 +600,6 @@ static Status update_min_ref_depth(const string& dataset, const bcf_hdr_t* datas
 
 /// Re-call the genotypes (with adjusted GQ) in the input gVCF record based on
 /// the genotype likelihoods and the unified allele frequencies. Mutates record.
-/// Does nothing if genotype likelihoods aren't present.
 Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const map<int, int>& sample_mapping,
                         const bcf_hdr_t* hdr, bcf1_t* record) {
     unsigned nGT = diploid::genotypes(record->n_allele);
@@ -610,7 +609,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
     vector<double> gll;
     Status s = diploid::bcf_get_genotype_log_likelihoods(hdr, record, gll);
     if (!s.ok()) {
-        if (s == StatusCode::NOT_FOUND) return Status::OK(); else return s;
+        return Status::Failure("genotyper::revise_genotypes: couldn't find genotype likelihoods in gVCF record");
     }
     assert(gll.size() == nGT*record->n_sample);
     htsvecbox<int> gt;
