@@ -47,6 +47,7 @@ unifier_config:
   min_GQ: 70
 genotyper_config:
   required_dp: 1
+  revise_genotypes: true
   liftover_fields:
     - orig_names: [GQ]
       name: GQ
