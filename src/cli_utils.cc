@@ -4,6 +4,7 @@
 #include <sstream>
 #include <regex>
 #include "cli_utils.h"
+#include "ctpl_stl.h"
 
 // This file has utilities employed by the glnexus applet.
 using namespace std;
@@ -114,7 +115,7 @@ Status contigs_of_yaml(const YAML::Node& yaml,
 // We write the stream as follows:
 //
 // ---
-// contigs
+// N, contigs
 // ---
 // allele 1
 // ---
@@ -126,7 +127,7 @@ Status contigs_of_yaml(const YAML::Node& yaml,
 //
 // Each element is transformed to YAML, and then written to the output stream.
 // This generates the document in pieces, while keeping it valid YAML.
-Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string,size_t> > &contigs,
+Status yaml_stream_of_discovered_alleles(unsigned N, const std::vector<std::pair<std::string,size_t> > &contigs,
                                          const discovered_alleles &dsals,
                                          std::ostream &os) {
     Status s;
@@ -135,7 +136,11 @@ Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string
     {
         os << "---" << endl;
         YAML::Emitter yaml;
+        yaml << YAML::BeginMap;
+        yaml << YAML::Key << "N" << YAML::Value << N;
+        yaml << YAML::Key << "contigs" << YAML::Value;
         S(yaml_of_contigs(contigs, yaml));
+        yaml << YAML::EndMap;
         os << yaml.c_str() << endl;
     }
 
@@ -227,7 +232,7 @@ static Status yaml_get_next_document(std::istream &is,
 
 
 Status discovered_alleles_of_yaml_stream(std::istream &is,
-                                         std::vector<std::pair<std::string,size_t> > &contigs,
+                                         unsigned &N, std::vector<std::pair<std::string,size_t> > &contigs,
                                          discovered_alleles &dsals) {
     Status s;
     string next_marker;
@@ -236,11 +241,17 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
     dsals.clear();
     S(yaml_verify_begin_doc_list(is));
 
-    // The first top-level document is the contigs
+    // The first top-level document has N & contigs
     {
         YAML::Node doc;
         S(yaml_get_next_document(is, doc, next_marker));
-        S(contigs_of_yaml(doc, contigs));
+
+        if (!doc.IsMap()) return Status::Invalid("discovered alleles header missing");
+        if (!doc["N"] || !doc["N"].IsScalar()) return Status::Invalid("discovered alleles header missing N");
+        N = doc["N"].as<unsigned>();
+
+        if (!doc["contigs"] || !doc["contigs"].IsSequence()) return Status::Invalid("discovered alleles header missing contigs");
+        S(contigs_of_yaml(doc["contigs"], contigs));
     }
 
     // All other documents are discovered-alleles
@@ -305,45 +316,74 @@ Status unified_sites_of_yaml_stream(std::istream &is,
 
 // Load first file
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
+                                     size_t nr_threads,
                                      const vector<string> &filenames,
-                                     vector<pair<string,size_t>> &contigs,
+                                     unsigned &N, vector<pair<string,size_t>> &contigs,
                                      discovered_alleles &dsals) {
     Status s;
+    mutex mu;
+
+    if (nr_threads == 0) {
+        // by default, we use the number of cores for the thread pool size.
+        nr_threads = thread::hardware_concurrency();
+    }
+    ctpl::thread_pool threadpool(nr_threads);
+
     if (filenames.size() == 0)
         return Status::Invalid("no discovered allele files provided");
     contigs.clear();
     dsals.clear();
+    N = 0;
 
-    // Load the first file
-    const string& first_file = filenames[0];
-    {
-        std::ifstream ifs(first_file.c_str());
-        S(discovered_alleles_of_yaml_stream(ifs, contigs, dsals));
-        logger->info() << "loaded " << dsals.size() << " alleles from " << first_file;
-        ifs.close();
+    // Load the files in parallel, and merge
+    vector<future<GLnexus::Status>> statuses;
+    for (const auto& dsal_file: filenames) {
+        auto fut = threadpool.push([&, dsal_file](int tid){
+            discovered_alleles dsals2;
+            vector<pair<string,size_t>> contigs2;
+            unsigned N2;
+
+            std::ifstream ifs(dsal_file.c_str());
+            Status s = discovered_alleles_of_yaml_stream(ifs, N2, contigs2, dsals2);
+            ifs.close();
+            if (!s.ok()) {
+                logger->info() << "Error loading alleles from " << dsal_file;
+                return s;
+            }
+            logger->info() << "loaded " << dsals2.size() << " alleles from " << dsal_file << ", N = " << N2;
+
+            lock_guard<mutex> lock(mu);
+            if (contigs.empty()) {
+                // This is the first file, initialize the result data-structures
+                contigs = move(contigs2);
+                dsals = move(dsals2);
+                N = N2;
+                return Status::OK();
+            }
+            
+            // We have already loaded and merged some files. 
+            // Verify that the contigs are the same
+            if (contigs != contigs2) {
+                return Status::Invalid("The contigs do not match");
+            }
+
+            // Merge the discovered alleles
+            N += N2;
+            return merge_discovered_alleles(dsals2, dsals);
+        });
+        statuses.push_back(move(fut));
     }
 
-    if (filenames.size() == 1)
-        return Status::OK();
-
-    // Load the rest of the files, and merge
-    for (auto it = filenames.begin() + 1; it != filenames.end(); ++it) {
-        vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals2;
-        const string &crnt_file = *it;
-        std::ifstream ifs(crnt_file.c_str());
-
-        S(discovered_alleles_of_yaml_stream(ifs, contigs2, dsals2));
-        logger->info() << "loaded " << dsals2.size() << " alleles from " << crnt_file;
-        ifs.close();
-
-        // verify that the contigs are the same
-        if (contigs != contigs2) {
-            return Status::Invalid("The contigs are different between", first_file + " " + crnt_file);
+    // collect results, wait for all threads to complete operation
+    vector<GLnexus::Status> failures;
+    for (size_t i = 0; i < filenames.size(); i++) {
+        GLnexus::Status s_i(move(statuses[i].get()));
+        if (!s_i.ok()) {
+            failures.push_back(move(s_i));
         }
-
-        S(merge_discovered_alleles(dsals2, dsals));
     }
+    if (!failures.empty())
+        return move(failures[0]);
 
     return Status::OK();
 }

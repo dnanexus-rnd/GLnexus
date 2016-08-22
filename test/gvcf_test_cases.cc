@@ -241,7 +241,8 @@ public:
     }
 
     Status execute_discover_alleles(discovered_alleles& als, const string sampleset, range pos) {
-        return svc->discover_alleles(sampleset, pos, als);
+        unsigned N;
+        return svc->discover_alleles(sampleset, pos, N, als);
     }
 
     Status check_discovered_alleles(discovered_alleles& als, const string sampleset="<ALL>", range pos=range(0, 0, 1000000000)) {
@@ -281,10 +282,11 @@ public:
     // the expected "truth"
     Status check_unify_sites() {
         discovered_alleles als;
-        Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), als);
+        unsigned N;
+        Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), N, als);
         REQUIRE(s.ok());
 
-        s = unified_sites(unifier_cfg, als, sites);
+        s = unified_sites(unifier_cfg, N, als, sites);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
@@ -293,18 +295,34 @@ public:
         // Print debug comparison before failing
         if (sites != truth_sites) {
             print_header();
-            cout << "Expected truth sites \n";
+            cout << "Non-matching truth sites \n";
             for (auto& site : truth_sites) {
-                YAML::Emitter yaml;
-                REQUIRE(site.yaml(contigs, yaml).ok());
-                cout << yaml.c_str() << endl;
+                bool match = false;
+                for (auto& rhs : sites) {
+                    if (site == rhs) {
+                        match = true;
+                    }
+                }
+                if (!match) {
+                    YAML::Emitter yaml;
+                    REQUIRE(site.yaml(contigs, yaml).ok());
+                    cout << yaml.c_str() << endl;
+                }
             }
 
-            cout << "Generated unified sites \n";
+            cout << "Non-matching generated sites \n";
             for (auto& site: sites) {
-                YAML::Emitter yaml;
-                REQUIRE(site.yaml(contigs, yaml).ok());
-                cout << yaml.c_str() << endl;
+                bool match = false;
+                for (auto& rhs : truth_sites) {
+                    if (site == rhs) {
+                        match = true;
+                    }
+                }
+                if (!match) {
+                    YAML::Emitter yaml;
+                    REQUIRE(site.yaml(contigs, yaml).ok());
+                    cout << yaml.c_str() << endl;
+                }
             }
         }
         REQUIRE(sites == truth_sites);

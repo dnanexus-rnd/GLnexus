@@ -36,14 +36,14 @@ input:
 truth_unified_sites:
     - range: {ref: "A", beg: 1001, end: 1001}
       alleles: [A, G]
-      copy_number: [0, 6]
+      allele_frequencies: [.nan, 0.5]
       unification:
         - range: {beg: 1001, end: 1001}
           dna: G
           to: 1
     - range: {ref: "A", beg: 1002, end: 1002}
       alleles: [C, A, G, T]
-      copy_number: [0, 6, 2, 2]
+      allele_frequencies: [.nan, 0.5, 0.166667, 0.166667]
       unification:
         - range: {beg: 1002, end: 1002}
           dna: A
@@ -56,7 +56,7 @@ truth_unified_sites:
           to: 3
     - range: {ref: "A", beg: 1011, end: 1013}
       alleles: [CCC, AGC, AGA]
-      copy_number: [0, 3, 2]
+      allele_frequencies: [.nan, 0.25, 0.166667]
       unification:
         - range: {beg: 1011, end: 1012}
           dna: AG
@@ -66,21 +66,23 @@ truth_unified_sites:
           to: 2
     - range: {ref: "A", beg: 1101, end: 1101}
       alleles: [C, A]
-      copy_number: [0, 3]
+      allele_frequencies: [.nan, 0.25]
+      lost_allele_frequency: 0.166667
       unification:
         - range: {beg: 1101, end: 1101}
           dna: A
           to: 1
     - range: {ref: "A", beg: 1103, end: 1103}
       alleles: [C, G]
-      copy_number: [0, 3]
+      allele_frequencies: [.nan, 0.25]
+      lost_allele_frequency: 0.166667
       unification:
         - range: {beg: 1103, end: 1103}
           dna: G
           to: 1
     - range: {ref: "A", beg: 1201, end: 1201}
       alleles: [C, A]
-      copy_number: [0, 3]
+      allele_frequencies: [.nan, 0.25]
       unification:
         - range: {beg: 1201, end: 1201}
           dna: A

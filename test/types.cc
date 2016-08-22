@@ -298,7 +298,8 @@ TEST_CASE("unified_site::of_yaml") {
     const char* snp = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
+lost_allele_frequency: 0.001
 unification:
   - range: {ref: '17', beg: 100, end: 100}
     dna: A
@@ -317,15 +318,15 @@ unification:
         REQUIRE((us).unification.size() == 2);  \
         REQUIRE((us).unification[allele(range(1, 99, 100), "A")] == 0); \
         REQUIRE((us).unification[allele(range(1, 99, 100), "G")] == 1); \
-        REQUIRE((us).copy_number.size() == 2); \
-        REQUIRE((us).copy_number[0] == 100.0); \
-        REQUIRE((us).copy_number[1] == 51.0);
+        REQUIRE((us).allele_frequencies.size() == 2); \
+        REQUIRE((us).allele_frequencies[0] != (us).allele_frequencies[0]); \
+        REQUIRE((us).allele_frequencies[1] == 0.01f);
 
 
     const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
 alleles: [AG, AC, C]
-copy_number: [100, 50, 1]
+allele_frequencies: [.nan, 0.05, 0.001]
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG
@@ -358,6 +359,7 @@ unification:
 
         unified_site us(range(-1,-1,-1));
         Status s = unified_site::of_yaml(n, contigs, us);
+        cout << s.str() << endl;
         REQUIRE(s.ok());
         VERIFY_SNP(us);
     }
@@ -387,7 +389,7 @@ unification:
         const char* snp_opt = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -408,7 +410,7 @@ unification:
         const char* snp_bogus = 1 + R"(
 range: {ref: 'bogus', beg: 100, end: 100}
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -425,7 +427,7 @@ unification:
         snp_bogus = 1 + R"(
 range: 12345
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -442,7 +444,7 @@ unification:
         const char* snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -458,7 +460,7 @@ unification:
         const char* snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
 unification:
   - range: {ref: 'bogus', beg: 100, end: 100}
     dna: A
@@ -475,7 +477,7 @@ unification:
         snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
-copy_number: [100, 51]
+allele_frequencies: [.nan, 0.01]
 unification:
 )";
         n = YAML::Load(snp_bogus);
@@ -493,7 +495,7 @@ TEST_CASE("unified_site::yaml") {
 range: {ref: '17', beg: 1000, end: 1001}
 containing_target: {ref: '17', beg: 1, end: 10000}
 alleles: [AG, AC, C]
-copy_number: [100, 50, 1]
+allele_frequencies: [.nan, 0.05, 0.001]
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG

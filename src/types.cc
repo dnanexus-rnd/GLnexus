@@ -243,12 +243,21 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     }
     ans << YAML::EndSeq;
 
-    ans << YAML::Key << "copy_number";
+    ans << YAML::Key << "allele_frequencies";
     ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (auto count : copy_number) {
-        ans << count;
+    for (auto f : allele_frequencies) {
+        if (f == f)
+            ans << f;
+        else
+            // working around yaml-cpp issue: it emits "nan", not ".nan"
+            ans << ".nan";
     }
     ans << YAML::EndSeq;
+
+    if (lost_allele_frequency != 0.0f) {
+        ans << YAML::Key << "lost_allele_frequency";
+        ans << YAML::Value << lost_allele_frequency;
+    }
 
     ans << YAML::Key << "unification";
     ans << YAML::Value << YAML::BeginSeq;
@@ -330,16 +339,26 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     }
     VR(ans.unification.size() >= 1, "not enough unification entries");
 
-    ans.copy_number.clear();
-    const auto n_obs = yaml["copy_number"];
-    VR(n_obs && n_obs.IsSequence(), "missing 'copy_number' field");
-    for (YAML::const_iterator ct = n_obs.begin(); ct != n_obs.end(); ++ct) {
-        VR(ct->IsScalar(), "invalid copy_nuber");
-        float ctf = ct->as<float>();
-        VR(ctf == ctf && ctf >= 0.0, "invalid copy_number");
-        ans.copy_number.push_back(ctf);
+    ans.allele_frequencies.clear();
+    const auto n_obs = yaml["allele_frequencies"];
+    VR(n_obs && n_obs.IsSequence(), "missing 'allele_frequencies' field");
+    for (YAML::const_iterator freq = n_obs.begin(); freq != n_obs.end(); ++freq) {
+        VR(freq->IsScalar(), "invalid allele_frequencies");
+        float freqf = freq->as<float>();
+        if (freqf == freqf) {
+            VR(freqf >= 0.0 && freqf <= 1.0, "invalid allele_frequencies");
+        }
+        ans.allele_frequencies.push_back(freqf);
     }
-    VR(ans.copy_number.size() == ans.alleles.size(), "copy_number list has wrong length");
+    VR(ans.allele_frequencies.size() == ans.alleles.size(), "allele_frequencies list has wrong length");
+
+    ans.lost_allele_frequency = 0.0f;
+    const auto n_laf = yaml["lost_allele_frequency"];
+    if (n_laf) {
+        VR(n_laf.IsScalar(), "invalid 'lost_allele_frequency' field");
+        ans.lost_allele_frequency = n_laf.as<float>();
+        VR(ans.lost_allele_frequency == ans.lost_allele_frequency && ans.lost_allele_frequency >= 0.0f && ans.lost_allele_frequency <= 1.0f, "invalid 'lost_allele_frequency' field");
+    }
 
     #undef V
     #undef VR

@@ -45,7 +45,7 @@ input:
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1001}
       alleles: [AT, ATT, A]
-      copy_number: [0, 2, 1]
+      allele_frequencies: [.nan, 0.25, 0.125]
       unification:
         - range: {beg: 1000, end: 1000}
           dna: AT

@@ -409,18 +409,34 @@ struct unified_site {
     /// DNA) onto the unified alleles (by index).
     std::map<allele,int> unification;
 
-    std::vector<float> copy_number;
-    //std::vector<float> genotype_prior;
+    std::vector<float> allele_frequencies;
+    float lost_allele_frequency = 0.0f;
 
     bool operator==(const unified_site& rhs) const noexcept {
-        return pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
-               && copy_number == rhs.copy_number;
+        if (!(pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
+              && allele_frequencies.size() == rhs.allele_frequencies.size()
+              && lost_allele_frequency == rhs.lost_allele_frequency)) {
+            return false;
+        }
+        // nan-tolerant comparison of allele_frequencies
+        for (unsigned i = 0; i < allele_frequencies.size(); i++) {
+            if (allele_frequencies[i] == allele_frequencies[i]) {
+                if (allele_frequencies[i] != rhs.allele_frequencies[i]) {
+                    return false;
+                }
+            } else {
+                if (rhs.allele_frequencies[i] == rhs.allele_frequencies[i]) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
     bool operator<(const unified_site& rhs) const noexcept{
         if (pos != rhs.pos) return pos < rhs.pos;
         if (alleles != rhs.alleles) return alleles < rhs.alleles;
         if (unification != rhs.unification) return unification < rhs.unification;
-        return copy_number < rhs.copy_number;
+        return allele_frequencies < rhs.allele_frequencies;
     }
 
     unified_site(const range& pos_) noexcept : pos(pos_), containing_target(-1,-1,-1) {}

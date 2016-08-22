@@ -37,14 +37,16 @@ unifier_config:
 truth_unified_sites:
     - range: {ref: A, beg: 1000, end: 1000}
       alleles: [T, A]
-      copy_number: [0, 1]
+      allele_frequencies: [.nan, 0.125]
+      lost_allele_frequency: 0.25
       unification:
         - range: {beg: 1000, end: 1000}
           dna: A
           to: 1
     - range: {ref: A, beg: 1002, end: 1002}
       alleles: [C, G]
-      copy_number: [0, 1]
+      allele_frequencies: [.nan, 0.125]
+      lost_allele_frequency: 0.25
       unification:
         - range: {beg: 1002, end: 1002}
           dna: G

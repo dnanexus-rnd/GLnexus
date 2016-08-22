@@ -261,7 +261,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
 // described above. The result maps the range of each site to a pair of the
 // discovered REF alleles and the minimized ALT alleles.
 Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alleles,
-                       map<range,pair<discovered_alleles,minimized_alleles>>& ans) {
+                       map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>>& ans) {
     Status s;
 
     // Start by coarsely partitioning "active regions" (allele clusters)
@@ -287,8 +287,17 @@ Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alle
                     site_refs.insert(ref);
                 }
             }
+
+            // and the pruned alleles
+            minimized_alleles site_pruned;
+            for (const auto& p : pruned) {
+                if (p.first.pos.overlaps(site.first)) {
+                    site_pruned.insert(p);
+                }
+            }
+
             assert(ans.find(site.first) == ans.end());
-            ans[site.first] = make_pair(site_refs,site.second);
+            ans[site.first] = make_tuple(site_refs,site.second,site_pruned);
         }
     }
     return Status::OK();
@@ -333,9 +342,9 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
 }
 
 /// Unify the alleles at one site.
-Status unify_alleles(const unifier_config& cfg, const range& pos,
+Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
-                     unified_site& ans) {
+                     const minimized_alleles& pruned, unified_site& ans) {
     Status s;
 
     // collapse the refs to get the reference allele for this site
@@ -368,10 +377,10 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
     // fill out the unification
     unified_site us(pos);
     us.alleles.push_back(ref.dna);
-    // We don't attempt to specify the ref copy number for now. It's
-    // problematic because the copy numbers in discovered_alleles omit nearly
-    // all homozygous ref genotypes.
-    us.copy_number.push_back(0.0);
+    // We don't attempt to specify the ref allele frequency for now; we don't quite
+    // have enough information because the copy numbers in discovered_alleles omit
+    // nearly all homozygous ref genotypes.
+    us.allele_frequencies.push_back(NAN);
     for (int i = 1; i <= valts.size(); i++) {
         const minimized_allele& p = valts[i-1];
         UNPAIR(p, alt, alt_info);
@@ -381,32 +390,46 @@ Status unify_alleles(const unifier_config& cfg, const range& pos,
         assert(unified_alt.pos == ref.pos);
 
         us.alleles.push_back(unified_alt.dna);
-        us.copy_number.push_back(alt_info.copy_number);
+        // TODO: configurable ploidy setting
+        float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
+        us.allele_frequencies.push_back(roundf(freq*1e6f)/1e6f);
         for (const auto& original : alt_info.originals) {
             us.unification[original] = i;
         }
     }
+
+    // Sum frequency of pruned alleles. In general this may be an overestimate when
+    // some of those alleles co-occur in cis; we accept this possible error for now.
+    // TODO: consider collecting some LD information during allele discovery.
+    float lost_allele_frequency = 0.0;
+    for (const auto& p : pruned) {
+        lost_allele_frequency += p.second.copy_number;
+    }
+    lost_allele_frequency /= N*zygosity_by_GQ::PLOIDY;
+    lost_allele_frequency = roundf(lost_allele_frequency*1e6f)/1e6f;
+    lost_allele_frequency = std::min(lost_allele_frequency, 1.0f);
+    us.lost_allele_frequency = lost_allele_frequency;
+
     ans = std::move(us);
     return Status::OK();
-    // TODO: will need some representation for copy number of pruned
-    // alleles. but maybe counting samples (+ploidy config) in
-    // discovered_alleles will suffice.
 }
 
 Status unified_sites(const unifier_config& cfg,
-                     const discovered_alleles& alleles,
+                     unsigned N, const discovered_alleles& alleles,
                      vector<unified_site>& ans) {
     Status s;
 
-    map<range,pair<discovered_alleles,minimized_alleles>> sites;
+    map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>> sites;
     S(delineate_sites(cfg, alleles, sites));
 
     ans.clear();
     for (const auto& site : sites) {
         UNPAIR(site, pos, site_alleles);
-        UNPAIR(site_alleles, ref_alleles, alt_alleles);
+        auto ref_alleles = get<0>(site_alleles);
+        auto alt_alleles = get<1>(site_alleles);
+        auto pruned_alleles = get<2>(site_alleles);
         unified_site us(pos);
-        S(unify_alleles(cfg, pos, ref_alleles, alt_alleles, us));
+        S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, pruned_alleles, us));
         ans.push_back(us);
     }
     return Status::OK();

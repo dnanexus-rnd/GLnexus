@@ -676,7 +676,8 @@ int main_discover_alleles(int argc, char *argv[]) {
 
     console->info() << "discovering alleles in " << ranges.size() << " range(s)";
     vector<GLnexus::discovered_alleles> valleles;
-    H("discover alleles", svc->discover_alleles(sampleset, ranges, valleles));
+    unsigned N;
+    H("discover alleles", svc->discover_alleles(sampleset, ranges, N, valleles));
 
     GLnexus::discovered_alleles dsals;
     for (auto it = valleles.begin(); it != valleles.end(); ++it) {
@@ -685,7 +686,7 @@ int main_discover_alleles(int argc, char *argv[]) {
     console->info() << "discovered " << dsals.size() << " alleles";
 
     // Write the discovered alleles to stdout
-    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(contigs, dsals, cout));
+    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
     return 0;
 }
 
@@ -696,6 +697,7 @@ void help_unify_sites(const char* prog) {
          << "Options:" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file, the ranges have to the same same as the discover-alleles phase" << endl
          << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
+         << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
          << endl;
 }
 
@@ -710,11 +712,13 @@ int main_unify_sites(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
+        {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     string bedfilename;
     string config_preset;
+    size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
@@ -730,6 +734,10 @@ int main_unify_sites(int argc, char *argv[]) {
                 break;
             case 'c':
                 config_preset = string(optarg);
+                break;
+            case 't':
+                threads = strtoul(optarg, nullptr, 10);
+                console->info() << "pooling " << threads << " threads for site unification";
                 break;
             case 'h':
             case '?':
@@ -761,11 +769,12 @@ int main_unify_sites(int argc, char *argv[]) {
         H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
     }
 
+    unsigned N;
     vector<pair<string,size_t> > contigs;
     GLnexus::discovered_alleles dsals;
     H("merge discovered allele files",
-      utils::merge_discovered_allele_files(console, discovered_allele_files, contigs, dsals));
-    console->info() << "consolidated to " << dsals.size() << " alleles for site unification";
+      utils::merge_discovered_allele_files(console, threads, discovered_allele_files, N, contigs, dsals));
+    console->info() << "consolidated to " << dsals.size() << " alleles for site unification; N = " << N;
 
     set<GLnexus::range> ranges;
     if (!bedfilename.empty()) {
@@ -777,7 +786,7 @@ int main_unify_sites(int argc, char *argv[]) {
     }
 
     vector<GLnexus::unified_site> sites;
-    H("unify sites", GLnexus::unified_sites(unifier_cfg, dsals, sites));
+    H("unify sites", GLnexus::unified_sites(unifier_cfg, N, dsals, sites));
     // sanity check, sites are in-order and non-overlapping
     if (sites.size() > 1) {
         auto p = sites.begin();

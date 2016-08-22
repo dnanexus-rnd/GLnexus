@@ -29,16 +29,15 @@ Status yaml_of_contigs(const std::vector<std::pair<std::string,size_t> > &contig
 Status contigs_of_yaml(const YAML::Node& yaml,
                        std::vector<std::pair<std::string,size_t> > &contigs);
 
-// Serialize the contigs and discovered alleles to YAML. This is
-// done in streaming fashion, so only part of the YAML document is held
-// in memory.
-Status yaml_stream_of_discovered_alleles(const std::vector<std::pair<std::string,size_t> > &contigs,
+// Serialize N (sample count), contigs, and discovered alleles to YAML, in a
+// streaming fashion.
+Status yaml_stream_of_discovered_alleles(unsigned N, const std::vector<std::pair<std::string,size_t> > &contigs,
                                          const discovered_alleles &dsals,
                                          std::ostream &os);
 
 // Load a YAML file, previously created with the above function
 Status discovered_alleles_of_yaml_stream(std::istream &is,
-                                         std::vector<std::pair<std::string,size_t> > &contigs,
+                                         unsigned &N, std::vector<std::pair<std::string,size_t> > &contigs,
                                          discovered_alleles &dsals);
 
 // Serialize a vector of unified-alleles to YAML.
@@ -52,10 +51,11 @@ Status unified_sites_of_yaml_stream(std::istream &is,
                                     std::vector<unified_site> &sites);
 
 // Merge a bunch of discovered-allele files, all in YAML format.
-//
+// N is summed across the files, and the contigs must be the same in all.
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
+                                     size_t nr_threads,
                                      const std::vector<std::string> &filenames,
-                                     std::vector<std::pair<std::string,size_t>> &contigs,
+                                     unsigned& N, std::vector<std::pair<std::string,size_t>> &contigs,
                                      discovered_alleles &dsals);
 
 

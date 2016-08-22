@@ -81,7 +81,7 @@ truth_discovered_alleles:
 truth_unified_sites:
     - range: {ref: A, beg: 36643700, end: 36643703}
       alleles: [GAGA, G]
-      copy_number: [0, 3]
+      allele_frequencies: [.nan, 0.5]
       unification:
         - range: {beg: 36643700, end: 36643703}
           dna: G
