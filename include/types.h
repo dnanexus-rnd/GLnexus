@@ -495,6 +495,7 @@ struct unifier_config {
 
     // GQ phred score threshold for an input genotype call to "count" towards
     // copy number estimates for the constituent alleles.
+    // Suggested value: = min_AQ2
     int min_GQ = 0;
 
     // Keep only alleles with at least this estimated copy number discovered

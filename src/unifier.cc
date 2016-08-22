@@ -191,9 +191,10 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
 // "sites" by heuristically pruning rare or lengthy alleles to avoid excessive
 // collapsing
 auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, minimized_alleles& pruned) {
-    // sort the alt alleles by decreasing copy number (+ some tiebreakers)
     vector<minimized_allele> valleles;
     valleles.reserve(alleles.size());
+    pruned.clear();
+
     // filter alleles with insufficient copy number or AQ
     for (auto al : alleles) {
         // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
@@ -209,8 +210,12 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
         if ((al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2) &&
             al.second.copy_number >= cfg.min_allele_copy_number) {
             valleles.push_back(al);
+        } else {
+            pruned.insert(al);
         }
     }
+
+    // sort the alt alleles by decreasing copy number (+ some tiebreakers)
     sort(valleles.begin(), valleles.end(), minimized_allele_lt(cfg.preference));
 
     // Build the sites by considering each alt allele in that order, and
@@ -218,7 +223,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     // one existing site, then accept it. Also accept the allele if it doesn't
     // overlap any already- accepted allele, creating a new site. Reject
     // alleles that overlap multiple existing sites.
-    pruned.clear();
+    unsigned kept_allele_count = 0;
     map<range,minimized_alleles> sites;
     for (const minimized_allele& mal : valleles) {
         // find existing site(s) overlapping this allele
@@ -252,7 +257,9 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             // no related site: insert a new site
             sites[mal.first.pos] = minimized_alleles({mal});
         }
+        kept_allele_count++;
     }
+    assert(kept_allele_count+pruned.size() == alleles.size());
 
     return sites;
 }
@@ -277,7 +284,6 @@ Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alle
 
         // prune alt alleles as necessary to yield sites
         auto sites = prune_alleles(cfg, alts, pruned);
-        // TODO: should we do anything with the pruned alleles?
 
         for (const auto& site : sites) {
             // find the ref alleles overlapping this site
@@ -344,7 +350,7 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
 /// Unify the alleles at one site.
 Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
-                     const minimized_alleles& pruned, unified_site& ans) {
+                     minimized_alleles& pruned, unified_site& ans) {
     Status s;
 
     // collapse the refs to get the reference allele for this site
@@ -369,7 +375,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
             while(valts[trunc0].second.copy_number > valts[trunc1].second.copy_number)
                 trunc0++;
         }
-        // TODO: should we do something with the additional pruned alleles?
+        pruned.insert(valts.begin()+trunc0, valts.end());
         valts.assign(valts.begin(), valts.begin()+trunc0);
         assert(valts.size() < cfg.max_alleles_per_site);
     }
@@ -425,9 +431,9 @@ Status unified_sites(const unifier_config& cfg,
     ans.clear();
     for (const auto& site : sites) {
         UNPAIR(site, pos, site_alleles);
-        auto ref_alleles = get<0>(site_alleles);
-        auto alt_alleles = get<1>(site_alleles);
-        auto pruned_alleles = get<2>(site_alleles);
+        auto& ref_alleles = get<0>(site_alleles);
+        auto& alt_alleles = get<1>(site_alleles);
+        auto& pruned_alleles = get<2>(site_alleles);
         unified_site us(pos);
         S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, pruned_alleles, us));
         ans.push_back(us);
