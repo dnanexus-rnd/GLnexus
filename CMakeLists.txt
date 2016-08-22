@@ -56,16 +56,22 @@ add_library(libhts STATIC IMPORTED)
 set(LIBHTS_A ${binary_dir}/libhts.a)
 set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 
+# RocksDB
+#
+# We set DISABLE_JEMALLOC=1 to avoid link-time dependency to jemalloc; we
+# DO however wish to use jemalloc, but expect user to activate it at
+# runtime with LD_PRELOAD instead.
+#
 # Warning: it's dangerously easy to mess with the RocksDB external project
 # configuration below and silently get a librocksdb.a compiled without
 # optimizations, or targeting an instruction set that's too old or too new.
 #
 # Here are some checks to perform after any adjustment:
-# 1. Verify AVX is used:
+# 1. Verify AVX is used (nonzero results):
 #      objdump -d external/src/rocksdb/librocksdb.a | grep vzeroupper | wc -l
-# 2. Verify Haswell-and-newer instructions are NOT used:
+# 2. Verify Haswell-and-newer instructions are NOT used (zero results):
 #      objdump -d external/src/rocksdb/librocksdb.a | grep shlx
-# 3. Verify accelerated CRC32 is used:
+# 3. Verify accelerated CRC32 is used (nonzero results):
 #      objdump -d external/src/rocksdb/librocksdb.a | grep crc32q
 # 4. Verify compiler optimizations performed:
 #      (TODO better heuristics needed)
@@ -74,11 +80,11 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/rocksdb-4.6.1.zip
+    URL https://github.com/facebook/rocksdb/archive/v4.9.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "export PORTABLE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -D__SSE4_2__' && make -n static_lib && make -j8 static_lib"
+    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -D__SSE4_2__' && make -n static_lib && make -j8 static_lib"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
