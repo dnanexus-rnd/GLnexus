@@ -642,6 +642,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
     // Estimate the REF prior as 1 - everything else. There's a little bias bias here in
     // that anything unobserved would be assumed to be homozygous REF. We could consider
     // having a max_assumed_allele_frequency of 0.5 or something.
+    // TODO: floor this at 1/2N
     double us_alt_freq = 0.0;
     for (int i = 1; i < us.allele_frequencies.size(); i++) {
         us_alt_freq += us.allele_frequencies[i];

@@ -398,7 +398,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         us.alleles.push_back(unified_alt.dna);
         // TODO: configurable ploidy setting
         float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
-        us.allele_frequencies.push_back(roundf(freq*1e6f)/1e6f);
+        us.allele_frequencies.push_back(ceilf(freq*1e6f)/1e6f);
         for (const auto& original : alt_info.originals) {
             us.unification[original] = i;
         }
@@ -407,12 +407,14 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     // Sum frequency of pruned alleles. In general this may be an overestimate when
     // some of those alleles co-occur in cis; we accept this possible error for now.
     // TODO: consider collecting some LD information during allele discovery.
+    // Furthermore, if we have any lost alleles, we floor at 1/(2N) regardless of
+    // min_GQ.
     float lost_allele_frequency = 0.0;
     for (const auto& p : pruned) {
         lost_allele_frequency += p.second.copy_number;
     }
     lost_allele_frequency /= N*zygosity_by_GQ::PLOIDY;
-    lost_allele_frequency = roundf(lost_allele_frequency*1e6f)/1e6f;
+    lost_allele_frequency = ceilf(lost_allele_frequency*1e6f)/1e6f;
     lost_allele_frequency = std::min(lost_allele_frequency, 1.0f);
     us.lost_allele_frequency = lost_allele_frequency;
 

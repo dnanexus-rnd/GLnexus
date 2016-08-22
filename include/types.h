@@ -623,6 +623,7 @@ struct genotyper_config {
 
     /// Minimum assumed allele frequency to use in genotype revision; increasing
     /// this typically increases sensitivity to borderline ALT allele calls.
+    /// Suggested value: 1/(2N) but not less than 0.0001
     float min_assumed_allele_frequency = 0.0001;
 
     /// Require any allele call to be supported by at least this depth
