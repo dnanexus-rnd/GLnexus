@@ -68,7 +68,7 @@ genotyper_config:
 truth_unified_sites:
     - range: {ref: "A", beg: 1225641, end: 1225642}
       alleles: [CT, AT, C, CC]
-      copy_number: [0, 4, 4, 2]
+      allele_frequencies: [.nan, 0.5, 0.5, 0.25]
       unification:
         - range: {beg: 1225641, end: 1225641}
           dna: A
