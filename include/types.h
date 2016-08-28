@@ -248,6 +248,7 @@ struct allele {
 //
 // top_AQ is used to store the highest COUNT observations (descending order) of
 // AQ for an allele across all genotype calls in the cohort.
+const int MAX_AQ = 9999;
 struct top_AQ {
     static const unsigned COUNT = 10;
     int V[COUNT] __attribute__ ((aligned));

@@ -2,6 +2,7 @@
 #include <memory>
 #include "diploid.h"
 #include "catch.hpp"
+#include "utils.cc"
 using namespace std;
 using namespace GLnexus;
 
@@ -34,6 +35,61 @@ TEST_CASE("diploid::alleles_gt") {
                 x++;
             }
         }
+    }
+}
+
+TEST_CASE("diploid::bcf_get_genotype_log_likelihoods") {
+    const char* header_txt = 1 + R"eof(
+##fileformat=VCFv4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=LowQual,Description="Low quality">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##contig=<ID=21,length=48129895>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A
+)eof";
+
+    Status s;
+    shared_ptr<bcf_hdr_t> hdr;
+    shared_ptr<bcf1_t> rec;
+    vector<double> gll;
+    const double PHRED2LOG = 1.0/(-10.0*log10(exp(1.0)));
+
+    SECTION("PL") {
+        const char* rec_txt = "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1";
+        s = TestUtils::load_vcf1((string(header_txt)+rec_txt).c_str(), hdr, rec);
+        REQUIRE(s.ok());
+        s = diploid::bcf_get_genotype_log_likelihoods(hdr.get(), rec.get(), gll);
+        REQUIRE(s.ok());
+        REQUIRE(gll.size() == 6);
+        REQUIRE(abs(gll[0] - 16*PHRED2LOG) < 1e-9);
+        REQUIRE(gll[1] == 0.0);
+        REQUIRE(abs(gll[2] - 240*PHRED2LOG) < 1e-9);
+        REQUIRE(abs(gll[3] - 46*PHRED2LOG) < 1e-9);
+        REQUIRE(abs(gll[4] - 246*PHRED2LOG) < 1e-9);
+        REQUIRE(abs(gll[5] - 292*PHRED2LOG) < 1e-9);
+    }
+
+    SECTION("PL with missing values") {
+        const char* rec_txt = "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,.,.,.:1,9,1,1";
+        s = TestUtils::load_vcf1((string(header_txt)+rec_txt).c_str(), hdr, rec);
+        REQUIRE(s.ok());
+        s = diploid::bcf_get_genotype_log_likelihoods(hdr.get(), rec.get(), gll);
+        REQUIRE(s.ok());
+        REQUIRE(gll.size() == 6);
+        REQUIRE(abs(gll[0] - 16*PHRED2LOG) < 1e-9);
+        REQUIRE(gll[1] == 0.0);
+        REQUIRE(abs(gll[2] - 240*PHRED2LOG) < 1e-9);
+        REQUIRE(gll[3] == log(0));
+        REQUIRE(gll[4] == log(0));
+        REQUIRE(gll[5] == log(0));
     }
 }
 
@@ -160,6 +216,25 @@ TEST_CASE("diploid::alleles_topAQ") {
         REQUIRE(s.ok());
         REQUIRE(AQ[0].V[0] == 4983);
         REQUIRE(AQ[1].V[0] == 4364);
+    }
+
+    SECTION("with neg_infinity likelihood") {
+        vector<double> gll {log(0)};
+        vector<int32_t> pl {0,4983};
+        for (auto pl_i : pl) {
+            gll.push_back(double(pl_i)/(-10.0)/log10(exp(1.0)));
+        }
+        vector<top_AQ> AQ;
+        Status s = diploid::alleles_topAQ(2, 1, {0}, gll, AQ);
+        REQUIRE(s.ok());
+        REQUIRE(AQ[0].V[0] == 4983);
+        REQUIRE(AQ[1].V[0] == MAX_AQ);
+
+        gll = {0.0, log(0), log(0)};
+        s = diploid::alleles_topAQ(2, 1, {0}, gll, AQ);
+        REQUIRE(s.ok());
+        REQUIRE(AQ[0].V[0] == MAX_AQ);
+        REQUIRE(AQ[1].V[0] == 0);
     }
 
     // TODO: multi-sample tests

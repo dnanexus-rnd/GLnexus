@@ -191,3 +191,45 @@ public:
         return Status::OK();
     }
 };
+
+struct TestUtils {
+    // Load the text of a VCF file
+    static Status load_vcf(const char* vcf, shared_ptr<bcf_hdr_t>& hdr, vector<shared_ptr<bcf1_t>>& records) {
+        records.clear();
+        hdr.reset();
+
+        const char *tmpfn = "/tmp/GLnexus_unit_test_tmp.vcf";
+        ofstream ofs;
+        ofs.open(tmpfn, ofstream::out);
+        if (!ofs.good()) return Status::IOError("test_vcf1 ofstream");
+        ofs << vcf;
+        ofs.close();
+
+        shared_ptr<vcfFile> f(vcf_open(tmpfn, "r"), [](vcfFile* h) { vcf_close(h); });
+        hdr = shared_ptr<bcf_hdr_t>(bcf_hdr_read(f.get()), &bcf_hdr_destroy);
+
+        int c;
+        auto record = shared_ptr<bcf1_t>(bcf_init1(), &bcf_destroy);
+        while ((c = bcf_read1(f.get(), hdr.get(), record.get())) == 0) {
+            if (bcf_unpack(record.get(), BCF_UN_ALL)) return Status::IOError("test_vcf1 bcf_unpack");
+            records.push_back(record);
+            record = shared_ptr<bcf1_t>(bcf_init1(), &bcf_destroy);
+        }
+        if (c != -1) {
+            return Status::IOError("test_vcf1 bcf_read1");
+        }
+        return Status::OK();
+    }
+
+    // id. but assuming there's exactly one record
+    static Status load_vcf1(const char* vcf, shared_ptr<bcf_hdr_t>& hdr, shared_ptr<bcf1_t>& record) {
+        vector<shared_ptr<bcf1_t>> records;
+        Status s;
+        S(load_vcf(vcf, hdr, records));
+        if (records.size() != 1) {
+            return Status::Failure("load_test_vcf1: test VCF is supposed to have exactly one record");
+        }
+        record = records[0];
+        return Status::OK();
+    }
+};

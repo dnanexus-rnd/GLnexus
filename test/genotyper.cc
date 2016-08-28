@@ -2,6 +2,7 @@
 #include "genotyper.h"
 #include "types.h"
 #include "catch.hpp"
+#include "utils.cc"
 using namespace std;
 using namespace GLnexus;
 
@@ -19,22 +20,6 @@ TEST_CASE("One_call_ordering") {
         REQUIRE(call2 < call1);
     }
 
-}
-
-Status test_vcf1(const char* vcf, shared_ptr<bcf_hdr_t>& hdr, shared_ptr<bcf1_t>& record) {
-    const char *tmpfn = "/tmp/GLnexus_genotyper_test.vcf";
-    ofstream ofs;
-    ofs.open(tmpfn, ofstream::out);
-    if (!ofs.good()) return Status::IOError("test_vcf1 ofstream");
-    ofs << vcf;
-    ofs.close();
-
-    shared_ptr<vcfFile> f(vcf_open(tmpfn, "r"), [](vcfFile* h) { vcf_close(h); });
-    hdr = shared_ptr<bcf_hdr_t>(bcf_hdr_read(f.get()), &bcf_hdr_destroy);
-    record = shared_ptr<bcf1_t>(bcf_init1(), &bcf_destroy);
-    if (bcf_read1(f.get(), hdr.get(), record.get())) return Status::IOError("test_vcf1 bcf_read1");
-    if (bcf_unpack(record.get(), BCF_UN_ALL)) return Status::IOError("test_vcf1 bcf_unpack");
-    return Status::OK();
 }
 
 TEST_CASE("revise_genotypes") {
@@ -98,7 +83,7 @@ unification:
     shared_ptr<bcf1_t> rec;
 
     #define REVISE_GENOTYPES_CASE(expected_allele1,expected_allele2,expected_gq,vcf_txt) { \
-        s = test_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec); \
+        s = TestUtils::load_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec); \
         REQUIRE(s.ok()); \
         s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get()); \
         REQUIRE(s.ok()); \
@@ -137,6 +122,11 @@ unification:
 
     SECTION("double ALT") {
         REVISE_GENOTYPES_CASE(1, 2, 26, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	1/2:0,6,6:12:16:240,46,240,46,0,80");
+    }
+
+    // PL with missing values
+    SECTION("PL missing values") {
+        REVISE_GENOTYPES_CASE(0, 0, 4, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,.,.,.:1,9,1,1");
     }
 
     const char* us_yml2 = 1 + R"(
