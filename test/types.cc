@@ -4,6 +4,44 @@
 using namespace std;
 using namespace GLnexus;
 
+TEST_CASE("rnc_string::parsing") {
+    vector<string> rnc_strings = {
+      "N_A",                  /// not applicable (the genotype *is* called)
+      "MissingData",          /// no gVCF coverage at all
+      "PartialData",          /// partial gVCF coverage
+      "InsufficientDepth",    /// insufficient depth of coverage
+      "LostDeletion",         /// unrepresentable overlapping deletion
+      "LostAllele",           /// unrepresentable allele (other than overlapping deletion)
+      "UnphasedVariants",     /// site spans multiple unphased variants
+      "OverlappingVariants"   /// site spans multiple variants which overlap each other
+    };
+
+    vector<NoCallReason> rncs = {
+      NoCallReason::N_A,                  /// not applicable (the genotype *is* called)
+      NoCallReason::MissingData,          /// no gVCF coverage at all
+      NoCallReason::PartialData,          /// partial gVCF coverage
+      NoCallReason::InsufficientDepth,    /// insufficient depth of coverage
+      NoCallReason::LostDeletion,         /// unrepresentable overlapping deletion
+      NoCallReason::LostAllele,           /// unrepresentable allele (other than overlapping deletion)
+      NoCallReason::UnphasedVariants,     /// site spans multiple unphased variants
+      NoCallReason::OverlappingVariants   /// site spans multiple variants which overlap each other
+    };
+
+    assert(rnc_strings.size() == rncs.size());
+    for (int i=0; i<rncs.size(); i++) {
+      auto rnc = rncs[i];
+      auto& rnc_string = rnc_strings[i];
+
+      NoCallReason n_rnc;
+      string n_rnc_str;
+      parse_rnc_string(rnc_string, n_rnc);
+      get_rnc_string(rnc, n_rnc_str);
+
+      REQUIRE(rnc_string.compare(n_rnc_str) == 0);
+      REQUIRE(rnc == n_rnc);
+    }
+}
+
 TEST_CASE("range::overlaps") {
     range r(0, 1000, 1100);
     REQUIRE(r.overlaps(range(0, 1000, 1100)));
@@ -676,6 +714,7 @@ liftover_fields:
     count: 5
     combi_method: max
     orig_names: [XXX, YYY]
+    missing_on_rnc: [UnphasedVariants, OverlappingVariants]
 
   - name: BBB
     description: xxx
@@ -685,6 +724,7 @@ liftover_fields:
     count: 5
     combi_method: max
     orig_names: [uuu, zzz]
+    missing_on_rnc: [UnphasedVariants, OverlappingVariants]
 
  )";
 
@@ -707,6 +747,7 @@ liftover_fields:
 
             node = YAML::Load(res1);
             s = genotyper_config::of_yaml(node, gc2);
+            cout << s.str() << endl;
             REQUIRE(s.ok());
 
             // We would like to compare the two structures
@@ -802,7 +843,38 @@ liftover_fields:
 
  )";
 
-    const char* bad_examples[] = {bad_buf1, bad_buf2, bad_buf3, bad_buf4};
+    // check bad missing_on_rnc field
+    const char* bad_buf5 = 1 + R"(
+required_dp: 0
+allele_dp_format: AD
+ref_symbolic_allele: <NON_REF>
+ref_dp_format: MIN_DP
+output_residuals: false
+output_format: BCF
+liftover_fields:
+
+  - name: CCC
+    description: foobar
+    type: int
+    number: alleles
+    default_type: missing
+    count: 5
+    combi_method: max
+    orig_names: [XXX, YYY]
+    missing_on_rnc: [DubiousNoCall, RandomNoCall]
+
+  - name: DDD
+    description: xxx
+    type: int
+    number: alleles
+    default_type: zero
+    count: 5
+    combi_method: max
+    missing_on_rnc: [WeirdNoCall, ValidCall]
+
+ )";
+
+    const char* bad_examples[] = {bad_buf1, bad_buf2, bad_buf3, bad_buf4, bad_buf5};
 
     SECTION("bad examples") {
         Status s;

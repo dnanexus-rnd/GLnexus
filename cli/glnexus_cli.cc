@@ -71,6 +71,7 @@ genotyper_config:
       combi_method: min
       default_type: zero
       count: 0
+      missing_on_rnc: [UnphasedVariants, OverlappingVariants]
     - orig_names: [SB]
       name: SB
       description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'

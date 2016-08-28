@@ -448,6 +448,25 @@ Status unifier_config::yaml(YAML::Emitter& ans) const {
     return Status::OK();
 }
 
+Status get_rnc_string(const NoCallReason rnc, string& rnc_string)
+{
+    auto rnc_str_it = rnc_str_map.find(rnc);
+    if (rnc_str_it == rnc_str_map.end()) {
+        return Status::Invalid("Unknown RNC received");
+    }
+    rnc_string = rnc_str_it->second;
+    return Status::OK();
+}
+
+Status parse_rnc_string(const string& rnc_string, NoCallReason& rnc) {
+    auto rnc_it = rnc_map.find(rnc_string);
+    if (rnc_it == rnc_map.end()) {
+        return Status::Invalid("Unknown RNC string received", rnc_string);
+    }
+    rnc = rnc_it->second;
+    return Status::OK();
+}
+
 Status retained_format_field::yaml(YAML::Emitter& ans) const {
     Status s;
     ans << YAML::Flow;
@@ -511,6 +530,15 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
     } else {
         ans << false;
     }
+
+    ans << YAML::Key << "missing_on_rnc";
+    ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (auto& rnc : missing_on_rnc) {
+        string rnc_string = "";
+        S(get_rnc_string(rnc, rnc_string));
+        ans << rnc_string;
+    }
+    ans << YAML::EndSeq;
 
     ans << YAML::EndMap;
 
@@ -614,8 +642,22 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         }
     }
 
-    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_type, ignore_non_variants));
+    set<NoCallReason> missing_on_rnc;
+    const auto n_missing_on_rnc = yaml["missing_on_rnc"];
+    if (n_missing_on_rnc) {
+        V(n_missing_on_rnc.IsSequence(), "Invalid sequence for missing_on_rnc");
+        for (YAML::const_iterator it = n_missing_on_rnc.begin(); it != n_missing_on_rnc.end(); ++it) {
+            V(it->IsScalar(), "invalid rnc string from yaml");
+            NoCallReason rnc;
+            S(parse_rnc_string(it->Scalar(), rnc));
+            missing_on_rnc.insert(rnc);
+        }
+    }
+
+    ans.reset(new retained_format_field(orig_names, name, type, combi_method,
+        number, count, default_type, ignore_non_variants, missing_on_rnc));
     ans->description = description;
+
     #undef V
     return Status::OK();
 }

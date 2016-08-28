@@ -638,6 +638,22 @@ TEST_CASE("liftover field: ignore_non_variants") {
     format_field_ignore_non_variants.perform_gvcf_test();
 }
 
+TEST_CASE("liftover field: clear_AD_RNC_Unphased") {
+
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};
+    vector<string> v_infos = {};
+    GVCFTestCase format_field_ignore_non_variants("format_fields_AD_clear", v_formats, v_infos);
+    format_field_ignore_non_variants.perform_gvcf_test();
+}
+
+TEST_CASE("liftover field: clear_AD_RNC_Overlapping") {
+
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};
+    vector<string> v_infos = {};
+    GVCFTestCase format_field_ignore_non_variants("format_fields_AD_clear_2", v_formats, v_infos);
+    format_field_ignore_non_variants.perform_gvcf_test();
+}
+
 TEST_CASE("liftover field: integration") {
 
     vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};

@@ -21,19 +21,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                      std::shared_ptr<std::string> &residual_rec,
                      std::atomic<bool>* abort = nullptr);
 
-// Reasons for emitting a non-call (.), encoded in the RNC FORMAT field in the
-// output VCF
-enum class NoCallReason {
-    N_A,                  /// not applicable (the genotype *is* called)
-    MissingData,          /// no gVCF coverage at all
-    PartialData,          /// partial gVCF coverage
-    InsufficientDepth,    /// insufficient depth of coverage
-    LostDeletion,         /// unrepresentable overlapping deletion
-    LostAllele,           /// unrepresentable allele (other than overlapping deletion)
-    UnphasedVariants,     /// site spans multiple unphased variants
-    OverlappingVariants   /// site spans multiple variants which overlap each other
-};
-
 /// A single allele call and metadata; diploid samples each have two calls
 struct one_call {
     int32_t allele = bcf_gt_missing; /// or bcf_gt_allele(some_allele)
