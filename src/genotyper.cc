@@ -65,10 +65,10 @@ public:
 
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                                     const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                                    const NoCallReason rnc, const vector<string>& field_names, int n_val_per_sample) = 0;
+                                    const vector<one_call> genotypes, const vector<string>& field_names, int n_val_per_sample) = 0;
 
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                const map<int, int>& sample_mapping, const vector<int> allele_mapping, const NoCallReason rnc) = 0;
+                                const map<int, int>& sample_mapping, const vector<int> allele_mapping, const vector<one_call> genotypes) = 0;
 
     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
@@ -279,14 +279,14 @@ public:
     // field_names and n_val_per_sample
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                                     const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                                    const NoCallReason rnc) {
+                                    const vector<one_call> genotypes) {
 
-        return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, rnc, {}, -1);
+        return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, genotypes, {}, -1);
     }
 
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                            const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                           const NoCallReason rnc, const vector<string>& field_names={}, int n_val_per_sample=-1) {
+                           const vector<one_call> genotypes, const vector<string>& field_names={}, int n_val_per_sample=-1) {
 
         bool found = false;
         if (n_val_per_sample < 0) {
@@ -298,17 +298,20 @@ public:
             names_to_search = &(field_info.orig_names);
         }
 
-        if (rnc != NoCallReason::N_A && field_info.missing_on_rnc.find(rnc) != field_info.missing_on_rnc.end()) {
-            for (int i=0; i<record->n_sample; i++) {
-                int sample_out_ind = get_out_ind_of_value(i, -1, sample_mapping, allele_mapping);
-                // Iterate through all values for this sample
+        for (int i=0; i<record->n_sample; i++) {
+            int sample_out_ind = get_out_ind_of_value(i, -1, sample_mapping, allele_mapping);
+            // genotypes vector is hard-coded to have 2 values per sample
+            auto rnc = genotypes[sample_mapping.at(i)*2].RNC;
+
+            if (rnc != NoCallReason::N_A
+                && field_info.missing_on_rnc.find(rnc) != field_info.missing_on_rnc.end()) {
                 for (int j=0; j<count; j++) {
                     int out_ind = sample_out_ind + j;
                     assert(out_ind < set_as_missing.size());
                     set_as_missing[out_ind] = true;
                 } // close for j loop
-            } // close for i loop
-        }
+            } // close if loop
+        } // close for i loop
 
         for (auto& field_name : *names_to_search) {
             if (found) break;
@@ -361,7 +364,7 @@ public:
             handled_AD_field = true;
 
             // Call add_record_data again, searching for DP, MIN_DP, override n_val_per_sample to 1
-            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, rnc, {"MIN_DP", "DP"}, 1);
+            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, genotypes, {"MIN_DP", "DP"}, 1);
 
             // Reset flag for next dataset
             handled_AD_field = false;
@@ -808,7 +811,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_header, const map<int,int>& sample_mapping,
                             const unified_site& site, vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
                             vector<shared_ptr<bcf1_t>>& records, vector<shared_ptr<bcf1_t>>& variant_records,
-                            NoCallReason rnc) {
+                            vector<one_call> genotypes) {
 
     Status s;
     vector<shared_ptr<bcf1_t>> *records_p;
@@ -851,7 +854,7 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
              ; ++i_record, ++i_allele_mapping) {
 
             S(format_helper->add_record_data(dataset, dataset_header, i_record->get(),
-                                               sample_mapping, *i_allele_mapping, rnc));
+                                               sample_mapping, *i_allele_mapping, genotypes));
         }
     }
     return Status::OK();
@@ -933,8 +936,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         S(find_variant_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                sample_mapping, records, adh, rnc, min_ref_depth, variant_records));
 
-        update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers, records, variant_records, rnc);
-
         if (rnc != NoCallReason::N_A) {
             // no call for the samples in this dataset (several possible
             // reasons)
@@ -949,6 +950,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                   genotypes));
         }
 
+        update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers, records, variant_records, genotypes);
 
         // Handle residuals
         if (residualsFlag) {
