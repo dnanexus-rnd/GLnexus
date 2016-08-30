@@ -124,7 +124,7 @@ main() {
 
         # set up for gzip or lz4 output compression
         compressor="pigz"
-        vcf_compressor="bgzip"
+        vcf_compressor="bgzip --threads $(nproc)"
         compress_ext="gz"
         if [ "$lz4_output" == "true" ]; then
             compressor="lz4"
