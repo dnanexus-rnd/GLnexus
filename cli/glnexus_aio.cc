@@ -223,7 +223,7 @@ int main_load(int argc, char *argv[]) {
                 ranges.insert(vranges.begin(), vranges.end());
                 ostringstream ss;
                 for (const auto& rng : ranges) {
-                    ss << " " << rng.str(contigs);
+                     ss << " " << rng.str(contigs);
                 }
                 console->info() << "Beginning bulk load of records overlapping:" << ss.str();
             } else {
@@ -317,132 +317,7 @@ int main_load(int argc, char *argv[]) {
 
 
 
-void help_discover_alleles(const char* prog) {
-    cerr << "usage: " << prog << " discover [options] /db/path chrom:1234-2345" << endl
-         << "Discover alleles in all samples in the database in the given interval. The positions" << endl
-         << "are one-based, inclusive. As an alternative to providing one interval on the" << endl
-         << "command line, you can provide a three-column BED file using --bed." << endl
-         << "Options:" << endl
-         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
-         << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
-         << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
-         << endl;
-}
 
-int main_discover_alleles(int argc, char *argv[]) {
-    if (argc == 2) {
-        help_discover_alleles(argv[0]);
-        return 1;
-    }
-
-    static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"bed", required_argument, 0, 'b'},
-        {"config", required_argument, 0, 'c'},
-        {"threads", required_argument, 0, 't'},
-        {0, 0, 0, 0}
-    };
-
-    string bedfilename;
-    string config_preset;
-    size_t threads = 0;
-
-    int c;
-    optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:c:t:",
-                                  long_options, nullptr))) {
-        switch (c) {
-            case 'b':
-                bedfilename = string(optarg);
-                if (bedfilename.size() == 0) {
-                    cerr <<  "invalid BED filename" << endl;
-                    return 1;
-                }
-                break;
-            case 'c':
-                config_preset = string(optarg);
-                break;
-            case 't':
-                threads = strtoul(optarg, nullptr, 10);
-                console->info() << "pooling " << threads << " threads for genotyping";
-                break;
-            case 'h':
-            case '?':
-                help_discover_alleles(argv[0]);
-                exit(1);
-                break;
-
-            default:
-                abort ();
-        }
-    }
-
-    if (optind != argc-1) {
-        help_discover_alleles(argv[0]);
-        return 1;
-    }
-    string dbpath(argv[optind]);
-    string range_txt;
-
-    if (bedfilename.empty()) {
-        if (optind != argc-2) {
-            help_discover_alleles(argv[0]);
-            return 1;
-        }
-
-        range_txt = argv[optind+1];
-    } else {
-        if (optind != argc-1) {
-            help_discover_alleles(argv[0]);
-            return 1;
-        }
-    }
-
-    GLnexus::unifier_config unifier_cfg;
-    GLnexus::genotyper_config genotyper_cfg;
-    if (config_preset.size()) {
-        H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
-    }
-
-    unique_ptr<GLnexus::KeyValue::DB> db;
-    unique_ptr<GLnexus::BCFKeyValueData> data;
-
-    // open the database in read-only mode
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
-    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
-
-    std::vector<std::pair<std::string,size_t> > contigs;
-    H("read contig metadata", data->contigs(contigs));
-
-    vector<GLnexus::range> ranges;
-    H("Parsing range argument", parse_ranges_from_cmd_line(bedfilename, range_txt, contigs, ranges));
-
-    // start service, discover alleles
-    GLnexus::service_config svccfg;
-    svccfg.threads = threads;
-    unique_ptr<GLnexus::Service> svc;
-    H("start GLnexus service", GLnexus::Service::Start(svccfg, *data, *data, svc));
-
-    string sampleset;
-    H("list all samples", data->all_samples_sampleset(sampleset));
-    console->info() << "found sample set " << sampleset;
-
-    console->info() << "discovering alleles in " << ranges.size() << " range(s)";
-    vector<GLnexus::discovered_alleles> valleles;
-    unsigned N;
-    H("discover alleles", svc->discover_alleles(sampleset, ranges, N, valleles));
-
-    GLnexus::discovered_alleles dsals;
-    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
-        H("merge vectors", merge_discovered_alleles(*it, dsals));
-    }
-    console->info() << "discovered " << dsals.size() << " alleles";
-
-    // Write the discovered alleles to stdout
-    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
-    return 0;
-}
 
 
 void help_unify_sites(const char* prog) {
@@ -695,70 +570,9 @@ int main_genotype(int argc, char *argv[]) {
     return 0;
 }
 
-void help_iter_compare(const char* prog) {
-    cerr << "usage: " << prog << " iter_compare /db/path" << endl
-         << "Run tests comparing the two BCF iterators" << endl
-         << endl;
-}
-
-int main_iter_compare(int argc, char *argv[]) {
-    if (argc != 3) {
-        help_iter_compare(argv[0]);
-        return 1;
-    }
-    string dbpath(argv[2]);
-
-    unique_ptr<GLnexus::KeyValue::DB> db;
-    unique_ptr<GLnexus::BCFKeyValueData> data;
-    string sampleset;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
-    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
-
-    unique_ptr<GLnexus::MetadataCache> metadata;
-    H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
-
-    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
-    console->info() << "using sample set " << sampleset;
-
-    const auto& contigs = metadata->contigs();
-
-    // get samples and datasets
-    shared_ptr<const set<string>> samples, datasets;
-    H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
-
-    int nChroms = min((size_t)22, contigs.size());
-    int nIter = 50;
-    int maxRangeLen = 1000000;
-    int minLen = 10; // ensure that the the range is of some minimal size
-
-    for (int i = 0; i < nIter; i++) {
-        int rid = genRandNumber(nChroms);
-        int lenChrom = (int)contigs[rid].second;
-        assert(lenChrom > minLen);
-
-        // bound the range to be no larger than the chromosome
-        int rangeLen = min(maxRangeLen, lenChrom);
-        assert(rangeLen > minLen);
-
-        int beg = genRandNumber(lenChrom - rangeLen);
-        int rlen = genRandNumber(rangeLen - minLen);
-        GLnexus::range rng(rid, beg, beg + minLen + rlen);
-
-        int rc = compare_query(*data, *metadata, sampleset, rng);
-        switch (rc) {
-        case 1: break;
-        case 0: return 1; // ERROR Status
-        case -1: break;  // Query used too much memory, aborted
-        }
-    }
-
-    cout << "Passed " << nIter << " iterator comparison tests" << endl;
-    return 0; // GOOD STATUS
-}
 
 // Initialize the database
-static Status init_db(const string &dbpath, const string &exemplar_gvcf) {
+static Status init(const string &dbpath, const string &exemplar_gvcf) {
     // load exemplar contigs
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(exemplar_gvcf.c_str(), "r"),
                                                [](vcfFile* f) { bcf_close(f); });
@@ -798,8 +612,155 @@ static Status init_db(const string &dbpath, const string &exemplar_gvcf) {
     }
     console->info() << ss.str() << endl;
 
+    return GLnexus::Status::OK();
+}
+
+
+static Status load(const vector<string> &gvcfs) {
+    // open the database
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::BULK_LOAD));
+
+    {
+        unique_ptr<GLnexus::BCFKeyValueData> data;
+        H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+
+        {
+            unique_ptr<GLnexus::MetadataCache> metadata;
+            H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
+            const auto& contigs = metadata->contigs();
+
+            console->info() << "Beginning bulk load with no range filter.";
+
+            ctpl::thread_pool threadpool(threads);
+            vector<future<GLnexus::Status>> statuses;
+            set<string> datasets_loaded;
+            GLnexus::BCFKeyValueData::import_result stats;
+            mutex mu;
+
+            // load the gVCFs on the thread pool
+            for (const auto& gvcf : gvcfs) {
+                // default dataset name (the gVCF filename)
+                if (dataset.empty()) {
+                    size_t p = gvcf.find_last_of('/');
+                    if (p != string::npos && p < gvcf.size()-1) {
+                        dataset = gvcf.substr(p+1);
+                    } else {
+                        dataset = gvcf;
+                    }
+                }
+
+
+                auto fut = threadpool.push([&, gvcf, dataset](int tid){
+                    GLnexus::BCFKeyValueData::import_result rslt;
+                    GLnexus::Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
+                    if (ls.ok()) {
+                        lock_guard<mutex> lock(mu);
+                        stats += rslt;
+                        datasets_loaded.insert(dataset);
+                        size_t n = datasets_loaded.size();
+                        if (n % 100 == 0) {
+                            console->info() << n << "...";
+                        }
+                    }
+                    return ls;
+                });
+                statuses.push_back(move(fut));
+                dataset.clear();
+            }
+
+            // collect results
+            vector<pair<string,GLnexus::Status>> failures;
+            for (size_t i = 0; i < gvcfs.size(); i++) {
+                GLnexus::Status s_i(move(statuses[i].get()));
+                if (!s_i.ok()) {
+                    failures.push_back(make_pair(gvcfs[i],move(s_i)));
+                }
+            }
+
+            // report results
+            console->info() << "Loaded " << datasets_loaded.size() << " datasets with "
+                            << stats.samples.size() << " samples; "
+                            << stats.bytes << " bytes in "
+                            << stats.records << " BCF records in "
+                            << stats.buckets << " buckets. "
+                            << "Bucket max " << stats.max_bytes << " bytes, max "
+                            << stats.max_records << " records.";
+
+            // call all_samples_sampleset to create the sample set including
+            // the newly loaded ones. By doing this now we make it possible
+            // for other CLI functions to open the database in purely read-
+            // only mode (since the sample set has to get written into the
+            // database to be used)
+            string sampleset;
+            H("update * sample set", data->all_samples_sampleset(sampleset));
+            console->info() << "Created sample set " << sampleset;
+
+            if (failures.size()) {
+                for (const auto& p : failures) {
+                    console->error() << p.first << " " << p.second.str();
+                }
+                return GLnexus::Status::Failure("FAILED to load ", failures.size() + " datasets:");
+            }
+        }
+    }
+
+    console->info() << "Flushing and compacting database...";
+    S(db->flush());
+    db.reset();
+    console->info() << "Bulk load complete!";
+}
+
+
+static Status discover_alleles(const string &dbpath,
+                               GLnexus::discovered_alleles &dsals) {
+    GLnexus::unifier_config unifier_cfg;
+    GLnexus::genotyper_config genotyper_cfg;
+    if (config_preset.size()) {
+        H("load configuration preset", load_config_preset(config_preset, unifier_cfg, genotyper_cfg));
+    }
+
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    unique_ptr<GLnexus::BCFKeyValueData> data;
+
+    // open the database in read-only mode
+    S(GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                   GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    S(GLnexus::BCFKeyValueData::Open(db.get(), data));
+
+    std::vector<std::pair<std::string,size_t> > contigs;
+    S(data->contigs(contigs));
+
+    vector<GLnexus::range> ranges;
+    H("Parsing range argument", parse_ranges_from_cmd_line(bedfilename, range_txt, contigs, ranges));
+
+    // start service, discover alleles
+    GLnexus::service_config svccfg;
+    svccfg.threads = threads;
+    unique_ptr<GLnexus::Service> svc;
+    H("start GLnexus service", GLnexus::Service::Start(svccfg, *data, *data, svc));
+
+    string sampleset;
+    H("list all samples", data->all_samples_sampleset(sampleset));
+    console->info() << "found sample set " << sampleset;
+
+    console->info() << "discovering alleles in " << ranges.size() << " range(s)";
+    vector<GLnexus::discovered_alleles> valleles;
+    unsigned N;
+    H("discover alleles", svc->discover_alleles(sampleset, ranges, N, valleles));
+
+    GLnexus::discovered_alleles dsals;
+    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
+        H("merge vectors", merge_discovered_alleles(*it, dsals));
+    }
+    console->info() << "discovered " << dsals.size() << " alleles";
+
+    // Write the discovered alleles to stdout
+    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
     return 0;
 }
+
 
 // It is equivalent to the following subcommands, issued from glnexus_cli:
 //    glnexus_cli init $bucket_size_arg GLnexus.db $(find in/gvcf -type f | head -n 1)
@@ -810,22 +771,32 @@ static Status init_db(const string &dbpath, const string &exemplar_gvcf) {
 //    glnexus_cli genotype GLnexus.db unified_sites.yml $residuals_flag $config_flag | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 //
 Status all_in_one(const vector<string> &vcf_files, const string &proj_vcf) {
-    // initilize DB
-    string dbpath(argv[optind]);
-    string exemplar_gvcf(argv[optind+1]);
-    S(init_db(dbpath, exemplar_gvcf));
+    if (vcf_files.empty())
+        return GLnexus::Status::Invalid("No source GVCF files specified");
+
+    // initilize empty database
+    string dbpath("GLnexus.DB");
+    S(init(dbpath, vcf_files[0]));
+
+    // Load the GVCFs into the database
+    S(load(vcf_files));
+
+    // discover alleles
+    GLnexus::discovered_alleles dsals;
+    S(discover_alleles(dbpath, dsals));
 
     return GLnexus::Status::OK();
 }
 
 
 void help(const char* prog) {
-    cerr << "usage: " << prog << "/project/vcf/path [options] /vcf/file/1 .. /vcf/file/N" << endl
+    cerr << "usage: " << prog << "[options] /project/vcf/path /vcf/file/1 .. /vcf/file/N" << endl
          << "Joint genotype all source VCF files, and generate a project VCF file. The" << endl
          << "source files must be in GVCF format." << endl
          << "Options:" << endl
          << "  --help, -h      print this help message" << endl;
-}
+         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+    }
 
 // Expected usage:
 //    glnexus_cli_aio proj.vcf.gz [vcf files]
@@ -842,6 +813,7 @@ int main(int argc, char *argv[]) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"bed", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
@@ -870,7 +842,6 @@ int main(int argc, char *argv[]) {
     vector<string> vcf_files;
     for (int i=optind+1; i < argc; i++)
         vcf_files.push_back(string(argv[i]));
-    assert(!vcf_files.empty());
 
     S(all_in_one(vcf_files, proj_vcf));
     return 0;
