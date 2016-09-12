@@ -1,0 +1,68 @@
+{
+  "name": "GLnexus_aio",
+  "title": "GLnexus All In One",
+  "summary": "GLnexus executable that performs all the processing steps, without writing intermediate results to disk",
+  "dxapi": "1.0.0",
+  "version": "0.0.1",
+  "inputSpec": [
+    {
+      "name": "gvcf",
+      "help": "source gvcf files",
+      "class": "array:file",
+      "optional": true,
+      "patterns": ["*.gvcf.gz", "*.g.vcf.gz", "*.gvcf", "*.g.vcf"]
+    },
+    {
+      "name": "gvcf_tar",
+      "help": "source gvcf files",
+      "class": "array:file",
+      "optional": true,
+      "patterns": ["*.tar"]
+    },
+    {
+      "name": "bed_ranges_to_genotype",
+      "help": "limit genotyping to these ranges",
+      "class": "file"
+    },
+    {
+      "name": "residuals",
+      "help": "output residuals",
+      "class": "boolean",
+      "default": false,
+      "optional": true
+    }
+  ],
+  "outputSpec": [
+    {
+      "name": "vcf",
+      "class": "file",
+      "patterns": ["*.vcf.gz"]
+    },
+    {
+      "name": "residuals",
+      "class": "file",
+      "optional": true
+    }
+  ],
+  "runSpec": {
+    "interpreter": "bash",
+    "file": "src/code.sh",
+    "execDepends": [
+      {"name": "sysstat"},
+      {"name": "numactl"},
+      {"name": "libjemalloc1"},
+      {"name": "pigz"}
+    ],
+    "systemRequirements": {
+      "main": {
+        "instanceType": "mem1_ssd1_x4"
+      }
+    },
+    "distribution": "Ubuntu",
+    "release": "14.04"
+  },
+  "access": {
+    "network": ["*"]
+  },
+  "authorizedUsers": []
+}
