@@ -154,6 +154,39 @@ GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
 }
 
 
+// Write the discovered alleles to a file
+static GLnexus::Status write_discovered_alleles_to_file(const GLnexus::discovered_alleles &dsals,
+                                                        const vector<pair<string,size_t>> &contigs,
+                                                        unsigned int sample_count,
+                                                        const string &filename) {
+    GLnexus::Status s;
+
+    ofstream ofs(filename, std::ofstream::out | std::ofstream::trunc);
+    if (ofs.bad())
+        return GLnexus::Status::IOError("could not open file for writing", filename);
+    S(utils::yaml_stream_of_discovered_alleles(sample_count, contigs, dsals, ofs));
+    ofs.close();
+
+    return GLnexus::Status::OK();
+}
+
+// Write the discovered alleles to a file
+static GLnexus::Status write_unified_sites_to_file(const vector<GLnexus::unified_site> &sites,
+                                                   const vector<pair<string,size_t>> &contigs,
+                                                   const string &filename) {
+    GLnexus::Status s;
+
+    ofstream ofs(filename, std::ofstream::out | std::ofstream::trunc);
+    if (ofs.bad())
+        return GLnexus::Status::IOError("could not open file for writing", filename);
+
+    S(utils::yaml_stream_of_unified_sites(sites, contigs, ofs));
+    ofs.close();
+
+    return GLnexus::Status::OK();
+}
+
+
 // Initialize the database
 static GLnexus::Status init(const string &dbpath,
                             const string &exemplar_gvcf,
@@ -419,9 +452,10 @@ GLnexus::Status genotype(const string &dbpath,
 
 // Perform all the separate GLnexus operations in one go.
 GLnexus::Status all_in_one(const vector<string> &vcf_files,
-                  const string &bedfilename,
-                  int nr_threads,
-                  bool residuals) {
+                           const string &bedfilename,
+                           int nr_threads,
+                           bool residuals,
+                           bool debug) {
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
@@ -453,10 +487,18 @@ GLnexus::Status all_in_one(const vector<string> &vcf_files,
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
     S(discover_alleles(dbpath, ranges, contigs, nr_threads, dsals, sample_count));
+    if (debug) {
+        string filename("/tmp/dsals.yml");
+        S(write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
+    }
 
     // unify sites
     vector<GLnexus::unified_site> sites;
     S(unify_sites(unifier_cfg, dbpath, ranges, contigs, nr_threads, dsals, sample_count, sites));
+    if (debug) {
+        string filename("/tmp/sites.yml");
+        S(write_unified_sites_to_file(sites, contigs, filename));
+    }
 
     // genotype
     genotyper_cfg.output_residuals = residuals;
@@ -471,9 +513,10 @@ void help(const char* prog) {
          << "Joint genotype all source VCF files, and generate a project VCF file" << endl
          << "on standard out. The source files must be in GVCF format." << endl
          << "Options:" << endl
-         << "  --help, -h      print this help message" << endl
+         << "  --help, -h       print this help message" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
-         << "  --residuals, -r      generate detailed residuals output file" << endl;
+         << "  --debug, -d      create additional file outputs for diagnostics/debugging" << endl
+         << "  --residuals, -r  generate detailed residuals output file" << endl;
 }
 
 // Expected usage:
@@ -493,11 +536,13 @@ int main(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
+        {"debug", no_argument, 0, 'd'},
         {"residuals", no_argument, 0, 'r'},
         {0, 0, 0, 0}
     };
 
     int c;
+    bool debug = false;
     bool residuals = false;
     string bedfilename;
     int nr_threads = std::thread::hardware_concurrency();
@@ -512,6 +557,10 @@ int main(int argc, char *argv[]) {
                     cerr <<  "invalid BED filename" << endl;
                     return 1;
                 }
+                break;
+
+            case 'd':
+                debug = true;
                 break;
 
             case 'h':
@@ -538,6 +587,6 @@ int main(int argc, char *argv[]) {
     for (int i=optind; i < argc; i++)
         vcf_files.push_back(string(argv[i]));
 
-    S(all_in_one(vcf_files, bedfilename, nr_threads, residuals));
+    S(all_in_one(vcf_files, bedfilename, nr_threads, residuals, debug));
     return 0;
 }
