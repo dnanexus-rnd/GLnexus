@@ -39,19 +39,33 @@ main() {
     if [[ $bed_ranges_to_genotype ]]; then
         bed_ranges=$(find in/bed_ranges_to_genotype -type f)
     fi
-
     if [[ $residuals == "true" ]]; then
         residuals_flag="--residuals"
     fi
+    if [[ $debug == "true" ]]; then
+        debug_flag="--debug"
+    fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_aio --bed $bed_ranges $residuals_flag $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+    time numactl --interleave=all glnexus_aio --bed $bed_ranges $residuals_flag $debug_flag $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     # we are writing the generated VCF to stdout, so the residuals will
     # be placed in a default location.
     if [ -f /tmp/residuals.yml ]; then
         mkdir -p out/residuals/
         $compressor -c /tmp/residuals.yml > "out/residuals/${output_name}.residuals.yml.${compress_ext}"
+    fi
+
+    # discovered alleles file
+    if [ -f /tmp/dsals.yml ]; then
+        mkdir -p out/discovered_alleles
+        $compressor -c /tmp/dsals.yml > "out/discovered_alleles/${output_name}.dsals.yml.${compress_ext}"
+    fi
+
+    # unified alleles file
+    if [ -f /tmp/sites.yml ]; then
+        mkdir -p out/unified_sites
+        $compressor -c /tmp/sites.yml > "out/unified_sites/${output_name}.sites.yml.${compress_ext}"
     fi
 
     # upload

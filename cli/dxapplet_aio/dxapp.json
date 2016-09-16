@@ -30,6 +30,13 @@
       "class": "boolean",
       "default": false,
       "optional": true
+    },
+    {
+      "name": "debug",
+      "help": "output additional files (unified-sites, discovered alleles)",
+      "class": "boolean",
+      "default": false,
+      "optional": true
     }
   ],
   "outputSpec": [
@@ -40,6 +47,16 @@
     },
     {
       "name": "residuals",
+      "class": "file",
+      "optional": true
+    },
+    {
+      "name": "discovered_alleles",
+      "class": "file",
+      "optional": true
+    },
+    {
+      "name": "unified_sites",
       "class": "file",
       "optional": true
     }
