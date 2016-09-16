@@ -53,3 +53,6 @@ src/1.*.zip
 
 # Packages used by the applet
 lz4-r131.tar
+
+# capnp
+tut_example_capnp
