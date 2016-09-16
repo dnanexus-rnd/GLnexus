@@ -98,36 +98,33 @@ static GLnexus::Status load_config_preset(const std::string& name,
 }
 
 
-GLnexus::Status parse_ranges_from_cmd_line(const string &bedfilename,
-                                           const string &range_txt,
-                                           const std::vector<std::pair<std::string,size_t> > &contigs,
-                                           vector<GLnexus::range> &ranges) {
+GLnexus::Status parse_bed_file(const string &bedfilename,
+                               const std::vector<std::pair<std::string,size_t> > &contigs,
+                               vector<GLnexus::range> &ranges) {
     if (bedfilename.empty()) {
-        // single range from the command line
-        GLnexus::range range(-1,-1,-1);
-        if (!utils::parse_range(contigs, range_txt, range)) {
-            return GLnexus::Status::Invalid("range: ", range_txt);
+        return GLnexus::Status::Invalid("Empty bed file");
+    }
+    if (!boost::filesystem::exists(bedfilename)) {
+        return GLnexus::Status::IOError("bed file does not exist", bedfilename);
+    }
+
+    // read BED file
+    string rname, beg_txt, end_txt;
+    ifstream bedfile(bedfilename);
+    while (bedfile >> rname >> beg_txt >> end_txt) {
+        int rid = 0;
+        for(; rid<contigs.size(); rid++)
+            if (contigs[rid].first == rname)
+                break;
+        if (rid == contigs.size()) {
+            return GLnexus::Status::Invalid("Unknown contig ", rname);
         }
-        ranges.push_back(range);
-    } else {
-        // read BED file
-        string rname, beg_txt, end_txt;
-        ifstream bedfile(bedfilename);
-        while (bedfile >> rname >> beg_txt >> end_txt) {
-            int rid = 0;
-            for(; rid<contigs.size(); rid++)
-                if (contigs[rid].first == rname)
-                    break;
-            if (rid == contigs.size()) {
-                return GLnexus::Status::Invalid("Unknown contig ", rname);
-            }
-            ranges.push_back(GLnexus::range(rid,
-                                            strtol(beg_txt.c_str(), nullptr, 10),
-                                            strtol(end_txt.c_str(), nullptr, 10)));
-        }
-        if (bedfile.bad() || !bedfile.eof()) {
-            return GLnexus::Status::IOError( "Error reading ", bedfilename);
-        }
+        ranges.push_back(GLnexus::range(rid,
+                                        strtol(beg_txt.c_str(), nullptr, 10),
+                                        strtol(end_txt.c_str(), nullptr, 10)));
+    }
+    if (bedfile.bad() || !bedfile.eof()) {
+        return GLnexus::Status::IOError( "Error reading ", bedfilename);
     }
 
     sort(ranges.begin(), ranges.end());
@@ -436,7 +433,7 @@ GLnexus::Status genotype(const string &dbpath,
     console->info() << "found sample set " << sampleset;
 
     S(svc->genotype_sites(genotyper_cfg, sampleset, sites, string("-")));
-    console->info("genotyping complete!");
+    console->info() << "genotyping complete!";
 
     auto stalls_ms = svc->threads_stalled_ms();
     if (stalls_ms) {
@@ -475,10 +472,7 @@ GLnexus::Status all_in_one(const vector<string> &vcf_files,
     S(init(dbpath, vcf_files[0], contigs));
 
     vector<GLnexus::range> ranges;
-    if (!bedfilename.empty()) {
-        string range_txt; // empty string, the plan is to get rid of the argument
-        S(parse_ranges_from_cmd_line(bedfilename, range_txt, contigs, ranges));
-    }
+    S(parse_bed_file(bedfilename, contigs, ranges));
 
     // Load the GVCFs into the database
     S(load(vcf_files, dbpath, nr_threads, contigs));
@@ -520,7 +514,7 @@ void help(const char* prog) {
 }
 
 // Expected usage:
-//    glnexus_cli_aio proj.vcf.gz [vcf files]
+//    glnexus_cli_aio [vcf files]
 //
 int main(int argc, char *argv[]) {
     GLnexus::Status s;
@@ -548,7 +542,7 @@ int main(int argc, char *argv[]) {
     int nr_threads = std::thread::hardware_concurrency();
 
     optind = 1; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:",
+    while (-1 != (c = getopt_long(argc, argv, "hb:dr",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':

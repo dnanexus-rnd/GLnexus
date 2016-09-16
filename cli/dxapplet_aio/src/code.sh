@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# http://stackoverflow.com/a/17841619
-function join { local IFS="$1"; shift; echo "$*"; }
-
 main() {
     set -ex -o pipefail
 
@@ -21,7 +18,7 @@ main() {
 
     # download inputs.
     # TODO: it would be nice to overlap the staging of the input gVCFs with
-    # the bulk load, by streaming the filenames into glnexus_cli as they're
+    # the bulk load, by streaming the filenames into glnexus_aio as they're
     # staged.
     mkdir -p "in/gvcf" "in/gvcf_tar"
     dx-download-all-inputs --parallel --except gvcf_tar
@@ -70,11 +67,16 @@ main() {
 
     # upload
     dx-upload-all-outputs --parallel
+
+    # sleep if requested
+    if [ "$sleep" -gt "0" ]; then
+        sleep "$sleep"
+    fi
 }
 
 # Make sure the jemalloc library is used.
 function check_use_of_jemalloc_lib {
-    MALLOC_CONF=invalid_flag:foo glnexus_cli >& /tmp/malloc_dbg || true
+    MALLOC_CONF=invalid_flag:foo glnexus_aio >& /tmp/malloc_dbg || true
     num_appear=$(grep jemalloc /tmp/malloc_dbg | wc -l)
     if [[ $num_appear == "0" ]]; then
         echo "Error, jemalloc is supposed to be in use"

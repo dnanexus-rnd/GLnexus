@@ -164,7 +164,7 @@ public:
     // for locating input yaml file; by convention, the yaml file is found
     // at INPUT_ROOT_DIR/<name>.yml
     GVCFTestCase(const string _name, bool _test_dsals=false,
-                 bool _test_usites=true, bool _test_genotypes=true): name(_name), test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes) {
+                 bool _test_usites=true, bool _test_genotypes=true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), name(_name) {
         validated_formats = {"GT", "RNC"};
         validated_infos = {};
     }
@@ -173,7 +173,7 @@ public:
     // for validation
     GVCFTestCase(const string _name, vector<string> _validated_formats,
                  vector<string> _validated_infos, bool _test_dsals=false,
-                 bool _test_usites=true, bool _test_genotypes=true): name(_name), test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes),validated_formats(_validated_formats), validated_infos(_validated_infos) {}
+                 bool _test_usites=true, bool _test_genotypes=true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), validated_formats(_validated_formats), validated_infos(_validated_infos), name(_name) {}
 
     // Reads in a yml file; writes gvcf records contained within yaml
     // file to disk; load expected unified_sites to memory

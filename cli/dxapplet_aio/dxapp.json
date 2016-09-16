@@ -25,6 +25,11 @@
       "class": "file"
     },
     {
+      "name": "output_name",
+      "class": "string",
+      "default": "GLnexus"
+    },
+    {
       "name": "residuals",
       "help": "output residuals",
       "class": "boolean",
@@ -36,6 +41,13 @@
       "help": "output additional files (unified-sites, discovered alleles)",
       "class": "boolean",
       "default": false,
+      "optional": true
+    },
+    {
+      "name": "sleep",
+      "help": "wait for debugging, require the --allow-ssh flag",
+      "class": "int",
+      "default": 0,
       "optional": true
     }
   ],
