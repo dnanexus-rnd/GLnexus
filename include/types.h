@@ -390,7 +390,6 @@ Status discovered_alleles_of_yaml(const YAML::Node&,
                                   const std::vector<std::pair<std::string,size_t> >& contigs,
                                   discovered_alleles&);
 
-
 struct unified_site {
     range pos;
 

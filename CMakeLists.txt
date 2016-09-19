@@ -167,9 +167,17 @@ set(CMAKE_CXX_FLAGS_RELEASE "-gdwarf -DNDEBUG -O3")
 set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
 include_directories(${COMMON_INCLUDES} src)
 include_directories(${COMMON_INCLUDES} src/rocksdb/include)
+include_directories(${COMMON_INCLUDES} capnp/serialize)
+
+# Invoke cap'n proto IDL compiler, to generate C++ serialization code from
+# definitions.
+execute_process(COMMAND capnp compile -oc++ capnp/tut/tut_proto.capnp)
+execute_process(COMMAND capnp compile -oc++ capnp/serialize/defs.capnp)
 
 add_library(glnexus
             include/types.h src/types.cc
+            capnp/serialize/defs.capnp.c++
+            include/capnp_serialize.h src/capnp_serialize.cc
             include/data.h src/data.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
@@ -197,18 +205,17 @@ add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
+# Invoke the capnp IDL compiler
+add_executable(tut_example_capnp capnp/tut/tut_example.cpp capnp/tut/tut_proto.capnp.c++)
+target_link_libraries(tut_example_capnp libcapnp.a libkj.a)
+
 add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
-target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
+target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a libcapnp.a libkj.a)
 
 add_executable(glnexus_aio cli/glnexus_aio.cc)
 add_dependencies(glnexus_aio libglnexus)
-target_link_libraries(glnexus_aio glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a boost_system.a libboost_filesystem.a)
-
-# Special invocation, to invoke the capnp IDL compiler
-execute_process(COMMAND capnp compile -oc++ capnp/tut_proto.capnp)
-add_executable(tut_example_capnp capnp/tut_example.cpp capnp/tut_proto.capnp.c++)
-target_link_libraries(tut_example_capnp libcapnp.a libkj.a)
+target_link_libraries(glnexus_aio glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a libcapnp.a libkj.a boost_system.a libboost_filesystem.a)
 
 install(TARGETS playground DESTINATION bin)
 

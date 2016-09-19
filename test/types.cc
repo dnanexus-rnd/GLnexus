@@ -1,5 +1,6 @@
 #include <iostream>
 #include "types.h"
+#include "capnp_serialize.h"
 #include "catch.hpp"
 using namespace std;
 using namespace GLnexus;
@@ -111,6 +112,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
         Status s = discovered_alleles_of_yaml(n, contigs, dal);
         REQUIRE(s.ok());
         VERIFY_DA(dal);
+        REQUIRE(GLnexus::capnp::discover_alleles_verify(dal).ok());
     }
 
     SECTION("bogus range") {

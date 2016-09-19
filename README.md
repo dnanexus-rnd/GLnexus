@@ -8,7 +8,7 @@ This is an early-stage R&D project we're developing openly. The code doesn't yet
 
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
-First [install gcc 4.9](http://askubuntu.com/a/581497) or higher, `cmake` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `liblz4-dev` `libbz2-dev` `python-pyvcf`. Then:
+First [install gcc 4.9](http://askubuntu.com/a/581497) or higher, `cmake` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `liblz4-dev` `libbz2-dev` `python-pyvcf` `capnp`. Then:
 
 ```
 cmake -Dtest=ON . && make && ./unit_tests
