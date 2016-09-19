@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <memory>
 #include "cli_utils.h"
+#include <capnp_serialize.h>
 #include "catch.hpp"
 
 using namespace std;
@@ -26,6 +27,8 @@ static void yaml_file_of_discovered_alleles(const string &filename, unsigned N,
     s = utils::yaml_stream_of_discovered_alleles(N, contigs, dals, fos);
     REQUIRE(s.ok());
     fos.close();
+
+    REQUIRE(GLnexus::capnp::discover_alleles_verify(dals).ok());
 }
 
 static auto console = spdlog::stderr_logger_mt("cli_utils_test");
