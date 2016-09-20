@@ -39,6 +39,22 @@ Status discover_alleles_verify(const std::vector<std::pair<std::string,size_t> >
         S(read_discovered_alleles(fd, contigs, dsals2));
         close(fd);
 
+/*        cerr << "Reading from file" << endl;
+        cerr << "dsals: " << dsals.size() << endl;
+        for (auto const &kv : dsals) {
+            auto &key = kv.first;
+            auto &val = kv.second;
+            cerr << key.str() << " " << val.str() << endl;
+        }
+
+        cerr << "dsals2: " << dsals2.size() << endl;
+        for (auto const &kv : dsals2) {
+            auto &key = kv.first;
+            auto &val = kv.second;
+            cerr << key.str() << " " << val.str() << endl;
+            }*/
+
+
         // verify we get the same alleles back
         if (dsals == dsals2) {
             return Status::OK();
@@ -73,31 +89,25 @@ Status write_discovered_alleles(int fd,
         DiscoveredAlleleInfo::Builder dai = al.initDai();
         dai.setIsRef(val.is_ref);
 
-        {
-            TopAQ::Builder topAQ = dai.initTopAQ();
-            ::capnp::List<int64_t>::Builder v = topAQ.initV(top_AQ::COUNT);
-            for (int k=0; k < top_AQ::COUNT; k++)
-                v.set(k, val.topAQ.V[k]);
-            topAQ.setV(v);
-
-            int nelem = val.topAQ.addbuf.size();
-            ::capnp::List<int64_t>::Builder addbuf = topAQ.initV(nelem);
-            for (int k=0; k < nelem; k++)
-                addbuf.set(k, val.topAQ.addbuf[k]);
-            topAQ.setAddbuf(addbuf);
+        TopAQ::Builder topAQ = dai.initTopAQ();
+        ::capnp::List<int64_t>::Builder v = topAQ.initV(top_AQ::COUNT);
+        for (int k=0; k < top_AQ::COUNT; k++) {
+            v.set(k, val.topAQ.V[k]);
         }
 
-        {
-            ::capnp::List<uint64_t>::Builder zGQ0 = dai.initZGQ0(zygosity_by_GQ::GQ_BANDS);
-            for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
-                zGQ0.set(k, val.zGQ.M[k][0]);
-            dai.setZGQ0(zGQ0);
+        int nelem = val.topAQ.addbuf.size();
+        ::capnp::List<int64_t>::Builder addbuf = topAQ.initAddbuf(nelem);
+        for (int k=0; k < nelem; k++)
+            addbuf.set(k, val.topAQ.addbuf[k]);
+        topAQ.setAddbuf(addbuf);
 
-            ::capnp::List<uint64_t>::Builder zGQ1 = dai.initZGQ1(zygosity_by_GQ::GQ_BANDS);
-            for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
-                zGQ0.set(k, val.zGQ.M[k][1]);
-            dai.setZGQ1(zGQ1);
-        }
+        ::capnp::List<uint64_t>::Builder zGQ0 = dai.initZGQ0(zygosity_by_GQ::GQ_BANDS);
+        for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
+            zGQ0.set(k, val.zGQ.M[k][0]);
+
+        ::capnp::List<uint64_t>::Builder zGQ1 = dai.initZGQ1(zygosity_by_GQ::GQ_BANDS);
+        for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
+            zGQ1.set(k, val.zGQ.M[k][1]);
 
         cursor++;
     }
@@ -129,6 +139,9 @@ Status read_discovered_alleles(int fd,
 
         TopAQ::Reader topAQ_pk = dai_pk.getTopAQ();
         ::capnp::List<int64_t>::Reader v_pk = topAQ_pk.getV();
+        if (v_pk.size() != top_AQ::COUNT) {
+            return Status::Invalid("Wrong number of elements in topAQ", to_string(v_pk.size()));
+        }
         for (int k=0; k < v_pk.size(); k++)  {
             dai.topAQ.V[k] =  v_pk[k];
         }
