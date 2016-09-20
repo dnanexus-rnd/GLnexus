@@ -112,7 +112,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
         Status s = discovered_alleles_of_yaml(n, contigs, dal);
         REQUIRE(s.ok());
         VERIFY_DA(dal);
-        REQUIRE(GLnexus::capnp::discover_alleles_verify(dal).ok());
+        REQUIRE(GLnexus::capnp::discover_alleles_verify(contigs, dal).ok());
     }
 
     SECTION("bogus range") {
@@ -251,7 +251,7 @@ TEST_CASE("yaml_of_discovered_alleles") {
         discovered_alleles dal2;
         REQUIRE(discovered_alleles_of_yaml(n, contigs, dal2).ok());
         REQUIRE(dal == dal2);
-        REQUIRE(GLnexus::capnp::discover_alleles_verify(dal).ok());
+        REQUIRE(GLnexus::capnp::discover_alleles_verify(contigs, dal).ok());
     }
 }
 

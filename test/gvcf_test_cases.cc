@@ -223,7 +223,7 @@ public:
             REQUIRE(n_dsals);
             s = discovered_alleles_of_yaml(n_dsals, contigs, truth_dsals);
             REQUIRE(s.ok());
-            REQUIRE(GLnexus::capnp::discover_alleles_verify(truth_dsals).ok());
+            REQUIRE(GLnexus::capnp::discover_alleles_verify(contigs, truth_dsals).ok());
         }
 
         // parse truth unified_sites if test_usites is set to true
