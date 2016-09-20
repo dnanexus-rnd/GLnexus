@@ -171,6 +171,8 @@ include_directories(${COMMON_INCLUDES} capnp/serialize)
 
 # Invoke cap'n proto IDL compiler, to generate C++ serialization code from
 # definitions.
+#
+# TODO: Figure out how to recompile, when the definitions are updated.
 execute_process(COMMAND capnp compile -oc++ capnp/tut/tut_proto.capnp)
 execute_process(COMMAND capnp compile -oc++ capnp/serialize/defs.capnp)
 
@@ -254,7 +256,7 @@ if (test)
                  test/unifier.cc
                  test/cli_utils.cc)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
+  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a libcapnp.a libkj.a)
 
   add_test(unit_tests unit_tests)
 endif()
