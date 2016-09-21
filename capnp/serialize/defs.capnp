@@ -25,14 +25,21 @@ struct Range {
     end @2 :Int64;
 }
 
+# This is really a mapping from allele to information.
 struct AlleleInfoPair {
     range @0 :Range;
     dna @1 :Text;
     dai @2 :DiscoveredAlleleInfo;
 }
 
-# This is really a mapping from allele to information.
+struct Contig {
+    name @0 :Text;
+    size @1 :UInt64;
+}
+
+# aip = allele info pairs
 struct DiscoveredAlleles {
-    # aip = allele info pairs
-    aips @0 :List(AlleleInfoPair);
+    sampleCount @0 : UInt64;
+    contigs @1 : List(Contig);
+    aips @2 :List(AlleleInfoPair);
 }

@@ -224,7 +224,7 @@ public:
             s = discovered_alleles_of_yaml(n_dsals, contigs, truth_dsals);
             REQUIRE(s.ok());
             string tmpfile = "/tmp/discover_alleles_capnp_check";
-            REQUIRE(GLnexus::capnp::discover_alleles_verify(contigs, truth_dsals, tmpfile).ok());
+            REQUIRE(GLnexus::capnp::discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
         }
 
         // parse truth unified_sites if test_usites is set to true

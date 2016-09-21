@@ -18,28 +18,42 @@ namespace capnp {
 static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 
 // write discovered_alleles structure to a file-descriptor, with cap'n proto serialization
-Status write_discovered_alleles(int fd,
-                                const std::vector<std::pair<std::string,size_t> >& contigs,
-                                const discovered_alleles &dsals_i) {
+static Status write_discovered_alleles_fd(unsigned int sample_count,
+                                          const std::vector<std::pair<std::string,size_t> >& contigs,
+                                          const discovered_alleles &dsals,
+                                          int fd) {
     ::capnp::MallocMessageBuilder message;
-    DiscoveredAlleles::Builder dsals = message.initRoot<DiscoveredAlleles>();
+    DiscoveredAlleles::Builder dsals_pk = message.initRoot<DiscoveredAlleles>();
+    dsals_pk.setSampleCount(sample_count);
+
+    // serialize contigs
+    ::capnp::List<Contig>::Builder contigs_pk = dsals_pk.initContigs(contigs.size());
+    int cursor = 0;
+    for (auto const &kv : contigs) {
+        const string &name = kv.first;
+        size_t size = kv.second;
+
+        Contig::Builder ctg_pk = contigs_pk[cursor];
+        ctg_pk.setName(name);
+        ctg_pk.setSize(size);
+        cursor++;
+    }
 
     // serialize allele-info pairs
-    ::capnp::List<AlleleInfoPair>::Builder aips = dsals.initAips(dsals_i.size());
-
-    int cursor = 0;
-    for (auto const &kv : dsals_i) {
+    ::capnp::List<AlleleInfoPair>::Builder aips_pk = dsals_pk.initAips(dsals.size());
+    cursor = 0;
+    for (auto const &kv : dsals) {
         auto &key = kv.first;
         auto &val = kv.second;
 
-        AlleleInfoPair::Builder al = aips[cursor];
-        Range::Builder range = al.initRange();
+        AlleleInfoPair::Builder al_pk = aips_pk[cursor];
+        Range::Builder range = al_pk.initRange();
         range.setRid(key.pos.rid);
         range.setBeg(key.pos.beg);
         range.setEnd(key.pos.end);
-        al.setDna(key.dna.c_str());
+        al_pk.setDna(key.dna.c_str());
 
-        DiscoveredAlleleInfo::Builder dai = al.initDai();
+        DiscoveredAlleleInfo::Builder dai = al_pk.initDai();
         dai.setIsRef(val.is_ref);
 
         TopAQ::Builder topAQ = dai.initTopAQ();
@@ -69,13 +83,37 @@ Status write_discovered_alleles(int fd,
     return Status::OK();
 }
 
+// Variant of the above command, but write to a file
+Status write_discovered_alleles(unsigned int sample_count,
+                                const std::vector<std::pair<std::string,size_t> >& contigs,
+                                const discovered_alleles &dsals,
+                                const std::string &filename) {
+    std::remove(filename.c_str());
+    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+    Status s = write_discovered_alleles_fd(sample_count, contigs, dsals, fd);
+    fsync(fd);
+    close(fd);
+    return s;
+}
+
 // read discovered_alleles structure from a file-descriptor, as serialized by cap'n proto
-Status read_discovered_alleles(int fd,
-                               const std::vector<std::pair<std::string,size_t> >& contigs,
-                               discovered_alleles &dsals) {
+static Status read_discovered_alleles_fd(int fd,
+                                         unsigned int &sample_count,
+                                         std::vector<std::pair<std::string,size_t> >& contigs,
+                                         discovered_alleles &dsals) {
     ::capnp::PackedFdMessageReader message(fd);
     DiscoveredAlleles::Reader dsals_pk = message.getRoot<DiscoveredAlleles>();
+    sample_count = dsals_pk.getSampleCount();
 
+    // contigs
+    contigs.clear();
+    for (Contig::Reader ctg : dsals_pk.getContigs()) {
+        auto p = make_pair<string,size_t>(ctg.getName(), ctg.getSize());
+        contigs.push_back(p);
+    }
+
+    // Discovered Alleles
+    dsals.clear();
     for (AlleleInfoPair::Reader aip : dsals_pk.getAips()) {
         // Unpack allele
         Range::Reader range_pk = aip.getRange();
@@ -121,46 +159,37 @@ Status read_discovered_alleles(int fd,
     return Status::OK();
 }
 
-Status discover_alleles_verify(const std::vector<std::pair<std::string,size_t> >& contigs,
+Status read_discovered_alleles(const std::string &filename,
+                               unsigned int &sample_count,
+                               std::vector<std::pair<std::string,size_t> >& contigs,
+                               discovered_alleles &dsals) {
+    int fd = open(filename.c_str(), O_RDONLY);
+    Status s = read_discovered_alleles_fd(fd, sample_count, contigs, dsals);
+    close(fd);
+    return s;
+}
+
+
+Status discover_alleles_verify(unsigned int sample_count,
+                               const std::vector<std::pair<std::string,size_t> >& contigs,
                                const discovered_alleles &dsals,
                                const string &filename) {
     Status s;
 
-    {
-        // Write to file
-        int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-        S(write_discovered_alleles(fd, contigs, dsals));
-        fsync(fd);
-        close(fd);
-    }
+    // Write to file
+    S(write_discovered_alleles(sample_count, contigs, dsals, filename));
 
-    {
-        // read from it
-        int fd = open(filename.c_str(), O_RDONLY);
-        discovered_alleles dsals2;
-        S(read_discovered_alleles(fd, contigs, dsals2));
-        close(fd);
+    // read from it
+    unsigned int N;
+    vector<pair<string,size_t>> contigs2;
+    discovered_alleles dsals2;
+    S(read_discovered_alleles(filename, N, contigs2, dsals2));
 
-/*        cerr << "Reading from file" << endl;
-        cerr << "dsals: " << dsals.size() << endl;
-        for (auto const &kv : dsals) {
-            auto &key = kv.first;
-            auto &val = kv.second;
-            cerr << key.str() << " " << val.str() << endl;
-        }
-
-        cerr << "dsals2: " << dsals2.size() << endl;
-        for (auto const &kv : dsals2) {
-            auto &key = kv.first;
-            auto &val = kv.second;
-            cerr << key.str() << " " << val.str() << endl;
-            }*/
-
-
-        // verify we get the same alleles back
-        if (dsals == dsals2) {
-            return Status::OK();
-        }
+    // verify we get the same alleles back
+    if (dsals == dsals2 &&
+        contigs == contigs2 &&
+        sample_count == N) {
+        return Status::OK();
     }
 
     return Status::Invalid("capnp serialization/deserialization of discovered alleles does not return original value");
