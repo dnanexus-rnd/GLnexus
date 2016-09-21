@@ -101,6 +101,8 @@ static Status read_discovered_alleles_fd(int fd,
                                          unsigned int &sample_count,
                                          std::vector<std::pair<std::string,size_t> >& contigs,
                                          discovered_alleles &dsals) {
+    ::capnp::ReaderOptions ropt;
+    ropt.traversalLimitInWords = 100L * 1024L * 1024L * 1024L; // 100GiB
     ::capnp::PackedFdMessageReader message(fd);
     DiscoveredAlleles::Reader dsals_pk = message.getRoot<DiscoveredAlleles>();
     sample_count = dsals_pk.getSampleCount();
