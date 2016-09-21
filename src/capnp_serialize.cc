@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
-#include <iostream>
 
 #include <defs.capnp.h>
 #include <capnp_serialize.h>
@@ -17,52 +16,6 @@ namespace capnp {
 
 // We assume the chromosome ploidy is two in our serialization format.
 static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
-
-Status discover_alleles_verify(const std::vector<std::pair<std::string,size_t> >& contigs,
-                               const discovered_alleles &dsals) {
-    Status s;
-
-    string filename = "/tmp/test_discover_alleles";
-
-    {
-        // Write to file
-        int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-        S(write_discovered_alleles(fd, contigs, dsals));
-        fsync(fd);
-        close(fd);
-    }
-
-    {
-        // read from it
-        int fd = open(filename.c_str(), O_RDONLY);
-        discovered_alleles dsals2;
-        S(read_discovered_alleles(fd, contigs, dsals2));
-        close(fd);
-
-/*        cerr << "Reading from file" << endl;
-        cerr << "dsals: " << dsals.size() << endl;
-        for (auto const &kv : dsals) {
-            auto &key = kv.first;
-            auto &val = kv.second;
-            cerr << key.str() << " " << val.str() << endl;
-        }
-
-        cerr << "dsals2: " << dsals2.size() << endl;
-        for (auto const &kv : dsals2) {
-            auto &key = kv.first;
-            auto &val = kv.second;
-            cerr << key.str() << " " << val.str() << endl;
-            }*/
-
-
-        // verify we get the same alleles back
-        if (dsals == dsals2) {
-            return Status::OK();
-        }
-    }
-
-    return Status::Invalid("capnp serialization/deserialization of discovered alleles does not return original value");
-}
 
 // write discovered_alleles structure to a file-descriptor, with cap'n proto serialization
 Status write_discovered_alleles(int fd,
@@ -168,5 +121,49 @@ Status read_discovered_alleles(int fd,
     return Status::OK();
 }
 
+Status discover_alleles_verify(const std::vector<std::pair<std::string,size_t> >& contigs,
+                               const discovered_alleles &dsals,
+                               const string &filename) {
+    Status s;
+
+    {
+        // Write to file
+        int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+        S(write_discovered_alleles(fd, contigs, dsals));
+        fsync(fd);
+        close(fd);
+    }
+
+    {
+        // read from it
+        int fd = open(filename.c_str(), O_RDONLY);
+        discovered_alleles dsals2;
+        S(read_discovered_alleles(fd, contigs, dsals2));
+        close(fd);
+
+/*        cerr << "Reading from file" << endl;
+        cerr << "dsals: " << dsals.size() << endl;
+        for (auto const &kv : dsals) {
+            auto &key = kv.first;
+            auto &val = kv.second;
+            cerr << key.str() << " " << val.str() << endl;
+        }
+
+        cerr << "dsals2: " << dsals2.size() << endl;
+        for (auto const &kv : dsals2) {
+            auto &key = kv.first;
+            auto &val = kv.second;
+            cerr << key.str() << " " << val.str() << endl;
+            }*/
+
+
+        // verify we get the same alleles back
+        if (dsals == dsals2) {
+            return Status::OK();
+        }
+    }
+
+    return Status::Invalid("capnp serialization/deserialization of discovered alleles does not return original value");
+}
 
 }} // namespace GLnexus

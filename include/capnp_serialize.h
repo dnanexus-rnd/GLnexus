@@ -22,9 +22,10 @@ Status read_discovered_alleles(int fd,
                                discovered_alleles &dsals);
 
 // Verify that we can serialize and deserialize a discovered-alleles
-// structure
+// structure. Temporary results are written to [filename].
 Status discover_alleles_verify(const std::vector<std::pair<std::string,size_t> >& contigs,
-                               const discovered_alleles &dsals);
+                               const discovered_alleles &dsals,
+                               const std::string &filename);
 
 }}
 

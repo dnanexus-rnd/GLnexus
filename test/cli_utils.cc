@@ -28,7 +28,8 @@ static void yaml_file_of_discovered_alleles(const string &filename, unsigned N,
     REQUIRE(s.ok());
     fos.close();
 
-    REQUIRE(GLnexus::capnp::discover_alleles_verify(contigs, dals).ok());
+    string tmpfile = "/tmp/discover_alleles_capnp_check";
+    REQUIRE(GLnexus::capnp::discover_alleles_verify(contigs, dals, tmpfile).ok());
 }
 
 static auto console = spdlog::stderr_logger_mt("cli_utils_test");
