@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.2)
 include(ExternalProject)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
@@ -171,10 +171,17 @@ include_directories(${COMMON_INCLUDES} capnp/serialize)
 
 # Invoke cap'n proto IDL compiler, to generate C++ serialization code from
 # definitions.
-#
-# TODO: Figure out how to recompile, when the definitions are updated.
-execute_process(COMMAND capnp compile -oc++ capnp/tut/tut_proto.capnp)
-execute_process(COMMAND capnp compile -oc++ capnp/serialize/defs.capnp)
+add_custom_command(
+  OUTPUT  capnp/tut/tut_proto.capnp.h capnp/tut/tut_proto.capnp.c++
+  COMMAND capnp compile -oc++ capnp/tut/tut_proto.capnp
+  DEPENDS capnp/tut/tut_proto.capnp
+  COMMENT "Tutorial: generating cap'n proto C++ and H files")
+
+add_custom_command(
+  OUTPUT  capnp/serialize/defs.capnp.c++ capnp/serialize/defs.capnp.h
+  COMMAND capnp compile -oc++ capnp/serialize/defs.capnp
+  DEPENDS capnp/serialize/defs.capnp
+  COMMENT "GLnexus: generating cap'n proto C++ and H files")
 
 add_library(glnexus
             include/types.h src/types.cc
