@@ -15,7 +15,8 @@ struct DiscoveredAlleleInfo {
     topAQ @1 :TopAQ;
 
      # zygosity_by_GQ statistics are used to estimate allele copy number
-    zGQ @2 :List(List(UInt64));
+    zGQ0 @2 :List(UInt64);
+    zGQ1 @3 :List(UInt64);
 }
 
 struct Range {
