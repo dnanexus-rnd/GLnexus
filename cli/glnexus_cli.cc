@@ -685,9 +685,7 @@ int main_discover_alleles(int argc, char *argv[]) {
     }
     console->info() << "discovered " << dsals.size() << " alleles";
 
-    // Write the discovered alleles to stdout
-    //   H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
-    //   H("write results as yaml", GLnexus::capnp::write_discovered_alleles(N, contigs, dsals, discovered_alleles_file));
+    // Write the discovered alleles to stdout.
     // "1" is the standard C for the standard out file-descriptor.
     H("write results with cap'n proto serialization",
       GLnexus::capnp::write_discovered_alleles_fd(N, contigs, dsals, 1));
