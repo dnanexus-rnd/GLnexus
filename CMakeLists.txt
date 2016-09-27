@@ -36,11 +36,10 @@ MARK_AS_ADVANCED(
 project(GLnexus)
 
 INCLUDE(ExternalProject)
-INCLUDE_DIRECTORIES(BEFORE ${CMAKE_BINARY_DIR}/include)
-LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/lib)
-SET(ENV{PATH} ${CMAKE_BINARY_DIR}/bin:$ENV{PATH})
-SET(ENV{PKG_CONFIG_PATH} ${CMAKE_BINARY_DIR}/lib/pkgconfig)
-
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_BINARY_DIR}/external/include)
+LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/external/lib)
+SET(ENV{PATH} ${CMAKE_BINARY_DIR}/external/bin:$ENV{PATH})
+SET(ENV{PKG_CONFIG_PATH} ${CMAKE_BINARY_DIR}/external/lib/pkgconfig)
 
 # After build, double-check external/src/htslib-stamp/htslib-build-out.log
 # to make sure CFLAGS were set as expected
@@ -169,15 +168,15 @@ include_directories(${SPDLOG_INCLUDE_DIR})
 ExternalProject_Add(capnp
     URL https://capnproto.org/capnproto-c++-0.5.3.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-    CONFIGURE_COMMAND bash ./configure --prefix=${CMAKE_BINARY_DIR}
+    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/external
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j6 check
     INSTALL_COMMAND make install
     LOG_DOWNLOAD ON
   )
-ExternalProject_Get_Property(capnp source_dir)
-set(CAPNP_INCLUDE_DIR ${source_dir}/include)
-include_directories(${CAPNP_INCLUDE_DIR})
+#ExternalProject_Get_Property(capnp source_dir)
+#set(CAPNP_INCLUDE_DIR ${source_dir}/include)
+#include_directories(${CAPNP_INCLUDE_DIR})
 
 
 execute_process(COMMAND git describe --tags --long --dirty --always
@@ -197,13 +196,13 @@ include_directories(${COMMON_INCLUDES} capnp/serialize)
 # definitions.
 add_custom_command(
   OUTPUT  capnp/serialize/defs.capnp.c++ capnp/serialize/defs.capnp.h
-  COMMAND capnp compile -oc++ capnp/serialize/defs.capnp
+  COMMAND ${CMAKE_BINARY_DIR}/external/bin/capnp compile -oexternal/bin/capnpc-c++ capnp/serialize/defs.capnp
   DEPENDS capnp/serialize/defs.capnp
   COMMENT "GLnexus: generating cap'n proto C++ and H files")
 
 add_library(glnexus
             include/types.h src/types.cc
-            capnp/serialize/defs.capnp.c++
+            capnp/serialize/defs.capnp.h capnp/serialize/defs.capnp.c++
             include/capnp_serialize.h src/capnp_serialize.cc
             include/data.h src/data.cc
             include/diploid.h src/diploid.cc
