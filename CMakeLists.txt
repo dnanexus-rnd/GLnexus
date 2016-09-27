@@ -35,6 +35,13 @@ MARK_AS_ADVANCED(
 # Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
 project(GLnexus)
 
+INCLUDE(ExternalProject)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_BINARY_DIR}/include)
+LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/lib)
+SET(ENV{PATH} ${CMAKE_BINARY_DIR}/bin:$ENV{PATH})
+SET(ENV{PKG_CONFIG_PATH} ${CMAKE_BINARY_DIR}/lib/pkgconfig)
+
+
 # After build, double-check external/src/htslib-stamp/htslib-build-out.log
 # to make sure CFLAGS were set as expected
 ExternalProject_Add(htslib
@@ -156,6 +163,23 @@ ExternalProject_Get_Property(spdlog source_dir)
 set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
 include_directories(${SPDLOG_INCLUDE_DIR})
 
+# Note: installing the sources from git is significantly more
+# complicated. For example, you need to install the google-test
+# package (gtest).
+ExternalProject_Add(capnp
+    URL https://capnproto.org/capnproto-c++-0.5.3.tar.gz
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
+    CONFIGURE_COMMAND bash ./configure --prefix=${CMAKE_BINARY_DIR}
+    BUILD_IN_SOURCE 1
+    BUILD_COMMAND make -j6 check
+    INSTALL_COMMAND make install
+    LOG_DOWNLOAD ON
+  )
+ExternalProject_Get_Property(capnp source_dir)
+set(CAPNP_INCLUDE_DIR ${source_dir}/include)
+include_directories(${CAPNP_INCLUDE_DIR})
+
+
 execute_process(COMMAND git describe --tags --long --dirty --always
                 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -fdiagnostics-color=auto -march=ivybridge")
@@ -171,12 +195,6 @@ include_directories(${COMMON_INCLUDES} capnp/serialize)
 
 # Invoke cap'n proto IDL compiler, to generate C++ serialization code from
 # definitions.
-add_custom_command(
-  OUTPUT  capnp/tut/tut_proto.capnp.h capnp/tut/tut_proto.capnp.c++
-  COMMAND capnp compile -oc++ capnp/tut/tut_proto.capnp
-  DEPENDS capnp/tut/tut_proto.capnp
-  COMMENT "Tutorial: generating cap'n proto C++ and H files")
-
 add_custom_command(
   OUTPUT  capnp/serialize/defs.capnp.c++ capnp/serialize/defs.capnp.h
   COMMAND capnp compile -oc++ capnp/serialize/defs.capnp
@@ -206,6 +224,7 @@ add_dependencies(glnexus yaml-cpp)
 add_dependencies(glnexus CTPL)
 add_dependencies(glnexus fcmm)
 add_dependencies(glnexus spdlog)
+add_dependencies(glnexus capnp)
 add_library(libglnexus ALIAS glnexus)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge -static-libstdc++ -pthread")
@@ -213,10 +232,6 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -march=ivybridge -static-l
 add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
-
-# Invoke the capnp IDL compiler
-add_executable(tut_example_capnp capnp/tut/tut_example.cpp capnp/tut/tut_proto.capnp.c++)
-target_link_libraries(tut_example_capnp libcapnp.a libkj.a)
 
 add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
