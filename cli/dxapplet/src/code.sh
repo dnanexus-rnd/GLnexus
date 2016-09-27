@@ -133,7 +133,7 @@ main() {
         fi
 
         # numactl explanation: https://blog.jcole.us/2010/09/28/mysql-swap-insanity-and-the-numa-architecture/
-        time numactl --interleave=all glnexus_cli discover_alleles GLnexus.db --bed ranges.bed $config_flag --dsals discovered_alleles.cflat
+        time numactl --interleave=all glnexus_cli discover_alleles GLnexus.db --bed ranges.bed $config_flag > discovered_alleles.cflat
         ls -l discovered_alleles.cflat
 
         time numactl --interleave=all glnexus_cli unify_sites discovered_alleles.cflat --bed ranges.bed $config_flag > unified_sites.yml

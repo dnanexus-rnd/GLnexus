@@ -570,7 +570,6 @@ void help_discover_alleles(const char* prog) {
          << "command line, you can provide a three-column BED file using --bed." << endl
          << "Options:" << endl
          << "  --bed FILE, -b FILE    path to three-column BED file" << endl
-         << "  --dsals FILE, -d FILE  path to discovered alleles file, to be created" << endl
          << "  --config X, -c X       apply unifier/genotyper configuration preset X" << endl
          << "  --threads N, -t N      override thread pool size (default: nproc)" << endl
          << endl;
@@ -585,20 +584,18 @@ int main_discover_alleles(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
-        {"dsals", required_argument, 0, 'd'},
         {"config", required_argument, 0, 'c'},
         {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
-    string discovered_alleles_file;
     string bedfilename;
     string config_preset;
     size_t threads = 0;
 
     int c;
     optind = 2; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:c:t:d:",
+    while (-1 != (c = getopt_long(argc, argv, "hb:c:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -610,9 +607,6 @@ int main_discover_alleles(int argc, char *argv[]) {
                 break;
             case 'c':
                 config_preset = string(optarg);
-                break;
-            case 'd':
-                discovered_alleles_file = string(optarg);
                 break;
             case 't':
                 threads = strtoul(optarg, nullptr, 10);
@@ -627,11 +621,6 @@ int main_discover_alleles(int argc, char *argv[]) {
             default:
                 abort ();
         }
-    }
-
-    if (discovered_alleles_file.size() == 0) {
-        cerr <<  "discovered_alleles file required" << endl;
-        return 1;
     }
 
     if (optind != argc-1) {
@@ -697,8 +686,11 @@ int main_discover_alleles(int argc, char *argv[]) {
     console->info() << "discovered " << dsals.size() << " alleles";
 
     // Write the discovered alleles to stdout
-    //H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
-    H("write results as yaml", GLnexus::capnp::write_discovered_alleles(N, contigs, dsals, discovered_alleles_file));
+    //   H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
+    //   H("write results as yaml", GLnexus::capnp::write_discovered_alleles(N, contigs, dsals, discovered_alleles_file));
+    // "1" is the standard C for the standard out file-descriptor.
+    H("write results with cap'n proto serialization",
+      GLnexus::capnp::write_discovered_alleles_fd(N, contigs, dsals, 1));
     return 0;
 }
 

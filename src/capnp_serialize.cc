@@ -9,6 +9,19 @@
 #include <defs.capnp.h>
 #include <capnp_serialize.h>
 
+/*
+The capnp methods typically do not throw exceptions, or return error
+codes that the caller needs to handle.
+
+From the documentation: the implementation prefers to handle
+errors using exceptions. Exceptions are only used in circumstances
+that should never occur in normal operation. For example, exceptions
+are thrown on assertion failures (indicating bugs in the code),
+network failures, and invalid input. Exceptions thrown by Cap’n Proto
+are never part of the interface and never need to be caught in correct
+usage.
+*/
+
 using namespace std;
 
 namespace GLnexus {
@@ -18,10 +31,10 @@ namespace capnp {
 static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 
 // write discovered_alleles structure to a file-descriptor, with cap'n proto serialization
-static Status write_discovered_alleles_fd(unsigned int sample_count,
-                                          const std::vector<std::pair<std::string,size_t> >& contigs,
-                                          const discovered_alleles &dsals,
-                                          int fd) {
+static Status _write_discovered_alleles_fd(unsigned int sample_count,
+                                           const std::vector<std::pair<std::string,size_t> >& contigs,
+                                           const discovered_alleles &dsals,
+                                           int fd) {
     ::capnp::MallocMessageBuilder message;
     DiscoveredAlleles::Builder dsals_pk = message.initRoot<DiscoveredAlleles>();
     dsals_pk.setSampleCount(sample_count);
@@ -79,8 +92,21 @@ static Status write_discovered_alleles_fd(unsigned int sample_count,
         cursor++;
     }
 
+    // Capnp throws exceptions on errors, and only in extreme cases.
     writePackedMessageToFd(fd, message);
     return Status::OK();
+}
+
+// Variant of the above command, but write to a file
+Status write_discovered_alleles_fd(unsigned int sample_count,
+                                   const std::vector<std::pair<std::string,size_t> >& contigs,
+                                   const discovered_alleles &dsals,
+                                   int fd) {
+    try {
+        return _write_discovered_alleles_fd(sample_count, contigs, dsals, fd);
+    } catch (exception &e) {
+        return Status::IOError("Capnproto error during de-serialization", e.what());
+    }
 }
 
 // Variant of the above command, but write to a file
@@ -90,17 +116,20 @@ Status write_discovered_alleles(unsigned int sample_count,
                                 const std::string &filename) {
     std::remove(filename.c_str());
     int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+    if (fd < 0)
+        return Status::IOError("Could not open file for writing", filename);
     Status s = write_discovered_alleles_fd(sample_count, contigs, dsals, fd);
-    fsync(fd);
-    close(fd);
+    int retval = close(fd);
+    if (retval < 0)
+        return Status::IOError("file close failed", filename);
     return s;
 }
 
 // read discovered_alleles structure from a file-descriptor, as serialized by cap'n proto
-static Status read_discovered_alleles_fd(int fd,
-                                         unsigned int &sample_count,
-                                         std::vector<std::pair<std::string,size_t> >& contigs,
-                                         discovered_alleles &dsals) {
+static Status _read_discovered_alleles_fd(int fd,
+                                          unsigned int &sample_count,
+                                          std::vector<std::pair<std::string,size_t> >& contigs,
+                                          discovered_alleles &dsals) {
     ::capnp::ReaderOptions ropt;
     ropt.traversalLimitInWords =  1024L * 1024L * 1024L; // 1GiB
     ::capnp::PackedFdMessageReader message(fd, ropt);
@@ -166,8 +195,19 @@ Status read_discovered_alleles(const std::string &filename,
                                std::vector<std::pair<std::string,size_t> >& contigs,
                                discovered_alleles &dsals) {
     int fd = open(filename.c_str(), O_RDONLY);
-    Status s = read_discovered_alleles_fd(fd, sample_count, contigs, dsals);
-    close(fd);
+    if (fd < 0)
+        return Status::IOError("Could not open file for reading", filename);
+    Status s;
+    try {
+        // Capnp throws exceptions on errors, and only in extreme cases.
+        s = _read_discovered_alleles_fd(fd, sample_count, contigs, dsals);
+    } catch (exception &e) {
+        return Status::IOError("Capnproto error during de-serialization", e.what());
+    }
+
+    int retval = close(fd);
+    if (retval < 0)
+        return Status::IOError("file close failed", filename);
     return s;
 }
 
