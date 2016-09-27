@@ -174,9 +174,6 @@ ExternalProject_Add(capnp
     INSTALL_COMMAND make install
     LOG_DOWNLOAD ON
   )
-#ExternalProject_Get_Property(capnp source_dir)
-#set(CAPNP_INCLUDE_DIR ${source_dir}/include)
-#include_directories(${CAPNP_INCLUDE_DIR})
 
 
 execute_process(COMMAND git describe --tags --long --dirty --always
