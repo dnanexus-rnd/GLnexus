@@ -1,53 +1,28 @@
 {
   "name": "GLnexus",
   "title": "GLnexus",
-  "summary": "GLnexus",
+  "summary": "GLnexus executable that processes a set of input gvcf files",
   "dxapi": "1.0.0",
   "version": "0.0.1",
   "inputSpec": [
     {
       "name": "gvcf",
+      "help": "source gvcf files",
       "class": "array:file",
       "optional": true,
       "patterns": ["*.gvcf.gz", "*.g.vcf.gz", "*.gvcf", "*.g.vcf"]
     },
     {
       "name": "gvcf_tar",
+      "help": "source gvcf files",
       "class": "array:file",
       "optional": true,
       "patterns": ["*.tar"]
     },
     {
-      "name": "ranges_to_load",
-      "class": "array:string",
-      "optional": true
-    },
-    {
-      "name": "bucket_size",
-      "class": "int",
-      "optional": true
-    },
-    {
-      "name": "existing_db",
-      "class": "file",
-      "type": "GLnexus_db",
-      "optional": true
-    },
-    {
-      "name": "ranges_to_genotype",
-      "class": "array:string",
-      "optional": true
-    },
-    {
       "name": "bed_ranges_to_genotype",
-      "class": "file",
-      "optional": true
-    },
-    {
-      "name": "config",
-      "description": "configuration preset",
-      "class": "string",
-      "optional": true
+      "help": "limit genotyping to these ranges",
+      "class": "file"
     },
     {
       "name": "output_name",
@@ -55,62 +30,32 @@
       "default": "GLnexus"
     },
     {
-      "name": "sleep",
-      "class": "int",
-      "default": 0
-    },
-    {
-      "name": "enable_perf",
-      "class": "boolean",
-      "default": false,
-      "optional": true
-    },
-    {
-      "name": "enable_kernel_perf",
-      "class": "boolean",
-      "default": false,
-      "optional": true
-    },
-    {
-      "name": "iter_compare",
-      "class": "boolean",
-      "default": false,
-      "optional": true
-    },
-    {
       "name": "residuals",
+      "help": "output residuals",
       "class": "boolean",
       "default": false,
       "optional": true
     },
     {
-      "name": "lz4_output",
-      "help": "Compress outputs with LZ4 instead of gzip",
+      "name": "debug",
+      "help": "output additional files (unified-sites, discovered alleles)",
       "class": "boolean",
-      "default": false
+      "default": false,
+      "optional": true
+    },
+    {
+      "name": "sleep",
+      "help": "wait for debugging, require the --allow-ssh flag",
+      "class": "int",
+      "default": 0,
+      "optional": true
     }
   ],
   "outputSpec": [
     {
       "name": "vcf",
       "class": "file",
-      "patterns": ["*.vcf.gz", "*.vcf.lz4"],
-      "optional": true
-    },
-    {
-      "name": "db",
-      "class": "file",
-      "type": "GLnexus_db",
-      "optional": true
-    },
-    {
-      "name": "db_load_log",
-      "class": "file"
-    },
-    {
-      "name": "perf",
-      "class": "array:file",
-      "optional": true
+      "patterns": ["*.vcf.gz"]
     },
     {
       "name": "residuals",
@@ -135,19 +80,15 @@
       {"name": "sysstat"},
       {"name": "numactl"},
       {"name": "libjemalloc1"},
-      {"name": "pigz"},
-      {"name": "liblz4-tool"}
+      {"name": "pigz"}
     ],
     "systemRequirements": {
       "main": {
-        "instanceType": "mem1_ssd1_x2"
+        "instanceType": "mem1_ssd1_x4"
       }
     },
     "distribution": "Ubuntu",
     "release": "14.04"
-  },
-  "access": {
-    "network": ["*"]
   },
   "authorizedUsers": []
 }

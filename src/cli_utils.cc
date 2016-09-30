@@ -1,10 +1,14 @@
-#include <iostream>
-#include <exception>
-#include <fstream>
-#include <sstream>
-#include <regex>
 #include "cli_utils.h"
 #include "ctpl_stl.h"
+#include <exception>
+#include <fts.h>
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <sstream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // This file has utilities employed by the glnexus applet.
 using namespace std;
@@ -360,8 +364,8 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                 N = N2;
                 return Status::OK();
             }
-            
-            // We have already loaded and merged some files. 
+
+            // We have already loaded and merged some files.
             // Verify that the contigs are the same
             if (contigs != contigs2) {
                 return Status::Invalid("The contigs do not match");
@@ -412,5 +416,98 @@ Status find_containing_range(const std::set<range> &ranges,
     }
     return Status::NotFound();
 }
+
+// Check if a file exists
+bool check_file_exists(const string &filename) {
+    ifstream ifs(filename);
+    if (!ifs) {
+        return false;
+    }
+    return true;
+}
+
+bool check_dir_exists(const string &path) {
+    struct stat info;
+
+    if (stat(path.c_str(), &info) != 0) {
+        // Could not access the directory
+        return false;
+    }
+    if (info.st_mode & S_IFDIR) {
+        return true;
+    }
+    return false;
+}
+
+// http://stackoverflow.com/questions/2256945/removing-a-non-empty-directory-programmatically-in-c-or-c
+Status recursive_delete(const string &path) {
+    FTS *ftsp = NULL;
+    FTSENT *curr;
+    stringstream errmsg;
+    Status s = Status::OK();
+
+    if (!check_dir_exists(path)) {
+        return Status::OK();
+    }
+
+    // Cast needed (in C) because fts_open() takes a "char * const *", instead
+    // of a "const char * const *", which is only allowed in C++. fts_open()
+    // does not modify the argument.
+    char *files[] = { (char *) path.c_str(), NULL };
+
+    // FTS_NOCHDIR  - Avoid changing cwd, which could cause unexpected behavior
+    //                in multithreaded programs
+    // FTS_PHYSICAL - Don't follow symlinks. Prevents deletion of files outside
+    //                of the specified directory
+    // FTS_XDEV     - Don't cross filesystem boundaries
+    ftsp = fts_open(files, FTS_NOCHDIR | FTS_PHYSICAL | FTS_XDEV, NULL);
+    if (!ftsp) {
+        errmsg << path << " " << strerror(errno);
+        s = Status::IOError("fts_open", errmsg.str());
+        goto finish;
+    }
+
+    while ((curr = fts_read(ftsp))) {
+        switch (curr->fts_info) {
+        case FTS_NS:
+        case FTS_DNR:
+        case FTS_ERR:
+            errmsg << curr->fts_accpath << " " << strerror(curr->fts_errno);
+            s = Status::IOError("ftp_read", errmsg.str());
+            goto finish;
+
+        case FTS_DC:
+        case FTS_DOT:
+        case FTS_NSOK:
+            // Not reached unless FTS_LOGICAL, FTS_SEEDOT, or FTS_NOSTAT were
+            // passed to fts_open()
+            break;
+
+        case FTS_D:
+            // Do nothing. Need depth-first search, so directories are deleted
+            // in FTS_DP
+            break;
+
+        case FTS_DP:
+        case FTS_F:
+        case FTS_SL:
+        case FTS_SLNONE:
+        case FTS_DEFAULT:
+            if (remove(curr->fts_accpath) < 0) {
+                errmsg << curr->fts_path << " " << strerror(errno);
+                s = Status::IOError("failed to remove", errmsg.str());
+                goto finish;
+            }
+            break;
+        }
+    }
+
+finish:
+    if (ftsp) {
+        fts_close(ftsp);
+    }
+    return s;
+}
+
 
 }}}

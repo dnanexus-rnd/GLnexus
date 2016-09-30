@@ -201,10 +201,6 @@ add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
 add_dependencies(glnexus_cli libglnexus)
 target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
-add_executable(glnexus_aio cli/glnexus_aio.cc)
-add_dependencies(glnexus_aio libglnexus)
-target_link_libraries(glnexus_aio glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a boost_system.a libboost_filesystem.a)
-
 install(TARGETS playground DESTINATION bin)
 
 ################################

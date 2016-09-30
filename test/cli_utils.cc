@@ -614,3 +614,48 @@ TEST_CASE("find_containing_range") {
         REQUIRE(ans == range(1,249210800,249214146));
     }
 }
+
+static void make_files_in_dir(const string &basedir) {
+    auto names = {"a", "b", "c"};
+    for (auto cursor : names) {
+        string path = basedir + "/" + cursor;
+        int retval = system(("touch " + path).c_str());
+        REQUIRE(retval == 0);
+        REQUIRE(utils::check_file_exists(path));
+    }
+}
+
+TEST_CASE("file_ops") {
+    string basedir = "/tmp/cli_utils";
+    int retval = system(("rm -rf " + basedir).c_str());
+    REQUIRE(retval == 0);
+    Status s= utils::recursive_delete(basedir);
+    if (s.bad()) {
+        cerr << s.str() << endl;
+    }
+    REQUIRE(s.ok());
+
+    retval = system(("mkdir -p " + basedir).c_str());
+    REQUIRE(retval == 0);
+    REQUIRE(utils::check_dir_exists(basedir));
+
+    string file_path = basedir + "/foo.txt";
+    retval = system(("touch " + file_path).c_str());
+    REQUIRE(retval == 0);
+    REQUIRE(utils::check_file_exists(file_path));
+
+    make_files_in_dir(basedir);
+
+    // create some subdirectories
+    auto subdirs = {"X", "Y", "Z"};
+    for (auto cursor : subdirs) {
+        string path = basedir + "/" + cursor;
+        retval = system(("mkdir " + path).c_str());
+        REQUIRE(retval == 0);
+
+        make_files_in_dir(path);
+    }
+
+    REQUIRE(utils::recursive_delete(basedir).ok());
+    REQUIRE(!utils::check_dir_exists(basedir));
+}

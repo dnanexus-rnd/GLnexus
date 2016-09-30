@@ -64,6 +64,19 @@ Status find_containing_range(const std::set<range> &ranges,
                              const range &pos,
                              range &ans);
 
+// Check if a file exists
+bool check_file_exists(const std::string &path);
+
+// Check if a directory exists
+bool check_dir_exists(const std::string &path);
+
+// Recursively remove a directory path. Do not return an error
+// if the path does not exist.
+//
+// Note: this could be done with boost::remove_all, but we do not
+// want to require that dependency.
+Status recursive_delete(const std::string &path);
+
 }}}
 
 #endif
