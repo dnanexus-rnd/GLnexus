@@ -150,3 +150,65 @@ int compare_query(T &data, MetadataCache &cache,
     // compare all the elements between the two results
     return compare_results(resultsBase, resultsSoph);
 }
+
+void help_iter_compare(const char* prog) {
+    cerr << "usage: " << prog << " iter_compare /db/path" << endl
+         << "Run tests comparing the two BCF iterators" << endl
+         << endl;
+}
+
+#if 0
+
+// TODO: revive this code
+TEST_CASE("iter_compare") {
+    string dbpath("---fill the database here---");
+
+    unique_ptr<GLnexus::KeyValue::DB> db;
+    unique_ptr<GLnexus::BCFKeyValueData> data;
+    string sampleset;
+    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
+    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+
+    unique_ptr<GLnexus::MetadataCache> metadata;
+    H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
+
+    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
+    console->info() << "using sample set " << sampleset;
+
+    const auto& contigs = metadata->contigs();
+
+    // get samples and datasets
+    shared_ptr<const set<string>> samples, datasets;
+    H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
+
+    int nChroms = min((size_t)22, contigs.size());
+    int nIter = 50;
+    int maxRangeLen = 1000000;
+    int minLen = 10; // ensure that the the range is of some minimal size
+
+    for (int i = 0; i < nIter; i++) {
+        int rid = genRandNumber(nChroms);
+        int lenChrom = (int)contigs[rid].second;
+        assert(lenChrom > minLen);
+
+        // bound the range to be no larger than the chromosome
+        int rangeLen = min(maxRangeLen, lenChrom);
+        assert(rangeLen > minLen);
+
+        int beg = genRandNumber(lenChrom - rangeLen);
+        int rlen = genRandNumber(rangeLen - minLen);
+        GLnexus::range rng(rid, beg, beg + minLen + rlen);
+
+        int rc = compare_query(*data, *metadata, sampleset, rng);
+        switch (rc) {
+        case 1: break;
+        case 0: return 1; // ERROR Status
+        case -1: break;  // Query used too much memory, aborted
+        }
+    }
+
+    cout << "Passed " << nIter << " iterator comparison tests" << endl;
+    return 0; // GOOD STATUS
+}
+#endif
