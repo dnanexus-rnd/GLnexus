@@ -94,8 +94,10 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     const std::vector<std::string> &gvcfs,
                     const std::string &dbpath,
+                    const std::vector<range> &ranges,   // limit the bulk load to these ranges
                     int nr_threads,
-                    std::vector<std::pair<std::string,size_t>> &contigs);
+                    std::vector<std::pair<std::string,size_t>> &contigs, // output param
+                    bool delete_gvcf_after_load = false);
 }}}
 
 #endif

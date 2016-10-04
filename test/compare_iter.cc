@@ -177,7 +177,8 @@ TEST_CASE("iter_compare") {
     for (auto fname : {"F1.gvcf", "F2.gvcf"}) {
          gvcfs.push_back(basedir + "/" + fname);
     }
-    s = cli::utils::db_bulk_load(console, gvcfs, dbpath, 8, contigs);
+    vector<range> ranges;
+    s = cli::utils::db_bulk_load(console, gvcfs, dbpath, ranges, 8, contigs);
     REQUIRE(s.ok());
     REQUIRE(contigs.size() >= 1);
 

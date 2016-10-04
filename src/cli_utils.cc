@@ -574,9 +574,15 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     const vector<string> &gvcfs,
                     const string &dbpath,
+                    const vector<range> &ranges_i,
                     int nr_threads,
-                    std::vector<std::pair<std::string,size_t> > &contigs) {
+                    std::vector<std::pair<std::string,size_t> > &contigs, // output param
+                    bool delete_gvcf_after_load) {
     Status s;
+
+    set<GLnexus::range> ranges;
+    for (auto &r : ranges_i)
+        ranges.insert(r);
 
     // open the database
     unique_ptr<KeyValue::DB> db;
@@ -609,10 +615,12 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         }
 
         auto fut = threadpool.push([&, gvcf, dataset](int tid){
-                set<range> ranges;
                 BCFKeyValueData::import_result rslt;
                 Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
                 if (ls.ok()) {
+                    if (delete_gvcf_after_load && unlink(gvcf.c_str())) {
+                        logger->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
+                    }
                     lock_guard<mutex> lock(mu);
                     stats += rslt;
                     datasets_loaded.insert(dataset);

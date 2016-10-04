@@ -320,7 +320,8 @@ GLnexus::Status all_steps(const vector<string> &vcf_files,
     S(parse_bed_file(bedfilename, contigs, ranges));
 
     // Load the GVCFs into the database
-    S(GLnexus::cli::utils::db_bulk_load(console, vcf_files, dbpath, nr_threads, contigs));
+
+    S(GLnexus::cli::utils::db_bulk_load(console, vcf_files, dbpath, ranges, nr_threads, contigs));
 
     // discover alleles
     GLnexus::discovered_alleles dsals;
