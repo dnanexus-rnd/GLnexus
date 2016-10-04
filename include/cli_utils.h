@@ -6,6 +6,8 @@
 #include <map>
 #include "types.h"
 #include "spdlog/spdlog.h"
+#include "RocksKeyValue.h"
+#include "KeyValue.h"
 
 namespace GLnexus {
 namespace cli {
@@ -77,6 +79,23 @@ bool check_dir_exists(const std::string &path);
 // want to require that dependency.
 Status recursive_delete(const std::string &path);
 
+RocksKeyValue::prefix_spec* GLnexus_prefix_spec();
+
+const int default_bucket_size = 30000;
+
+// Initialize a database. Fills in the contigs.
+Status db_init(std::shared_ptr<spdlog::logger> logger,
+               const std::string &dbpath,
+               const std::string &exemplar_gvcf,
+               std::vector<std::pair<std::string,size_t>> &contigs, // output parameter
+               size_t bucket_size = default_bucket_size);
+
+// Load gvcf files into a database in parallel
+Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
+                    const std::vector<std::string> &gvcfs,
+                    const std::string &dbpath,
+                    int nr_threads,
+                    std::vector<std::pair<std::string,size_t>> &contigs);
 }}}
 
 #endif

@@ -1,0 +1,36 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FILTER=<ID=PASS,Description="All filters passed">
+##contig=<ID=1,length=3000>
+##contig=<ID=2,length=4000>
+##contig=<ID=3,length=1000>
+##contig=<ID=4,length=4000>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	ID001
+1	1001	.	A	G,C,<NON_REF>	.	PASS	.	GT	0/1
+1	1002	.	C	G,AA,<NON_REF>	.	PASS	.	GT	0/0
+1	1011	.	CC	AG,<NON_REF>	.	PASS	.	GT	0/1
+1	1101	.	C	A,CCA,<NON_REF>	.	PASS	.	GT	0/1
+1	1103	.	C	G,<NON_REF>	.	PASS	.	GT	0/1
+1	1201	.	C	A,<NON_REF>	.	PASS	.	GT	0/1
+1	2001	.	A	G,C,<NON_REF>	.	PASS	.	GT	0/1
+1	2002	.	C	AA,<NON_REF>	.	PASS	.	GT	0/0
+1	2011	.	CC	AG,<NON_REF>	.	PASS	.	GT	0/1
+1	2101	.	C	CCA,<NON_REF>	.	PASS	.	GT	0/1
+1	2103	.	C	G,<NON_REF>	.	PASS	.	GT	0/1
+1	2201	.	C	A,<NON_REF>	.	PASS	.	GT	0/1
+2	1001	.	A	AA,GG,<NON_REF>	.	PASS	.	GT	1/1
+2	1002	.	C	G,<NON_REF>	.	PASS	.	GT	1/1
+2	1011	.	CC	AG,A,<NON_REF>	.	PASS	.	GT	0/1
+2	1017	.	A	AGA,<NON_REF>	.	PASS	.	GT	0/1
+2	2001	.	A	AA,GG,<NON_REF>	.	PASS	.	GT	1/1
+2	2002	.	C	G,GC,<NON_REF>	.	PASS	.	GT	1/1
+2	2011	.	CC	AG,A,<NON_REF>	.	PASS	.	GT	0/1
+2	2017	.	A	AG,<NON_REF>	.	PASS	.	GT	0/1
+2	3001	.	A	AA,GG,<NON_REF>	.	PASS	.	GT	1/1
+2	3702	.	C	G,GC,<NON_REF>	.	PASS	.	GT	1/1
+2	3711	.	CC	AG,A,<NON_REF>	.	PASS	.	GT	0/1
+2	3717	.	A	AG,<NON_REF>	.	PASS	.	GT	0/1
+4	1001	.	A	G,C,<NON_REF>	.	PASS	.	GT	0/1
+4	1501	.	A	C,AA,<NON_REF>	.	PASS	.	GT	0/1
+4	2201	.	T	G,GT,<NON_REF>	.	PASS	.	GT	0/1
+4	3201	.	G	C,<NON_REF>	.	PASS	.	GT	0/1

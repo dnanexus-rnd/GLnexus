@@ -1232,8 +1232,8 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     // is where the interesting stuff lies.
     lenChrom = 1000000;
     for (int i = 0; i < nIter; i++) {
-        int beg = genRandDouble(nRegions) * lenChrom;
-        int end = genRandDouble(nRegions) * lenChrom;
+        int beg = gen_rand_double(nRegions) * lenChrom;
+        int end = gen_rand_double(nRegions) * lenChrom;
         if (end < beg)
             std::swap(beg, end);
         range rng(0, beg, end);

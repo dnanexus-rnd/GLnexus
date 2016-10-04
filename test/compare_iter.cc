@@ -1,8 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include "spdlog/spdlog.h"
 #include "BCFKeyValueData.h"
 #include "BCFSerialize.h"
+#include "cli_utils.h"
+#include "catch.hpp"
+
 using namespace std;
 using namespace GLnexus;
 
@@ -12,13 +16,13 @@ using T = BCFKeyValueData;
 // This module provides utility functions for comparing BCF iterators
 
 // Seed for pseudo random number generator
-#define PSEUDO_RAND_SEED (1103)
+#define PSEUDO_RAND_SEED (91451103L)
 
 // maximal number of entries that we keep in memory
 #define MAX_NUM_ENTRIES  (2000000)
 
 // generate a random number in the range [0 .. n-1]
-int genRandNumber(int n){
+int gen_rand_number(int n){
     static bool firstTime = true;
 
     // initialization
@@ -31,8 +35,8 @@ int genRandNumber(int n){
     return i;
 }
 
-double genRandDouble(int n) {
-    return double(genRandNumber(n)) / double(n);
+double gen_rand_double(int n) {
+    return double(gen_rand_number(n)) / double(n);
 }
 
 static void print_bcf_record(bcf1_t *x) {
@@ -47,7 +51,7 @@ static void print_bcf_record(bcf1_t *x) {
     cout << "indiv.l=" << x->indiv.l << endl;
 }
 
-static int calcTotNumEntries(shared_ptr<IterResults> results) {
+static int calc_tot_num_entries(shared_ptr<IterResults> results) {
     int nEntries = 0;
     for(IterResults::iterator iter = results->begin();
         iter != results->end(); ++iter) {
@@ -107,7 +111,7 @@ static int compare_results(shared_ptr<IterResults> resultsBase,
 // This is not a scalable function, because the return vector could be very
 // large. For debugging/testing use only.
 int compare_query(T &data, MetadataCache &cache,
-                   const std::string& sampleset, const range& rng) {
+                  const std::string& sampleset, const range& rng) {
     Status s;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     shared_ptr<const set<string>> samples, datasets;
@@ -121,7 +125,7 @@ int compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), resultsBase);
 
-        if (calcTotNumEntries(resultsBase) > MAX_NUM_ENTRIES) {
+        if (calc_tot_num_entries(resultsBase) > MAX_NUM_ENTRIES) {
             // We are overrunning the memory limits, abort
             cout << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
             return -1;
@@ -137,7 +141,7 @@ int compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), resultsSoph);
 
-        if (calcTotNumEntries(resultsBase) > MAX_NUM_ENTRIES) {
+        if (calc_tot_num_entries(resultsBase) > MAX_NUM_ENTRIES) {
             // We are overrunning the memory limits, abort
             cout << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
             return -1;
@@ -145,70 +149,84 @@ int compare_query(T &data, MetadataCache &cache,
     }
 
     cout << "compare_query " << rng.str()
-         << " num_entries=" << calcTotNumEntries(resultsSoph) << endl;
+         << " num_entries=" << calc_tot_num_entries(resultsSoph) << endl;
 
     // compare all the elements between the two results
     return compare_results(resultsBase, resultsSoph);
 }
 
-void help_iter_compare(const char* prog) {
-    cerr << "usage: " << prog << " iter_compare /db/path" << endl
-         << "Run tests comparing the two BCF iterators" << endl
-         << endl;
-}
+static auto console = spdlog::stderr_logger_mt("GLnexus");
 
-#if 0
-
-// TODO: revive this code
 TEST_CASE("iter_compare") {
-    string dbpath("---fill the database here---");
+    Status s;
 
-    unique_ptr<GLnexus::KeyValue::DB> db;
-    unique_ptr<GLnexus::BCFKeyValueData> data;
+    // setup database directory
+    string dbdir = "/tmp/iter_compare";
+    REQUIRE(system(("rm -rf " + dbdir).c_str()) == 0);
+    REQUIRE(system(("mkdir -p " + dbdir).c_str()) == 0);
+    string dbpath = dbdir + "/DB";
+
+    string basedir = "test/data/cli";
+    string exemplar_gvcf = basedir + "/" + "F1.gvcf";
+    vector<pair<string,size_t>> contigs;
+    s = cli::utils::db_init(console, dbpath, exemplar_gvcf, contigs);
+    REQUIRE(s.ok());
+    REQUIRE(contigs.size() >= 1);
+
+    vector<string> gvcfs;
+    for (auto fname : {"F1.gvcf", "F2.gvcf"}) {
+         gvcfs.push_back(basedir + "/" + fname);
+    }
+    s = cli::utils::db_bulk_load(console, gvcfs, dbpath, 8, contigs);
+    REQUIRE(s.ok());
+    REQUIRE(contigs.size() >= 1);
+
+    unique_ptr<KeyValue::DB> db;
+    unique_ptr<BCFKeyValueData> data;
     string sampleset;
-    H("open database", GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                                                    GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
-    H("open database", GLnexus::BCFKeyValueData::Open(db.get(), data));
+    s = RocksKeyValue::Open(dbpath, db, cli::utils::GLnexus_prefix_spec(),
+                                     RocksKeyValue::OpenMode::READ_ONLY);
+    REQUIRE(s.ok());
+    s = BCFKeyValueData::Open(db.get(), data);
+    REQUIRE(s.ok());
 
-    unique_ptr<GLnexus::MetadataCache> metadata;
-    H("instantiate metadata cache", GLnexus::MetadataCache::Start(*data, metadata));
+    unique_ptr<MetadataCache> metadata;
+    s = MetadataCache::Start(*data, metadata);
+    REQUIRE(s.ok());
 
-    H("all_samples_sampleset", data->all_samples_sampleset(sampleset));
+    s = data->all_samples_sampleset(sampleset);
+    REQUIRE(s.ok());
     console->info() << "using sample set " << sampleset;
-
-    const auto& contigs = metadata->contigs();
 
     // get samples and datasets
     shared_ptr<const set<string>> samples, datasets;
-    H("sampleset_datasets", metadata->sampleset_datasets(sampleset, samples, datasets));
+    s = metadata->sampleset_datasets(sampleset, samples, datasets);
+    REQUIRE(s.ok());
 
-    int nChroms = min((size_t)22, contigs.size());
+    int nChroms = (int) (min((size_t)22, contigs.size()));
     int nIter = 50;
     int maxRangeLen = 1000000;
     int minLen = 10; // ensure that the the range is of some minimal size
 
     for (int i = 0; i < nIter; i++) {
-        int rid = genRandNumber(nChroms);
+        int rid = gen_rand_number(nChroms);
         int lenChrom = (int)contigs[rid].second;
         assert(lenChrom > minLen);
 
         // bound the range to be no larger than the chromosome
-        int rangeLen = min(maxRangeLen, lenChrom);
+        int rangeLen = min(maxRangeLen, (lenChrom/10));
         assert(rangeLen > minLen);
 
-        int beg = genRandNumber(lenChrom - rangeLen);
-        int rlen = genRandNumber(rangeLen - minLen);
-        GLnexus::range rng(rid, beg, beg + minLen + rlen);
+        int beg = gen_rand_number(lenChrom - rangeLen);
+        int rlen = gen_rand_number(rangeLen - minLen);
+        range rng(rid, beg, beg + minLen + rlen);
 
         int rc = compare_query(*data, *metadata, sampleset, rng);
-        switch (rc) {
-        case 1: break;
-        case 0: return 1; // ERROR Status
-        case -1: break;  // Query used too much memory, aborted
-        }
+        REQUIRE(rc != 0);
+        // 1: success
+        // 0: error
+        // -1: query used too much memory, aborted
     }
 
     cout << "Passed " << nIter << " iterator comparison tests" << endl;
-    return 0; // GOOD STATUS
 }
-#endif

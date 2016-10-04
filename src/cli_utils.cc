@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "BCFKeyValueData.h"
+
 // This file has utilities employed by the glnexus applet.
 using namespace std;
 
@@ -340,7 +342,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     N = 0;
 
     // Load the files in parallel, and merge
-    vector<future<GLnexus::Status>> statuses;
+    vector<future<Status>> statuses;
     for (const auto& dsal_file: filenames) {
         auto fut = threadpool.push([&, dsal_file](int tid){
             discovered_alleles dsals2;
@@ -379,9 +381,9 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     }
 
     // collect results, wait for all threads to complete operation
-    vector<GLnexus::Status> failures;
+    vector<Status> failures;
     for (size_t i = 0; i < filenames.size(); i++) {
-        GLnexus::Status s_i(move(statuses[i].get()));
+        Status s_i(move(statuses[i].get()));
         if (!s_i.ok()) {
             failures.push_back(move(s_i));
         }
@@ -440,6 +442,9 @@ bool check_dir_exists(const string &path) {
 }
 
 // http://stackoverflow.com/questions/2256945/removing-a-non-empty-directory-programmatically-in-c-or-c
+//
+// We want to have an implementation of recursive directory delete, that does not require pulling
+// in the boost libraries.
 Status recursive_delete(const string &path) {
     FTS *ftsp = NULL;
     FTSENT *curr;
@@ -508,6 +513,161 @@ finish:
     }
     return s;
 }
+
+RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
+    static unique_ptr<RocksKeyValue::prefix_spec> p;
+    if (!p) {
+        p = make_unique<RocksKeyValue::prefix_spec>("bcf", BCFKeyValueDataPrefixLength());
+    }
+    return p.get();
+}
+
+
+// Initialize a database
+Status db_init(std::shared_ptr<spdlog::logger> logger,
+               const string &dbpath,
+               const string &exemplar_gvcf,
+               vector<pair<string,size_t>> &contigs,
+               size_t bucket_size) {
+    Status s;
+    logger->info() << "init database, exemplar_vcf=" << exemplar_gvcf;
+
+    // load exemplar contigs
+    unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(exemplar_gvcf.c_str(), "r"),
+                                               [](vcfFile* f) { bcf_close(f); });
+    if (!vcf) {
+        return Status::IOError("Failed to open exemplar gVCF file at ", exemplar_gvcf);
+    }
+    unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+    if (!hdr) {
+        return Status::IOError("Failed to read gVCF file header from", exemplar_gvcf);
+    }
+    int ncontigs = 0;
+    const char **contignames = bcf_hdr_seqnames(hdr.get(), &ncontigs);
+    for (int i = 0; i < ncontigs; i++) {
+        if (hdr->id[BCF_DT_CTG][i].val == nullptr) {
+            return Status::Invalid("Invalid gVCF header in ", exemplar_gvcf);
+        }
+        contigs.push_back(make_pair(string(contignames[i]),
+                                    hdr->id[BCF_DT_CTG][i].val->info[0]));
+    }
+
+    // create and initialize the database
+    unique_ptr<KeyValue::DB> db;
+    S(RocksKeyValue::Initialize(dbpath, db, GLnexus_prefix_spec()));
+    S(BCFKeyValueData::InitializeDB(db.get(), contigs, bucket_size));
+
+    // report success
+    logger->info() << "Initialized GLnexus database in " << dbpath;
+    logger->info() << "bucket size: " << bucket_size;
+
+    stringstream ss;
+    ss << "contigs:";
+    for (const auto& contig : contigs) {
+        ss << " " << contig.first;
+    }
+    logger->info() << ss.str();
+
+    return Status::OK();
+}
+
+Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
+                    const vector<string> &gvcfs,
+                    const string &dbpath,
+                    int nr_threads,
+                    std::vector<std::pair<std::string,size_t> > &contigs) {
+    Status s;
+
+    // open the database
+    unique_ptr<KeyValue::DB> db;
+    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                          RocksKeyValue::OpenMode::BULK_LOAD));
+    unique_ptr<BCFKeyValueData> data;
+    S(BCFKeyValueData::Open(db.get(), data));
+
+    unique_ptr<MetadataCache> metadata;
+    S(MetadataCache::Start(*data, metadata));
+    contigs = metadata->contigs();
+
+    logger->info() << "Beginning bulk load with no range filter.";
+
+    ctpl::thread_pool threadpool(nr_threads);
+    vector<future<Status>> statuses;
+    set<string> datasets_loaded;
+    BCFKeyValueData::import_result stats;
+    mutex mu;
+    string dataset;
+
+    // load the gVCFs on the thread pool
+    for (const auto& gvcf : gvcfs) {
+        // default dataset name (the gVCF filename)
+        size_t p = gvcf.find_last_of('/');
+        if (p != string::npos && p < gvcf.size()-1) {
+            dataset = gvcf.substr(p+1);
+        } else {
+            dataset = gvcf;
+        }
+
+        auto fut = threadpool.push([&, gvcf, dataset](int tid){
+                set<range> ranges;
+                BCFKeyValueData::import_result rslt;
+                Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
+                if (ls.ok()) {
+                    lock_guard<mutex> lock(mu);
+                    stats += rslt;
+                    datasets_loaded.insert(dataset);
+                    size_t n = datasets_loaded.size();
+                    if (n % 100 == 0) {
+                        logger->info() << n << "...";
+                    }
+                }
+                return ls;
+            });
+        statuses.push_back(move(fut));
+        dataset.clear();
+    }
+
+    // collect results
+    vector<pair<string,Status>> failures;
+    for (size_t i = 0; i < gvcfs.size(); i++) {
+        Status s_i(move(statuses[i].get()));
+        if (!s_i.ok()) {
+            failures.push_back(make_pair(gvcfs[i],move(s_i)));
+        }
+    }
+
+    // report results
+    logger->info() << "Loaded " << datasets_loaded.size() << " datasets with "
+                    << stats.samples.size() << " samples; "
+                    << stats.bytes << " bytes in "
+                    << stats.records << " BCF records in "
+                    << stats.buckets << " buckets. "
+                    << "Bucket max " << stats.max_bytes << " bytes, max "
+                    << stats.max_records << " records.";
+
+    // call all_samples_sampleset to create the sample set including
+    // the newly loaded ones. By doing this now we make it possible
+    // for other CLI functions to open the database in purely read-
+    // only mode (since the sample set has to get written into the
+    // database to be used)
+    string sampleset;
+    S(data->all_samples_sampleset(sampleset));
+    logger->info() << "Created sample set " << sampleset;
+
+    if (failures.size()) {
+        for (const auto& p : failures) {
+            logger->error() << p.first << " " << p.second.str();
+        }
+        return Status::Failure("FAILED to load ", failures.size() + " datasets:");
+    }
+
+    logger->info() << "Flushing and compacting database...";
+    S(db->flush());
+    db.reset();
+    logger->info() << "Bulk load complete!";
+    return Status::OK();
+}
+
 
 
 }}}

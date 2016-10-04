@@ -197,7 +197,7 @@ add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
-add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
+add_executable(glnexus_cli cli/glnexus_cli.cc)
 add_dependencies(glnexus_cli libglnexus)
 target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
