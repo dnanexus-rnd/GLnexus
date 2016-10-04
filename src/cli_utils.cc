@@ -571,6 +571,23 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
     return Status::OK();
 }
 
+
+Status db_get_contigs(const string &dbpath,
+                      std::vector<std::pair<std::string,size_t> > &contigs) {
+    Status s;
+
+    unique_ptr<KeyValue::DB> db;
+    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                   RocksKeyValue::OpenMode::BULK_LOAD));
+    unique_ptr<BCFKeyValueData> data;
+    S(BCFKeyValueData::Open(db.get(), data));
+    unique_ptr<MetadataCache> metadata;
+    S(MetadataCache::Start(*data, metadata));
+    contigs = metadata->contigs();
+
+    return Status::OK();
+}
+
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     const vector<string> &gvcfs,
                     const string &dbpath,
@@ -580,7 +597,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     bool delete_gvcf_after_load) {
     Status s;
 
-    set<GLnexus::range> ranges;
+    set<range> ranges;
     for (auto &r : ranges_i)
         ranges.insert(r);
 

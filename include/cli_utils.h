@@ -90,6 +90,10 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
                std::vector<std::pair<std::string,size_t>> &contigs, // output parameter
                size_t bucket_size = default_bucket_size);
 
+// Read the contigs from a database
+Status db_get_contigs(const std::string &dbpath,
+                      std::vector<std::pair<std::string,size_t> > &contigs);
+
 // Load gvcf files into a database in parallel
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     const std::vector<std::string> &gvcfs,
