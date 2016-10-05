@@ -679,7 +679,7 @@ Status db_get_contigs(const string &dbpath,
 
     unique_ptr<KeyValue::DB> db;
     S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                                   RocksKeyValue::OpenMode::BULK_LOAD));
+                          RocksKeyValue::OpenMode::READ_ONLY));
     unique_ptr<BCFKeyValueData> data;
     S(BCFKeyValueData::Open(db.get(), data));
     unique_ptr<MetadataCache> metadata;
