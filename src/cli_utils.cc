@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "service.h"
+#include "unifier.h"
 
 #include "BCFKeyValueData.h"
 
@@ -313,6 +314,22 @@ Status yaml_stream_of_unified_sites(const std::vector<unified_site> &sites,
     return Status::OK();
 }
 
+// Write the unified-sites to a file
+Status write_unified_sites_to_file(const vector<unified_site> &sites,
+                                   const vector<pair<string,size_t>> &contigs,
+                                   const string &filename) {
+    Status s;
+
+    ofstream ofs(filename, std::ofstream::out | std::ofstream::trunc);
+    if (ofs.bad())
+        return Status::IOError("could not open file for writing", filename);
+
+    S(utils::yaml_stream_of_unified_sites(sites, contigs, ofs));
+    ofs.close();
+
+    return Status::OK();
+}
+
 // Load the unified-sites from a file in yaml format.
 //
 Status unified_sites_of_yaml_stream(std::istream &is,
@@ -531,6 +548,72 @@ finish:
     return s;
 }
 
+// hard-coded configuration presets for unifier & genotyper. TODO: these
+// should reside in some user-modifiable yml file
+static const char* config_presets_yml = R"eof(
+unifier_config:
+  min_AQ1: 70
+  min_AQ2: 40
+  min_GQ: 70
+genotyper_config:
+  required_dp: 1
+  liftover_fields:
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_type: zero
+      count: 0
+    - orig_names: [SB]
+      name: SB
+      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
+)eof";
+
+Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
+                          const std::string& name,
+                          GLnexus::unifier_config& unifier_cfg,
+                          GLnexus::genotyper_config& genotyper_cfg) {
+    Status s;
+    logger->info() << "Loading config " << config_presets_yml;
+    YAML::Node yaml = YAML::Load(config_presets_yml);
+    if (!yaml) {
+        return Status::NotFound("unknown configuration preset", name);
+    }
+    if (!yaml.IsMap()) {
+        return Status::Invalid("configuration presets");
+    }
+    if (yaml["unifier_config"]) {
+        S(unifier_config::of_yaml(yaml["unifier_config"], unifier_cfg));
+    }
+    if (yaml["genotyper_config"]) {
+        S(genotyper_config::of_yaml(yaml["genotyper_config"], genotyper_cfg));
+    }
+
+    return Status::OK();
+}
+
+
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
     static unique_ptr<RocksKeyValue::prefix_spec> p;
     if (!p) {
@@ -713,10 +796,10 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
 
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         const string &dbpath,
-                        const vector<GLnexus::range> &ranges,
+                        const vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
                         int nr_threads,
-                        GLnexus::discovered_alleles &dsals,
+                        discovered_alleles &dsals,
                         unsigned &sample_count) {
     Status s;
     unique_ptr<KeyValue::DB> db;
@@ -748,5 +831,88 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     return Status::OK();
 }
 
+Status unify_sites(std::shared_ptr<spdlog::logger> logger,
+                   const unifier_config &unifier_cfg,
+                   const vector<range> &ranges,
+                   const vector<pair<string,size_t> > &contigs,
+                   int nr_threads,
+                   const discovered_alleles &dsals,
+                   unsigned sample_count,
+                   vector<unified_site> &sites) {
+    Status s;
+    sites.clear();
+    S(unified_sites(unifier_cfg, sample_count, dsals, sites));
+
+    // sanity check, sites are in-order and non-overlapping
+    if (sites.size() > 1) {
+        auto p = sites.begin();
+        for (auto q = p+1; q != sites.end(); ++p, ++q) {
+            if (!(p->pos < q->pos) || p->pos.overlaps(q->pos)) {
+                return Status::Failure(
+                    "BUG: unified sites failed sanity check -- sites are out of order or overlapping.",
+                    p->pos.str(contigs)  + " " + q->pos.str(contigs));
+            }
+        }
+    }
+    logger->info() << "unified to " << sites.size() << " sites";
+
+    if (!ranges.empty()) {
+        // convert the ranges vector to a set
+        set<range> ranges_set;
+        for (auto &r : ranges)
+            ranges_set.insert(r);
+
+        // set the containing ranges for each site
+        for (auto &us : sites) {
+            S(utils::find_containing_range(ranges_set, us.pos, us.containing_target));
+        }
+    }
+
+    return Status::OK();
+}
+
+
+Status genotype(std::shared_ptr<spdlog::logger> logger,
+                int nr_threads,
+                const string &dbpath,
+                const GLnexus::genotyper_config &genotyper_cfg,
+                const vector<GLnexus::unified_site> &sites,
+                const string &output_filename) {
+    Status s;
+    logger->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
+
+    // open the database in read-only mode
+    unique_ptr<KeyValue::DB> db;
+    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                                   RocksKeyValue::OpenMode::READ_ONLY));
+    unique_ptr<BCFKeyValueData> data;
+    S(BCFKeyValueData::Open(db.get(), data));
+
+    std::vector<std::pair<std::string,size_t> > contigs;
+    S(data->contigs(contigs));
+
+    // start service, discover alleles, unify sites, genotype sites
+    service_config svccfg;
+    svccfg.threads = nr_threads;
+    unique_ptr<Service> svc;
+    S(Service::Start(svccfg, *data, *data, svc));
+
+    string sampleset;
+    S(data->all_samples_sampleset(sampleset));
+    logger->info() << "found sample set " << sampleset;
+
+    S(svc->genotype_sites(genotyper_cfg, sampleset, sites, output_filename));
+    logger->info() << "genotyping complete!";
+
+    auto stalls_ms = svc->threads_stalled_ms();
+    if (stalls_ms) {
+        logger->info() << "worker threads were cumulatively stalled for " << stalls_ms << "ms";
+    }
+
+    std::shared_ptr<StatsRangeQuery> statsRq = data->getRangeStats();
+    logger->info() << statsRq->str();
+
+    return Status::OK();
+}
 
 }}}

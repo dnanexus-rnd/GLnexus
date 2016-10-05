@@ -53,6 +53,11 @@ Status yaml_stream_of_unified_sites(const std::vector<unified_site> &sites,
                                     const std::vector<std::pair<std::string,size_t> > &contigs,
                                     std::ostream &os);
 
+// Write the unified-sites to a file
+Status write_unified_sites_to_file(const std::vector<unified_site> &sites,
+                                   const std::vector<std::pair<std::string,size_t>> &contigs,
+                                   const std::string &filename);
+
 // Load from a file, data previously serialized with the above function
 Status unified_sites_of_yaml_stream(std::istream &is,
                                     const std::vector<std::pair<std::string,size_t> > &contigs,
@@ -84,6 +89,12 @@ bool check_dir_exists(const std::string &path);
 // Note: this could be done with boost::remove_all, but we do not
 // want to require that dependency.
 Status recursive_delete(const std::string &path);
+
+// Load a named configuration for the unifier and genotyper
+Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
+                          const std::string& name,
+                          unifier_config& unifier_cfg,
+                          genotyper_config& genotyper_cfg);
 
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec();
 
@@ -118,6 +129,22 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         discovered_alleles &dsals,
                         unsigned &sample_count);
 
+Status unify_sites(std::shared_ptr<spdlog::logger> logger,
+                   const unifier_config &unifier_cfg,
+                   const std::vector<range> &ranges,
+                   const std::vector<std::pair<std::string,size_t> > &contigs,
+                   int nr_threads,
+                   const discovered_alleles &dsals,
+                   unsigned sample_count,
+                   std::vector<unified_site> &sites);
+
+// if the file name is "-", then output is written to stdout.
+Status genotype(std::shared_ptr<spdlog::logger> logger,
+                int nr_threads,
+                const std::string &dbpath,
+                const GLnexus::genotyper_config &genotyper_cfg,
+                const std::vector<unified_site> &sites,
+                const std::string &output_filename);
 
 }}}
 
