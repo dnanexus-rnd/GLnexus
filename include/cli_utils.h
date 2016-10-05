@@ -113,19 +113,19 @@ Status db_get_contigs(const std::string &dbpath,
 
 // Load gvcf files into a database in parallel
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
+                    size_t nr_threads,
                     const std::vector<std::string> &gvcfs,
                     const std::string &dbpath,
                     const std::vector<range> &ranges,   // limit the bulk load to these ranges
-                    int nr_threads,
                     std::vector<std::pair<std::string,size_t>> &contigs, // output param
                     bool delete_gvcf_after_load = false);
 
 // Discover alleles in the database. Return discovered alleles, and the sample count.
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
+                        size_t nr_threads,
                         const std::string &dbpath,
                         const std::vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
-                        int nr_threads,
                         discovered_alleles &dsals,
                         unsigned &sample_count);
 
@@ -133,14 +133,13 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const unifier_config &unifier_cfg,
                    const std::vector<range> &ranges,
                    const std::vector<std::pair<std::string,size_t> > &contigs,
-                   int nr_threads,
                    const discovered_alleles &dsals,
                    unsigned sample_count,
                    std::vector<unified_site> &sites);
 
 // if the file name is "-", then output is written to stdout.
 Status genotype(std::shared_ptr<spdlog::logger> logger,
-                int nr_threads,
+                size_t nr_threads,
                 const std::string &dbpath,
                 const GLnexus::genotyper_config &genotyper_cfg,
                 const std::vector<unified_site> &sites,

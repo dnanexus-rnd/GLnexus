@@ -167,18 +167,18 @@ TEST_CASE("iter_compare") {
     string dbpath = dbdir + "/DB";
 
     string basedir = "test/data/cli";
-    string exemplar_gvcf = basedir + "/" + "F1.gvcf";
+    string exemplar_gvcf = basedir + "/" + "F1.gvcf.gz";
     vector<pair<string,size_t>> contigs;
     s = cli::utils::db_init(console, dbpath, exemplar_gvcf, contigs);
     REQUIRE(s.ok());
     REQUIRE(contigs.size() >= 1);
 
     vector<string> gvcfs;
-    for (auto fname : {"F1.gvcf", "F2.gvcf"}) {
+    for (auto fname : {"F1.gvcf.gz", "F2.gvcf.gz"}) {
          gvcfs.push_back(basedir + "/" + fname);
     }
     vector<range> ranges;
-    s = cli::utils::db_bulk_load(console, gvcfs, dbpath, ranges, 8, contigs);
+    s = cli::utils::db_bulk_load(console, 8, gvcfs, dbpath, ranges, contigs);
     REQUIRE(s.ok());
     REQUIRE(contigs.size() >= 1);
 

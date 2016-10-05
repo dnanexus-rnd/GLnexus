@@ -11,7 +11,7 @@ using namespace std;
 using namespace GLnexus;
 
 static auto console = spdlog::stderr_logger_mt("GLnexus_cli");
-static int nr_threads = 8;
+static int nr_threads = 2;
 
 TEST_CASE("cli") {
     Status s;
@@ -23,18 +23,18 @@ TEST_CASE("cli") {
     string dbpath = dbdir + "/DB";
 
     string basedir = "test/data/cli";
-    string exemplar_gvcf = basedir + "/" + "F1.gvcf";
+    string exemplar_gvcf = basedir + "/" + "F1.gvcf.gz";
     vector<pair<string,size_t>> contigs;
     s = cli::utils::db_init(console, dbpath, exemplar_gvcf, contigs);
     REQUIRE(s.ok());
     REQUIRE(contigs.size() >= 1);
 
     vector<string> gvcfs;
-    for (auto fname : {"F1.gvcf", "F2.gvcf"}) {
+    for (auto fname : {"F1.gvcf.gz", "F2.gvcf.gz", "F3.gvcf.gz", "F4.gvcf.gz"}) {
          gvcfs.push_back(basedir + "/" + fname);
     }
     vector<range> ranges;
-    s = cli::utils::db_bulk_load(console, gvcfs, dbpath, ranges, nr_threads, contigs);
+    s = cli::utils::db_bulk_load(console, nr_threads, gvcfs, dbpath, ranges, contigs);
     REQUIRE(s.ok());
     REQUIRE(contigs.size() >= 1);
 
@@ -47,7 +47,7 @@ TEST_CASE("cli") {
 
     discovered_alleles dsals;
     unsigned sample_count;
-    s = cli::utils::discover_alleles(console, dbpath, ranges, contigs, nr_threads, dsals, sample_count);
+    s = cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count);
     REQUIRE(s.ok());
 
     string filename = dbdir + "/dsals.yml";
@@ -65,7 +65,7 @@ TEST_CASE("cli") {
     // unify sites
     vector<GLnexus::unified_site> sites;
     s = cli::utils::unify_sites(console, unifier_cfg, ranges,
-                                contigs, nr_threads, dsals, sample_count, sites);
+                                contigs, dsals, sample_count, sites);
     filename = dbdir + "/sites.yml";
     s = cli::utils::write_unified_sites_to_file(sites, contigs, filename);
     REQUIRE(s.ok());

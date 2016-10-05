@@ -215,8 +215,7 @@ if (test)
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
-  )
-
+    )
   ExternalProject_Get_Property(catch source_dir)
   include_directories(${source_dir}/single_include)
 
@@ -238,6 +237,7 @@ if (test)
                  test/unifier.cc
                  test/cli_utils.cc
                  test/cli.cc)
+  add_dependencies(unit_tests catch)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 

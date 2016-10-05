@@ -668,6 +668,7 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
         ss << " " << contig.first;
     }
     logger->info() << ss.str();
+    db.reset();
 
     return Status::OK();
 }
@@ -690,10 +691,10 @@ Status db_get_contigs(const string &dbpath,
 }
 
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
+                    size_t nr_threads,
                     const vector<string> &gvcfs,
                     const string &dbpath,
                     const vector<range> &ranges_i,
-                    int nr_threads,
                     std::vector<std::pair<std::string,size_t> > &contigs, // output param
                     bool delete_gvcf_after_load) {
     Status s;
@@ -732,9 +733,11 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
             dataset = gvcf;
         }
 
-        auto fut = threadpool.push([&, gvcf, dataset](int tid){
+        auto fut = threadpool.push([&, gvcf, dataset](int tid) {
+                logger->info() << "Loading file " << gvcf;
                 BCFKeyValueData::import_result rslt;
                 Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
+                logger->info() << "done loading " << gvcf;
                 if (ls.ok()) {
                     if (delete_gvcf_after_load && unlink(gvcf.c_str())) {
                         logger->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
@@ -795,10 +798,10 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
 }
 
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
+                        size_t nr_threads,
                         const string &dbpath,
                         const vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
-                        int nr_threads,
                         discovered_alleles &dsals,
                         unsigned &sample_count) {
     Status s;
@@ -835,7 +838,6 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const unifier_config &unifier_cfg,
                    const vector<range> &ranges,
                    const vector<pair<string,size_t> > &contigs,
-                   int nr_threads,
                    const discovered_alleles &dsals,
                    unsigned sample_count,
                    vector<unified_site> &sites) {
@@ -873,7 +875,7 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
 
 
 Status genotype(std::shared_ptr<spdlog::logger> logger,
-                int nr_threads,
+                size_t nr_threads,
                 const string &dbpath,
                 const GLnexus::genotyper_config &genotyper_cfg,
                 const vector<GLnexus::unified_site> &sites,

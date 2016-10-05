@@ -102,17 +102,19 @@ GLnexus::Status all_steps(const vector<string> &vcf_files,
     S(utils::recursive_delete(dbpath));
     S(utils::db_init(console, dbpath, vcf_files[0], contigs));
 
-    vector<GLnexus::range> ranges;
-    S(parse_bed_file(bedfilename, contigs, ranges));
-
     // Load the GVCFs into the database
-
-    S(GLnexus::cli::utils::db_bulk_load(console, vcf_files, dbpath, ranges, nr_threads, contigs));
+    {
+        // do not use a range filter
+        vector<GLnexus::range> ranges;
+        S(GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, true));
+    }
 
     // discover alleles
+    vector<GLnexus::range> ranges;
+    S(parse_bed_file(bedfilename, contigs, ranges));
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
-    S(GLnexus::cli::utils::discover_alleles(console, dbpath, ranges, contigs, nr_threads, dsals, sample_count));
+    S(GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
         S(GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
@@ -120,8 +122,7 @@ GLnexus::Status all_steps(const vector<string> &vcf_files,
 
     // unify sites
     vector<GLnexus::unified_site> sites;
-    S(GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges,
-                                       contigs, nr_threads, dsals, sample_count, sites));
+    S(GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals, sample_count, sites));
     if (debug) {
         string filename("/tmp/sites.yml");
         S(GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
