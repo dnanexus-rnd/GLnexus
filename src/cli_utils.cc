@@ -568,6 +568,7 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
         contigs.push_back(make_pair(string(contignames[i]),
                                     hdr->id[BCF_DT_CTG][i].val->info[0]));
     }
+    free(contignames);
 
     // create and initialize the database
     unique_ptr<KeyValue::DB> db;
