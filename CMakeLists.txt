@@ -236,7 +236,8 @@ if (test)
                  test/rocks_integration.cc
                  test/compare_iter.cc
                  test/unifier.cc
-                 test/cli_utils.cc)
+                 test/cli_utils.cc
+                 test/cli.cc)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 

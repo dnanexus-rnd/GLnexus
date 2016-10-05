@@ -141,22 +141,6 @@ GLnexus::Status parse_bed_file(const string &bedfilename,
 
 
 // Write the discovered alleles to a file
-static GLnexus::Status write_discovered_alleles_to_file(const GLnexus::discovered_alleles &dsals,
-                                                        const vector<pair<string,size_t>> &contigs,
-                                                        unsigned int sample_count,
-                                                        const string &filename) {
-    GLnexus::Status s;
-
-    ofstream ofs(filename, std::ofstream::out | std::ofstream::trunc);
-    if (ofs.bad())
-        return GLnexus::Status::IOError("could not open file for writing", filename);
-    S(utils::yaml_stream_of_discovered_alleles(sample_count, contigs, dsals, ofs));
-    ofs.close();
-
-    return GLnexus::Status::OK();
-}
-
-// Write the discovered alleles to a file
 static GLnexus::Status write_unified_sites_to_file(const vector<GLnexus::unified_site> &sites,
                                                    const vector<pair<string,size_t>> &contigs,
                                                    const string &filename) {
@@ -169,43 +153,6 @@ static GLnexus::Status write_unified_sites_to_file(const vector<GLnexus::unified
     S(utils::yaml_stream_of_unified_sites(sites, contigs, ofs));
     ofs.close();
 
-    return GLnexus::Status::OK();
-}
-
-
-static GLnexus::Status discover_alleles(const string &dbpath,
-                                        const vector<GLnexus::range> &ranges,
-                                        const std::vector<std::pair<std::string,size_t> > &contigs,
-                                        int nr_threads,
-                                        GLnexus::discovered_alleles &dsals,
-                                        unsigned &sample_count) {
-    GLnexus::Status s;
-    unique_ptr<GLnexus::KeyValue::DB> db;
-    unique_ptr<GLnexus::BCFKeyValueData> data;
-
-    // open the database in read-only mode
-    S(GLnexus::RocksKeyValue::Open(dbpath, db, GLnexus::cli::utils::GLnexus_prefix_spec(),
-                                   GLnexus::RocksKeyValue::OpenMode::READ_ONLY));
-    S(GLnexus::BCFKeyValueData::Open(db.get(), data));
-
-    // start service, discover alleles
-    GLnexus::service_config svccfg;
-    svccfg.threads = nr_threads;
-    unique_ptr<GLnexus::Service> svc;
-    S(GLnexus::Service::Start(svccfg, *data, *data, svc));
-
-    string sampleset;
-    S(data->all_samples_sampleset(sampleset));
-    console->info() << "found sample set " << sampleset;
-
-    console->info() << "discovering alleles in " << ranges.size() << " range(s)";
-    vector<GLnexus::discovered_alleles> valleles;
-    S(svc->discover_alleles(sampleset, ranges, sample_count, valleles));
-
-    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
-        S(merge_discovered_alleles(*it, dsals));
-    }
-    console->info() << "discovered " << dsals.size() << " alleles";
     return GLnexus::Status::OK();
 }
 
@@ -326,10 +273,10 @@ GLnexus::Status all_steps(const vector<string> &vcf_files,
     // discover alleles
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
-    S(discover_alleles(dbpath, ranges, contigs, nr_threads, dsals, sample_count));
+    S(GLnexus::cli::utils::discover_alleles(console, dbpath, ranges, contigs, nr_threads, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
-        S(write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
+        S(GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
     }
 
     // unify sites

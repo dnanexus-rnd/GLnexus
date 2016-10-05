@@ -42,6 +42,12 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
                                          unsigned &N, std::vector<std::pair<std::string,size_t> > &contigs,
                                          discovered_alleles &dsals);
 
+// Write the discovered alleles to a file
+Status yaml_write_discovered_alleles_to_file(const discovered_alleles &dsals,
+                                             const std::vector<std::pair<std::string,size_t>> &contigs,
+                                             unsigned int sample_count,
+                                             const std::string &filename);
+
 // Serialize a vector of unified-alleles to YAML.
 Status yaml_stream_of_unified_sites(const std::vector<unified_site> &sites,
                                     const std::vector<std::pair<std::string,size_t> > &contigs,
@@ -102,6 +108,17 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     int nr_threads,
                     std::vector<std::pair<std::string,size_t>> &contigs, // output param
                     bool delete_gvcf_after_load = false);
+
+// Discover alleles in the database. Return discovered alleles, and the sample count.
+Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
+                        const std::string &dbpath,
+                        const std::vector<range> &ranges,
+                        const std::vector<std::pair<std::string,size_t> > &contigs,
+                        int nr_threads,
+                        discovered_alleles &dsals,
+                        unsigned &sample_count);
+
+
 }}}
 
 #endif

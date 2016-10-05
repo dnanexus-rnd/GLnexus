@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "service.h"
 
 #include "BCFKeyValueData.h"
 
@@ -275,6 +276,22 @@ Status discovered_alleles_of_yaml_stream(std::istream &is,
 
     if (contigs.size() == 0)
         return Status::Invalid("Empty contigs");
+    return Status::OK();
+}
+
+// Write the discovered alleles to a file
+Status yaml_write_discovered_alleles_to_file(const discovered_alleles &dsals,
+                                             const vector<pair<string,size_t>> &contigs,
+                                             unsigned int sample_count,
+                                             const string &filename) {
+    Status s;
+
+    ofstream ofs(filename, std::ofstream::out | std::ofstream::trunc);
+    if (ofs.bad())
+        return Status::IOError("could not open file for writing", filename);
+    S(yaml_stream_of_discovered_alleles(sample_count, contigs, dsals, ofs));
+    ofs.close();
+
     return Status::OK();
 }
 
@@ -693,6 +710,42 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     return Status::OK();
 }
 
+Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
+                        const string &dbpath,
+                        const vector<GLnexus::range> &ranges,
+                        const std::vector<std::pair<std::string,size_t> > &contigs,
+                        int nr_threads,
+                        GLnexus::discovered_alleles &dsals,
+                        unsigned &sample_count) {
+    Status s;
+    unique_ptr<KeyValue::DB> db;
+    unique_ptr<BCFKeyValueData> data;
+
+    // open the database in read-only mode
+    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                          RocksKeyValue::OpenMode::READ_ONLY));
+    S(BCFKeyValueData::Open(db.get(), data));
+
+    // start service, discover alleles
+    service_config svccfg;
+    svccfg.threads = nr_threads;
+    unique_ptr<Service> svc;
+    S(Service::Start(svccfg, *data, *data, svc));
+
+    string sampleset;
+    S(data->all_samples_sampleset(sampleset));
+    logger->info() << "found sample set " << sampleset;
+
+    logger->info() << "discovering alleles in " << ranges.size() << " range(s)";
+    vector<discovered_alleles> valleles;
+    S(svc->discover_alleles(sampleset, ranges, sample_count, valleles));
+
+    for (auto it = valleles.begin(); it != valleles.end(); ++it) {
+        S(merge_discovered_alleles(*it, dsals));
+    }
+    logger->info() << "discovered " << dsals.size() << " alleles";
+    return Status::OK();
+}
 
 
 }}}
