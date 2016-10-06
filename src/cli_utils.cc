@@ -682,22 +682,14 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
     logger->info() << "db_get_contigs " << dbpath;
 
     unique_ptr<KeyValue::DB> db;
-    s = RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                            RocksKeyValue::OpenMode::BULK_LOAD);
-    logger->info() << "RocksKeyValue::Open DB " << dbpath;
-    if (s.bad())
-        return s;
 
+    // Note: READ_ONLY mode does not work here. It seems to not load
+    // the configuration information from the database.
+    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                          RocksKeyValue::OpenMode::BULK_LOAD));
     unique_ptr<BCFKeyValueData> data;
-    s = BCFKeyValueData::Open(db.get(), data);
-    logger->info() << "BCFKeyValueData::Open ";
-    if (s.bad())
-        return s;
-
-    s = data->contigs(contigs);
-    logger->info() << "read contigs s=" << s.str();
-    if (s.bad())
-        return s;
+    S(BCFKeyValueData::Open(db.get(), data));
+    S(data->contigs(contigs));
 
     return Status::OK();
 }
