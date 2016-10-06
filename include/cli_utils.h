@@ -108,7 +108,8 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
                size_t bucket_size = default_bucket_size);
 
 // Read the contigs from a database
-Status db_get_contigs(const std::string &dbpath,
+Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
+                      const std::string &dbpath,
                       std::vector<std::pair<std::string,size_t> > &contigs);
 
 // Load gvcf files into a database in parallel

@@ -668,23 +668,37 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
         ss << " " << contig.first;
     }
     logger->info() << ss.str();
+    S(db->flush());
     db.reset();
 
     return Status::OK();
 }
 
 
-Status db_get_contigs(const string &dbpath,
+Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
+                      const string &dbpath,
                       std::vector<std::pair<std::string,size_t> > &contigs) {
     Status s;
+    logger->info() << "db_get_contigs";
 
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
+    s = RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                            RocksKeyValue::OpenMode::READ_ONLY);
+    logger->info() << "RocksKeyValue::Open DB " << dbpath;
+    if (s.bad())
+        return s;
+
     unique_ptr<BCFKeyValueData> data;
-    S(BCFKeyValueData::Open(db.get(), data));
+    s = BCFKeyValueData::Open(db.get(), data);
+    logger->info() << "BCFKeyValueData::Open ";
+    if (s.bad())
+        return s;
+
     unique_ptr<MetadataCache> metadata;
-    S(MetadataCache::Start(*data, metadata));
+    s = MetadataCache::Start(*data, metadata);
+    logger->info() << "MetadataCache::Start";
+    if (s.bad())
+        return s;
     contigs = metadata->contigs();
 
     return Status::OK();
