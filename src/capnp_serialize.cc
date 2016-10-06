@@ -30,6 +30,11 @@ namespace capnp {
 // We assume the chromosome ploidy is two in our serialization format.
 static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 
+// This limit should be much larger than the message size. It is a security,
+// preventing the demarshaller from using too much memory, and getting into
+// infinite loops.
+const uint64_t TRAVERSAL_LIMIT = 20 * 1024L * 1024L * 1024L;
+
 // write discovered_alleles structure to a file-descriptor, with cap'n proto serialization
 static Status _write_discovered_alleles_fd(unsigned int sample_count,
                                            const std::vector<std::pair<std::string,size_t> >& contigs,
@@ -131,7 +136,7 @@ static Status _read_discovered_alleles_fd(int fd,
                                           std::vector<std::pair<std::string,size_t> >& contigs,
                                           discovered_alleles &dsals) {
     ::capnp::ReaderOptions ropt;
-    ropt.traversalLimitInWords =  1024L * 1024L * 1024L; // 1GiB
+    ropt.traversalLimitInWords =  TRAVERSAL_LIMIT;
     ::capnp::PackedFdMessageReader message(fd, ropt);
     DiscoveredAlleles::Reader dsals_pk = message.getRoot<DiscoveredAlleles>();
     sample_count = dsals_pk.getSampleCount();
