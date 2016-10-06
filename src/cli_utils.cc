@@ -694,7 +694,10 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
     if (s.bad())
         return s;
 
-    S(data->contigs(contigs));
+    s = data->contigs(contigs);
+    logger->info() << "read contigs s=" << s.str();
+    if (s.bad())
+        return s;
 
     return Status::OK();
 }
