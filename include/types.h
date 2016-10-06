@@ -66,6 +66,25 @@ public:
         noun_ = std::make_unique<std::string>(noun);
     }
 
+    // copy constructor
+    Status(const Status &s) noexcept
+        : code_(s.code_), msg_(s.msg_){
+        if (s.noun_ != nullptr)
+            noun_ = std::make_unique<std::string>(*s.noun_);
+    }
+
+    // assignment constructor
+    Status& operator=(const Status &s) noexcept {
+        // check for self-assignment
+        if (&s == this)
+            return *this;
+        code_ = s.code_;
+        msg_ = s.msg_;
+        if (s.noun_ != nullptr)
+            noun_ = std::make_unique<std::string>(*s.noun_);
+        return *this;
+    }
+
     bool ok() const noexcept { return code_ == StatusCode::OK; }
     bool bad() const noexcept { return !ok(); }
     operator StatusCode() const noexcept { return code_; }
