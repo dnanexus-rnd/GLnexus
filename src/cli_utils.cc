@@ -679,11 +679,11 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
                       const string &dbpath,
                       std::vector<std::pair<std::string,size_t> > &contigs) {
     Status s;
-    logger->info() << "db_get_contigs";
+    logger->info() << "db_get_contigs " << dbpath;
 
     unique_ptr<KeyValue::DB> db;
     s = RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                            RocksKeyValue::OpenMode::READ_ONLY);
+                            RocksKeyValue::OpenMode::BULK_LOAD);
     logger->info() << "RocksKeyValue::Open DB " << dbpath;
     if (s.bad())
         return s;
@@ -694,12 +694,7 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
     if (s.bad())
         return s;
 
-    unique_ptr<MetadataCache> metadata;
-    s = MetadataCache::Start(*data, metadata);
-    logger->info() << "MetadataCache::Start";
-    if (s.bad())
-        return s;
-    contigs = metadata->contigs();
+    S(data->contigs(contigs));
 
     return Status::OK();
 }
@@ -748,10 +743,8 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         }
 
         auto fut = threadpool.push([&, gvcf, dataset](int tid) {
-                logger->info() << "Loading file " << gvcf;
                 BCFKeyValueData::import_result rslt;
                 Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
-                logger->info() << "done loading " << gvcf;
                 if (ls.ok()) {
                     if (delete_gvcf_after_load && unlink(gvcf.c_str())) {
                         logger->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";

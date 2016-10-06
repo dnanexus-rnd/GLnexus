@@ -19,7 +19,6 @@
 #include "cli_utils.h"
 
 using namespace std;
-using namespace GLnexus::cli;
 
 auto console = spdlog::stderr_logger_mt("GLnexus");
 
@@ -29,7 +28,7 @@ GLnexus::Status parse_bed_file(const string &bedfilename,
     if (bedfilename.empty()) {
         return GLnexus::Status::Invalid("Empty bed file");
     }
-    if (!utils::check_file_exists(bedfilename)) {
+    if (!GLnexus::cli::utils::check_file_exists(bedfilename)) {
         return GLnexus::Status::IOError("bed file does not exist", bedfilename);
     }
 
@@ -99,8 +98,16 @@ GLnexus::Status all_steps(const vector<string> &vcf_files,
     // initilize empty database
     string dbpath("GLnexus.DB");
     vector<pair<string,size_t> > contigs;
-    S(utils::recursive_delete(dbpath));
-    S(utils::db_init(console, dbpath, vcf_files[0], contigs));
+    S(GLnexus::cli::utils::recursive_delete(dbpath));
+    S(GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs));
+
+    {
+        // sanity check, see that we can get the contigs back
+        vector<pair<string,size_t> > contigs_dbg;
+        S(GLnexus::cli::utils::db_get_contigs(console, dbpath, contigs_dbg));
+        if (contigs_dbg != contigs)
+            return GLnexus::Status::Invalid("error, contigs read from DB do not match originals");
+    }
 
     // Load the GVCFs into the database
     {
