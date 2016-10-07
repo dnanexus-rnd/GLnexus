@@ -628,12 +628,6 @@ TEST_CASE("file_ops") {
     string basedir = "/tmp/cli_utils";
     int retval = system(("rm -rf " + basedir).c_str());
     REQUIRE(retval == 0);
-    Status s= utils::recursive_delete(basedir);
-    if (s.bad()) {
-        cerr << s.str() << endl;
-    }
-    REQUIRE(s.ok());
-
     retval = system(("mkdir -p " + basedir).c_str());
     REQUIRE(retval == 0);
     REQUIRE(utils::check_dir_exists(basedir));
@@ -655,6 +649,22 @@ TEST_CASE("file_ops") {
         make_files_in_dir(path);
     }
 
-    REQUIRE(utils::recursive_delete(basedir).ok());
+    retval = system(("rm -rf " + basedir).c_str());
+    REQUIRE(retval == 0);
     REQUIRE(!utils::check_dir_exists(basedir));
+}
+
+TEST_CASE("parse_bed_file") {
+    Status s;
+
+    vector<pair<string,size_t>> contigs;
+    contigs.push_back(make_pair("1",10000000));
+    contigs.push_back(make_pair("2",31000000));
+
+    string basedir = "test/data/cli";
+    string bedfilename = basedir + "/vcr_test.bed";
+    vector<range> ranges;
+    s = utils::parse_bed_file(console, bedfilename, contigs, ranges);
+    REQUIRE(s.ok());
+    REQUIRE(ranges.size() == 10);
 }

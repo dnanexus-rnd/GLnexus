@@ -72,6 +72,60 @@ bool parse_ranges(const vector<pair<string,size_t> >& contigs,
     return true;
 }
 
+Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
+                      const string &bedfilename,
+                      const vector<pair<string,size_t> > &contigs,
+                      vector<range> &ranges) {
+    if (bedfilename.empty()) {
+        return Status::Invalid("Empty bed file");
+    }
+    if (!check_file_exists(bedfilename)) {
+        return Status::IOError("bed file does not exist", bedfilename);
+    }
+
+    // read BED file
+    string rname, beg_txt, end_txt;
+    ifstream bedfile(bedfilename);
+    while (bedfile >> rname >> beg_txt >> end_txt) {
+        int rid = 0;
+        for(; rid<contigs.size(); rid++)
+            if (contigs[rid].first == rname)
+                break;
+        if (rid == contigs.size()) {
+            return Status::Invalid("Unknown contig ", rname);
+        }
+        ranges.push_back(range(rid,
+                               strtol(beg_txt.c_str(), nullptr, 10),
+                               strtol(end_txt.c_str(), nullptr, 10)));
+    }
+    if (bedfile.bad() || !bedfile.eof()) {
+        return Status::IOError( "Error reading ", bedfilename);
+    }
+
+    sort(ranges.begin(), ranges.end());
+    for (auto& query : ranges) {
+        if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
+            return Status::Invalid("query range ", query.str(contigs));
+        }
+        if (query.end > contigs[query.rid].second) {
+            query.end = contigs[query.rid].second;
+            logger->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+        }
+    }
+
+    // make an orderly pass on the ranges, and verify that there are no overlaps.
+    if (ranges.size() > 1) {
+        const range &prev = *(ranges.begin());
+        for (auto it = ranges.begin() + 1; it != ranges.end(); ++it) {
+            if (prev.overlaps(*it))
+                return Status::Invalid("overlapping ranges ", prev.str(contigs) + " " + it->str(contigs));
+        }
+    }
+
+    return Status::OK();
+}
+
+
 Status LoadYAMLFile(const string& filename, YAML::Node &node) {
     if (filename.size() == 0)
         return Status::Invalid("The YAML file must be specified");
@@ -476,78 +530,6 @@ bool check_dir_exists(const string &path) {
     return false;
 }
 
-// http://stackoverflow.com/questions/2256945/removing-a-non-empty-directory-programmatically-in-c-or-c
-//
-// We want to have an implementation of recursive directory delete, that does not require pulling
-// in the boost libraries.
-Status recursive_delete(const string &path) {
-    FTS *ftsp = NULL;
-    FTSENT *curr;
-    stringstream errmsg;
-    Status s = Status::OK();
-
-    if (!check_dir_exists(path)) {
-        return Status::OK();
-    }
-
-    // Cast needed (in C) because fts_open() takes a "char * const *", instead
-    // of a "const char * const *", which is only allowed in C++. fts_open()
-    // does not modify the argument.
-    char *files[] = { (char *) path.c_str(), NULL };
-
-    // FTS_NOCHDIR  - Avoid changing cwd, which could cause unexpected behavior
-    //                in multithreaded programs
-    // FTS_PHYSICAL - Don't follow symlinks. Prevents deletion of files outside
-    //                of the specified directory
-    // FTS_XDEV     - Don't cross filesystem boundaries
-    ftsp = fts_open(files, FTS_NOCHDIR | FTS_PHYSICAL | FTS_XDEV, NULL);
-    if (!ftsp) {
-        errmsg << path << " " << strerror(errno);
-        s = Status::IOError("fts_open", errmsg.str());
-        goto finish;
-    }
-
-    while ((curr = fts_read(ftsp))) {
-        switch (curr->fts_info) {
-        case FTS_NS:
-        case FTS_DNR:
-        case FTS_ERR:
-            errmsg << curr->fts_accpath << " " << strerror(curr->fts_errno);
-            s = Status::IOError("ftp_read", errmsg.str());
-            goto finish;
-
-        case FTS_DC:
-        case FTS_DOT:
-        case FTS_NSOK:
-            // Not reached unless FTS_LOGICAL, FTS_SEEDOT, or FTS_NOSTAT were
-            // passed to fts_open()
-            break;
-
-        case FTS_D:
-            // Do nothing. Need depth-first search, so directories are deleted
-            // in FTS_DP
-            break;
-
-        case FTS_DP:
-        case FTS_F:
-        case FTS_SL:
-        case FTS_SLNONE:
-        case FTS_DEFAULT:
-            if (remove(curr->fts_accpath) < 0) {
-                errmsg << curr->fts_path << " " << strerror(errno);
-                s = Status::IOError("failed to remove", errmsg.str());
-                goto finish;
-            }
-            break;
-        }
-    }
-
-finish:
-    if (ftsp) {
-        fts_close(ftsp);
-    }
-    return s;
-}
 
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
@@ -593,8 +575,8 @@ genotyper_config:
 
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
                           const std::string& name,
-                          GLnexus::unifier_config& unifier_cfg,
-                          GLnexus::genotyper_config& genotyper_cfg) {
+                          unifier_config& unifier_cfg,
+                          genotyper_config& genotyper_cfg) {
     Status s;
     logger->info() << "Loading config " << config_presets_yml;
     YAML::Node yaml = YAML::Load(config_presets_yml);
@@ -632,6 +614,9 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
                size_t bucket_size) {
     Status s;
     logger->info() << "init database, exemplar_vcf=" << exemplar_gvcf;
+    if (check_dir_exists(dbpath)) {
+        return Status::IOError("Database directory already exists", dbpath);
+    }
 
     // load exemplar contigs
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(exemplar_gvcf.c_str(), "r"),
@@ -880,8 +865,8 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
 Status genotype(std::shared_ptr<spdlog::logger> logger,
                 size_t nr_threads,
                 const string &dbpath,
-                const GLnexus::genotyper_config &genotyper_cfg,
-                const vector<GLnexus::unified_site> &sites,
+                const genotyper_config &genotyper_cfg,
+                const vector<unified_site> &sites,
                 const string &output_filename) {
     Status s;
     logger->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";

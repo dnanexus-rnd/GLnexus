@@ -21,127 +21,91 @@
 using namespace std;
 
 auto console = spdlog::stderr_logger_mt("GLnexus");
-
-GLnexus::Status parse_bed_file(const string &bedfilename,
-                               const std::vector<std::pair<std::string,size_t> > &contigs,
-                               vector<GLnexus::range> &ranges) {
-    if (bedfilename.empty()) {
-        return GLnexus::Status::Invalid("Empty bed file");
+GLnexus::Status s;
+#define H(desc,expr) \
+    s = expr; \
+    if (s.bad()) { \
+        console->error() << "Failed to " << desc << ": " << s.str(); \
+        return 1; \
     }
-    if (!GLnexus::cli::utils::check_file_exists(bedfilename)) {
-        return GLnexus::Status::IOError("bed file does not exist", bedfilename);
-    }
-
-    // read BED file
-    string rname, beg_txt, end_txt;
-    ifstream bedfile(bedfilename);
-    while (bedfile >> rname >> beg_txt >> end_txt) {
-        int rid = 0;
-        for(; rid<contigs.size(); rid++)
-            if (contigs[rid].first == rname)
-                break;
-        if (rid == contigs.size()) {
-            return GLnexus::Status::Invalid("Unknown contig ", rname);
-        }
-        ranges.push_back(GLnexus::range(rid,
-                                        strtol(beg_txt.c_str(), nullptr, 10),
-                                        strtol(end_txt.c_str(), nullptr, 10)));
-    }
-    if (bedfile.bad() || !bedfile.eof()) {
-        return GLnexus::Status::IOError( "Error reading ", bedfilename);
-    }
-
-    sort(ranges.begin(), ranges.end());
-    for (auto& query : ranges) {
-        if (query.beg < 0 || query.end < 1 || query.end <= query.beg) {
-            return GLnexus::Status::Invalid("query range ", query.str(contigs));
-        }
-        if (query.end > contigs[query.rid].second) {
-            query.end = contigs[query.rid].second;
-            console->warn() << "Truncated query range at end of contig: " << query.str(contigs);
-        }
-    }
-
-    // make an orderly pass on the ranges, and verify that there are no overlaps.
-    if (ranges.size() > 1) {
-        const GLnexus::range &prev = *(ranges.begin());
-        for (auto it = ranges.begin() + 1; it != ranges.end(); ++it) {
-            if (prev.overlaps(*it))
-                return GLnexus::Status::Invalid("overlapping ranges ", prev.str(contigs) + " " + it->str(contigs));
-        }
-    }
-
-    return GLnexus::Status::OK();
-}
-
 
 // Perform all the separate GLnexus operations in one go.
-GLnexus::Status all_steps(const vector<string> &vcf_files,
-                          const string &bedfilename,
-                          int nr_threads,
-                          bool residuals,
-                          bool debug) {
+// return 0 on success, 1 on failure.
+static int all_steps(const vector<string> &vcf_files,
+                     const string &bedfilename,
+                     int nr_threads,
+                     bool residuals,
+                     bool debug) {
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
 
-    if (vcf_files.empty())
-        return GLnexus::Status::Invalid("No source GVCF files specified");
+    if (vcf_files.empty()) {
+        console->error() << "No source GVCF files specified";
+        return 1;
+    }
 
     string config_preset = "test";
     if (config_preset.size()) {
-        S(GLnexus::cli::utils::load_config_preset(console, config_preset, unifier_cfg, genotyper_cfg));
+        H("load unifier/genotyper configuration",
+          GLnexus::cli::utils::load_config_preset(console, config_preset, unifier_cfg, genotyper_cfg));
     }
 
     // initilize empty database
     string dbpath("GLnexus.DB");
     vector<pair<string,size_t> > contigs;
-    S(GLnexus::cli::utils::recursive_delete(dbpath));
-    S(GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs));
+    H("initializing database", GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs));
 
     {
         // sanity check, see that we can get the contigs back
         vector<pair<string,size_t> > contigs_dbg;
-        S(GLnexus::cli::utils::db_get_contigs(console, dbpath, contigs_dbg));
+        H("Reading the contigs back from DB",
+          GLnexus::cli::utils::db_get_contigs(console, dbpath, contigs_dbg));
         if (contigs_dbg != contigs)
             return GLnexus::Status::Invalid("error, contigs read from DB do not match originals");
     }
 
     // Load the GVCFs into the database
     {
-        // do not use a range filter
+        // use an empty range filter
         vector<GLnexus::range> ranges;
-        S(GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, true));
+        H("bulk load into DB",
+          GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, true));
     }
 
     // discover alleles
     vector<GLnexus::range> ranges;
-    S(parse_bed_file(bedfilename, contigs, ranges));
+    H("parsing the bed file", GLnexus::cli::utils::parse_bed_file(console, bedfilename, contigs, ranges));
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
-    S(GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
+    H("discover alleles",
+      GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
 
         //H("write results with cap'n proto serialization",
         //  GLnexus::capnp_of_discovered_alleles_fd(N, contigs, dsals, 1));
-        S(GLnexus::capnp_of_discovered_alleles(sample_count, contigs, dsals, filename));
+        H("serialize discovered alleles to a file",
+          GLnexus::capnp_of_discovered_alleles(sample_count, contigs, dsals, filename));
     }
 
     // unify sites
     vector<GLnexus::unified_site> sites;
-    S(GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals, sample_count, sites));
+    H("unify sites",
+      GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals, sample_count, sites));
     if (debug) {
         string filename("/tmp/sites.yml");
-        S(GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
+        H("write unified sites to file",
+          GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
     }
 
     // genotype
     genotyper_cfg.output_residuals = residuals;
     string outfile("-");
-    S(GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, outfile));
+    H("Genotyping",
+      GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, outfile));
 
-    return GLnexus::Status::OK();
+    return 0;
 }
 
 
@@ -224,10 +188,5 @@ int main(int argc, char *argv[]) {
     for (int i=optind; i < argc; i++)
         vcf_files.push_back(string(argv[i]));
 
-    s = all_steps(vcf_files, bedfilename, nr_threads, residuals, debug);
-    if (s.bad()) {
-        cerr << s.str() << endl;
-        return 1;
-    }
-    return 0;
+    return all_steps(vcf_files, bedfilename, nr_threads, residuals, debug);
 }

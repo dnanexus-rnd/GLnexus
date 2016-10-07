@@ -21,6 +21,11 @@ bool parse_range(const std::vector<std::pair<std::string,size_t> >& contigs,
 bool parse_ranges(const std::vector<std::pair<std::string,size_t> >& contigs,
                   const std::string& ranges, std::vector<range>& ans);
 
+Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
+                      const std::string &bedfilename,
+                      const std::vector<std::pair<std::string,size_t> > &contigs,
+                      std::vector<range> &ranges);
+
 // Note: YAML serialization generates nice human readable
 // files. However, it tends to be slow. An alternate implementation
 // that uses cap'n proto (https://capnproto.org/index.html) has
@@ -88,13 +93,6 @@ bool check_file_exists(const std::string &path);
 
 // Check if a directory exists
 bool check_dir_exists(const std::string &path);
-
-// Recursively remove a directory path. Do not return an error
-// if the path does not exist.
-//
-// Note: this could be done with boost::remove_all, but we do not
-// want to require that dependency.
-Status recursive_delete(const std::string &path);
 
 // Load a named configuration for the unifier and genotyper
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,

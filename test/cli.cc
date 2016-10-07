@@ -30,6 +30,10 @@ TEST_CASE("cli") {
         REQUIRE(s.ok());
         REQUIRE(contigs.size() >= 1);
 
+        // DB directory already exists -- make sure we get an error
+        s = cli::utils::db_init(console, DB_PATH, exemplar_gvcf, contigs);
+        REQUIRE(s.bad());
+
         vector<string> gvcfs;
         for (auto fname : {"F1.gvcf.gz", "F2.gvcf.gz", "F3.gvcf.gz", "F4.gvcf.gz"}) {
             gvcfs.push_back(basedir + "/" + fname);
