@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Constant for tracing, 99Hz
+recordFreq=99
+
 main() {
     set -ex -o pipefail
 
@@ -36,15 +39,35 @@ main() {
     if [[ $bed_ranges_to_genotype ]]; then
         bed_ranges=$(find in/bed_ranges_to_genotype -type f)
     fi
-    if [[ $residuals == "true" ]]; then
-        residuals_flag="--residuals"
-    fi
     if [[ $debug == "true" ]]; then
         debug_flag="--debug"
     fi
+    if [[ "$perf_kernel" == "true" ]]; then
+        # Kernel tracing implies user-space space tracing
+        perf="true"
+    fi
+    if [[ "$perf" == "true" ]]; then
+        setup_system_for_tracing
+
+        # Run a perf command that will record everything the
+        # machine is doing, this allows tracking down all activity,
+        mkdir -p out/perf
+        sudo perf record -F $recordFreq -a --call-graph dwarf &
+        perf_pid=$!
+    fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli --bed $bed_ranges $residuals_flag $debug_flag $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+    time numactl --interleave=all glnexus_cli --bed $bed_ranges $debug_flag $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+
+    if [[ "$perf" == "true" ]]; then
+        # Try to kill the perf process nicely; this does not always work
+        sleep 2
+        sudo kill -s SIGINT $perf_pid
+        sudo chmod 644 perf.data
+        perf script > perf_genotype
+        FlameGraph/stackcollapse-perf.pl < perf_genotype > out/perf/genotype.stacks
+        /bin/rm -f perf.data
+    fi
 
     # we are writing the generated VCF to stdout, so the residuals will
     # be placed in a default location.
@@ -82,4 +105,65 @@ function check_use_of_jemalloc_lib {
         echo "Error, jemalloc is supposed to be in use"
         exit 1
     fi
+}
+
+function setup_system_for_tracing {
+    # We want to have visibility into kernel symbols. This is under a
+    # special flag, because normally, we do not have sufficient
+    # permissions in a platform container. We do this first, so, if there
+    # are any permission problems, we will fail early.
+    if [[ "$perf_kernel" == "true" ]]; then
+        apt_get_add_debug_repos
+        install_kernel_debug_symbols
+    fi
+
+    # install the perf utility
+    # install flame-graph package
+    git clone https://github.com/brendangregg/FlameGraph
+
+    # install linux-tools for the current kernel version
+    linux_version=`uname -r`
+    sudo apt-get -y -qq install "linux-tools-${linux_version}"
+
+    # test that perf is working correctly
+    perf record -F $recordFreq -g /bin/ls
+    rm -f perf.data
+}
+
+
+# Add special debian repositories holding kernel debugging symbols, and
+# libraries with debug information.
+function apt_get_add_debug_repos {
+    echo "Adding apt-get repositories with debug symbols"
+    lsb_rel=$(lsb_release -cs)
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel} main restricted universe multiverse" > ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-updates main restricted universe multiverse" >> ddebs.list
+    echo "deb http://ddebs.ubuntu.com ${lsb_rel}-proposed main restricted universe multiverse" >> ddebs.list
+    sudo cp ddebs.list /etc/apt/sources.list.d/
+
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622
+    sudo apt-get update
+}
+
+function install_kernel_debug_symbols {
+    echo "Setting Linux permissions to allow seeing kernel symbols"
+    sudo sysctl -w kernel.kptr_restrict=0
+    sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'
+
+    echo "Installing kernel debug symbols"
+    # Check for an exact match to the kernel version
+    kernel_version=$(uname -r)
+    retval=$(apt-cache search linux-image-$kernel_version-dbgsym)
+    if [[ -n "$retval" ]]; then
+        sudo apt-get install linux-image-$kernel_version-dbgsym
+        return
+    fi
+
+    echo "An exact match for kernel [$kernel_version] debug symbols is not available"
+    kernel_version_short=$(uname -r | cut --delimiter='-' --fields=1)
+    echo "Searching for close match for kernel $kernel_version_short"
+
+    pkg=$(apt-cache search linux-image-$kernel_version_short | grep generic-dbgsym | head -n 1 | cut --delimiter=' ' --fields=1)
+    echo "Found package $pkg, installing ..."
+    sudo apt-get install $pkg
 }

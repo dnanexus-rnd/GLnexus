@@ -34,7 +34,6 @@ GLnexus::Status s;
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
                      int nr_threads,
-                     bool residuals,
                      bool debug) {
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
@@ -82,9 +81,6 @@ static int all_steps(const vector<string> &vcf_files,
       GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
-
-        //H("write results with cap'n proto serialization",
-        //  GLnexus::capnp_of_discovered_alleles_fd(N, contigs, dsals, 1));
         H("serialize discovered alleles to a file",
           GLnexus::capnp_of_discovered_alleles(sample_count, contigs, dsals, filename));
     }
@@ -100,7 +96,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     // genotype
-    genotyper_cfg.output_residuals = residuals;
+    genotyper_cfg.output_residuals = debug;
     string outfile("-");
     H("Genotyping",
       GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, outfile));
@@ -116,8 +112,7 @@ void help(const char* prog) {
          << "Options:" << endl
          << "  --help, -h       print this help message" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
-         << "  --debug, -d      create additional file outputs for diagnostics/debugging" << endl
-         << "  --residuals, -r  generate detailed residuals output file" << endl;
+         << "  --debug, -d      create additional file outputs for diagnostics/debugging" << endl;
 }
 
 // Expected usage:
@@ -138,18 +133,16 @@ int main(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
-        {"residuals", no_argument, 0, 'r'},
         {0, 0, 0, 0}
     };
 
     int c;
     bool debug = false;
-    bool residuals = false;
     string bedfilename;
     int nr_threads = std::thread::hardware_concurrency();
 
     optind = 1; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:dr",
+    while (-1 != (c = getopt_long(argc, argv, "hb:d",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -170,10 +163,6 @@ int main(int argc, char *argv[]) {
                 exit(1);
                 break;
 
-            case 'r':
-                residuals = true;
-                break;
-
             default:
                 abort ();
         }
@@ -188,5 +177,5 @@ int main(int argc, char *argv[]) {
     for (int i=optind; i < argc; i++)
         vcf_files.push_back(string(argv[i]));
 
-    return all_steps(vcf_files, bedfilename, nr_threads, residuals, debug);
+    return all_steps(vcf_files, bedfilename, nr_threads, debug);
 }

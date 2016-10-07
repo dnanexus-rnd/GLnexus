@@ -6,6 +6,18 @@
   "version": "0.0.1",
   "inputSpec": [
     {
+      "name": "bed_ranges_to_genotype",
+      "help": "limit genotyping to these ranges",
+      "class": "file"
+    },
+    {
+      "name": "debug",
+      "help": "output additional files (unified-sites, discovered alleles, residuals)",
+      "class": "boolean",
+      "default": false,
+      "optional": true
+    },
+    {
       "name": "gvcf",
       "help": "source gvcf files",
       "class": "array:file",
@@ -14,31 +26,27 @@
     },
     {
       "name": "gvcf_tar",
-      "help": "source gvcf files",
+      "help": "source gvcf files batched into tar files",
       "class": "array:file",
       "optional": true,
       "patterns": ["*.tar"]
     },
     {
-      "name": "bed_ranges_to_genotype",
-      "help": "limit genotyping to these ranges",
-      "class": "file"
-    },
-    {
       "name": "output_name",
+      "help": "prefix for output file names",
       "class": "string",
       "default": "GLnexus"
     },
     {
-      "name": "residuals",
-      "help": "output residuals",
+      "name": "perf",
+      "help": "add performance tracing and outputs",
       "class": "boolean",
       "default": false,
       "optional": true
     },
     {
-      "name": "debug",
-      "help": "output additional files (unified-sites, discovered alleles)",
+      "name": "perf_kernel",
+      "help": "trace kernel symbols, requires special permissions on the container. Implies the perf flag.",
       "class": "boolean",
       "default": false,
       "optional": true
@@ -53,9 +61,14 @@
   ],
   "outputSpec": [
     {
-      "name": "vcf",
+      "name": "discovered_alleles",
       "class": "file",
-      "patterns": ["*.vcf.gz"]
+      "optional": true
+    },
+    {
+      "name": "perf",
+      "class": "array:file",
+      "optional": true
     },
     {
       "name": "residuals",
@@ -63,14 +76,14 @@
       "optional": true
     },
     {
-      "name": "discovered_alleles",
+      "name": "unified_sites",
       "class": "file",
       "optional": true
     },
     {
-      "name": "unified_sites",
+      "name": "vcf",
       "class": "file",
-      "optional": true
+      "patterns": ["*.vcf.gz"]
     }
   ],
   "runSpec": {
@@ -89,6 +102,9 @@
     },
     "distribution": "Ubuntu",
     "release": "14.04"
+  },
+  "access": {
+    "network": ["*"]
   },
   "authorizedUsers": []
 }
