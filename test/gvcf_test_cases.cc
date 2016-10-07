@@ -246,7 +246,7 @@ public:
         unsigned N;
         Status s = svc->discover_alleles(sampleset, pos, N, als);
 
-        // how do we get the contigs?
+        // verify that the discovered-alleles structure can be serialized correctly with cap'n proto
         string dbg_filename("/tmp/allele_verify.cflat");
         REQUIRE(capnp_discover_alleles_verify(N, contigs, als, dbg_filename).ok());
 

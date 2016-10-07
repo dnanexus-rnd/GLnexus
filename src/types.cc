@@ -280,10 +280,9 @@ static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
         capnp::DiscoveredAlleleInfo::Builder dai = al_pk.initDai();
         dai.setIsRef(val.is_ref);
 
-        capnp::TopAQ::Builder topAQ = dai.initTopAQ();
-        ::capnp::List<int64_t>::Builder v = topAQ.initV(top_AQ::COUNT);
+        ::capnp::List<int64_t>::Builder topAQ = dai.initTopAQ(top_AQ::COUNT);
         for (int k=0; k < top_AQ::COUNT; k++) {
-            v.set(k, val.topAQ.V[k]);
+            topAQ.set(k, val.topAQ.V[k]);
         }
 
         // skipping addbuf, it is used for scratch space
@@ -366,13 +365,12 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
         capnp::DiscoveredAlleleInfo::Reader dai_pk = aip.getDai();
         dai.is_ref = dai_pk.getIsRef();
 
-        capnp::TopAQ::Reader topAQ_pk = dai_pk.getTopAQ();
-        ::capnp::List<int64_t>::Reader v_pk = topAQ_pk.getV();
-        if (v_pk.size() != top_AQ::COUNT) {
-            return Status::Invalid("Wrong number of elements in topAQ", to_string(v_pk.size()));
+        ::capnp::List<int64_t>::Reader topAQ_pk = dai_pk.getTopAQ();
+        if (topAQ_pk.size() != top_AQ::COUNT) {
+            return Status::Invalid("Wrong number of elements in topAQ", to_string(topAQ_pk.size()));
         }
-        for (int k=0; k < v_pk.size(); k++)  {
-            dai.topAQ.V[k] =  v_pk[k];
+        for (int k=0; k < topAQ_pk.size(); k++)  {
+            dai.topAQ.V[k] =  topAQ_pk[k];
         }
         // skipping addbuf, it is used for scratch space
 

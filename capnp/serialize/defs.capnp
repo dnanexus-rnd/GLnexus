@@ -3,15 +3,11 @@
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("GLnexus::capnp");
 
-struct TopAQ {
-    v @0 :List(Int64);
-}
-
 struct DiscoveredAlleleInfo {
     isRef @0 :Bool = false;
 
     # top_AQ statistics are used to adjudicate allele existence
-    topAQ @1 :TopAQ;
+    topAQ @1 :List(Int64);
 
      # zygosity_by_GQ statistics are used to estimate allele copy number
     zGQ0 @2 :List(UInt64);
