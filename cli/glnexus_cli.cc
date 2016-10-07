@@ -75,8 +75,6 @@ GLnexus::Status parse_bed_file(const string &bedfilename,
 }
 
 
-
-
 // Perform all the separate GLnexus operations in one go.
 GLnexus::Status all_steps(const vector<string> &vcf_files,
                           const string &bedfilename,
@@ -124,7 +122,10 @@ GLnexus::Status all_steps(const vector<string> &vcf_files,
     S(GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
-        S(GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
+
+        //H("write results with cap'n proto serialization",
+        //  GLnexus::capnp_of_discovered_alleles_fd(N, contigs, dsals, 1));
+        S(GLnexus::capnp_of_discovered_alleles(sample_count, contigs, dsals, filename));
     }
 
     // unify sites
