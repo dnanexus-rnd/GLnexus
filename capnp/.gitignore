@@ -1,0 +1,3 @@
+# Cap'n Proto generated files
+*.c++
+*.capnp.h

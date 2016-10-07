@@ -19,6 +19,12 @@ bool parse_range(const std::vector<std::pair<std::string,size_t> >& contigs,
 bool parse_ranges(const std::vector<std::pair<std::string,size_t> >& contigs,
                   const std::string& ranges, std::vector<range>& ans);
 
+// Note: YAML serialization generates nice human readable
+// files. However, it tends to be slow. An alternate implementation
+// that uses cap'n proto (https://capnproto.org/index.html) has
+// headers in file capnp_serialize.h. This is done only for the cases
+// where efficiency matters.
+
 // Read from disk and parse a YAML file
 Status LoadYAMLFile(const std::string& filename, YAML::Node &node);
 

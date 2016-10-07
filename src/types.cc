@@ -2,9 +2,29 @@
 #include <algorithm>
 #include <regex>
 
+// cap'n proto headers
+#include <capnp/message.h>
+#include <capnp/serialize-packed.h>
+#include <defs.capnp.h>
+
+// For file descriptors
+//#include <type_traits>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 using namespace std;
 
 namespace GLnexus {
+
+// We assume the chromosome ploidy is two in our serialization format.
+static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
+
+// This limit should be much larger than the message size. It is a security,
+// preventing the demarshaller from using too much memory, and getting into
+// infinite loops.
+const uint64_t CAPNP_TRAVERSAL_LIMIT = 20 * 1024L * 1024L * 1024L;
 
 regex regex_dna     ("[ACGTN]+")
     , regex_id      ("[-_a-zA-Z0-9\\.]{1,100}")
@@ -219,6 +239,204 @@ Status discovered_alleles_of_yaml(const YAML::Node& yaml,
 
     #undef V
     return Status::OK();
+}
+
+// write discovered_alleles structure to a file-descriptor, with cap'n proto serialization
+static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
+                                                const std::vector<std::pair<std::string,size_t> >& contigs,
+                                                const discovered_alleles &dsals,
+                                                int fd) {
+    ::capnp::MallocMessageBuilder message;
+    capnp::DiscoveredAlleles::Builder dsals_pk = message.initRoot<capnp::DiscoveredAlleles>();
+    dsals_pk.setSampleCount(sample_count);
+
+    // serialize contigs
+    ::capnp::List<capnp::Contig>::Builder contigs_pk = dsals_pk.initContigs(contigs.size());
+    int cursor = 0;
+    for (auto const &kv : contigs) {
+        const string &name = kv.first;
+        size_t size = kv.second;
+
+        capnp::Contig::Builder ctg_pk = contigs_pk[cursor];
+        ctg_pk.setName(name);
+        ctg_pk.setSize(size);
+        cursor++;
+    }
+
+    // serialize allele-info pairs
+    ::capnp::List<capnp::AlleleInfoPair>::Builder aips_pk = dsals_pk.initAips(dsals.size());
+    cursor = 0;
+    for (auto const &kv : dsals) {
+        auto &key = kv.first;
+        auto &val = kv.second;
+
+        capnp::AlleleInfoPair::Builder al_pk = aips_pk[cursor];
+        capnp::Range::Builder range = al_pk.initRange();
+        range.setRid(key.pos.rid);
+        range.setBeg(key.pos.beg);
+        range.setEnd(key.pos.end);
+        al_pk.setDna(key.dna.c_str());
+
+        capnp::DiscoveredAlleleInfo::Builder dai = al_pk.initDai();
+        dai.setIsRef(val.is_ref);
+
+        ::capnp::List<int64_t>::Builder topAQ = dai.initTopAQ(top_AQ::COUNT);
+        for (int k=0; k < top_AQ::COUNT; k++) {
+            topAQ.set(k, val.topAQ.V[k]);
+        }
+
+        // skipping addbuf, it is used for scratch space
+
+        ::capnp::List<uint64_t>::Builder zGQ0 = dai.initZGQ0(zygosity_by_GQ::GQ_BANDS);
+        for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
+            zGQ0.set(k, val.zGQ.M[k][0]);
+
+        ::capnp::List<uint64_t>::Builder zGQ1 = dai.initZGQ1(zygosity_by_GQ::GQ_BANDS);
+        for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
+            zGQ1.set(k, val.zGQ.M[k][1]);
+
+        cursor++;
+    }
+
+    // Capnp throws exceptions on errors, and only in extreme cases.
+    writePackedMessageToFd(fd, message);
+    return Status::OK();
+}
+
+// Variant of the above command, but write to a file
+Status capnp_of_discovered_alleles_fd(unsigned int sample_count,
+                                      const std::vector<std::pair<std::string,size_t> >& contigs,
+                                      const discovered_alleles &dsals,
+                                      int fd) {
+    try {
+        return capnp_write_discovered_alleles_fd(sample_count, contigs, dsals, fd);
+    } catch (exception &e) {
+        return Status::IOError("Capnproto error during de-serialization", e.what());
+    }
+}
+
+// Variant of the above command, but write to a file
+Status capnp_of_discovered_alleles(unsigned int sample_count,
+                                   const std::vector<std::pair<std::string,size_t> >& contigs,
+                                   const discovered_alleles &dsals,
+                                   const std::string &filename) {
+    std::remove(filename.c_str());
+    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+    if (fd < 0)
+        return Status::IOError("Could not open file for writing", filename);
+    Status s = capnp_of_discovered_alleles_fd(sample_count, contigs, dsals, fd);
+    int retval = close(fd);
+    if (retval < 0)
+        return Status::IOError("file close failed", filename);
+    return s;
+}
+
+// read discovered_alleles structure from a file-descriptor, as serialized by cap'n proto
+static Status _capnp_read_discovered_alleles_fd(int fd,
+                                                unsigned int &sample_count,
+                                                std::vector<std::pair<std::string,size_t> >& contigs,
+                                                discovered_alleles &dsals) {
+    ::capnp::ReaderOptions ropt;
+    ropt.traversalLimitInWords = CAPNP_TRAVERSAL_LIMIT;
+    ::capnp::PackedFdMessageReader message(fd, ropt);
+    capnp::DiscoveredAlleles::Reader dsals_pk = message.getRoot<capnp::DiscoveredAlleles>();
+    sample_count = dsals_pk.getSampleCount();
+
+    // contigs
+    contigs.clear();
+    for (capnp::Contig::Reader ctg : dsals_pk.getContigs()) {
+        auto p = make_pair<string,size_t>(ctg.getName(), ctg.getSize());
+        contigs.push_back(p);
+    }
+
+    // Discovered Alleles
+    dsals.clear();
+    for (capnp::AlleleInfoPair::Reader aip : dsals_pk.getAips()) {
+        // Unpack allele
+        capnp::Range::Reader range_pk = aip.getRange();
+        range r(range_pk.getRid(),
+                range_pk.getBeg(),
+                range_pk.getEnd());
+        string dna = aip.getDna();
+        allele alle(r, dna);
+
+        // Unpack allele-info
+        discovered_allele_info dai;
+        capnp::DiscoveredAlleleInfo::Reader dai_pk = aip.getDai();
+        dai.is_ref = dai_pk.getIsRef();
+
+        ::capnp::List<int64_t>::Reader topAQ_pk = dai_pk.getTopAQ();
+        if (topAQ_pk.size() != top_AQ::COUNT) {
+            return Status::Invalid("Wrong number of elements in topAQ", to_string(topAQ_pk.size()));
+        }
+        for (int k=0; k < topAQ_pk.size(); k++)  {
+            dai.topAQ.V[k] =  topAQ_pk[k];
+        }
+        // skipping addbuf, it is used for scratch space
+
+        // Unpack Zygosity information
+        ::capnp::List<uint64_t>::Reader zGQ0_pk = dai_pk.getZGQ0();
+        ::capnp::List<uint64_t>::Reader zGQ1_pk = dai_pk.getZGQ1();
+        if (zGQ0_pk.size() != zygosity_by_GQ::GQ_BANDS)
+            return Status::Invalid("Wrong number of GQ_BANDS", to_string(zGQ0_pk.size()));
+        if (zGQ1_pk.size() != zygosity_by_GQ::GQ_BANDS)
+            return Status::Invalid("Wrong number of GQ_BANDS", to_string(zGQ1_pk.size()));
+        for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++) {
+            dai.zGQ.M[k][0] = zGQ0_pk[k];
+            dai.zGQ.M[k][1] = zGQ1_pk[k];
+        }
+
+        dsals[alle] = dai;
+    }
+
+    return Status::OK();
+}
+
+Status discovered_alleles_of_capnp(const std::string &filename,
+                                   unsigned int &sample_count,
+                                   std::vector<std::pair<std::string,size_t> >& contigs,
+                                   discovered_alleles &dsals) {
+    int fd = open(filename.c_str(), O_RDONLY);
+    if (fd < 0)
+        return Status::IOError("Could not open file for reading", filename);
+    Status s;
+    try {
+        // Capnp throws exceptions on errors, and only in extreme cases.
+        s = _capnp_read_discovered_alleles_fd(fd, sample_count, contigs, dsals);
+    } catch (exception &e) {
+        return Status::IOError("Capnproto error during de-serialization", e.what());
+    }
+
+    int retval = close(fd);
+    if (retval < 0)
+        return Status::IOError("file close failed", filename);
+    return s;
+}
+
+
+Status capnp_discover_alleles_verify(unsigned int sample_count,
+                                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                                     const discovered_alleles &dsals,
+                                     const string &filename) {
+    Status s;
+
+    // Write to file
+    S(capnp_of_discovered_alleles(sample_count, contigs, dsals, filename));
+
+    // read from it
+    unsigned int N;
+    vector<pair<string,size_t>> contigs2;
+    discovered_alleles dsals2;
+    S(discovered_alleles_of_capnp(filename, N, contigs2, dsals2));
+
+    // verify we get the same alleles back
+    if (dsals == dsals2 &&
+        contigs == contigs2 &&
+        sample_count == N) {
+        return Status::OK();
+    }
+
+    return Status::Invalid("capnp serialization/deserialization of discovered alleles does not return original value");
 }
 
 

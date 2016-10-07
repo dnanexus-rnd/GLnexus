@@ -164,7 +164,7 @@ public:
     // for locating input yaml file; by convention, the yaml file is found
     // at INPUT_ROOT_DIR/<name>.yml
     GVCFTestCase(const string _name, bool _test_dsals=false,
-                 bool _test_usites=true, bool _test_genotypes=true): name(_name), test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes) {
+                 bool _test_usites=true, bool _test_genotypes=true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), name(_name) {
         validated_formats = {"GT", "RNC"};
         validated_infos = {};
     }
@@ -173,7 +173,7 @@ public:
     // for validation
     GVCFTestCase(const string _name, vector<string> _validated_formats,
                  vector<string> _validated_infos, bool _test_dsals=false,
-                 bool _test_usites=true, bool _test_genotypes=true): name(_name), test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes),validated_formats(_validated_formats), validated_infos(_validated_infos) {}
+                 bool _test_usites=true, bool _test_genotypes=true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), validated_formats(_validated_formats), validated_infos(_validated_infos), name(_name) {}
 
     // Reads in a yml file; writes gvcf records contained within yaml
     // file to disk; load expected unified_sites to memory
@@ -222,6 +222,8 @@ public:
             REQUIRE(n_dsals);
             s = discovered_alleles_of_yaml(n_dsals, contigs, truth_dsals);
             REQUIRE(s.ok());
+            string tmpfile = "/tmp/discover_alleles_capnp_check";
+            REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
         }
 
         // parse truth unified_sites if test_usites is set to true
@@ -242,7 +244,13 @@ public:
 
     Status execute_discover_alleles(discovered_alleles& als, const string sampleset, range pos) {
         unsigned N;
-        return svc->discover_alleles(sampleset, pos, N, als);
+        Status s = svc->discover_alleles(sampleset, pos, N, als);
+
+        // verify that the discovered-alleles structure can be serialized correctly with cap'n proto
+        string dbg_filename("/tmp/allele_verify.cflat");
+        REQUIRE(capnp_discover_alleles_verify(N, contigs, als, dbg_filename).ok());
+
+        return s;
     }
 
     Status check_discovered_alleles(discovered_alleles& als, const string sampleset="<ALL>", range pos=range(0, 0, 1000000000)) {

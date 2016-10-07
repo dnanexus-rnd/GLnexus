@@ -9,26 +9,25 @@ using namespace std;
 using namespace GLnexus;
 using namespace GLnexus::cli;
 
-// create a yaml file in the right format
-static void yaml_file_of_discovered_alleles(const string &filename, unsigned N,
-                                            const vector<pair<string,size_t>> &contigs,
-                                            const char* buf) {
-    std::remove(filename.c_str());
-    stringstream iss(buf, ios_base::in);
+static auto console = spdlog::stderr_logger_mt("cli_utils_test");
 
+// create a yaml file in the right format
+static void capnp_file_of_discovered_alleles(const string &filename,
+                                             unsigned int sample_count,
+                                             const vector<pair<string,size_t>> &contigs,
+                                             const char* buf) {
     YAML::Node node = YAML::Load(buf);
     discovered_alleles dals;
     Status s = discovered_alleles_of_yaml(node, contigs, dals);
     REQUIRE(s.ok());
 
-    ofstream fos;
-    fos.open(filename);
-    s = utils::yaml_stream_of_discovered_alleles(N, contigs, dals, fos);
-    REQUIRE(s.ok());
-    fos.close();
-}
+    // A sanity check
+    REQUIRE(GLnexus::capnp_discover_alleles_verify(sample_count, contigs, dals, filename).ok());
+    std::remove(filename.c_str());
 
-static auto console = spdlog::stderr_logger_mt("cli_utils_test");
+    s = capnp_of_discovered_alleles(sample_count, contigs, dals, filename);
+    REQUIRE(s.ok());
+}
 
 TEST_CASE("cli_utils") {
     unsigned N;
@@ -365,7 +364,7 @@ unification:
 
     SECTION("merging discovered allele files, special case, only one file") {
         string tmp_file_name1 = "/tmp/xxx_1.yml";
-        yaml_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
+        capnp_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
 
         vector<string> filenames;
         filenames.push_back(tmp_file_name1);
@@ -381,10 +380,10 @@ unification:
     SECTION("merging discovered allele files, 2 files") {
         // create two files, with different ranges
         string tmp_file_name1 = "/tmp/xxx_1.yml";
-        yaml_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
+        capnp_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
 
         string tmp_file_name2 = "/tmp/xxx_2.yml";
-        yaml_file_of_discovered_alleles(tmp_file_name2, 2, contigs, da_yaml2);
+        capnp_file_of_discovered_alleles(tmp_file_name2, 2, contigs, da_yaml2);
 
         vector<string> filenames;
         filenames.push_back(tmp_file_name1);
@@ -405,7 +404,7 @@ unification:
         const char* i_filenames[3] = {"/tmp/xxx_1.yml", "/tmp/xxx_2.yml", "/tmp/xxx_3.yml"};
         for (int i=0; i < 3; i++) {
             string fname = string(i_filenames[i]);
-            yaml_file_of_discovered_alleles(fname, 1, contigs, yamls[i]);
+            capnp_file_of_discovered_alleles(fname, 1, contigs, yamls[i]);
             filenames.push_back(fname);
         }
 
@@ -429,13 +428,13 @@ unification:
     SECTION("merging discovered allele files, error 2") {
         // create two files, with different ranges
         string tmp_file_name1 = "/tmp/xxx_1.yml";
-        yaml_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
+        capnp_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
 
         vector<pair<string,size_t>> contigs2;
         contigs2.push_back(make_pair("16",550000));
         contigs2.push_back(make_pair("17",8811991));
         string tmp_file_name2 = "/tmp/xxx_2.yml";
-        yaml_file_of_discovered_alleles(tmp_file_name2, 1, contigs2, da_yaml2);
+        capnp_file_of_discovered_alleles(tmp_file_name2, 1, contigs2, da_yaml2);
 
         vector<string> filenames;
         filenames.push_back(tmp_file_name1);
@@ -479,7 +478,7 @@ unification:
         const char* i_filenames[3] = {"/tmp/xxx_1.yml", "/tmp/xxx_2.yml"};
         for (int i=0; i < 2; i++) {
             string fname = string(i_filenames[i]);
-            yaml_file_of_discovered_alleles(fname, 1, contigs, yamls[i]);
+            capnp_file_of_discovered_alleles(fname, 1, contigs, yamls[i]);
             filenames.push_back(fname);
         }
 
