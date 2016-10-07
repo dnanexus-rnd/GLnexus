@@ -5,7 +5,6 @@ $Cxx.namespace("GLnexus::capnp");
 
 struct TopAQ {
     v @0 :List(Int64);
-    addbuf @1 :List(Int64);
 }
 
 struct DiscoveredAlleleInfo {

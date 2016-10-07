@@ -1,6 +1,5 @@
 #include <iostream>
 #include "types.h"
-#include "capnp_serialize.h"
 #include "catch.hpp"
 using namespace std;
 using namespace GLnexus;
@@ -113,7 +112,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
         REQUIRE(s.ok());
         VERIFY_DA(dal);
         string tmpfile = "/tmp/discover_alleles_capnp_check";
-        REQUIRE(GLnexus::capnp::discover_alleles_verify(1, contigs, dal, tmpfile).ok());
+        REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, dal, tmpfile).ok());
     }
 
     SECTION("bogus range") {
@@ -253,7 +252,7 @@ TEST_CASE("yaml_of_discovered_alleles") {
         REQUIRE(discovered_alleles_of_yaml(n, contigs, dal2).ok());
         REQUIRE(dal == dal2);
         string tmpfile = "/tmp/discover_alleles_capnp_check";
-        REQUIRE(GLnexus::capnp::discover_alleles_verify(1, contigs, dal, tmpfile).ok());
+        REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, dal, tmpfile).ok());
     }
 }
 

@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <memory>
 #include "cli_utils.h"
-#include <capnp_serialize.h>
 #include "catch.hpp"
 
 using namespace std;
@@ -23,10 +22,10 @@ static void capnp_file_of_discovered_alleles(const string &filename,
     REQUIRE(s.ok());
 
     // A sanity check
-    REQUIRE(GLnexus::capnp::discover_alleles_verify(sample_count, contigs, dals, filename).ok());
+    REQUIRE(GLnexus::capnp_discover_alleles_verify(sample_count, contigs, dals, filename).ok());
     std::remove(filename.c_str());
 
-    s = capnp::write_discovered_alleles(sample_count, contigs, dals, filename);
+    s = capnp_of_discovered_alleles(sample_count, contigs, dals, filename);
     REQUIRE(s.ok());
 }
 

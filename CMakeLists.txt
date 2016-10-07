@@ -198,9 +198,8 @@ add_custom_command(
   COMMENT "GLnexus: generating cap'n proto C++ and H files")
 
 add_library(glnexus
-            include/types.h src/types.cc
             capnp/serialize/defs.capnp.h capnp/serialize/defs.capnp.c++
-            include/capnp_serialize.h src/capnp_serialize.cc
+            include/types.h src/types.cc
             include/data.h src/data.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
@@ -269,6 +268,7 @@ if (test)
                  test/compare_iter.cc
                  test/unifier.cc
                  test/cli_utils.cc)
+  add_dependencies(unit_tests catch)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a libcapnp.a libkj.a)
 

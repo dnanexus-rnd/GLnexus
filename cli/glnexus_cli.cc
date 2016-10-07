@@ -17,7 +17,6 @@
 #include "spdlog/spdlog.h"
 #include "compare_iter.h"
 #include "cli_utils.h"
-#include "capnp_serialize.h"
 
 using namespace std;
 using namespace GLnexus::cli;
@@ -688,7 +687,7 @@ int main_discover_alleles(int argc, char *argv[]) {
     // Write the discovered alleles to stdout.
     // "1" is the standard C for the standard out file-descriptor.
     H("write results with cap'n proto serialization",
-      GLnexus::capnp::write_discovered_alleles_fd(N, contigs, dsals, 1));
+      GLnexus::capnp_of_discovered_alleles_fd(N, contigs, dsals, 1));
     return 0;
 }
 

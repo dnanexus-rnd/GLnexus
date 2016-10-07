@@ -6,7 +6,6 @@
 #include "catch.hpp"
 #include "sys/stat.h"
 #include "yaml-cpp/yaml.h"
-#include "capnp_serialize.h"
 using namespace std;
 using namespace GLnexus;
 
@@ -224,7 +223,7 @@ public:
             s = discovered_alleles_of_yaml(n_dsals, contigs, truth_dsals);
             REQUIRE(s.ok());
             string tmpfile = "/tmp/discover_alleles_capnp_check";
-            REQUIRE(GLnexus::capnp::discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
+            REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
         }
 
         // parse truth unified_sites if test_usites is set to true
@@ -245,7 +244,13 @@ public:
 
     Status execute_discover_alleles(discovered_alleles& als, const string sampleset, range pos) {
         unsigned N;
-        return svc->discover_alleles(sampleset, pos, N, als);
+        Status s = svc->discover_alleles(sampleset, pos, N, als);
+
+        // how do we get the contigs?
+        string dbg_filename("/tmp/allele_verify.cflat");
+        REQUIRE(capnp_discover_alleles_verify(N, contigs, als, dbg_filename).ok());
+
+        return s;
     }
 
     Status check_discovered_alleles(discovered_alleles& als, const string sampleset="<ALL>", range pos=range(0, 0, 1000000000)) {

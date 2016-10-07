@@ -4,7 +4,6 @@
 #include <sstream>
 #include <regex>
 #include "cli_utils.h"
-#include "capnp_serialize.h"
 #include "ctpl_stl.h"
 
 // This file has utilities employed by the glnexus applet.
@@ -347,7 +346,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
             //std::ifstream ifs(dsal_file.c_str());
             //Status s = discovered_alleles_of_yaml_stream(ifs, N2, contigs2, dsals2);
             //ifs.close();
-            Status s = capnp::read_discovered_alleles(dsal_file, N2, contigs2, dsals2);
+            Status s = discovered_alleles_of_capnp(dsal_file, N2, contigs2, dsals2);
             if (!s.ok()) {
                 logger->info() << "Error loading alleles from " << dsal_file;
                 return s;
