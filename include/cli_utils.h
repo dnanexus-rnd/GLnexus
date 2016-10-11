@@ -150,6 +150,12 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
                 const std::vector<unified_site> &sites,
                 const std::string &output_filename);
 
+// compare different implementations of database iteration methods.
+//
+// n_iter: how many random queries to try
+Status compare_db_itertion_algorithms(std::shared_ptr<spdlog::logger> logger,
+                                      const std::string &dbpath,
+                                      int n_iter);
 }}}
 
 #endif

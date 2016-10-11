@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "service.h"
 #include "unifier.h"
+#include "compare.h"
 
 #include "BCFKeyValueData.h"
 
@@ -902,6 +903,32 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     std::shared_ptr<StatsRangeQuery> statsRq = data->getRangeStats();
     logger->info() << statsRq->str();
 
+    return Status::OK();
+}
+
+Status compare_db_itertion_algorithms(std::shared_ptr<spdlog::logger> logger,
+                                      const std::string &dbpath,
+                                      int n_iter) {
+    Status s;
+    unique_ptr<KeyValue::DB> db;
+    unique_ptr<BCFKeyValueData> data;
+    string sampleset;
+    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
+                          RocksKeyValue::OpenMode::READ_ONLY));
+    S(BCFKeyValueData::Open(db.get(), data));
+
+    unique_ptr<MetadataCache> metadata;
+    S(MetadataCache::Start(*data, metadata));
+
+    S(data->all_samples_sampleset(sampleset));
+    logger->info() << "using sample set " << sampleset;
+
+    // get samples and datasets
+    shared_ptr<const set<string>> samples, datasets;
+    S(metadata->sampleset_datasets(sampleset, samples, datasets));
+
+    // compare queries
+    S(compare::compare_n_queries(n_iter, *data, *metadata, sampleset));
     return Status::OK();
 }
 

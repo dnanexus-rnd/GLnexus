@@ -1,15 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include <map>
-#include "spdlog/spdlog.h"
-#include "BCFKeyValueData.h"
-#include "BCFSerialize.h"
-#include "cli_utils.h"
-#include "catch.hpp"
+#include "compare.h"
+
+namespace GLnexus {
+namespace compare {
 
 using namespace std;
-using namespace GLnexus;
-
 using IterResults = map<string, shared_ptr<vector<shared_ptr<bcf1_t>>>>;
 using T = BCFKeyValueData;
 
@@ -155,79 +152,44 @@ int compare_query(T &data, MetadataCache &cache,
     return compare_results(resultsBase, resultsSoph);
 }
 
-static auto console = spdlog::stderr_logger_mt("GLnexus");
 
-TEST_CASE("iter_compare") {
+Status compare_n_queries(int n_iter,
+                         BCFKeyValueData &data,
+                         MetadataCache &metadata,
+                         const std::string& sampleset) {
+    // get the contigs
     Status s;
+    std::vector<std::pair<std::string,size_t> > contigs;
+    S(data.contigs(contigs));
 
-    // setup database directory
-    string dbdir = "/tmp/iter_compare";
-    REQUIRE(system(("rm -rf " + dbdir).c_str()) == 0);
-    REQUIRE(system(("mkdir -p " + dbdir).c_str()) == 0);
-    string dbpath = dbdir + "/DB";
+    int n_chroms = (int) (min((size_t)22, contigs.size()));
+    int max_range_len = 1000000;
+    int min_len = 10; // ensure that the the range is of some minimal size
 
-    string basedir = "test/data/cli";
-    string exemplar_gvcf = basedir + "/" + "F1.gvcf.gz";
-    vector<pair<string,size_t>> contigs;
-    s = cli::utils::db_init(console, dbpath, exemplar_gvcf, contigs);
-    REQUIRE(s.ok());
-    REQUIRE(contigs.size() >= 1);
-
-    vector<string> gvcfs;
-    for (auto fname : {"F1.gvcf.gz", "F2.gvcf.gz"}) {
-         gvcfs.push_back(basedir + "/" + fname);
-    }
-    vector<range> ranges;
-    s = cli::utils::db_bulk_load(console, 8, gvcfs, dbpath, ranges, contigs);
-    REQUIRE(s.ok());
-    REQUIRE(contigs.size() >= 1);
-
-    unique_ptr<KeyValue::DB> db;
-    unique_ptr<BCFKeyValueData> data;
-    string sampleset;
-    s = RocksKeyValue::Open(dbpath, db, cli::utils::GLnexus_prefix_spec(),
-                                     RocksKeyValue::OpenMode::READ_ONLY);
-    REQUIRE(s.ok());
-    s = BCFKeyValueData::Open(db.get(), data);
-    REQUIRE(s.ok());
-
-    unique_ptr<MetadataCache> metadata;
-    s = MetadataCache::Start(*data, metadata);
-    REQUIRE(s.ok());
-
-    s = data->all_samples_sampleset(sampleset);
-    REQUIRE(s.ok());
-    console->info() << "using sample set " << sampleset;
-
-    // get samples and datasets
-    shared_ptr<const set<string>> samples, datasets;
-    s = metadata->sampleset_datasets(sampleset, samples, datasets);
-    REQUIRE(s.ok());
-
-    int nChroms = (int) (min((size_t)22, contigs.size()));
-    int nIter = 50;
-    int maxRangeLen = 1000000;
-    int minLen = 10; // ensure that the the range is of some minimal size
-
-    for (int i = 0; i < nIter; i++) {
-        int rid = gen_rand_number(nChroms);
-        int lenChrom = (int)contigs[rid].second;
-        assert(lenChrom > minLen);
+    for (int i = 0; i < n_iter; i++) {
+        int rid = gen_rand_number(n_chroms);
+        int len_chrom = (int)contigs[rid].second;
+        assert(len_chrom > min_len);
 
         // bound the range to be no larger than the chromosome
-        int rangeLen = min(maxRangeLen, (lenChrom/10));
-        assert(rangeLen > minLen);
+        int range_len = min(max_range_len, (len_chrom/10));
+        assert(range_len > min_len);
 
-        int beg = gen_rand_number(lenChrom - rangeLen);
-        int rlen = gen_rand_number(rangeLen - minLen);
-        range rng(rid, beg, beg + minLen + rlen);
+        int beg = gen_rand_number(len_chrom - range_len);
+        int rlen = gen_rand_number(range_len - min_len);
+        range rng(rid, beg, beg + min_len + rlen);
 
-        int rc = compare_query(*data, *metadata, sampleset, rng);
-        REQUIRE(rc != 0);
+        int rc = compare_query(data, metadata, sampleset, rng);
+
         // 1: success
         // 0: error
         // -1: query used too much memory, aborted
+        if (rc == 0) {
+            return Status::Failure("query comparison failed");
+        }
     }
 
-    cout << "Passed " << nIter << " iterator comparison tests" << endl;
+    return Status::OK();
 }
+
+}}

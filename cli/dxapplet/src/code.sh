@@ -36,16 +36,21 @@ main() {
     # Make a list of all gvcf files
     gvcfs=$(find in/gvcf -type f)
 
+    debug_flags=""
     if [[ $bed_ranges_to_genotype ]]; then
         bed_ranges=$(find in/bed_ranges_to_genotype -type f)
     fi
     if [[ $debug == "true" ]]; then
-        debug_flag="--debug"
+        debug_flags+="--debug"
+    fi
+    if [[ $iter_compare == "true" ]]; then
+        debug_flags+="--iter_compare"
     fi
     if [[ "$perf_kernel" == "true" ]]; then
         # Kernel tracing implies user-space space tracing
         perf="true"
     fi
+
     if [[ "$perf" == "true" ]]; then
         setup_system_for_tracing
 
@@ -57,7 +62,7 @@ main() {
     fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli --bed $bed_ranges $debug_flag $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+    time numactl --interleave=all glnexus_cli --bed $bed_ranges $debug_flags $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then
         # Try to kill the perf process nicely; this does not always work

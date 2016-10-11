@@ -668,3 +668,33 @@ TEST_CASE("parse_bed_file") {
     REQUIRE(s.ok());
     REQUIRE(ranges.size() == 10);
 }
+
+TEST_CASE("iter_compare") {
+    Status s;
+
+    // setup database directory
+    string dbdir = "/tmp/iter_compare";
+    REQUIRE(system(("rm -rf " + dbdir).c_str()) == 0);
+    REQUIRE(system(("mkdir -p " + dbdir).c_str()) == 0);
+    string dbpath = dbdir + "/DB";
+
+    string basedir = "test/data/cli";
+    string exemplar_gvcf = basedir + "/" + "F1.gvcf.gz";
+    vector<pair<string,size_t>> contigs;
+    s = cli::utils::db_init(console, dbpath, exemplar_gvcf, contigs);
+    REQUIRE(s.ok());
+    REQUIRE(contigs.size() >= 1);
+
+    vector<string> gvcfs;
+    for (auto fname : {"F1.gvcf.gz", "F2.gvcf.gz"}) {
+         gvcfs.push_back(basedir + "/" + fname);
+    }
+    vector<range> ranges;
+    s = cli::utils::db_bulk_load(console, 8, gvcfs, dbpath, ranges, contigs);
+    REQUIRE(s.ok());
+    REQUIRE(contigs.size() >= 1);
+
+    int n_iter = 50;
+    s = cli::utils::compare_db_itertion_algorithms(console, dbpath, n_iter);
+    console->info() << "Passed " << n_iter << " iterator comparison tests";
+}

@@ -201,6 +201,7 @@ add_library(glnexus
             capnp/serialize/defs.capnp.h capnp/serialize/defs.capnp.c++
             include/types.h src/types.cc
             include/data.h src/data.cc
+            include/compare.h src/compare.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
             include/discovery.h src/discovery.cc
@@ -264,7 +265,6 @@ if (test)
                  test/gvcf_test_cases.cc
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc
-                 test/compare_iter.cc
                  test/unifier.cc
                  test/cli_utils.cc
                  test/cli.cc)

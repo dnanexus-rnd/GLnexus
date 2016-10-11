@@ -52,6 +52,13 @@
       "optional": true
     },
     {
+      "name": "iter_compare",
+      "help": "debugging: compare different database iteration implementations",
+      "class": "boolean",
+      "default": false,
+      "optional": true
+    },
+    {
       "name": "sleep",
       "help": "wait for debugging, require the --allow-ssh flag",
       "class": "int",

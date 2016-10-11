@@ -15,7 +15,6 @@
 #include "RocksKeyValue.h"
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
-#include "compare_iter.h"
 #include "cli_utils.h"
 
 using namespace std;
@@ -34,7 +33,8 @@ GLnexus::Status s;
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
                      int nr_threads,
-                     bool debug) {
+                     bool debug,
+                     bool iter_compare) {
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
@@ -70,6 +70,11 @@ static int all_steps(const vector<string> &vcf_files,
         vector<GLnexus::range> ranges;
         H("bulk load into DB",
           GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, true));
+    }
+
+    if (iter_compare) {
+        H("compare database iteration methods",
+          GLnexus::cli::utils::compare_db_itertion_algorithms(console, dbpath, 50));
     }
 
     // discover alleles
@@ -110,9 +115,10 @@ void help(const char* prog) {
          << "Joint genotype all source VCF files, and generate a project VCF file" << endl
          << "on standard out. The source files must be in GVCF format." << endl
          << "Options:" << endl
-         << "  --help, -h       print this help message" << endl
+         << "  --help, -h           print this help message" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
-         << "  --debug, -d      create additional file outputs for diagnostics/debugging" << endl;
+         << "  --debug, -d          create additional file outputs for diagnostics/debugging" << endl
+         << "  --iter_compare, -i   compare different implementations of database iteration" << endl;
 }
 
 // Expected usage:
@@ -133,16 +139,18 @@ int main(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
+        {"iter_compare", no_argument, 0, 'i'},
         {0, 0, 0, 0}
     };
 
     int c;
     bool debug = false;
+    bool iter_compare = false;
     string bedfilename;
     int nr_threads = std::thread::hardware_concurrency();
 
     optind = 1; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:d",
+    while (-1 != (c = getopt_long(argc, argv, "hb:di",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -163,6 +171,10 @@ int main(int argc, char *argv[]) {
                 exit(1);
                 break;
 
+            case 'i':
+                iter_compare = true;
+                break;
+
             default:
                 abort ();
         }
@@ -177,5 +189,5 @@ int main(int argc, char *argv[]) {
     for (int i=optind; i < argc; i++)
         vcf_files.push_back(string(argv[i]));
 
-    return all_steps(vcf_files, bedfilename, nr_threads, debug);
+    return all_steps(vcf_files, bedfilename, nr_threads, debug, iter_compare);
 }
