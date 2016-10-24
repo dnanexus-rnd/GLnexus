@@ -5,7 +5,10 @@
 
 namespace GLnexus {
 namespace compare_queries {
-// utilities for comparing two BCF iterators
+// utilities for comparing two BCF iterators.
+//
+// We want to make sure that our efficient, multi-threaded, scanning code
+// is correct. We do this by comparing it to a much simpler iterator.
 
 // generate a random number in the range [0 .. n-1]
 int gen_rand_number(int n);
