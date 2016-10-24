@@ -122,7 +122,7 @@ void help(const char* prog) {
 }
 
 // Expected usage:
-//    glnexus_aio [vcf files]
+//    glnexus [vcf files]
 //
 int main(int argc, char *argv[]) {
     GLnexus::Status s;

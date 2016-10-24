@@ -2,7 +2,7 @@
 #include <map>
 #include "BCFKeyValueData.h"
 #include "BCFSerialize.h"
-#include "compare.h"
+#include "compare_queries.h"
 #include "catch.hpp"
 using namespace std;
 using namespace GLnexus;
@@ -1232,12 +1232,12 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     // is where the interesting stuff lies.
     lenChrom = 1000000;
     for (int i = 0; i < nIter; i++) {
-        int beg = compare::gen_rand_double(nRegions) * lenChrom;
-        int end = compare::gen_rand_double(nRegions) * lenChrom;
+        int beg = compare_queries::gen_rand_double(nRegions) * lenChrom;
+        int end = compare_queries::gen_rand_double(nRegions) * lenChrom;
         if (end < beg)
             std::swap(beg, end);
         range rng(0, beg, end);
-        int rc = compare::compare_query(*data, *cache, sampleset, rng);
+        int rc = compare_queries::compare_query(*data, *cache, sampleset, rng);
         switch (rc) {
         case 1: break; // comparison succeeded
         case 0: REQUIRE(false); // ERROR
@@ -1247,7 +1247,7 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
 
     // Add one global comparison
     range rng(0, 0, lenChrom);
-    int rc = compare::compare_query(*data, *cache, sampleset, rng);
+    int rc = compare_queries::compare_query(*data, *cache, sampleset, rng);
     switch (rc) {
     case 1: break; // comparison succeeded
     case 0: REQUIRE(false); // ERROR

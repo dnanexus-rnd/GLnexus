@@ -15,4 +15,4 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
                          --slave /usr/bin/gcov gcov /usr/bin/gcov-4.9
 
 # Install boost for use in yaml-cpp
-sudo apt-get -qq install -y libboost1.55-dev libboost-filesystem1.55 libboost-system1.55
+sudo apt-get -qq install -y libboost1.55-dev

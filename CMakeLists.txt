@@ -201,7 +201,7 @@ add_library(glnexus
             capnp/serialize/defs.capnp.h capnp/serialize/defs.capnp.c++
             include/types.h src/types.cc
             include/data.h src/data.cc
-            include/compare.h src/compare.cc
+            include/compare_queries.h src/compare_queries.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
             include/discovery.h src/discovery.cc

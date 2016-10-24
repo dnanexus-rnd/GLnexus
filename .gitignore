@@ -29,7 +29,6 @@
 playground
 unit_tests
 glnexus_cli
-glnexus_aio
 
 # Documnentation folder
 html/

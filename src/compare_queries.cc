@@ -1,10 +1,10 @@
 #include <iostream>
 #include <fstream>
 #include <map>
-#include "compare.h"
+#include "compare_queries.h"
 
 namespace GLnexus {
-namespace compare {
+namespace compare_queries {
 
 using namespace std;
 using IterResults = map<string, shared_ptr<vector<shared_ptr<bcf1_t>>>>;

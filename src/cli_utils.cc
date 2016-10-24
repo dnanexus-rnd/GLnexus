@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include "service.h"
 #include "unifier.h"
-#include "compare.h"
+#include "compare_queries.h"
 
 #include "BCFKeyValueData.h"
 
@@ -928,7 +928,7 @@ Status compare_db_itertion_algorithms(std::shared_ptr<spdlog::logger> logger,
     S(metadata->sampleset_datasets(sampleset, samples, datasets));
 
     // compare queries
-    S(compare::compare_n_queries(n_iter, *data, *metadata, sampleset));
+    S(compare_queries::compare_n_queries(n_iter, *data, *metadata, sampleset));
     return Status::OK();
 }
 

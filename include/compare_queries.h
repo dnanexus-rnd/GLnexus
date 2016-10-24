@@ -1,10 +1,10 @@
-#ifndef GLNEXUS_COMPARE_H
-#define GLNEXUS_COMPARE_H
+#ifndef GLNEXUS_COMPARE_QUERIES_H
+#define GLNEXUS_COMPARE_QUERIES_H
 
 #include "BCFKeyValueData.h"
 
 namespace GLnexus {
-namespace compare {
+namespace compare_queries {
 // utilities for comparing two BCF iterators
 
 // generate a random number in the range [0 .. n-1]
