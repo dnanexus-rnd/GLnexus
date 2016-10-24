@@ -45,7 +45,7 @@ The code has some hooks for performance profiling using
 [FlameGraph](http://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html).
 
 To profile performance within the DNAnexus applet run the applet as
-usual plus `-i enable_perf=true`. This produces an output file
+usual plus `-i perf=true`. This produces an output file
 ```genotype.stacks``` containing sampling observation counts for common call
 stacks. To generate an SVG visualization with FlameGraph:
 
