@@ -82,10 +82,16 @@ unification:
     shared_ptr<bcf_hdr_t> hdr;
     shared_ptr<bcf1_t> rec;
 
+    bcf1_t_plus vr;
+
     #define REVISE_GENOTYPES_CASE(expected_allele1,expected_allele2,expected_gq,vcf_txt) { \
         s = TestUtils::load_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec); \
         REQUIRE(s.ok()); \
-        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), rec.get()); \
+        vr.p = rec; \
+        vr.is_ref = false; \
+        REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &vr.gt.v, &vr.gt.capacity) == 2); \
+        vr.allele_mapping = vector<int>(rec->n_allele, -1); \
+        s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), vr); \
         REQUIRE(s.ok()); \
         htsvecbox<int> gt; \
         REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &gt.v, &gt.capacity) == 2); \
