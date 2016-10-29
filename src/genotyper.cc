@@ -761,7 +761,7 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 /// appropriate calls (currently by translation of the input hard-calls).
 /// Updates genotypes and may modify min_ref_depth.
 ///
-/// At present this is NOT coded to deal with multi-sample gVCFs properly.
+/// FIXME: not coded to deal with multi-sample gVCFs properly.
 static Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
                                   const string& dataset, const bcf_hdr_t* dataset_header,
                                   int bcf_nsamples, const map<int,int>& sample_mapping,
@@ -772,7 +772,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     assert(genotypes.size() == 2*min_ref_depth.size());
     Status s;
 
-    // From the variant records, see if only one has a non-0/0 genotype
+    // Scan the variant records to identify ones with only 0/0 genotype calls. Presently
+    // we can deal with at most one record with a non-0/0 genotype.
     vector<shared_ptr<bcf1_t_plus>> records_00, records_non00;
     for (const auto& a_record : variant_records) {
         assert(!a_record->is_ref);
@@ -790,7 +791,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         }
     }
 
-    // update min_ref_depth with 0/0 records
+    // update min_ref_depth with found 0/0 records
     S(update_min_ref_depth(dataset, dataset_header, bcf_nsamples, sample_mapping,
                            records_00, depth, min_ref_depth));
 
@@ -812,6 +813,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         }
         return Status::OK();
     } else if (records_non00.size() > 1) {
+        // multiple non-0/0 records; we'll need to bug out with OverlappingVariants
+        // or UnphasedVariants. Analyze the ranges to distinguish these two cases.
+        // Maybe we'll be able to handle some cases better in the future.
         range intersection(records_non00[0]->p);
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
@@ -820,10 +824,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             intersection.end = min(record_rng.end, intersection.end);
         }
 
-        // OverlappingVariants. there might be certain cases we'll be able to
-        // handle better here in the future
         NoCallReason rnc = NoCallReason::OverlappingVariants;
-
         if (intersection.beg >= intersection.end) {
             // UnphasedVariants: non-overlapping variant records
             rnc = NoCallReason::UnphasedVariants;
