@@ -81,7 +81,7 @@ struct bcf1_t_plus {
     // does the record have at least one non-symbolic ALT allele which is not in the unified site?
     bool has_lost_allele = false;
 };
-Status preprocess_record(const unified_site& site, const bcf_hdr_t* hdr, const shared_ptr<bcf1_t>& record, bcf1_t_plus& ans);
+Status preprocess_record(const unified_site& site, const bcf_hdr_t* hdr, const std::shared_ptr<bcf1_t>& record, bcf1_t_plus& ans);
 Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const std::map<int, int>& sample_mapping,
                         const bcf_hdr_t* hdr, bcf1_t_plus& vr);
 

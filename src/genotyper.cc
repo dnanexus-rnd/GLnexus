@@ -770,13 +770,13 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     assert(genotypes.size() == 2*min_ref_depth.size());
     Status s;
 
+    const bcf1_t_plus* record = nullptr;
+
     // TODO: for each sample, do we have at most one variant record with a non-0/0 genotype?
     // if so then translate the genotype. [but need to update min_ref_depth with other variant records]
     // Otherwise, bug out with UnphasedVariants or OverlappingVariants depending on whether
     // the variant records all share a reference position or not.
     // TODO: recover concept of "pseudo" reference confidence records
-    
-    // TODO: extract variant records
 
     if (records.size() == 0) {
         // no variation represented in this dataset; make homozygous ref calls
@@ -795,6 +795,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             }
         }
         return Status::OK();
+    } else if (records.size() == 1) {
+        record = records[0].get();
     } else if (records.size() > 1) {
         // OverlappingVariants. there might be certain cases we'll be able to
         // handle better here in the future
@@ -822,44 +824,43 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     }
 
     // Now, translating genotypes from one variant BCF record.
-    const bcf1_t_plus& record = *records[0];
 
     // get the genotype calls
     htsvecbox<int> gt;
-    int nGT = bcf_get_genotypes(dataset_header, record.p.get(), &gt.v, &gt.capacity);
+    int nGT = bcf_get_genotypes(dataset_header, record->p.get(), &gt.v, &gt.capacity);
     int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
     if (!gt.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
-    assert(record.p->n_sample == bcf_hdr_nsamples(dataset_header));
+    assert(record->p->n_sample == bcf_hdr_nsamples(dataset_header));
 
-    S(depth.Load(dataset, dataset_header, record.p.get()));
+    S(depth.Load(dataset, dataset_header, record->p.get()));
 
     // for each shared sample, record the genotype call.
     for (const auto& ij : sample_mapping) {
         assert(2*ij.first < nGT);
         assert(ij.second < min_ref_depth.size());
 
-        #define fill_allele(ofs)                                                 \
-            if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&                    \
-                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                      \
-                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);                   \
-                assert(al >= 0 && al < record.p->n_allele);                      \
-                int rd = min_ref_depth[ij.second];                               \
-                if (depth.get(ij.first, al) >= cfg.required_dp                   \
-                    && (rd < 0 || rd >= cfg.required_dp)) {                      \
-                    if (record.allele_mapping[al] >= 0) {                        \
-                        genotypes[2*ij.second+(ofs)] =                           \
-                            one_call(bcf_gt_unphased(record.allele_mapping[al]), \
-                                     NoCallReason::N_A);                         \
-                    } else {                                                     \
-                        genotypes[2*ij.second+(ofs)].RNC =                       \
-                            record.deletion_allele[al]                           \
-                                ? NoCallReason::LostDeletion                     \
-                                : NoCallReason::LostAllele;                      \
-                    }                                                            \
-                } else {                                                         \
-                    genotypes[2*ij.second+(ofs)].RNC =                           \
-                        NoCallReason::InsufficientDepth;                         \
-                }                                                                \
+        #define fill_allele(ofs)                                                  \
+            if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
+                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                       \
+                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);                    \
+                assert(al >= 0 && al < record->p->n_allele);                      \
+                int rd = min_ref_depth[ij.second];                                \
+                if (depth.get(ij.first, al) >= cfg.required_dp                    \
+                    && (rd < 0 || rd >= cfg.required_dp)) {                       \
+                    if (record->allele_mapping[al] >= 0) {                        \
+                        genotypes[2*ij.second+(ofs)] =                            \
+                            one_call(bcf_gt_unphased(record->allele_mapping[al]), \
+                                     NoCallReason::N_A);                          \
+                    } else {                                                      \
+                        genotypes[2*ij.second+(ofs)].RNC =                        \
+                            record->deletion_allele[al]                           \
+                                ? NoCallReason::LostDeletion                      \
+                                : NoCallReason::LostAllele;                       \
+                    }                                                             \
+                } else {                                                          \
+                    genotypes[2*ij.second+(ofs)].RNC =                            \
+                        NoCallReason::InsufficientDepth;                          \
+                }                                                                 \
             }
         fill_allele(0)
         fill_allele(1)

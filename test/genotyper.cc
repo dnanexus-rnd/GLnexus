@@ -84,12 +84,11 @@ unification:
 
     bcf1_t_plus vr;
 
-    #define REVISE_GENOTYPES_CASE(expected_allele1,expected_allele2,expected_gq,has_lost_allele_,vcf_txt) { \
+    #define REVISE_GENOTYPES_CASE(expected_allele1,expected_allele2,expected_gq,vcf_txt) { \
         s = TestUtils::load_vcf1((string(header_txt)+vcf_txt).c_str(), hdr, rec); \
         REQUIRE(s.ok()); \
-        s = preprocess_record(us, hdr, rec.get(), vr); \
-        REQUIRE(s.ok());
-        vr.has_lost_allele = has_lost_allele_; \
+        s = preprocess_record(us, hdr.get(), rec, vr); \
+        REQUIRE(s.ok()); \
         REQUIRE(bcf_get_genotypes(hdr.get(), rec.get(), &vr.gt.v, &vr.gt.capacity) == 2); \
         s = GLnexus::revise_genotypes(genotyper_cfg, us, sample_mapping, hdr.get(), vr); \
         REQUIRE(s.ok()); \
@@ -106,28 +105,28 @@ unification:
     }
 
     SECTION("no revision") {
-        REVISE_GENOTYPES_CASE(0, 1, 60, false, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,10,0:20:60:60,0,240,80,246,292");
+        REVISE_GENOTYPES_CASE(0, 1, 60, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,10,0:20:60:60,0,240,80,246,292");
     }
 
     SECTION("double ALT") {
-        REVISE_GENOTYPES_CASE(1, 2, 16, false, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	1/2:0,6,6:12:16:240,46,240,46,0,80");
+        REVISE_GENOTYPES_CASE(1, 2, 16, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	1/2:0,6,6:12:16:240,46,240,46,0,80");
     }
 
     // PL with missing values
     SECTION("PL missing values") {
-        REVISE_GENOTYPES_CASE(0, 1, 16, false, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,.,.,.:1,9,1,1");
+        REVISE_GENOTYPES_CASE(0, 1, 16, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,.,.,.:1,9,1,1");
     }
 
     SECTION("lost allele, not revised") {
-        REVISE_GENOTYPES_CASE(0, 1, 15, true, "21	1000	.	T	C,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,86,246,292");
+        REVISE_GENOTYPES_CASE(0, 1, 15, "21	1000	.	T	C,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,86,246,292");
     }
 
     SECTION("lost allele, revised") {
-        REVISE_GENOTYPES_CASE(0, 0, 5, true, "21	1000	.	T	C,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:25:25,0,240,86,246,292");
+        REVISE_GENOTYPES_CASE(0, 0, 5, "21	1000	.	T	C,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:25:25,0,240,86,246,292");
     }
 
     SECTION("lost allele, PL with missing values") {
-        REVISE_GENOTYPES_CASE(0, 1, 15, true, "21	1000	.	T	C,G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,,.,.,.");
+        REVISE_GENOTYPES_CASE(0, 1, 15, "21	1000	.	T	C,G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,,.,.,.");
     }
 
     const char* us_yml2 = 1 + R"(
@@ -145,6 +144,6 @@ unification:
     REQUIRE(s.ok());
 
     SECTION("minor REF") {
-        REVISE_GENOTYPES_CASE(0, 1, 16, false, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,2,0:12:16:16,0,240,46,246,292");
+        REVISE_GENOTYPES_CASE(0, 1, 16, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,2,0:12:16:16,0,240,46,246,292");
     }
 }
