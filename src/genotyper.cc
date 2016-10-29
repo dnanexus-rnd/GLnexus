@@ -39,8 +39,8 @@ static inline bool is_deletion(const string& ref, const string& alt) {
 }
 
 // Pre-process a bcf1_t record to cache some useful info that we'll use repeatedly
-static Status preprocess_record(const unified_site& site, const bcf_hdr_t* hdr, const shared_ptr<bcf1_t>& record,
-                                bcf1_t_plus& ans) {
+ Status preprocess_record(const unified_site& site, const bcf_hdr_t* hdr, const shared_ptr<bcf1_t>& record,
+                          bcf1_t_plus& ans) {
     range rng(record);
     assert(rng.overlaps(site.pos));
 
@@ -736,12 +736,12 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
     for (const auto& record : records) {
         auto rp = make_shared<bcf1_t_plus>();
         S(preprocess_record(site, hdr, record, *rp));
-        if (!rp->is_ref && cfg.revise_genotypes) {
-            S(revise_genotypes(cfg, site, sample_mapping, hdr, *rp));
-        }
         if (rp->is_ref) {
             ref_records.push_back(rp->p);
         } else {
+            if (cfg.revise_genotypes) {
+                S(revise_genotypes(cfg, site, sample_mapping, hdr, *rp));
+            }
             variant_records.push_back(rp);
         }
         all_records.push_back(rp);
