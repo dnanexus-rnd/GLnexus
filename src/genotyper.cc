@@ -773,12 +773,17 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     Status s;
 
     // From the variant records, see if only one has a non-0/0 genotype
-    // TODO: fix for multi-sample gVCFs
     vector<shared_ptr<bcf1_t_plus>> records_00, records_non00;
     for (const auto& a_record : variant_records) {
-        assert(!a_record.is_ref);
-        if (bcf_gt_is_missing(a_record->gt[0]) || bcf_gt_allele(a_record->gt[0]) != 0 ||
-            bcf_gt_is_missing(a_record->gt[1]) || bcf_gt_allele(a_record->gt[1]) != 0) {
+        assert(!a_record->is_ref);
+        bool non00 = false;
+        for (int i = 0; i < 2*bcf_nsamples; i++) {
+            assert(a_record->gt.capacity > i);
+            if (bcf_gt_is_missing(a_record->gt[i]) || bcf_gt_allele(a_record->gt[i]) != 0) {
+                non00 = true;
+            }
+        }
+        if (non00) {
             records_non00.push_back(a_record);
         } else {
             records_00.push_back(a_record);
