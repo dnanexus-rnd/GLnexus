@@ -98,17 +98,12 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     if (prefix_length) {
         // prefix-based hash indexing for this column family
         opts.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(prefix_length));
-        opts.memtable_factory.reset(rocksdb::NewHashSkipListRepFactory());
         bbto.index_type = rocksdb::BlockBasedTableOptions::kHashSearch;
     }
 
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 
     if (mode == OpenMode::BULK_LOAD) {
-        // Use RocksDB's vector memtable implementation instead of the default
-        // skiplist. The vector has faster insertion but much slower lookup.
-        opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
-
         // Increase memtable size (and shrink block cache to compensate)
         opts.write_buffer_size = totalRAM() / 3;
         opts.max_write_buffer_number = 2;
@@ -144,6 +139,8 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     opts.compaction_readahead_size = 16 << 20;
 
     if (mode == OpenMode::BULK_LOAD) {
+        opts.allow_concurrent_memtable_write = true;
+        opts.enable_write_thread_adaptive_yield = true;
         opts.disableDataSync = true;
     }
 }
