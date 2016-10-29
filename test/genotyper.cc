@@ -126,7 +126,7 @@ unification:
     }
 
     SECTION("lost allele, PL with missing values") {
-        REVISE_GENOTYPES_CASE(0, 1, 15, "21	1000	.	T	C,G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,,.,.,.");
+        REVISE_GENOTYPES_CASE(0, 1, 15, "21	1000	.	T	C,G	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,.,.,.");
     }
 
     const char* us_yml2 = 1 + R"(
