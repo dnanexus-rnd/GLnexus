@@ -569,9 +569,9 @@ void help_discover_alleles(const char* prog) {
          << "are one-based, inclusive. As an alternative to providing one interval on the" << endl
          << "command line, you can provide a three-column BED file using --bed." << endl
          << "Options:" << endl
-         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
-         << "  --config X, -c X     apply unifier/genotyper configuration preset X" << endl
-         << "  --threads N, -t N    override thread pool size (default: nproc)" << endl
+         << "  --bed FILE, -b FILE    path to three-column BED file" << endl
+         << "  --config X, -c X       apply unifier/genotyper configuration preset X" << endl
+         << "  --threads N, -t N      override thread pool size (default: nproc)" << endl
          << endl;
 }
 
@@ -685,8 +685,10 @@ int main_discover_alleles(int argc, char *argv[]) {
     }
     console->info() << "discovered " << dsals.size() << " alleles";
 
-    // Write the discovered alleles to stdout
-    H("write results as yaml", utils::yaml_stream_of_discovered_alleles(N, contigs, dsals, cout));
+    // Write the discovered alleles to stdout.
+    // "1" is the standard C for the standard out file-descriptor.
+    H("write results with cap'n proto serialization",
+      GLnexus::capnp_of_discovered_alleles_fd(N, contigs, dsals, 1));
     return 0;
 }
 

@@ -66,6 +66,25 @@ public:
         noun_ = std::make_unique<std::string>(noun);
     }
 
+    // copy constructor
+    Status(const Status &s) noexcept
+        : code_(s.code_), msg_(s.msg_){
+        if (s.noun_ != nullptr)
+            noun_ = std::make_unique<std::string>(*s.noun_);
+    }
+
+    // assignment constructor
+    Status& operator=(const Status &s) noexcept {
+        // check for self-assignment
+        if (&s == this)
+            return *this;
+        code_ = s.code_;
+        msg_ = s.msg_;
+        if (s.noun_ != nullptr)
+            noun_ = std::make_unique<std::string>(*s.noun_);
+        return *this;
+    }
+
     bool ok() const noexcept { return code_ == StatusCode::OK; }
     bool bad() const noexcept { return !ok(); }
     operator StatusCode() const noexcept { return code_; }
@@ -252,6 +271,9 @@ const int MAX_AQ = 9999;
 struct top_AQ {
     static const unsigned COUNT = 10;
     int V[COUNT] __attribute__ ((aligned));
+
+    // This is a temporary buffer, used when adding observations. It
+    // does not need to be serialized.
     std::vector<int> addbuf;
 
     top_AQ() {
@@ -390,6 +412,41 @@ Status yaml_of_discovered_alleles(const discovered_alleles&,
 Status discovered_alleles_of_yaml(const YAML::Node&,
                                   const std::vector<std::pair<std::string,size_t> >& contigs,
                                   discovered_alleles&);
+
+ // Serialization of data structures with cap'n proto (https://capnproto.org/index.html)
+//
+// The issue this module tries to solve is that YAML serialization is slow for
+// big data structures, and discovered-alleles tends to be large. Capnp serialization
+// is very fast.
+//
+// write discovered_alleles structure to a file, with cap'n proto serialization
+Status capnp_of_discovered_alleles(unsigned int sample_count,
+                                   const std::vector<std::pair<std::string,size_t> >& contigs,
+                                   const discovered_alleles &dsals,
+                                   const std::string &filename);
+
+// write discovered_alleles structure to a file descriptor.
+//
+// Note: this will not work with a C++ stream, only a low level file descriptor.
+Status capnp_of_discovered_alleles_fd(unsigned int sample_count,
+                                      const std::vector<std::pair<std::string,size_t> >& contigs,
+                                      const discovered_alleles &dsals,
+                                      int fd);
+
+// read discovered_alleles structure from a file, as serialized by cap'n proto
+Status discovered_alleles_of_capnp(const std::string &filename,
+                                   unsigned int &sample_count,
+                                   std::vector<std::pair<std::string,size_t> >& contigs,
+                                   discovered_alleles &dsals);
+
+// Verify that we can serialize and deserialize a discovered-alleles
+// structure. Temporary results are written to [filename].
+//
+// Note: this is a debugging function
+Status capnp_discover_alleles_verify(unsigned int sample_count,
+                                     const std::vector<std::pair<std::string,size_t> >& contigs,
+                                     const discovered_alleles &dsals,
+                                     const std::string &filename);
 
 
 struct unified_site {
@@ -607,7 +664,7 @@ struct retained_format_field {
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0,
         DefaultValueFiller default_type_=DefaultValueFiller::MISSING, bool ignore_non_variants_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), default_type(default_type_), count(count_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_) {
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_) {
         // Keep the names in sorted order, so that the comparison operator
         // will compare orig_name vectors element-wise.
         std::sort(orig_names.begin(), orig_names.end());

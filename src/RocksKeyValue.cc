@@ -80,7 +80,6 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.level0_file_num_compaction_trigger = 5;
 
     opts.compaction_options_universal.compression_size_percent = -1;
-    opts.compaction_options_universal.allow_trivial_move = true;
     opts.compaction_options_universal.max_size_amplification_percent = 300;
     opts.compaction_options_universal.size_ratio = 10;
     opts.compaction_options_universal.min_merge_width = 2;

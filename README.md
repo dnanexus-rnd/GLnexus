@@ -21,6 +21,7 @@ Other dependencies (should be set up automatically by CMake):
 * [CTPL](https://github.com/vit-vit/CTPL)
 * [fcmm](https://github.com/giacomodrago/fcmm)
 * [Catch](https://github.com/philsquared/Catch) test framework
+* [Capnproto](https://github.com/sandstorm-io/capnproto) efficient serialization
 
 ### Developer documentation
 

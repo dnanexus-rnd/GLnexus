@@ -341,11 +341,12 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
         auto fut = threadpool.push([&, dsal_file](int tid){
             discovered_alleles dsals2;
             vector<pair<string,size_t>> contigs2;
-            unsigned N2;
+            unsigned int N2;
 
-            std::ifstream ifs(dsal_file.c_str());
-            Status s = discovered_alleles_of_yaml_stream(ifs, N2, contigs2, dsals2);
-            ifs.close();
+            //std::ifstream ifs(dsal_file.c_str());
+            //Status s = discovered_alleles_of_yaml_stream(ifs, N2, contigs2, dsals2);
+            //ifs.close();
+            Status s = discovered_alleles_of_capnp(dsal_file, N2, contigs2, dsals2);
             if (!s.ok()) {
                 logger->info() << "Error loading alleles from " << dsal_file;
                 return s;
@@ -360,8 +361,8 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                 N = N2;
                 return Status::OK();
             }
-            
-            // We have already loaded and merged some files. 
+
+            // We have already loaded and merged some files.
             // Verify that the contigs are the same
             if (contigs != contigs2) {
                 return Status::Invalid("The contigs do not match");
