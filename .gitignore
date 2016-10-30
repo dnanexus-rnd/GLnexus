@@ -45,7 +45,7 @@ cscope*
 
 #emacs
 *~
-.vscode
+.vscode/
 
 # htslib stuff
 mem:*
