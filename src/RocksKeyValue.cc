@@ -130,6 +130,12 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
 void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     ApplyColumnFamilyOptions(mode, 0, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
 
+    if (mode == OpenMode::READ_ONLY) {
+        // override db_log_dir when we're read-only, so that the RocksDB dir
+        // stays untouched. https://github.com/facebook/rocksdb/issues/478
+        opts.db_log_dir = "/tmp";
+    }
+
     opts.max_open_files = -1;
 
     // increase parallelism
