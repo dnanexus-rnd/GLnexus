@@ -843,6 +843,8 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Block;
     ans << YAML::BeginMap;
 
+    ans << YAML::Key << "revise_genotypes" << YAML::Value << revise_genotypes;
+    ans << YAML::Key << "min_assumed_allele_frequency" << YAML::Value << min_assumed_allele_frequency;
     ans << YAML::Key << "required_dp" << YAML::Value << required_dp;
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
     ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
@@ -874,6 +876,19 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     ans = genotyper_config();
     #define V(pred,msg) if (!(pred)) return Status::Invalid("genotyper_config::of_yaml: " msg);
     V(yaml.IsMap(), "not a map at top level");
+
+    const auto n_revise_genotypes = yaml["revise_genotypes"];
+    if (n_revise_genotypes) {
+        V(n_revise_genotypes.IsScalar(), "invalid revise_genotypes");
+        ans.revise_genotypes = n_revise_genotypes.as<bool>();
+    }
+
+    const auto n_min_assumed_allele_frequency = yaml["min_assumed_allele_frequency"];
+    if (n_min_assumed_allele_frequency) {
+        V(n_min_assumed_allele_frequency.IsScalar(), "invalid min_assumed_allele_frequency");
+        ans.min_assumed_allele_frequency = n_min_assumed_allele_frequency.as<float>();
+        V(ans.min_assumed_allele_frequency >= 0 && ans.min_assumed_allele_frequency <= 1.0, "invalid min_assumed_allele_frequency");
+    }
 
     const auto n_required_dp = yaml["required_dp"];
     if (n_required_dp) {
