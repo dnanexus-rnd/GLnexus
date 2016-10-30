@@ -696,3 +696,10 @@ TEST_CASE("revise_overlapping") {
     GVCFTestCase revise_overlapping_case("revise_overlapping", v_formats, v_infos);
     revise_overlapping_case.perform_gvcf_test();
 }
+
+TEST_CASE("censor_rnc_format_fields") {
+    vector<string> v_formats = {"DP", "GT", "RNC", "GQ"};
+    vector<string> v_infos = {};
+    GVCFTestCase gtc("censor_rnc_format_fields", v_formats, v_infos);
+    gtc.perform_gvcf_test();
+}

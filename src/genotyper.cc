@@ -99,21 +99,22 @@ public:
     // output
     const int count;
 
-     IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
+    IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
 
-     IFormatFieldHelper() = default;
+    IFormatFieldHelper() = default;
 
-     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                                    const vector<string>& field_names, int n_val_per_sample) = 0;
+    virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                                   const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                                   const vector<string>& field_names, int n_val_per_sample) = 0;
 
-      virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+    virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                                 const map<int, int>& sample_mapping, const vector<int> allele_mapping) = 0;
 
-     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
+    virtual Status censor(int sample) = 0;
 
-     virtual ~IFormatFieldHelper() = default;
+    virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
+    virtual ~IFormatFieldHelper() = default;
 };
 
 template <class T>
@@ -130,6 +131,11 @@ class FormatFieldHelper : public IFormatFieldHelper {
     // whereby 0 or 1 value is pushed to it for every record processed by
     // add_record_data
     vector<vector<T>> format_v;
+
+    // The FORMAT fields of some samples may need to be censored (emitted
+    // as missing) under certain circumstances where they might otherwise
+    // be unreliable/misleading.
+    set<int> censored_samples;
 
     // Combination function to handle combining multiple format values
     // from multiple records
@@ -158,24 +164,30 @@ class FormatFieldHelper : public IFormatFieldHelper {
         return ans;
     }
 
+    Status get_missing_value(T* val) {
+        switch (field_info.type) {
+            case RetainedFieldType::INT:
+                *val = bcf_int32_missing;
+                break;
+            case RetainedFieldType::FLOAT:
+                // Union construct to side-step compiler warnings about type checking
+                // For reference, refer to bcf_float_set function in htslib/vcf.h
+                union {uint32_t i; float f; } u;
+                u.i = bcf_float_missing;
+                *val = u.f;
+                break;
+            default:
+                return Status::Invalid("genotyper: encountered unknown field_info.type");
+        }
+        return Status::OK();
+    }
+
     Status get_default_value(T* val) {
         if (field_info.default_type == DefaultValueFiller::ZERO) {
             *val = 0;
         } else if (field_info.default_type == DefaultValueFiller::MISSING) {
-            switch (field_info.type) {
-                case RetainedFieldType::INT:
-                    *val = bcf_int32_missing;
-                    break;
-                case RetainedFieldType::FLOAT:
-                    // Union construct to side-step compiler warnings about type checking
-                    // For reference, refer to bcf_float_set function in htslib/vcf.h
-                    union {uint32_t i; float f; } u;
-                    u.i = bcf_float_missing;
-                    *val = u.f;
-                    break;
-                default:
-                    return Status::Invalid("genotyper: encountered unknown field_info.type");
-            }
+            Status s;
+            S(get_missing_value(val));
         } else {
             return Status::Invalid("genotyper: encountered unknown default value filler type");
         }
@@ -183,15 +195,14 @@ class FormatFieldHelper : public IFormatFieldHelper {
     }
     Status combine_format_data(vector<T>& ans) {
         Status s;
+        ans.clear();
 
-        int n_empty_samples = 0;
         // Templatized default value
         T default_value;
         S(get_default_value(&default_value));
 
         for (auto& v : format_v) {
             if (v.empty()) {
-                n_empty_samples++;
                 v.push_back(default_value);
             }
         }
@@ -365,14 +376,27 @@ public:
         return Status::OK();
     }
 
+    // Mark the (output) sample as censored.
+    Status censor(int sample) {
+        if (sample < 0 || sample >= n_samples) return Status::Invalid("genotyper::FormatFieldHelper::censor");
+        censored_samples.insert(sample);
+        return Status::OK();
+    }
+
     Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) {
         Status s;
         vector<T> ans;
         S(combine_format_data(ans));
+        assert(ans.size() == n_samples*count);
 
-        if (ans.empty()) {
-            // FORMAT field could not be represented for this record
-            return Status::OK();
+        if (!censored_samples.empty()) {
+            T missing_value;
+            S(get_missing_value(&missing_value));
+            for (int cs : censored_samples) {
+                for (int j = 0; j < count; j++) {
+                    ans[cs*count+j] = missing_value;
+                }
+            }
         }
 
         int retval  = 0;
@@ -964,9 +988,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         if (rnc != NoCallReason::N_A) {
             // no call for the samples in this dataset (several possible
             // reasons)
-            for (int i = 0; i < bcf_nsamples; i++) {
-                genotypes[sample_mapping.at(i)*2].RNC =
-                    genotypes[sample_mapping.at(i)*2+1].RNC = rnc;
+            for (const auto& p : sample_mapping) {
+                genotypes[p.second*2].RNC =
+                    genotypes[p.second*2+1].RNC = rnc;
             }
         } else {
             // make genotype calls for the samples in this dataset
@@ -975,9 +999,34 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                                   genotypes));
         }
 
+        // Update FORMAT fields for this dataset.
         S(update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers,
                                all_records, variant_records));
-
+        // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
+        // we must censor the FORMAT fields as potentially unreliable/misleading.
+        for (const auto& p : sample_mapping) {
+            if (genotypes[p.second*2].RNC == genotypes[p.second*2+1].RNC) {
+                switch (genotypes[p.second*2].RNC) {
+                    case NoCallReason::MissingData:
+                    case NoCallReason::PartialData:
+                        for (const auto& fh : format_helpers) {
+                            S(fh->censor(p.second));
+                        }
+                        break;
+                    case NoCallReason::UnphasedVariants:
+                    case NoCallReason::OverlappingVariants:
+                        for (const auto& fh : format_helpers) {
+                            if (fh->field_info.name != "DP") {
+                                // TODO: hard-coded exception for DP, which we're fine passing
+                                // through for unphased & overlapping variants;
+                                // does this need to be configurable?
+                                S(fh->censor(p.second));
+                            }
+                        }
+                        break;
+                }
+            }
+        }
 
         // Handle residuals
         if (residualsFlag) {
