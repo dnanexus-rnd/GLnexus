@@ -1,0 +1,99 @@
+readme: |
+  Tests censoring of FORMAT fields in non-called genotypes (due to MissingData, PartialData,
+  OverlappingVariants, UnphasedVariants). We censor them because they could be misleading
+  in those cases.
+  C has PartialData and D has OverlappingVariants; we check output FORMAT fields are censored
+  (modulo a hard-coded exception for DP in OverlappingVariants/UnphasedVariants cases)
+input:
+  header : |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	907766	.	G	<NON_REF>	.	.	END=7907983	GT:DP:GQ:MIN_DP:PL	0/0:76:99:21:0,63,872
+    - B.gvcf: |
+        B
+        A	907747	.	T	<NON_REF>	.	.	END=7907970	GT:DP:GQ:MIN_DP:PL	0/0:70:99:25:0,75,1034
+        A	907971	.	C	A,CA,<NON_REF>	719.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:17,26,2,0:45:99:806,0,715,757,422,1190,800,476,1164,1204:3,14,7,19
+        A	907972	.	A	<NON_REF>	.	.	END=7907972	GT:DP:GQ:MIN_DP:PL	0/0:53:0:53:0,0,1770
+    - C.gvcf: |
+        C
+        A	907971	.	C	A,<NON_REF>	552.77	.	.	GT:AD:DP:GQ:PL:SB	0/1:32,21,0:53:99:581,0,934,677,996,1673:6,26,3,18
+        A	907972	.	A	<NON_REF>	.	.	END=7907972	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
+    - D.gvcf: |
+        D
+        A	907969	.	A	<NON_REF>	.	.	END=7907969	GT:DP:GQ:MIN_DP:PL	0/0:39:60:39:0,60,900
+        A	907970	.	AC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/1:24,3,0:27:4:4,0,500,75,509,584:4,20,0,3
+        A	907971	.	C	A,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	0/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
+        A	907972	.	A	<NON_REF>	.	.	END=7907972	GT:DP:GQ:MIN_DP:PL	0/0:32:0:32:0,0,996
+
+truth_unified_sites:
+    - range: {ref: A, beg: 907970, end: 907971}
+      alleles: [AC, AA, A]
+      allele_frequencies: [.nan, 0.375, 0.125]
+      unification:
+        - range: {beg: 907971, end: 907971}
+          dna: A
+          to: 1
+        - range: {beg: 907970, end: 907971}
+          dna: A
+          to: 2
+
+genotyper_config:
+    revise_genotypes: true
+    liftover_fields:
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_type: zero
+      count: 0
+    - orig_names: [SB]
+      name: SB
+      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      A	907970	.	AC	AA,A	0	.	.	GT:GQ:DP:AD:SB:RNC	0/0:99:76:21,0,0:.,.,.,.:..	0/1:99:45:17,26,0:3,14,7,19:..	./.:.:.:.,.,.:.,.,.,.:PP	./.:.:27:.,.,.:.,.,.,.:OO
