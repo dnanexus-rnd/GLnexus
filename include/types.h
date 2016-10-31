@@ -267,6 +267,7 @@ struct allele {
 //
 // top_AQ is used to store the highest COUNT observations (descending order) of
 // AQ for an allele across all genotype calls in the cohort.
+const int MAX_AQ = 9999;
 struct top_AQ {
     static const unsigned COUNT = 10;
     int V[COUNT] __attribute__ ((aligned));
@@ -552,6 +553,7 @@ struct unifier_config {
 
     // GQ phred score threshold for an input genotype call to "count" towards
     // copy number estimates for the constituent alleles.
+    // Suggested value: = min_AQ2
     int min_GQ = 0;
 
     // Keep only alleles with at least this estimated copy number discovered
@@ -673,6 +675,15 @@ struct retained_format_field {
 };
 
 struct genotyper_config {
+    /// Use genotype likelihoods and unified allele frequencies to revise
+    /// genotype calls
+    bool revise_genotypes = false;
+
+    /// Minimum assumed allele frequency to use in genotype revision; increasing
+    /// this typically increases sensitivity to borderline ALT allele calls.
+    /// Suggested value: 1/(2N) but not less than 0.0001
+    float min_assumed_allele_frequency = 0.0001;
+
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
 

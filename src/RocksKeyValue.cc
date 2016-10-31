@@ -80,7 +80,6 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.level0_file_num_compaction_trigger = 5;
 
     opts.compaction_options_universal.compression_size_percent = -1;
-    opts.compaction_options_universal.allow_trivial_move = true;
     opts.compaction_options_universal.max_size_amplification_percent = 300;
     opts.compaction_options_universal.size_ratio = 10;
     opts.compaction_options_universal.min_merge_width = 2;
@@ -130,6 +129,12 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
 
 void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     ApplyColumnFamilyOptions(mode, 0, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
+
+    if (mode == OpenMode::READ_ONLY) {
+        // override db_log_dir when we're read-only, so that the RocksDB dir
+        // stays untouched. https://github.com/facebook/rocksdb/issues/478
+        opts.db_log_dir = "/tmp";
+    }
 
     opts.max_open_files = -1;
 

@@ -86,6 +86,7 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
     return Status::OK();
 }
 
+const double LOG0 = log(0.0);
 const double LOG10_E = log10(exp(1.0));
 GLnexus::Status bcf_get_genotype_log_likelihoods(const bcf_hdr_t* header, bcf1_t *record, vector<double>& gll) {
     unsigned nGT = genotypes(record->n_allele);
@@ -95,8 +96,14 @@ GLnexus::Status bcf_get_genotype_log_likelihoods(const bcf_hdr_t* header, bcf1_t
     htsvecbox<int32_t> igl;
     if (bcf_get_format_int32(header, record, "PL", &igl.v, &igl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
-            assert(igl[ik] >= 0.0);
-            gll[ik] = double(igl[ik])/(-10.0*LOG10_E);
+            auto x = igl[ik];
+            if (x == bcf_int32_missing || x == bcf_int32_vector_end) {
+                gll[ik] = LOG0;
+            } else if (x >= 0) {
+                gll[ik] = double(igl[ik])/(-10.0*LOG10_E);
+            } else {
+                return Status::Invalid("bcf_get_genotype_log_likelihoods: negative PL entry");
+            }
         }
         return Status::OK();
     }
@@ -124,8 +131,8 @@ GLnexus::Status alleles_topAQ(unsigned n_allele, unsigned n_sample, const vector
     for (unsigned i : samples) {
         assert(i < n_sample);
         const double *gll_i = gll.data() + i*nGT;
-        vector<double> maxLL_with(n_allele, log(0.0));    // max likelihood of a genotype carrying each allele
-        vector<double> maxLL_without(n_allele, log(0.0)); // max likelihood of a genotype NOT carrying each allele
+        vector<double> maxLL_with(n_allele, LOG0);    // max likelihood of a genotype carrying each allele
+        vector<double> maxLL_without(n_allele, LOG0); // max likelihood of a genotype NOT carrying each allele
 
         for (unsigned k = 0; k < nGT; k++) { // for each genotype
             auto p = gt_alleles(k);          // indices of the two alleles in this genotype
@@ -140,9 +147,15 @@ GLnexus::Status alleles_topAQ(unsigned n_allele, unsigned n_sample, const vector
             }
         }
         for (unsigned al = 0; al < n_allele; al++) {
-            // phred scale likelihood ratio
-            double AQLLR = std::max(0.0, maxLL_with[al] - maxLL_without[al]);
-            obs[al].push_back((int)round(10.0*AQLLR/log(10.0)));
+            if (maxLL_with[al] == LOG0) {
+                obs[al].push_back(0);
+            } else if (maxLL_without[al] == LOG0) {
+                obs[al].push_back(MAX_AQ);
+            } else {
+                // phred scale likelihood ratio
+                double AQLLR = std::max(0.0, maxLL_with[al] - maxLL_without[al]);
+                obs[al].push_back(std::min(MAX_AQ,(int)round(10.0*AQLLR/log(10.0))));
+            }
         }
     }
 

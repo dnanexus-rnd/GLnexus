@@ -538,9 +538,10 @@ static const char* config_presets_yml = R"eof(
 unifier_config:
   min_AQ1: 70
   min_AQ2: 40
-  min_GQ: 70
+  min_GQ: 40
 genotyper_config:
   required_dp: 1
+  revise_genotypes: true
   liftover_fields:
     - orig_names: [GQ]
       name: GQ
