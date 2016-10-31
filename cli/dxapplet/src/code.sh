@@ -41,10 +41,10 @@ main() {
         bed_ranges=$(find in/bed_ranges_to_genotype -type f)
     fi
     if [[ $debug == "true" ]]; then
-        debug_flags+="--debug"
+        debug_flags+=" --debug"
     fi
     if [[ $iter_compare == "true" ]]; then
-        debug_flags+="--iter_compare"
+        debug_flags+=" --iter_compare"
     fi
     if [[ "$perf_kernel" == "true" ]]; then
         # Kernel tracing implies user-space space tracing

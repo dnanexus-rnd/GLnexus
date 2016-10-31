@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
     int nr_threads = std::thread::hardware_concurrency();
 
     optind = 1; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:di",
+    while (-1 != (c = getopt_long(argc, argv, "hb:dI",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':

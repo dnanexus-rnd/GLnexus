@@ -37,15 +37,15 @@ double gen_rand_double(int n) {
 }
 
 static void print_bcf_record(bcf1_t *x) {
-    cout << "rid=" << x->rid << endl;
-    cout << "pos=" << x->pos << endl;
-    cout << "rlen=" << x->rlen << endl;
-    cout << "qual=" << x->qual << endl;
-    cout << "n_info=" << x->n_info << endl;
-    cout << "n_allele=" << x->n_allele << endl;
-    cout << "n_sample=" << x->n_sample << endl;
-    cout << "shared.l=" << x->shared.l << endl;
-    cout << "indiv.l=" << x->indiv.l << endl;
+    cerr << "rid=" << x->rid << endl;
+    cerr << "pos=" << x->pos << endl;
+    cerr << "rlen=" << x->rlen << endl;
+    cerr << "qual=" << x->qual << endl;
+    cerr << "n_info=" << x->n_info << endl;
+    cerr << "n_allele=" << x->n_allele << endl;
+    cerr << "n_sample=" << x->n_sample << endl;
+    cerr << "shared.l=" << x->shared.l << endl;
+    cerr << "indiv.l=" << x->indiv.l << endl;
 }
 
 static int calc_tot_num_entries(shared_ptr<IterResults> results) {
@@ -93,7 +93,7 @@ static int compare_results(shared_ptr<IterResults> resultsBase,
         //cout << dataset << " len=" << len << endl;
         for (int i=0; i < len; i++) {
             if (bcf_shallow_compare((*v)[i].get(), (*w)[i].get()) == 0) {
-                cout << "Error comparing two records"  << endl;
+                cerr << "Error comparing two records"  << endl;
                 print_bcf_record((*v)[i].get());
                 print_bcf_record((*w)[i].get());
                 return 0;
@@ -124,7 +124,7 @@ int compare_query(T &data, MetadataCache &cache,
 
         if (calc_tot_num_entries(resultsBase) > MAX_NUM_ENTRIES) {
             // We are overrunning the memory limits, abort
-            cout << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
+            cerr << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
             return -1;
         }
     }
@@ -140,12 +140,12 @@ int compare_query(T &data, MetadataCache &cache,
 
         if (calc_tot_num_entries(resultsBase) > MAX_NUM_ENTRIES) {
             // We are overrunning the memory limits, abort
-            cout << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
+            cerr << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
             return -1;
         }
     }
 
-    cout << "compare_query " << rng.str()
+    cerr << "compare_query " << rng.str()
          << " num_entries=" << calc_tot_num_entries(resultsSoph) << endl;
 
     // compare all the elements between the two results
