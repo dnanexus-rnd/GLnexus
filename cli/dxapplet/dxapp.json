@@ -1,111 +1,76 @@
 {
   "name": "GLnexus",
   "title": "GLnexus",
-  "summary": "GLnexus",
+  "summary": "GLnexus executable that processes a set of input gvcf files",
   "dxapi": "1.0.0",
   "version": "0.0.1",
   "inputSpec": [
     {
+      "name": "bed_ranges_to_genotype",
+      "help": "limit genotyping to these ranges",
+      "class": "file"
+    },
+    {
+      "name": "debug",
+      "help": "output additional files (unified-sites, discovered alleles, residuals)",
+      "class": "boolean",
+      "default": false,
+      "optional": true
+    },
+    {
       "name": "gvcf",
+      "help": "source gvcf files",
       "class": "array:file",
       "optional": true,
       "patterns": ["*.gvcf.gz", "*.g.vcf.gz", "*.gvcf", "*.g.vcf"]
     },
     {
       "name": "gvcf_tar",
+      "help": "source gvcf files batched into tar files",
       "class": "array:file",
       "optional": true,
       "patterns": ["*.tar"]
     },
     {
-      "name": "ranges_to_load",
-      "class": "array:string",
-      "optional": true
-    },
-    {
-      "name": "bucket_size",
-      "class": "int",
-      "optional": true
-    },
-    {
-      "name": "existing_db",
-      "class": "file",
-      "type": "GLnexus_db",
-      "optional": true
-    },
-    {
-      "name": "ranges_to_genotype",
-      "class": "array:string",
-      "optional": true
-    },
-    {
-      "name": "bed_ranges_to_genotype",
-      "class": "file",
-      "optional": true
-    },
-    {
-      "name": "config",
-      "description": "configuration preset",
-      "class": "string",
-      "optional": true
-    },
-    {
       "name": "output_name",
+      "help": "prefix for output file names",
       "class": "string",
       "default": "GLnexus"
     },
     {
-      "name": "sleep",
-      "class": "int",
-      "default": 0
-    },
-    {
-      "name": "enable_perf",
+      "name": "perf",
+      "help": "add performance tracing and outputs",
       "class": "boolean",
       "default": false,
       "optional": true
     },
     {
-      "name": "enable_kernel_perf",
+      "name": "perf_kernel",
+      "help": "trace kernel symbols, requires special permissions on the container. Implies the perf flag.",
       "class": "boolean",
       "default": false,
       "optional": true
     },
     {
       "name": "iter_compare",
+      "help": "debugging: compare different database iteration implementations",
       "class": "boolean",
       "default": false,
       "optional": true
     },
     {
-      "name": "residuals",
-      "class": "boolean",
-      "default": false,
+      "name": "sleep",
+      "help": "wait for debugging, require the --allow-ssh flag",
+      "class": "int",
+      "default": 0,
       "optional": true
-    },
-    {
-      "name": "lz4_output",
-      "help": "Compress outputs with LZ4 instead of gzip",
-      "class": "boolean",
-      "default": false
     }
   ],
   "outputSpec": [
     {
-      "name": "vcf",
+      "name": "discovered_alleles",
       "class": "file",
-      "patterns": ["*.vcf.gz", "*.vcf.lz4"],
       "optional": true
-    },
-    {
-      "name": "db",
-      "class": "file",
-      "type": "GLnexus_db",
-      "optional": true
-    },
-    {
-      "name": "db_load_log",
-      "class": "file"
     },
     {
       "name": "perf",
@@ -118,14 +83,14 @@
       "optional": true
     },
     {
-      "name": "discovered_alleles",
+      "name": "unified_sites",
       "class": "file",
       "optional": true
     },
     {
-      "name": "unified_sites",
+      "name": "vcf",
       "class": "file",
-      "optional": true
+      "patterns": ["*.vcf.gz"]
     }
   ],
   "runSpec": {
@@ -135,12 +100,11 @@
       {"name": "sysstat"},
       {"name": "numactl"},
       {"name": "libjemalloc1"},
-      {"name": "pigz"},
-      {"name": "liblz4-tool"}
+      {"name": "pigz"}
     ],
     "systemRequirements": {
       "main": {
-        "instanceType": "mem1_ssd1_x2"
+        "instanceType": "mem1_ssd1_x4"
       }
     },
     "distribution": "Ubuntu",

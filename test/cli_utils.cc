@@ -613,3 +613,88 @@ TEST_CASE("find_containing_range") {
         REQUIRE(ans == range(1,249210800,249214146));
     }
 }
+
+static void make_files_in_dir(const string &basedir) {
+    auto names = {"a", "b", "c"};
+    for (auto cursor : names) {
+        string path = basedir + "/" + cursor;
+        int retval = system(("touch " + path).c_str());
+        REQUIRE(retval == 0);
+        REQUIRE(utils::check_file_exists(path));
+    }
+}
+
+TEST_CASE("file_ops") {
+    string basedir = "/tmp/cli_utils";
+    int retval = system(("rm -rf " + basedir).c_str());
+    REQUIRE(retval == 0);
+    retval = system(("mkdir -p " + basedir).c_str());
+    REQUIRE(retval == 0);
+    REQUIRE(utils::check_dir_exists(basedir));
+
+    string file_path = basedir + "/foo.txt";
+    retval = system(("touch " + file_path).c_str());
+    REQUIRE(retval == 0);
+    REQUIRE(utils::check_file_exists(file_path));
+
+    make_files_in_dir(basedir);
+
+    // create some subdirectories
+    auto subdirs = {"X", "Y", "Z"};
+    for (auto cursor : subdirs) {
+        string path = basedir + "/" + cursor;
+        retval = system(("mkdir " + path).c_str());
+        REQUIRE(retval == 0);
+
+        make_files_in_dir(path);
+    }
+
+    retval = system(("rm -rf " + basedir).c_str());
+    REQUIRE(retval == 0);
+    REQUIRE(!utils::check_dir_exists(basedir));
+}
+
+TEST_CASE("parse_bed_file") {
+    Status s;
+
+    vector<pair<string,size_t>> contigs;
+    contigs.push_back(make_pair("1",10000000));
+    contigs.push_back(make_pair("2",31000000));
+
+    string basedir = "test/data/cli";
+    string bedfilename = basedir + "/vcr_test.bed";
+    vector<range> ranges;
+    s = utils::parse_bed_file(console, bedfilename, contigs, ranges);
+    REQUIRE(s.ok());
+    REQUIRE(ranges.size() == 10);
+}
+
+TEST_CASE("iter_compare") {
+    Status s;
+
+    // setup database directory
+    string dbdir = "/tmp/iter_compare";
+    REQUIRE(system(("rm -rf " + dbdir).c_str()) == 0);
+    REQUIRE(system(("mkdir -p " + dbdir).c_str()) == 0);
+    string dbpath = dbdir + "/DB";
+
+    string basedir = "test/data/cli";
+    string exemplar_gvcf = basedir + "/" + "F1.gvcf.gz";
+    vector<pair<string,size_t>> contigs;
+    s = cli::utils::db_init(console, dbpath, exemplar_gvcf, contigs);
+    REQUIRE(s.ok());
+    REQUIRE(contigs.size() >= 1);
+
+    vector<string> gvcfs;
+    for (auto fname : {"F1.gvcf.gz", "F2.gvcf.gz"}) {
+         gvcfs.push_back(basedir + "/" + fname);
+    }
+    vector<range> ranges;
+    s = cli::utils::db_bulk_load(console, 8, gvcfs, dbpath, ranges, contigs);
+    REQUIRE(s.ok());
+    REQUIRE(contigs.size() >= 1);
+
+    int n_iter = 50;
+    s = cli::utils::compare_db_itertion_algorithms(console, dbpath, n_iter);
+    console->info() << "Passed " << n_iter << " iterator comparison tests";
+}

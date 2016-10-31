@@ -23,7 +23,7 @@ std::string kDBPathBase = "/tmp/rocksdb_dir";
 static int NUM_LIMIT = 1024 * 1024 * 1024;
 
 // generate a random number in the range [0 .. n-1]
-static int genRandNumber(int n)
+static int gen_rand_number(int n)
 {
     static bool firstTime = true;
 
@@ -40,7 +40,7 @@ static int genRandNumber(int n)
 static const std::string createRandomDBFileName()
 {
     std::ostringstream out;
-    int rndNum = genRandNumber(NUM_LIMIT);
+    int rndNum = gen_rand_number(NUM_LIMIT);
     out << kDBPathBase << "_" << std::setfill('0') << std::setw(10) << rndNum;
     return out.str();
 }

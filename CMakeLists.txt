@@ -201,6 +201,7 @@ add_library(glnexus
             capnp/serialize/defs.capnp.h capnp/serialize/defs.capnp.c++
             include/types.h src/types.cc
             include/data.h src/data.cc
+            include/compare_queries.h src/compare_queries.cc
             include/diploid.h src/diploid.cc
             include/service.h src/service.cc
             include/discovery.h src/discovery.cc
@@ -228,7 +229,7 @@ add_executable(playground src/playground.cc)
 add_dependencies(playground libglnexus)
 target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a)
 
-add_executable(glnexus_cli cli/glnexus_cli.cc test/compare_iter.cc)
+add_executable(glnexus_cli cli/glnexus_cli.cc)
 add_dependencies(glnexus_cli libglnexus)
 target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a libcapnp.a libkj.a)
 
@@ -246,8 +247,7 @@ if (test)
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
-  )
-
+    )
   ExternalProject_Get_Property(catch source_dir)
   include_directories(${source_dir}/single_include)
 
@@ -265,9 +265,9 @@ if (test)
                  test/gvcf_test_cases.cc
                  test/BCFKeyValueData.cc
                  test/rocks_integration.cc
-                 test/compare_iter.cc
                  test/unifier.cc
-                 test/cli_utils.cc)
+                 test/cli_utils.cc
+                 test/cli.cc)
   add_dependencies(unit_tests catch)
   add_dependencies(unit_tests libglnexus)
   target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a liblz4.a librt.a libcapnp.a libkj.a)

@@ -1,24 +1,25 @@
 #include <iostream>
 #include <fstream>
 #include <map>
-#include "BCFKeyValueData.h"
-#include "BCFSerialize.h"
-using namespace std;
-using namespace GLnexus;
+#include "compare_queries.h"
 
+namespace GLnexus {
+namespace compare_queries {
+
+using namespace std;
 using IterResults = map<string, shared_ptr<vector<shared_ptr<bcf1_t>>>>;
 using T = BCFKeyValueData;
 
 // This module provides utility functions for comparing BCF iterators
 
 // Seed for pseudo random number generator
-#define PSEUDO_RAND_SEED (1103)
+#define PSEUDO_RAND_SEED (91451103L)
 
 // maximal number of entries that we keep in memory
 #define MAX_NUM_ENTRIES  (2000000)
 
 // generate a random number in the range [0 .. n-1]
-int genRandNumber(int n){
+int gen_rand_number(int n){
     static bool firstTime = true;
 
     // initialization
@@ -31,23 +32,23 @@ int genRandNumber(int n){
     return i;
 }
 
-double genRandDouble(int n) {
-    return double(genRandNumber(n)) / double(n);
+double gen_rand_double(int n) {
+    return double(gen_rand_number(n)) / double(n);
 }
 
 static void print_bcf_record(bcf1_t *x) {
-    cout << "rid=" << x->rid << endl;
-    cout << "pos=" << x->pos << endl;
-    cout << "rlen=" << x->rlen << endl;
-    cout << "qual=" << x->qual << endl;
-    cout << "n_info=" << x->n_info << endl;
-    cout << "n_allele=" << x->n_allele << endl;
-    cout << "n_sample=" << x->n_sample << endl;
-    cout << "shared.l=" << x->shared.l << endl;
-    cout << "indiv.l=" << x->indiv.l << endl;
+    cerr << "rid=" << x->rid << endl;
+    cerr << "pos=" << x->pos << endl;
+    cerr << "rlen=" << x->rlen << endl;
+    cerr << "qual=" << x->qual << endl;
+    cerr << "n_info=" << x->n_info << endl;
+    cerr << "n_allele=" << x->n_allele << endl;
+    cerr << "n_sample=" << x->n_sample << endl;
+    cerr << "shared.l=" << x->shared.l << endl;
+    cerr << "indiv.l=" << x->indiv.l << endl;
 }
 
-static int calcTotNumEntries(shared_ptr<IterResults> results) {
+static int calc_tot_num_entries(shared_ptr<IterResults> results) {
     int nEntries = 0;
     for(IterResults::iterator iter = results->begin();
         iter != results->end(); ++iter) {
@@ -92,7 +93,7 @@ static int compare_results(shared_ptr<IterResults> resultsBase,
         //cout << dataset << " len=" << len << endl;
         for (int i=0; i < len; i++) {
             if (bcf_shallow_compare((*v)[i].get(), (*w)[i].get()) == 0) {
-                cout << "Error comparing two records"  << endl;
+                cerr << "Error comparing two records"  << endl;
                 print_bcf_record((*v)[i].get());
                 print_bcf_record((*w)[i].get());
                 return 0;
@@ -107,7 +108,7 @@ static int compare_results(shared_ptr<IterResults> resultsBase,
 // This is not a scalable function, because the return vector could be very
 // large. For debugging/testing use only.
 int compare_query(T &data, MetadataCache &cache,
-                   const std::string& sampleset, const range& rng) {
+                  const std::string& sampleset, const range& rng) {
     Status s;
     vector<unique_ptr<RangeBCFIterator>> iterators;
     shared_ptr<const set<string>> samples, datasets;
@@ -121,9 +122,9 @@ int compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), resultsBase);
 
-        if (calcTotNumEntries(resultsBase) > MAX_NUM_ENTRIES) {
+        if (calc_tot_num_entries(resultsBase) > MAX_NUM_ENTRIES) {
             // We are overrunning the memory limits, abort
-            cout << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
+            cerr << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
             return -1;
         }
     }
@@ -137,16 +138,58 @@ int compare_query(T &data, MetadataCache &cache,
     for (int i=0; i < iterators.size(); i++) {
         read_entire_iter(iterators[i].get(), resultsSoph);
 
-        if (calcTotNumEntries(resultsBase) > MAX_NUM_ENTRIES) {
+        if (calc_tot_num_entries(resultsBase) > MAX_NUM_ENTRIES) {
             // We are overrunning the memory limits, abort
-            cout << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
+            cerr << "compare_query " << rng.str() << " ran over memory limit, aborting" << endl;
             return -1;
         }
     }
 
-    cout << "compare_query " << rng.str()
-         << " num_entries=" << calcTotNumEntries(resultsSoph) << endl;
+    cerr << "compare_query " << rng.str()
+         << " num_entries=" << calc_tot_num_entries(resultsSoph) << endl;
 
     // compare all the elements between the two results
     return compare_results(resultsBase, resultsSoph);
 }
+
+
+Status compare_n_queries(int n_iter,
+                         BCFKeyValueData &data,
+                         MetadataCache &metadata,
+                         const std::string& sampleset) {
+    // get the contigs
+    Status s;
+    std::vector<std::pair<std::string,size_t> > contigs;
+    S(data.contigs(contigs));
+
+    int n_chroms = (int) (min((size_t)22, contigs.size()));
+    int max_range_len = 1000000;
+    int min_len = 10; // ensure that the the range is of some minimal size
+
+    for (int i = 0; i < n_iter; i++) {
+        int rid = gen_rand_number(n_chroms);
+        int len_chrom = (int)contigs[rid].second;
+        assert(len_chrom > min_len);
+
+        // bound the range to be no larger than the chromosome
+        int range_len = min(max_range_len, (len_chrom/10));
+        assert(range_len > min_len);
+
+        int beg = gen_rand_number(len_chrom - range_len);
+        int rlen = gen_rand_number(range_len - min_len);
+        range rng(rid, beg, beg + min_len + rlen);
+
+        int rc = compare_query(data, metadata, sampleset, rng);
+
+        // 1: success
+        // 0: error
+        // -1: query used too much memory, aborted
+        if (rc == 0) {
+            return Status::Failure("query comparison failed");
+        }
+    }
+
+    return Status::OK();
+}
+
+}}
