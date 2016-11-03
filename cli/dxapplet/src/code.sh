@@ -84,7 +84,7 @@ main() {
     # discovered alleles file
     if [ -f /tmp/dsals.yml ]; then
         mkdir -p out/discovered_alleles
-        $compressor -c discovered_alleles.cflat > out/discovered_alleles/"${output_name}.discovered_alleles.cflat.${compress_ext}"
+        $compressor -c /tmp/dsals.yml > out/discovered_alleles/"${output_name}.discovered_alleles.yml.${compress_ext}"
     fi
 
     # unified alleles file

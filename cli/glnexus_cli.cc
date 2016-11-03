@@ -87,7 +87,7 @@ static int all_steps(const vector<string> &vcf_files,
     if (debug) {
         string filename("/tmp/dsals.yml");
         H("serialize discovered alleles to a file",
-          GLnexus::capnp_of_discovered_alleles(sample_count, contigs, dsals, filename));
+          GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
     }
 
     // unify sites
