@@ -54,6 +54,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1000}
       alleles: [C, CG]
       allele_frequencies: [.nan, 0.5]
+      quality: 35
       unification:
         - range: {beg: 1000, end: 1000}
           dna: CG

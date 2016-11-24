@@ -46,6 +46,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1002}
       alleles: [TTC, T]
       allele_frequencies: [.nan, 0.375]
+      quality: 232
       unification:
         - range: {beg: 1000, end: 1002}
           dna: T

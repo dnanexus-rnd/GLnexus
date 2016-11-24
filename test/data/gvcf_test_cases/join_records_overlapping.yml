@@ -43,6 +43,7 @@ truth_unified_sites:
     - range: {ref: A, beg: 907970, end: 907971}
       alleles: [AC, AA, A]
       allele_frequencies: [.nan, 0.375, 0.125]
+      quality: 757
       unification:
         - range: {beg: 907971, end: 907971}
           dna: A

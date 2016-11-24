@@ -43,6 +43,7 @@ truth_unified_sites:
     - range: {ref: 17, beg: 15643381, end: 15643382}
       alleles: [CA, C, CAC, CAA]
       allele_frequencies: [.nan, 0.25, 0.125, 0.125]
+      quality: 1085
       unification:
       - range: {beg: 15643381, end: 15643382}
         dna: C

@@ -39,6 +39,7 @@ truth_unified_sites:
       alleles: [T, A]
       allele_frequencies: [.nan, 0.125]
       lost_allele_frequency: 0.25
+      quality: 232
       unification:
         - range: {beg: 1000, end: 1000}
           dna: A
@@ -47,6 +48,7 @@ truth_unified_sites:
       alleles: [C, G]
       allele_frequencies: [.nan, 0.125]
       lost_allele_frequency: 0.25
+      quality: 232
       unification:
         - range: {beg: 1002, end: 1002}
           dna: G

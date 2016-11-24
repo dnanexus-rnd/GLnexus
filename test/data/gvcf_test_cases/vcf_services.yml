@@ -37,6 +37,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1001, end: 1001}
       alleles: [A, G]
       allele_frequencies: [.nan, 0.5]
+      quality: 0
       unification:
         - range: {beg: 1001, end: 1001}
           dna: G
@@ -44,6 +45,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1002, end: 1002}
       alleles: [C, A, G, T]
       allele_frequencies: [.nan, 0.5, 0.166667, 0.166667]
+      quality: 0
       unification:
         - range: {beg: 1002, end: 1002}
           dna: A
@@ -57,6 +59,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1011, end: 1013}
       alleles: [CCC, AGC, AGA]
       allele_frequencies: [.nan, 0.25, 0.166667]
+      quality: 0
       unification:
         - range: {beg: 1011, end: 1012}
           dna: AG
@@ -68,6 +71,7 @@ truth_unified_sites:
       alleles: [C, A]
       allele_frequencies: [.nan, 0.25]
       lost_allele_frequency: 0.166667
+      quality: 0
       unification:
         - range: {beg: 1101, end: 1101}
           dna: A
@@ -76,6 +80,7 @@ truth_unified_sites:
       alleles: [C, G]
       allele_frequencies: [.nan, 0.25]
       lost_allele_frequency: 0.166667
+      quality: 0
       unification:
         - range: {beg: 1103, end: 1103}
           dna: G
@@ -83,6 +88,7 @@ truth_unified_sites:
     - range: {ref: "A", beg: 1201, end: 1201}
       alleles: [C, A]
       allele_frequencies: [.nan, 0.25]
+      quality: 0
       unification:
         - range: {beg: 1201, end: 1201}
           dna: A

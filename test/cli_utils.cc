@@ -227,6 +227,7 @@ alleles: yyy
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.51]
+quality: 317
 unification:
   - range: {ref: '17', beg: 100, end: 100}
     dna: A
@@ -241,6 +242,7 @@ unification:
 range: {ref: '17', beg: 1000, end: 1001}
 alleles: [AG, AC, C]
 allele_frequencies: [.nan, 0.50, 0.1]
+quality: 317
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG

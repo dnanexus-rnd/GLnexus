@@ -82,6 +82,7 @@ truth_unified_sites:
     - range: {ref: A, beg: 36643700, end: 36643703}
       alleles: [GAGA, G]
       allele_frequencies: [.nan, 0.5]
+      quality: 1890
       unification:
         - range: {beg: 36643700, end: 36643703}
           dna: G
