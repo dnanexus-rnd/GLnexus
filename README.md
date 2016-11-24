@@ -8,20 +8,20 @@ This is an early-stage R&D project we're developing openly. The code doesn't yet
 
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
-First [install gcc 4.9](http://askubuntu.com/a/581497) or higher, `cmake` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `liblz4-dev` `libbz2-dev` `python-pyvcf`. Then:
+First install [gcc 4.9 or higher](http://askubuntu.com/a/581497), [CMake 3.2 or higher](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), and packages: `autoconf` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `liblz4-dev` `libbz2-dev` `python-pyvcf`. Then:
 
 ```
 cmake -Dtest=ON . && make && ./unit_tests
 ```
 
-Other dependencies (should be set up automatically by CMake):
+Other dependencies fetched automatically:
 * [htslib](https://github.com/samtools/htslib)
 * [rocksdb](https://github.com/facebook/rocksdb)
 * [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+* [Capnproto](https://github.com/sandstorm-io/capnproto)
 * [CTPL](https://github.com/vit-vit/CTPL)
 * [fcmm](https://github.com/giacomodrago/fcmm)
 * [Catch](https://github.com/philsquared/Catch) test framework
-* [Capnproto](https://github.com/sandstorm-io/capnproto) efficient serialization
 
 ### Developer documentation
 
