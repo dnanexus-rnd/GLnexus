@@ -149,6 +149,9 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     opts.access_hint_on_compaction_start = rocksdb::Options::AccessHint::SEQUENTIAL;
     opts.compaction_readahead_size = 16 << 20;
 
+    // legacy issue -- feature not supported by the memtable implemetations we select
+    opts.allow_concurrent_memtable_write = false;
+
     if (mode == OpenMode::BULK_LOAD) {
         opts.disableDataSync = true;
     }
