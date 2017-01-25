@@ -46,6 +46,7 @@ range: {ref: "21", beg: 1000, end: 1000}
 alleles: [T, A, G]
 allele_frequencies: [.nan, 0.01, 0.00001]
 lost_allele_frequency: 0.001
+quality: 100
 unification:
 - range: {beg: 1000, end: 1000}
   dna: A
@@ -134,6 +135,7 @@ range: {ref: "21", beg: 1000, end: 1000}
 alleles: [T, A]
 allele_frequencies: [.nan, 0.99]
 lost_allele_frequency: 0.001
+quality: 100
 unification:
 - range: {beg: 1000, end: 1000}
   dna: A

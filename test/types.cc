@@ -266,6 +266,7 @@ range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
 lost_allele_frequency: 0.001
+quality: 100
 unification:
   - range: {ref: '17', beg: 100, end: 100}
     dna: A
@@ -286,13 +287,15 @@ unification:
         REQUIRE((us).unification[allele(range(1, 99, 100), "G")] == 1); \
         REQUIRE((us).allele_frequencies.size() == 2); \
         REQUIRE((us).allele_frequencies[0] != (us).allele_frequencies[0]); \
-        REQUIRE((us).allele_frequencies[1] == 0.01f);
+        REQUIRE((us).allele_frequencies[1] == 0.01f); \
+        REQUIRE((us).qual == 100)
 
 
     const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
 alleles: [AG, AC, C]
 allele_frequencies: [.nan, 0.05, 0.001]
+quality: 100
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG
@@ -356,6 +359,7 @@ unification:
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
+quality: 100
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -377,6 +381,7 @@ unification:
 range: {ref: 'bogus', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
+quality: 100
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -394,6 +399,7 @@ unification:
 range: 12345
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
+quality: 100
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -411,6 +417,7 @@ unification:
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A]
 allele_frequencies: [.nan, 0.01]
+quality: 100
 unification:
   - range: {beg: 100, end: 100}
     dna: A
@@ -427,6 +434,7 @@ unification:
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
+quality: 100
 unification:
   - range: {ref: 'bogus', beg: 100, end: 100}
     dna: A
@@ -444,6 +452,7 @@ unification:
 range: {ref: '17', beg: 100, end: 100}
 alleles: [A, G]
 allele_frequencies: [.nan, 0.01]
+quality: 100
 unification:
 )";
         n = YAML::Load(snp_bogus);
@@ -462,6 +471,7 @@ range: {ref: '17', beg: 1000, end: 1001}
 containing_target: {ref: '17', beg: 1, end: 10000}
 alleles: [AG, AC, C]
 allele_frequencies: [.nan, 0.05, 0.001]
+quality: 100
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG

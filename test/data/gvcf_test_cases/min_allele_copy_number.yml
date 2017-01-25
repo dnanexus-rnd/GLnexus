@@ -46,6 +46,7 @@ truth_unified_sites:
     - range: {ref: "21", beg: 10009461, end: 10009461}
       alleles: [T, A]
       allele_frequencies: [.nan, 0.5]
+      quality: 2
       unification:
         - range: {beg: 10009461, end: 10009461}
           dna: A
@@ -53,6 +54,7 @@ truth_unified_sites:
     - range: {ref: "21", beg: 10009465, end: 10009465}
       alleles: [A, C]
       allele_frequencies: [.nan, 0.5]
+      quality: 2
       unification:
         - range: {beg: 10009464, end: 10009465}
           dna: TC
@@ -64,6 +66,7 @@ truth_unified_sites:
       alleles: [T, A]
       allele_frequencies: [.nan, 0.5]
       lost_allele_frequency: 0.25
+      quality: 16
       unification:
         - range: {beg: 10009466, end: 10009466}
           dna: A
@@ -77,6 +80,6 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
-      21	10009461	.	T	A	.	.	.	GT:RNC	0/1:..	0/1:..
-      21	10009465	.	A	C	.	.	.	GT:RNC	0/1:..	0/1:..
-      21	10009466	.	T	A	.	.	.	GT:RNC	1/1:..	0/.:.L
+      21	10009461	.	T	A	2	.	.	GT:RNC	0/1:..	0/1:..
+      21	10009465	.	A	C	2	.	.	GT:RNC	0/1:..	0/1:..
+      21	10009466	.	T	A	16	.	.	GT:RNC	1/1:..	0/.:.L

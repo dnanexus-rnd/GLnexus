@@ -470,10 +470,14 @@ struct unified_site {
     std::vector<float> allele_frequencies;
     float lost_allele_frequency = 0.0f;
 
+    // variant QUAL score (as in VCF)
+    int qual = 0;
+
     bool operator==(const unified_site& rhs) const noexcept {
         if (!(pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
               && allele_frequencies.size() == rhs.allele_frequencies.size()
-              && lost_allele_frequency == rhs.lost_allele_frequency)) {
+              && lost_allele_frequency == rhs.lost_allele_frequency
+              && qual == rhs.qual)) {
             return false;
         }
         // nan-tolerant comparison of allele_frequencies

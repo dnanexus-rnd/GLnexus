@@ -43,6 +43,7 @@ truth_unified_sites:
     - range: {ref: "21", beg: 10009464, end: 10009465}
       alleles: [TA, T]
       allele_frequencies: [.nan, 0.25]
+      quality: 16
       unification:
         - range: {beg: 10009464, end: 10009465}
           dna: T
@@ -50,6 +51,7 @@ truth_unified_sites:
     - range: {ref: "21", beg: 10009466, end: 10009466}
       alleles: [A, G]
       allele_frequencies: [.nan, 0.25]
+      quality: 16
       unification:
         - range: {beg: 10009466, end: 10009466}
           dna: G
@@ -57,6 +59,7 @@ truth_unified_sites:
     - range: {ref: "21", beg: 10009467, end: 10009467}
       alleles: [A, C]
       allele_frequencies: [.nan, 0.25]
+      quality: 16
       unification:
         - range: {beg: 10009467, end: 10009467}
           dna: C
@@ -70,6 +73,6 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
-      21	10009464	.	TA	T	0	.	.	GT:RNC	./.:DD	0/0:..
-      21	10009466	.	A	G	0	.	.	GT:RNC	0/0:..	0/.:.D
-      21	10009467	.	A	C	0	.	.	GT:RNC	./.:DD	0/.:.D
+      21	10009464	.	TA	T	16	.	.	GT:RNC	./.:DD	0/0:..
+      21	10009466	.	A	G	16	.	.	GT:RNC	0/0:..	0/.:.D
+      21	10009467	.	A	C	16	.	.	GT:RNC	./.:DD	0/.:.D

@@ -360,6 +360,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     // For presentation in the unified site, sort the alt alleles by
     // decreasing copy number count (+ some tiebreakers). Note, this may be a
     // different sort order than used in prune_allele earlier.
+    assert(alts.size() > 0);
     vector<minimized_allele> valts(alts.begin(), alts.end());
     sort(valts.begin(), valts.end(), minimized_allele_common_lt);
 
@@ -417,6 +418,14 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     lost_allele_frequency = ceilf(lost_allele_frequency*1e6f)/1e6f;
     lost_allele_frequency = std::min(lost_allele_frequency, 1.0f);
     us.lost_allele_frequency = lost_allele_frequency;
+
+    // set variant QUAL score to maximum AQ across all ALT alleles
+    // this is a sort of conservative bound on "prob(no variant)"
+    // e.g. evidence from multiple samples doesn't stack
+    us.qual = 0;
+    for (const auto& p : alts) {
+        us.qual = std::max(us.qual, p.second.topAQ.V[0]);
+    }
 
     ans = std::move(us);
     return Status::OK();

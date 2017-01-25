@@ -55,6 +55,7 @@ truth_unified_sites:
       alleles: [TGGGGCCG, T, TGGAGCCG]
       allele_frequencies: [.nan, 0.5, 0.25]
       lost_allele_frequency: 0.25
+      quality: 1003
       unification:
         - range: {beg: 608825, end: 608832}
           dna: T
@@ -66,6 +67,7 @@ truth_unified_sites:
       alleles: [ACCGGGACCGGGACTGGG, A]
       allele_frequencies: [.nan, 0.5]
       lost_allele_frequency: 0.25
+      quality: 831
       unification:
         - range: {beg: 608835, end: 608852}
           dna: A
@@ -79,5 +81,5 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	608825	.	TGGGGCCG	T,TGGAGCCG	0	.	.	GT:RNC	1/1:..	2/2:..	1/1:..	./.:--
-      A	608835	.	ACCGGGACCGGGACTGGG	A	0	.	.	GT:RNC	1/1:..	0/0:..	1/1:..	./.:--
+      A	608825	.	TGGGGCCG	T,TGGAGCCG	1003	.	.	GT:RNC	1/1:..	2/2:..	1/1:..	./.:--
+      A	608835	.	ACCGGGACCGGGACTGGG	A	831	.	.	GT:RNC	1/1:..	0/0:..	1/1:..	./.:--

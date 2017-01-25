@@ -42,6 +42,7 @@ truth_unified_sites:
     - range: {ref: A, beg: 907970, end: 907971}
       alleles: [AC, AA, A]
       allele_frequencies: [.nan, 0.375, 0.125]
+      quality: 757
       unification:
         - range: {beg: 907971, end: 907971}
           dna: A
@@ -96,4 +97,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	907970	.	AC	AA,A	0	.	.	GT:GQ:DP:AD:SB:RNC	0/0:99:76:21,0,0:.,.,.,.:..	0/1:99:45:17,26,0:3,14,7,19:..	./.:.:.:.,.,.:.,.,.,.:PP	./.:.:27:.,.,.:.,.,.,.:OO
+      A	907970	.	AC	AA,A	757	.	.	GT:GQ:DP:AD:SB:RNC	0/0:99:76:21,0,0:.,.,.,.:..	0/1:99:45:17,26,0:3,14,7,19:..	./.:.:.:.,.,.:.,.,.,.:PP	./.:.:27:.,.,.:.,.,.,.:OO
