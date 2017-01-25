@@ -145,6 +145,10 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
         WARNING("Found differing alts! {0} {1}".format(i_row.ALT, t_row.ALT))
         return (i_row, t_row)
 
+    if (i_row.QUAL != t_row.QUAL):
+        WARNING("Found differing qualities! {0} {1}".format(i_row.QUAL, t_row.QUAL))
+        return (i_row, t_row)
+
     for info_f in info_fs:
         n_present = sum([1 for row in (i_row, t_row) if info_f in row.INFO])
 

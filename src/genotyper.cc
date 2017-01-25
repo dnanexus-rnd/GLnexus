@@ -1064,7 +1064,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     ans->rid = site.pos.rid;
     ans->pos = site.pos.beg;
     ans->rlen = site.pos.end - site.pos.beg;
-    ans->qual = 0;
+    ans->qual = site.qual;
 
     // alleles
     vector<const char*> c_alleles;
