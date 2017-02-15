@@ -1,9 +1,9 @@
 readme: |
-  This is a synthetic test case targeted at testing logic for "joining" records in genotyper. In particular, this case asserts that for a given site, a sample which have multiple variant records which overlap each other will be considered a no call due to OverlappingVariants.
-  This no-call is necessary because the overlapping variants might be contradictory if interpreted naively, although heuristics can deal with some cases.
+  This is a synthetic test case targeted at testing the genotyper's logic for dealing with multiple overlapping variant GVCF records (for one sample). We'd much rather the upstream caller instead generate one record heterozygous for two ALT alleles, but we have some heuristics to do the best we can if it instead generates two overlapping records. In particular, we'll try to generate a "half-call" from one of them. In other cases we'll just generate OverlappingVariants no-calls.
   ## Explanation of included sample:
   C.gvcf contains overlapping variant records, one of which however is hard-called 0/0, and is treated as a "pseudo" reference confidence record
-  D.gvcf overlapping records probably represent a heterozygous indel and overlapping SNP, but naively they're contradictory in that they assert the presence of two different alt alleles and at least one reference allele
+  D.gvcf overlapping records probably represent a heterozygous indel and overlapping SNP, but naively they're contradictory in that they assert the presence of two different alt alleles and at least one reference allele. If not more than two ALT
+  alleles are called, then we'll recover at least one of them as a half-call. Otherwise we punt.
 input:
   header : |-
       ##fileformat=VCFv4.2
@@ -22,22 +22,25 @@ input:
     - A.gvcf: |
         A
         A	907766	.	G	<NON_REF>	.	.	END=7907983	GT:DP:GQ:MIN_DP:PL	0/0:76:99:21:0,63,872
+        A	917766	.	G	<NON_REF>	.	.	END=7907983	GT:DP:GQ:MIN_DP:PL	0/0:76:99:21:0,63,872
     - B.gvcf: |
         B
-        A	907747	.	T	<NON_REF>	.	.	END=7907970	GT:DP:GQ:MIN_DP:PL	0/0:70:99:25:0,75,1034
+        A	907747	.	T	<NON_REF>	.	.	END=907970	GT:DP:GQ:MIN_DP:PL	0/0:70:99:25:0,75,1034
         A	907971	.	C	A,CA,<NON_REF>	719.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:17,26,2,0:45:99:806,0,715,757,422,1190,800,476,1164,1204:3,14,7,19
-        A	907972	.	A	<NON_REF>	.	.	END=7907972	GT:DP:GQ:MIN_DP:PL	0/0:53:0:53:0,0,1770
+        A	907972	.	A	<NON_REF>	.	.	END=908766	GT:DP:GQ:MIN_DP:PL	0/0:53:0:53:0,0,1770
     - C.gvcf: |
         C
         A	907969	.	AAC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:50,3,0:53:45:0,45,1855,151,1864,1970:9,41,0,0
         A	907971	.	C	A,<NON_REF>	552.77	.	.	GT:AD:DP:GQ:PL:SB	0/1:32,21,0:53:99:581,0,934,677,996,1673:6,26,3,18
-        A	907972	.	A	<NON_REF>	.	.	END=7907972	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
+        A	907972	.	A	<NON_REF>	.	.	END=908766	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
     - D.gvcf: |
         D
         A	907969	.	A	<NON_REF>	.	.	END=7907969	GT:DP:GQ:MIN_DP:PL	0/0:39:60:39:0,60,900
         A	907970	.	AC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/1:24,3,0:27:4:4,0,500,75,509,584:4,20,0,3
         A	907971	.	C	A,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	0/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
         A	907972	.	A	<NON_REF>	.	.	END=7907972	GT:DP:GQ:MIN_DP:PL	0/0:32:0:32:0,0,996
+        A	917970	.	AC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/1:24,3,0:27:4:4,0,500,75,509,584:4,20,0,3
+        A	917971	.	C	A,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	1/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
 
 truth_unified_sites:
     - range: {ref: A, beg: 907970, end: 907971}
@@ -51,6 +54,17 @@ truth_unified_sites:
         - range: {beg: 907970, end: 907971}
           dna: A
           to: 2
+    - range: {ref: A, beg: 917970, end: 917971}
+      alleles: [AC, AA, A]
+      allele_frequencies: [.nan, 0.25, 0.125]
+      quality: 496
+      unification:
+        - range: {beg: 917971, end: 917971}
+          dna: A
+          to: 1
+        - range: {beg: 917970, end: 917971}
+          dna: A
+          to: 2
 
 truth_output_vcf:
   - truth.vcf: |
@@ -60,4 +74,5 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	907970	.	AC	AA,A	757	.	.	GT:RNC	0/0:..	0/1:..	0/1:..	./.:OO
+      A	907970	.	AC	AA,A	757	.	.	GT:RNC	0/0:..	0/1:..	0/1:..	./1:O.
+      A	917970	.	AC	AA,A	496	.	.	GT:RNC	0/0:..	./.:MM	./.:MM	./.:OO

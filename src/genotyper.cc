@@ -87,7 +87,7 @@ class IFormatFieldHelper {
 
 public:
     // basic information for the retained field
-    const retained_format_field field_info;
+    const retained_format_field& field_info;
 
 
     // Expected number of samples in output bcf record
@@ -99,16 +99,16 @@ public:
     // output
     const int count;
 
-    IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
+    IFormatFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
 
     IFormatFieldHelper() = default;
 
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                   const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                                   const map<int, int>& sample_mapping, const vector<int>& allele_mapping,
                                    const vector<string>& field_names, int n_val_per_sample) = 0;
 
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                const map<int, int>& sample_mapping, const vector<int> allele_mapping) = 0;
+                                   const map<int, int>& sample_mapping, const vector<int>& allele_mapping) = 0;
 
     virtual Status censor(int sample) = 0;
 
@@ -119,10 +119,6 @@ public:
 
 template <class T>
 class FormatFieldHelper : public IFormatFieldHelper {
-
-    // Boolean on whether the AD field has been handled
-    bool handled_AD_field = false;
-
     // A vector of length n_samples * count, where each element
     // is a vector consisting of format field value from
     // record(s) related to the given sample, at a specified
@@ -276,7 +272,7 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
 public:
 
-    FormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
+    FormatFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
 
         switch (field_info.combi_method) {
             case FieldCombinationMethod::MIN:
@@ -294,15 +290,17 @@ public:
 
     // Wrapper with default values populated for
     // field_names and n_val_per_sample
-    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping) {
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int, int>& sample_mapping,
+                           const vector<int>& allele_mapping) {
 
         return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {}, -1);
     }
 
-    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                           const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                           const vector<string>& field_names={}, int n_val_per_sample=-1) {
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int, int>& sample_mapping,
+                           const vector<int>& allele_mapping,
+                           const vector<string>& field_names, int n_val_per_sample) {
 
         bool found = false;
         if (n_val_per_sample < 0) {
@@ -357,23 +355,7 @@ public:
             } // close rv >= 0
         }
 
-        if (!found && field_info.name == "AD" && !handled_AD_field) {
-        // Special case handling for AD field to convert ref
-        // DP/MIN_DP to repopulate AD field
-
-            // Prevent runaway recursion
-            handled_AD_field = true;
-
-            // Call add_record_data again, searching for DP, MIN_DP, override n_val_per_sample to 1
-            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"MIN_DP", "DP"}, 1);
-
-            // Reset flag for next dataset
-            handled_AD_field = false;
-
-            return s;
-        }
-
-        return Status::OK();
+        return found ? Status::OK() : Status::NotFound();
     }
 
     // Mark the (output) sample as censored.
@@ -417,6 +399,32 @@ public:
     }
 };
 
+// Special-case logic for the allele depth (AD) field
+class ADFieldHelper : public FormatFieldHelper<int32_t> {
+public:
+    ADFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
+        : FormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+        assert(field_info.name == "AD");
+    }
+
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int, int>& sample_mapping,
+                           const vector<int>& allele_mapping,
+                           const vector<string>& field_names, int n_val_per_sample) {
+        Status s = FormatFieldHelper<int32_t>::add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, field_names, n_val_per_sample);
+
+        if (s == StatusCode::NOT_FOUND) {
+            // Record has no AD field, usually meaning it's a reference confidence record
+            // (though there are exceptions, e.g. gVCF test case DP0_noAD).
+            // use MIN_DP/DP as the reference allele depth
+            s = FormatFieldHelper<int32_t>::add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"MIN_DP", "DP"}, 1);
+        }
+
+        return s;
+    }
+
+};
+
 Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
                             const vector<retained_format_field>& liftover_fields,
                             const unified_site& site,
@@ -436,7 +444,9 @@ Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpe
             return Status::Failure("setup_format_helpers: failed to identify count for format field");
         }
 
-        switch (format_field_info.type) {
+        if (format_field_info.name == "AD" && format_field_info.number == RetainedFieldNumber::ALLELES) {
+            format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new ADFieldHelper(format_field_info, samples.size(), count)));
+        } else switch (format_field_info.type) {
             case RetainedFieldType::INT:
             {
                 format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new FormatFieldHelper<int32_t>(format_field_info, samples.size(), count)));
@@ -471,8 +481,11 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
         }
 
         for (const auto& record : *records_to_use) {
-            S(format_helper->add_record_data(dataset, dataset_header, record->p.get(),
-                                             sample_mapping, record->allele_mapping));
+            s = format_helper->add_record_data(dataset, dataset_header, record->p.get(),
+                                               sample_mapping, record->allele_mapping);
+            if (s.bad() && s != StatusCode::NOT_FOUND) {
+                return s;
+            }
         }
     }
     return Status::OK();
@@ -721,6 +734,10 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
 ///      variant_records empty, min_ref_depth updated accordingly, rnc = N_A
 /// Records span entire range, and include one or more variant records which
 ///      variant_records filled in, min_ref_depth updated accordingly, rnc = N_A
+///
+///
+/// FIXME: detect & complain if the reference confidence records actually overlap the
+///        variant records
 Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& site,
                                const string& dataset, const bcf_hdr_t* hdr, int bcf_nsamples,
                                const map<int, int>& sample_mapping,
@@ -796,8 +813,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     assert(genotypes.size() == 2*min_ref_depth.size());
     Status s;
 
-    // Scan the variant records to identify ones with only 0/0 genotype calls. Presently
-    // we can deal with at most one record with a non-0/0 genotype.
+    // Scan the variant records to pull out those with 0/0 genotype calls
+    // from those actually presenting variation
     vector<shared_ptr<bcf1_t_plus>> records_00, records_non00;
     for (const auto& a_record : variant_records) {
         assert(!a_record->is_ref);
@@ -819,6 +836,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     S(update_min_ref_depth(dataset, dataset_header, bcf_nsamples, sample_mapping,
                            records_00, depth, min_ref_depth));
 
+    bcf1_t_plus* record = nullptr;
+    bool half_call = false;
+
     if (records_non00.size() == 0) {
         // no variation represented in this dataset; make homozygous ref calls
         // if min_ref_depth indicates sufficient coverage for this sample
@@ -836,34 +856,68 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             }
         }
         return Status::OK();
-    } else if (records_non00.size() > 1) {
-        // multiple non-0/0 records; we'll need to bug out with OverlappingVariants
-        // or UnphasedVariants. Analyze the ranges to distinguish these two cases.
-        // Maybe we'll be able to handle some cases better in the future.
+    } else if (records_non00.size() == 1)  {
+        // simple common case: one variant record overlapping the unified site
+        record = records_non00[0].get();
+    } else {
+        // complex situation: multiple non-0/0 records overlapping the unified site.
+        //
+        // If the records don't all share at least one position in common (i.e. their
+        // ALT alleles aren't mutually exclusive on one chromosome), punt with
+        // UnphasedVariants. We'll improve this in the future.
+        //
+        // If at least one record is a heterozygous 0/X call where X is a known
+        // allele in the unified site, and none of the records call >1 ALT allele,
+        // generate a half-call from the highest-quality such record.
+        // This at least recovers some of the information when the GVCF has two
+        // overlapping 0/X records for one sample (we'd rather it present one record
+        // heterozygous for two ALTs)
+        //
+        // Otherwise: punt with OverlappingVariants
+
+        half_call = true;
         range intersection(records_non00[0]->p);
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
             assert(record_rng.rid == intersection.rid);
             intersection.beg = max(record_rng.beg, intersection.beg);
             intersection.end = min(record_rng.end, intersection.end);
+
+            for (int i = 0; half_call && i < bcf_nsamples; i++) {
+                assert(a_record->gt.capacity > 2*i);
+                if (!bcf_gt_is_missing(a_record->gt[2*i]) && bcf_gt_allele(a_record->gt[2*i]) != 0) {
+                    half_call = false;
+                } else if (!bcf_gt_is_missing(a_record->gt[2*i+1])) {
+                    auto al = bcf_gt_allele(a_record->gt[2*i+1]);
+                    if (al > 0 && a_record->allele_mapping[al] > 0 &&
+                        (!record || record->p->qual < a_record->p->qual)) {
+                        record = a_record.get();
+                    }
+                }
+            }
         }
 
-        NoCallReason rnc = NoCallReason::OverlappingVariants;
         if (intersection.beg >= intersection.end) {
-            // UnphasedVariants: non-overlapping variant records
-            rnc = NoCallReason::UnphasedVariants;
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC =
+                        NoCallReason::UnphasedVariants;
+            }
+            return Status::OK();
         }
 
-        for (int i = 0; i < bcf_nsamples; i++) {
-            genotypes[sample_mapping.at(i)*2].RNC =
-                genotypes[sample_mapping.at(i)*2+1].RNC =
-                    rnc;
+        if (!record || !half_call) {
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC =
+                        NoCallReason::OverlappingVariants;
+            }
+            return Status::OK();
         }
-        return Status::OK();
     }
 
     // Now, translating genotypes from one variant BCF record.
-    const bcf1_t_plus* record = records_non00[0].get();
+    assert(record != nullptr);
 
     // get the genotype calls
     htsvecbox<int> gt;
@@ -902,7 +956,12 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                         NoCallReason::InsufficientDepth;                          \
                 }                                                                 \
             }
-        fill_allele(0)
+
+        if (half_call) {
+            genotypes[2*ij.second].RNC = NoCallReason::OverlappingVariants;
+        } else {
+            fill_allele(0)
+        }
         fill_allele(1)
     }
 
@@ -1005,26 +1064,28 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
         // we must censor the FORMAT fields as potentially unreliable/misleading.
         for (const auto& p : sample_mapping) {
-            if (genotypes[p.second*2].RNC == genotypes[p.second*2+1].RNC) {
-                switch (genotypes[p.second*2].RNC) {
-                    case NoCallReason::MissingData:
-                    case NoCallReason::PartialData:
-                        for (const auto& fh : format_helpers) {
+            switch (genotypes[p.second*2].RNC) {
+                // checked only the first of the two RNCs. MissingData and PartialData are always
+                // the same between the two. When we do a half-call for UnphasedVariants or
+                // OverlappingVariants, we make the first one the no-call.
+                case NoCallReason::MissingData:
+                case NoCallReason::PartialData:
+                    for (const auto& fh : format_helpers) {
+                        S(fh->censor(p.second));
+                    }
+                    break;
+                case NoCallReason::UnphasedVariants:
+                case NoCallReason::OverlappingVariants:
+                    for (const auto& fh : format_helpers) {
+                        if (fh->field_info.name != "DP") {
+                            // Hard-coded exception for DP, which we're fine passing
+                            // through for unphased & overlapping variants;
+                            // TODO does this need to be configurable?
                             S(fh->censor(p.second));
                         }
-                        break;
-                    case NoCallReason::UnphasedVariants:
-                    case NoCallReason::OverlappingVariants:
-                        for (const auto& fh : format_helpers) {
-                            if (fh->field_info.name != "DP") {
-                                // TODO: hard-coded exception for DP, which we're fine passing
-                                // through for unphased & overlapping variants;
-                                // does this need to be configurable?
-                                S(fh->censor(p.second));
-                            }
-                        }
-                        break;
-                }
+                        // TODO: special AD for a half-call
+                    }
+                    break;
             }
         }
 
