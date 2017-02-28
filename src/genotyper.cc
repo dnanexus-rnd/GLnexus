@@ -110,7 +110,7 @@ public:
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
                                    const map<int, int>& sample_mapping, const vector<int>& allele_mapping) = 0;
 
-    virtual Status censor(int sample) = 0;
+    virtual Status censor(int sample, bool half_call) = 0;
 
     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
@@ -119,6 +119,7 @@ public:
 
 template <class T>
 class FormatFieldHelper : public IFormatFieldHelper {
+protected:
     // A vector of length n_samples * count, where each element
     // is a vector consisting of format field value from
     // record(s) related to the given sample, at a specified
@@ -130,8 +131,9 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
     // The FORMAT fields of some samples may need to be censored (emitted
     // as missing) under certain circumstances where they might otherwise
-    // be unreliable/misleading.
-    set<int> censored_samples;
+    // be unreliable/misleading. In some cases we have a flag to censor
+    // only fields discussing the reference allele (for "half-calls")
+    set<pair<int,bool>> censored_samples;
 
     // Combination function to handle combining multiple format values
     // from multiple records
@@ -270,6 +272,20 @@ class FormatFieldHelper : public IFormatFieldHelper {
         }
     }
 
+    virtual Status perform_censor(vector<T>& values) {
+        Status s;
+        if (!censored_samples.empty()) {
+            T missing_value;
+            S(get_missing_value(&missing_value));
+            for (auto& cs : censored_samples) {
+                for (int j = 0; j < count; j++) {
+                    values[cs.first*count+j] = missing_value;
+                }
+            }
+        }
+        return Status::OK();
+    }
+
 public:
 
     FormatFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
@@ -359,9 +375,9 @@ public:
     }
 
     // Mark the (output) sample as censored.
-    Status censor(int sample) {
+    Status censor(int sample, bool half_call) {
         if (sample < 0 || sample >= n_samples) return Status::Invalid("genotyper::FormatFieldHelper::censor");
-        censored_samples.insert(sample);
+        censored_samples.insert(make_pair(sample, half_call));
         return Status::OK();
     }
 
@@ -370,16 +386,7 @@ public:
         vector<T> ans;
         S(combine_format_data(ans));
         assert(ans.size() == n_samples*count);
-
-        if (!censored_samples.empty()) {
-            T missing_value;
-            S(get_missing_value(&missing_value));
-            for (int cs : censored_samples) {
-                for (int j = 0; j < count; j++) {
-                    ans[cs*count+j] = missing_value;
-                }
-            }
-        }
+        S(perform_censor(ans));
 
         int retval  = 0;
         switch (field_info.type) {
@@ -423,6 +430,23 @@ public:
         return s;
     }
 
+protected:
+    Status perform_censor(vector<int32_t>& values) override {
+        Status s;
+        if (!censored_samples.empty()) {
+            int32_t missing_value;
+            S(get_missing_value(&missing_value));
+            for (auto& cs : censored_samples) {
+                // if a half-call (cs.second), censor only the reference allele
+                // depth, which can be misleading when there are overlapping or
+                // unphased records.
+                for (int j = 0; j < (cs.second ? 1 : count); j++) {
+                    values[cs.first*count+j] = missing_value;
+                }
+            }
+        }
+        return Status::OK();
+    }
 };
 
 Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpers,
@@ -1064,6 +1088,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
         // we must censor the FORMAT fields as potentially unreliable/misleading.
         for (const auto& p : sample_mapping) {
+            const bool half_call = (genotypes[p.second*2].RNC == NoCallReason::N_A) != (genotypes[p.second*2+1].RNC == NoCallReason::N_A);
+
             switch (genotypes[p.second*2].RNC) {
                 // checked only the first of the two RNCs. MissingData and PartialData are always
                 // the same between the two. When we do a half-call for UnphasedVariants or
@@ -1071,7 +1097,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 case NoCallReason::MissingData:
                 case NoCallReason::PartialData:
                     for (const auto& fh : format_helpers) {
-                        S(fh->censor(p.second));
+                        S(fh->censor(p.second, false));
                     }
                     break;
                 case NoCallReason::UnphasedVariants:
@@ -1081,9 +1107,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                             // Hard-coded exception for DP, which we're fine passing
                             // through for unphased & overlapping variants;
                             // TODO does this need to be configurable?
-                            S(fh->censor(p.second));
+                            S(fh->censor(p.second, half_call));
                         }
-                        // TODO: special AD for a half-call
                     }
                     break;
             }
