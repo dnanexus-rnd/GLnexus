@@ -479,6 +479,10 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
 
     ans << YAML::Key << "quality" << YAML::Value << qual;
 
+    if (monoallelic) {
+        ans << YAML::Key << "monoallelic" << YAML::Value << true;
+    }
+
     ans << YAML::Key << "unification";
     ans << YAML::Value << YAML::BeginSeq;
     // sort unification entries by to, then by range, then by dna
@@ -584,6 +588,12 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     VR(n_qual && n_qual.IsScalar(), "missing 'quality' field");
     ans.qual = n_qual.as<int>();
     VR(ans.qual >= 0, "invalid 'qual' field");
+
+    const auto n_monoallelic = yaml["monoallelic"];
+    if (n_monoallelic) {
+        VR(n_monoallelic.IsScalar(), "invalid 'monoallelic' field");
+        ans.monoallelic = n_monoallelic.as<bool>();
+    }
 
     #undef V
     #undef VR

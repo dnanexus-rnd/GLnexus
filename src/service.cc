@@ -281,9 +281,16 @@ public:
 };
 
 Status Service::genotype_sites(const genotyper_config& cfg, const string& sampleset,
-                               const vector<unified_site>& sites,
+                               const vector<unified_site>& presites,
                                const string& filename,
                                atomic<bool>* ext_abort) {
+    vector<unified_site> sites;
+    // TEMPORARY: ignore monoallelic sites for now
+    for (const auto& us : presites) {
+        if (!us.monoallelic) {
+            sites.push_back(us);
+        }
+    }
     Status s;
     shared_ptr<const set<string>> samples;
     S(body_->metadata_->sampleset_samples(sampleset, samples));
