@@ -245,6 +245,12 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             continue;
         }
         if (related_site != sites.end()) {
+            // enforce max_alleles_per_site; NB, we count the ref allele toward
+            // this limit, while related_site.size() is the # of ALT alleles.
+            if (cfg.max_alleles_per_site > 1 && related_site->second.size()+1 >= cfg.max_alleles_per_site) {
+                pruned.insert(mal);
+                continue;
+            }
             // merge this allele into the related site
             range urng(mal.first.pos.rid,
                        min(mal.first.pos.beg, related_site->first.beg),
@@ -361,25 +367,9 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     // decreasing copy number count (+ some tiebreakers). Note, this may be a
     // different sort order than used in prune_allele earlier.
     assert(alts.size() > 0);
+    assert(cfg.max_alleles_per_site < 2 || alts.size() < cfg.max_alleles_per_site);
     vector<minimized_allele> valts(alts.begin(), alts.end());
     sort(valts.begin(), valts.end(), minimized_allele_common_lt);
-
-    // enforce max_alleles_per_site. NB, valts does not include the ref
-    // allele, so we're truncating valts to cfg.max_alleles_per_site-1
-    if (cfg.max_alleles_per_site > 1 && valts.size() >= cfg.max_alleles_per_site) {
-        // Out of fairness, we also prune alt alleles with the same
-        // copy number as the first truncated one, except we always need
-        // to keep at least one alt allele of course.
-        unsigned int trunc0 = 1, trunc1 = 1;
-        for (; trunc1 < cfg.max_alleles_per_site; trunc1++) {
-            assert(valts[trunc0].second.copy_number >= valts[trunc1].second.copy_number);
-            while(valts[trunc0].second.copy_number > valts[trunc1].second.copy_number)
-                trunc0++;
-        }
-        pruned.insert(valts.begin()+trunc0, valts.end());
-        valts.assign(valts.begin(), valts.begin()+trunc0);
-        assert(valts.size() < cfg.max_alleles_per_site);
-    }
 
     // fill out the unification
     unified_site us(pos);

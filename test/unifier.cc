@@ -11,7 +11,7 @@ TEST_CASE("unifier max_alleles_per_site") {
 
     dai.is_ref = true; dai.topAQ = top_AQ(99); dai.zGQ = zygosity_by_GQ(1,0,100);
     dal[allele(range(0, 100, 101), "A")] = dai;
-    dai.is_ref = false; dai.topAQ = top_AQ(99); dai.zGQ = zygosity_by_GQ(1,0,100);
+    dai.is_ref = false; dai.topAQ = top_AQ(99); dai.zGQ = zygosity_by_GQ(1,0,101);
     dal[allele(range(0, 100, 101), "G")] = dai;
     dai.is_ref = false; dai.topAQ = top_AQ(99); dai.zGQ = zygosity_by_GQ(1,0,10);
     dal[allele(range(0, 100, 101), "C")] = dai;
@@ -50,9 +50,8 @@ TEST_CASE("unifier max_alleles_per_site") {
         Status s = unified_sites(cfg, 200, dal, sites);
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
-        REQUIRE(sites[0].alleles.size() == 3);
-        REQUIRE(sites[0].alleles[2] == "GG");
-        // both CA and TA were pruned as they have the same observation count
+        REQUIRE(sites[0].alleles.size() == 4);
+        REQUIRE(sites[0].alleles[3] == "CA");
     }
 
     SECTION("3") {
@@ -70,8 +69,6 @@ TEST_CASE("unifier max_alleles_per_site") {
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 2);
-        REQUIRE(sites[0].alleles[1] == "GA");
-        // GA is kept even though it has the same observation count as GG
-        // because we have to keep at least one alt allele...
+        REQUIRE(sites[0].alleles[1] == "G");
     }
 }
