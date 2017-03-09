@@ -663,6 +663,10 @@ TEST_CASE("lost deletion") {
     GVCFTestCase("lost_deletion").perform_gvcf_test();
 }
 
+TEST_CASE("lost deletion_monoallelic_site") {
+    GVCFTestCase("lost_deletion_monoallelic_site").perform_gvcf_test();
+}
+
 TEST_CASE("join records with unifier preference for small alleles") {
     GVCFTestCase("join_records_prefer_small").perform_gvcf_test();
 }

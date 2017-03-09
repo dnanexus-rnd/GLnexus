@@ -1,0 +1,99 @@
+readme: |
+  This case exhibits a lengthy deletion that's lost because it overlaps two other sites.
+  In this case we set monoallelic_sites_for_lost_alleles in the unifier configuration, so
+  that we get a special additional site (and VCF record) to represent it.
+input:
+  header : |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	608815	.	G	<NON_REF>	.	.	END=26608824	GT:DP:GQ:MIN_DP:PL	0/0:16:30:16:0,27,405
+        A	608825	.	TGGGGCCG	T,<NON_REF>	960.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,18,0:18:69:1003,69,0,1003,69,1003:0,0,13,5
+        A	608833	.	G	<NON_REF>	.	.	END=26608834	GT:DP:GQ:MIN_DP:PL	0/0:12:30:10:0,30,392
+        A	608835	.	ACCGGGACCGGGACTGGG	A,<NON_REF>	788.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,19,0:19:57:831,57,0,831,57,831:0,0,15,4
+    - B.gvcf: |
+        B
+        A	608824	.	C	<NON_REF>	.	.	END=608825	GT:DP:GQ:MIN_DP:PL	0/0:20:15:19:0,11,679
+        A	608826	.	G	<NON_REF>	.	.	END=608826	GT:DP:GQ:MIN_DP:PL	0/0:18:0:18:0,0,580
+        A	608827	.	G	<NON_REF>	.	.	END=608827	GT:DP:GQ:MIN_DP:PL	0/0:17:12:17:0,12,180
+        A	608828	.	G	A,<NON_REF>	686.77	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,15,0:15:48:720,48,0,720,48,720:0,0,7,8
+        A	608829	.	G	<NON_REF>	.	.	END=608829	GT:DP:GQ:MIN_DP:PL	0/0:15:0:15:0,0,538
+        A	608830	.	C	<NON_REF>	.	.	END=608830	GT:DP:GQ:MIN_DP:PL	0/0:14:15:14:0,15,225
+        A	608831	.	C	<NON_REF>	.	.	END=608831	GT:DP:GQ:MIN_DP:PL	0/0:14:0:14:0,0,497
+        A	608832	.	G	<NON_REF>	.	.	END=608832	GT:DP:GQ:MIN_DP:PL	0/0:14:15:14:0,15,225
+        A	608833	.	G	<NON_REF>	.	.	END=608839	GT:DP:GQ:MIN_DP:PL	0/0:14:0:13:0,0,413
+        A	608840	.	G	<NON_REF>	.	.	END=608840	GT:DP:GQ:MIN_DP:PL	0/0:13:18:13:0,18,270
+        A	608841	.	A	<NON_REF>	.	.	END=608841	GT:DP:GQ:MIN_DP:PL	0/0:13:0:13:0,0,404
+        A	608842	.	C	<NON_REF>	.	.	END=608842	GT:DP:GQ:MIN_DP:PL	0/0:12:18:12:0,18,270
+        A	608843	.	C	<NON_REF>	.	.	END=608843	GT:DP:GQ:MIN_DP:PL	0/0:12:0:12:0,0,306
+        A	608844	.	G	<NON_REF>	.	.	END=608851	GT:DP:GQ:MIN_DP:PL	0/0:6:15:6:0,15,225
+        A	608852	.	G	<NON_REF>	.	.	END=608852	GT:DP:GQ:MIN_DP:PL	0/0:6:4:6:0,5,188
+    - C.gvcf: |
+        C
+        A	608815	.	G	<NON_REF>	.	.	END=608824	GT:DP:GQ:MIN_DP:PL	0/0:17:42:16:0,33,495
+        A	608825	.	TGGGGCCG	T,<NON_REF>	757.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,18,0:18:54:800,54,0,800,54,800:0,0,11,7
+        A	608833	.	G	<NON_REF>	.	.	END=608834	GT:DP:GQ:MIN_DP:PL	0/0:13:0:12:0,0,388
+        A	608835	.	ACCGGGACCGGGACTGGG	A,<NON_REF>	757.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,17,0:17:54:800,54,0,800,54,800:0,0,11,6
+    - D.gvcf: |
+        D
+        A	608819	.	AGGGACTGGGGCCGGGACCGGGACC	A,<NON_REF>	108	.	.	GT:AD:DP:GQ:PL:SB	1/1:0,4,0:4:15:150,15,0,150,15,150:0,0,3,1
+        A	608844	.	G	<NON_REF>	.	.	END=608851	GT:DP:GQ:MIN_DP:PL	0/0:19:48:18:0,48,720
+        A	608852	.	G	<NON_REF>	.	.	END=608852	GT:DP:GQ:MIN_DP:PL	0/0:22:0:22:0,0,508
+
+unifier_config:
+  monoallelic_sites_for_lost_alleles: true
+
+truth_unified_sites:
+    - range: {ref: A, beg: 608819, end: 608843}
+      alleles: [AGGGACTGGGGCCGGGACCGGGACC, A]
+      allele_frequencies: [.nan, 0.25]
+      quality: 150
+      monoallelic: true
+      unification:
+        - range: {beg: 608819, end: 608843}
+          dna: A
+          to: 1
+    - range: {ref: A, beg: 608825, end: 608832}
+      alleles: [TGGGGCCG, T, TGGAGCCG]
+      allele_frequencies: [.nan, 0.5, 0.25]
+      lost_allele_frequency: 0.25
+      quality: 1003
+      unification:
+        - range: {beg: 608825, end: 608832}
+          dna: T
+          to: 1
+        - range: {beg: 608828, end: 608828}
+          dna: A
+          to: 2
+    - range: {ref: A, beg: 608835, end: 608852}
+      alleles: [ACCGGGACCGGGACTGGG, A]
+      allele_frequencies: [.nan, 0.5]
+      lost_allele_frequency: 0.25
+      quality: 831
+      unification:
+        - range: {beg: 608835, end: 608852}
+          dna: A
+          to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      A	608825	.	TGGGGCCG	T,TGGAGCCG	1003	.	.	GT:RNC	1/1:..	2/2:..	1/1:..	./.:--
+      A	608835	.	ACCGGGACCGGGACTGGG	A	831	.	.	GT:RNC	1/1:..	0/0:..	1/1:..	./.:--

@@ -505,6 +505,7 @@ struct unified_site {
     }
     bool operator<(const unified_site& rhs) const noexcept{
         if (pos != rhs.pos) return pos < rhs.pos;
+        if (monoallelic != rhs.monoallelic) return !monoallelic;
         if (alleles != rhs.alleles) return alleles < rhs.alleles;
         if (unification != rhs.unification) return unification < rhs.unification;
         return allele_frequencies < rhs.allele_frequencies;
@@ -583,6 +584,15 @@ struct unifier_config {
     /// editing the smallest portion of the reference (least likely to
     /// conflict with other alleles).
     UnifierPreference preference = UnifierPreference::Common;
+
+    /// In some situations the unifier "loses" complex alleles because they
+    /// cannot be represented cleanly with the other alleles in one or more
+    /// non-overlapping multiallelic sites. If this flag is true, then the
+    /// unifier generates additional sites which each represent just one such
+    /// "lost" allele. This preserves a representation of the allele, with
+    /// the disadvantage that the generated sites are not all non-overlapping
+    /// (and thus it's more difficult to reason about their partitioning).
+    bool monoallelic_sites_for_lost_alleles = false;
 
     bool operator==(const unifier_config& rhs) const noexcept {
         return min_allele_copy_number == rhs.min_allele_copy_number &&

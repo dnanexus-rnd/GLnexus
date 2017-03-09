@@ -644,6 +644,12 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
         ans.max_alleles_per_site = (size_t) max_alleles_per_site;
     }
 
+    const auto n_monoallelic_sites_for_lost_alleles = yaml["monoallelic_sites_for_lost_alleles"];
+    if (n_monoallelic_sites_for_lost_alleles) {
+        V(n_monoallelic_sites_for_lost_alleles.IsScalar(), "invalid monoallelic_sites_for_lost_alleles");
+        ans.monoallelic_sites_for_lost_alleles = n_monoallelic_sites_for_lost_alleles.as<bool>();
+    }
+
     const auto n_preference = yaml["preference"];
     if (n_preference) {
         V(n_preference.IsScalar(), "invalid preference");
@@ -668,6 +674,7 @@ Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "min_AQ2" << YAML::Value << min_AQ2;
     ans << YAML::Key << "min_GQ" << YAML::Value << min_GQ;
     ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
+    ans << YAML::Key << "monoallelic_sites_for_lost_alleles" << YAML::Value << monoallelic_sites_for_lost_alleles;
 
     ans << YAML::Key << "preference" << YAML::Value;
     if (preference == UnifierPreference::Common) {
