@@ -414,7 +414,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      size_t nr_threads,
                                      const vector<string> &filenames,
                                      unsigned &N, vector<pair<string,size_t>> &contigs,
-                                     discovered_alleles &dsals) {
+                                     vector<discovered_alleles>& dsals) {
     Status s;
     mutex mu;
 
@@ -438,9 +438,6 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
             vector<pair<string,size_t>> contigs2;
             unsigned int N2;
 
-            //std::ifstream ifs(dsal_file.c_str());
-            //Status s = discovered_alleles_of_yaml_stream(ifs, N2, contigs2, dsals2);
-            //ifs.close();
             Status s = discovered_alleles_of_capnp(dsal_file, N2, contigs2, dsals2);
             if (!s.ok()) {
                 logger->info() << "Error loading alleles from " << dsal_file;
@@ -448,11 +445,21 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
             }
             logger->info() << "loaded " << dsals2.size() << " alleles from " << dsal_file << ", N = " << N2;
 
+            vector<discovered_alleles> dsals3(contigs2.size());
+            for (auto& p : dsals2) {
+                auto which = p.first.pos.rid;
+                if (which < 0 || which >= contigs2.size()) {
+                    return Status::Invalid("discovered_allele on unknown contig");
+                }
+                dsals3[which].insert(move(p));
+            }
+            dsals2.clear();
+
             lock_guard<mutex> lock(mu);
             if (contigs.empty()) {
                 // This is the first file, initialize the result data-structures
                 contigs = move(contigs2);
-                dsals = move(dsals2);
+                dsals = move(dsals3);
                 N = N2;
                 return Status::OK();
             }
@@ -465,7 +472,10 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
 
             // Merge the discovered alleles
             N += N2;
-            return merge_discovered_alleles(dsals2, dsals);
+            for (unsigned i = 0; i < contigs.size(); i++) {
+                S(merge_discovered_alleles(dsals3[i], dsals[i]));
+            }
+            return Status::OK();
         });
         statuses.push_back(move(fut));
     }
