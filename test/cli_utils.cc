@@ -372,11 +372,12 @@ unification:
         filenames.push_back(tmp_file_name1);
 
         vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals2;
+        vector<discovered_alleles> dsals2;
         Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs2, dsals2);
         REQUIRE(s.ok());
         REQUIRE(N == 1);
         REQUIRE(contigs2.size() == contigs.size());
+        REQUIRE(dsals2.size() == contigs.size());
     }
 
     SECTION("merging discovered allele files, 2 files") {
@@ -392,12 +393,14 @@ unification:
         filenames.push_back(tmp_file_name2);
 
         vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals;
+        vector<discovered_alleles> dsals;
         Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs2, dsals);
         REQUIRE(s.ok());
         REQUIRE(N == 3);
         REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(dsals.size() == 4);
+        REQUIRE(dsals.size() == contigs.size());
+        REQUIRE(dsals[0].size() == 2);
+        REQUIRE(dsals[1].size() == 2);
     }
 
     SECTION("merging discovered allele files, 3 files") {
@@ -411,17 +414,40 @@ unification:
         }
 
         vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals;
+        vector<discovered_alleles> dsals;
         Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs2, dsals);
         REQUIRE(s.ok());
         REQUIRE(N == 3);
         REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(dsals.size() == 6);
+        REQUIRE(dsals.size() == contigs.size());
+        REQUIRE(dsals[0].size() == 3);
+        REQUIRE(dsals[1].size() == 3);
+
+        discovered_alleles da1, da2, da3;
+        YAML::Node node = YAML::Load(da_yaml1);
+        s = discovered_alleles_of_yaml(node, contigs, da1); REQUIRE(s.ok());
+        node = YAML::Load(da_yaml2);
+        s = discovered_alleles_of_yaml(node, contigs, da2); REQUIRE(s.ok());
+        node = YAML::Load(da_yaml3);
+        s = discovered_alleles_of_yaml(node, contigs, da3); REQUIRE(s.ok());
+
+        vector<pair<allele,discovered_allele_info>> vdsals(dsals[0].begin(), dsals[0].end());
+        vector<pair<allele,discovered_allele_info>> vda(da1.begin(), da1.end());
+        REQUIRE(vdsals[0] == vda[0]);
+        REQUIRE(vdsals[2] == vda[1]);
+        vda.assign(da3.begin(), da3.end());
+        REQUIRE(vdsals[1] == vda[0]);
+
+        vdsals.assign(dsals[1].begin(), dsals[1].end());
+        REQUIRE(vdsals[2] == vda[1]);
+        vda.assign(da2.begin(), da2.end());
+        REQUIRE(vdsals[0] == vda[0]);
+        REQUIRE(vdsals[1] == vda[1]);
     }
 
     SECTION("merging discovered allele files, error, no files provided") {
         vector<string> filenames;
-        discovered_alleles dsals;
+        vector<discovered_alleles> dsals;
 
         Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs, dsals);
         REQUIRE(s.bad());
@@ -443,7 +469,7 @@ unification:
         filenames.push_back(tmp_file_name2);
 
         vector<pair<string,size_t>> contigs3;
-        discovered_alleles dsals;
+        vector<discovered_alleles> dsals;
         Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs3, dsals);
         REQUIRE(s.bad());
     }
@@ -484,7 +510,7 @@ unification:
             filenames.push_back(fname);
         }
 
-        discovered_alleles dsals;
+        vector<discovered_alleles> dsals;
         Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs, dsals);
     }
 }
