@@ -664,7 +664,8 @@ TEST_CASE("lost deletion") {
 }
 
 TEST_CASE("lost deletion_monoallelic_site") {
-    GVCFTestCase("lost_deletion_monoallelic_site").perform_gvcf_test();
+    vector<string> v_formats = {"GT", "RNC", "DP", "AD"};
+    GVCFTestCase("lost_deletion_monoallelic_site", v_formats, {}).perform_gvcf_test();
 }
 
 TEST_CASE("join records with unifier preference for small alleles") {

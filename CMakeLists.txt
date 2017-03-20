@@ -241,7 +241,7 @@ install(TARGETS playground DESTINATION bin)
 if (test)
 
   ExternalProject_Add(catch
-    URL https://github.com/philsquared/Catch/archive/v1.2.1.zip
+    URL https://github.com/philsquared/Catch/archive/v1.8.2.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""

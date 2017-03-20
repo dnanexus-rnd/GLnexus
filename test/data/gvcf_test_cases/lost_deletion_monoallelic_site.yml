@@ -55,6 +55,24 @@ input:
 unifier_config:
   monoallelic_sites_for_lost_alleles: true
 
+genotyper_config:
+  liftover_fields:
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_type: zero
+      count: 0
+
 truth_unified_sites:
     - range: {ref: A, beg: 608819, end: 608843}
       alleles: [AGGGACTGGGGCCGGGACCGGGACC, A]
@@ -93,7 +111,11 @@ truth_output_vcf:
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	608825	.	TGGGGCCG	T,TGGAGCCG	1003	.	.	GT:RNC	1/1:..	2/2:..	1/1:..	./.:--
-      A	608835	.	ACCGGGACCGGGACTGGG	A	831	.	.	GT:RNC	1/1:..	0/0:..	1/1:..	./.:--
+      A	608819	.	AGGGACTGGGGCCGGGACCGGGACC	A	150	MONOALLELIC	.	GT:DP:AD:RNC	./.:12:.,0:MM	./.:.:.,.:PP	./.:13:.,0:MM	1/1:4:.,4:..
+      A	608825	.	TGGGGCCG	T,TGGAGCCG	1003	.	.	GT:DP:AD:RNC	1/1:16:0,18,0:..	2/2:14:0,0,15:..	1/1:18:0,18,0:..	./.:4:0,0,0:--
+      A	608835	.	ACCGGGACCGGGACTGGG	A	831	.	.	GT:DP:AD:RNC	1/1:12:0,19:..	0/0:6:6,0:..	1/1:17:0,17:..	./.:4:0,0:--

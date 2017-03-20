@@ -149,6 +149,10 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
         WARNING("Found differing qualities! {0} {1}".format(i_row.QUAL, t_row.QUAL))
         return (i_row, t_row)
 
+    if (i_row.FILTER != t_row.FILTER):
+        WARNING("Found differing filters! {0} {1}".format(i_row.FILTER, t_row.FILTER))
+        return (i_row, t_row)
+
     for info_f in info_fs:
         n_present = sum([1 for row in (i_row, t_row) if info_f in row.INFO])
 

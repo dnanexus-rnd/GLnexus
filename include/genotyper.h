@@ -31,7 +31,8 @@ enum class NoCallReason {
     LostDeletion,         /// unrepresentable overlapping deletion
     LostAllele,           /// unrepresentable allele (other than overlapping deletion)
     UnphasedVariants,     /// site spans multiple unphased variants
-    OverlappingVariants   /// site spans multiple variants which overlap each other
+    OverlappingVariants,  /// site spans multiple variants which overlap each other
+    MonoallelicSite       /// site is monoallelic; no assertion about the presence of either ref or alt allele
 };
 
 /// A single allele call and metadata; diploid samples each have two calls
