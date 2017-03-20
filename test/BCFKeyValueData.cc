@@ -702,6 +702,61 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 }
 
 // --------------------------------------------------------------------
+// Confidence intervals are VCF records that reflect identify with the
+// reference genome. Such a record could be very long, nearly the
+// length of a chromosome. It is diffcult to store such long records
+// in the database, because they fall into many buckets. This test
+// covers various cases where they appear.
+// --------------------------------------------------------------------
+TEST_CASE("BCFData::long_confidence_intervals") {
+    std::vector<int> intervals = {5, 9, 11};
+
+    for (int ilen : intervals) {
+        KeyValueMem::DB db({});
+        auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
+
+        // Buckets of size 9 break the ranges [1005 -- 1010] and [3004 -- 3006]
+        // in two.
+        REQUIRE(T::InitializeDB(&db, contigs, ilen).ok());
+        unique_ptr<T> data;
+        REQUIRE(T::Open(&db, data).ok());
+        unique_ptr<MetadataCache> cache;
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+        set<string> samples_imported;
+
+        Status s = data->import_gvcf(*cache, "long_ref", "test/data/long_ref_intervals.gvcf",
+                                     samples_imported);
+        if (s.bad()) {
+            cout << s.str() << endl;
+        }
+        REQUIRE(s.ok());
+        shared_ptr<const bcf_hdr_t> hdr;
+        s = data->dataset_header("long_ref", hdr);
+        REQUIRE(s.ok());
+
+        // only reference confidence records are supposed to show up in these queries
+        vector<shared_ptr<bcf1_t>> records;
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 1020, 1030), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+        REQUIRE(records[0]->pos == 1017);
+        REQUIRE(records[0]->n_allele == 2);
+        REQUIRE(string(records[0]->d.allele[0]) == "T");
+        REQUIRE(string(records[0]->d.allele[1]) == "<NON_REF>");
+
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 2100, 2900), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+        REQUIRE(records[0]->pos == 2010);
+
+        // Several records are supposed to appear
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 2800, 3010), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 5);
+    }
+}
+
+// --------------------------------------------------------------------
 // This is a design for a test that will be useful with query primitives
 // that work on multiple datasets.
 //
