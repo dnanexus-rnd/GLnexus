@@ -53,6 +53,7 @@ class BCFWriter {
 
     /// Serializes BCF records into a memory buffer (without the header)
     static Status Open(std::unique_ptr<BCFWriter>& ans);
+    static Status Open(std::shared_ptr<BCFWriter>& ans);
 
     /// Writes a BCF header into a memory buffer
     static std::string write_header(const bcf_hdr_t *hdr);

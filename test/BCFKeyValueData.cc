@@ -709,7 +709,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 // covers various cases where they appear.
 // --------------------------------------------------------------------
 TEST_CASE("BCFData::long_confidence_intervals") {
-    std::vector<int> intervals = {5, 9, 11};
+    std::vector<int> intervals = {5, 9, 11, 101};
 
     for (int ilen : intervals) {
         KeyValueMem::DB db({});
@@ -753,7 +753,60 @@ TEST_CASE("BCFData::long_confidence_intervals") {
         s = data->dataset_range("long_ref", hdr.get(), range(0, 2800, 3010), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 5);
+
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 1004, 3000), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 8);
+
+        // long record is last
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 3000, 4000), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 5);
     }
+}
+
+TEST_CASE("BCFData::long_confidence_intervals2") {
+    int ilen=13;
+
+    KeyValueMem::DB db({});
+    auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
+
+    REQUIRE(T::InitializeDB(&db, contigs, ilen).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    Status s = data->import_gvcf(*cache, "1", "test/data/long_ref_intervals.gvcf",
+                                 samples_imported);
+    REQUIRE(s.ok());
+    s = data->import_gvcf(*cache, "2", "test/data/long_ref_intervals_2.gvcf", samples_imported);
+    REQUIRE(s.ok());
+
+    size_t ct;
+    REQUIRE(cache->sample_count(ct).ok());
+    REQUIRE(ct == 2);
+
+    // check * version number
+    KeyValue::CollectionHandle coll;
+    REQUIRE(db.collection("sampleset", coll).ok());
+    string version;
+    REQUIRE(db.get(coll, "*", version).ok());
+    REQUIRE(version == "2");
+
+    string sampleset;
+    s = cache->all_samples_sampleset(sampleset);
+    REQUIRE(s.ok());
+
+    shared_ptr<const bcf_hdr_t> hdr;
+    s = data->dataset_header("1", hdr);
+    REQUIRE(s.ok());
+
+    vector<shared_ptr<bcf1_t>> records;
+    s = data->dataset_range(sampleset, hdr.get(), range(0, 3000, 4000), nullptr, records);
+    REQUIRE(s.ok());
+    REQUIRE(records.size() == 5);
 }
 
 // --------------------------------------------------------------------

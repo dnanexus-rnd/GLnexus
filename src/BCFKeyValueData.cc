@@ -134,15 +134,26 @@ public:
         return make_shared<BucketExtent>(query, interval_len);
     }
 
-    // Which bucket should a BCF record be placed in?
+    // Which bucket does this BCF record start in?
     range bucket(bcf1_t *rec) {
         int bgn = (rec->pos / interval_len) * interval_len;
         return range(rec->rid, bgn, bgn + interval_len);
     }
-    // ...and the subsequent bucket
-    range next_bucket(bcf1_t *rec) {
-        int bgn = ((rec->pos / interval_len)+1) * interval_len;
-        return range(rec->rid, bgn, bgn + interval_len);
+    // The bucket after [rng], assuming [rng] is a bucket.
+    range inc_bucket(range &rng) {
+        assert((rng.end - rng.beg) == interval_len);
+        return range(rng.rid,
+                     rng.beg + interval_len,
+                     rng.end + interval_len);
+    }
+
+    // Create a ficticious bucket marking the end of a chromosome.
+    range bucket_at_end_of_chrom(int rid,
+                                 const std::vector<std::pair<std::string,size_t> >&contigs) {
+        //const string &contig_name = contigs[rid].first;
+        size_t contig_len = contigs[rid].second;
+        int bgn = ((contig_len / interval_len) + 2) * interval_len;
+        return range(rid, bgn, bgn + interval_len);
     }
 };
 
@@ -946,10 +957,6 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
         }
     }
 
-    if (bcf->rlen > rangeHelper.interval_len) {
-        return Status::Invalid("gVCF contains record above maximum length", filename + " " + range(bcf).str(contigs));
-    }
-
     // verify record ordering is non-decreasing within a contig
     if (prev_rid == bcf->rid && prev_pos > bcf->pos) {
         return Status::Invalid("gVCF records are out-of-order ",
@@ -1105,6 +1112,92 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
 #define CHECK_DANGLER_BUCKET(pbcf,bkt)
 #endif
 
+
+// The code below ingests records into database buckets. A bucket is
+// fairly large, and for the most part, records are short and entirely
+// fit into a single bucket. However, even short records can straddle
+// a boundary. Also, long confidence intervals and structural
+// variations can be much longer than a bucket. To deal with these
+// corner cases, the *danglers list* is a buffer of records that dangle
+// from one bucket over to the next.
+//
+// Short records that straddle a boundary will appear as regular
+// records in bucket K, and as danglers in bucket K+1. Long records
+// appear as regular records in the first bucket they belong to, and
+// as danglers in all the others (they belong to).
+
+
+// Leave in the danglers list only records that extend beyond [bucket].
+static void prune(vector<shared_ptr<bcf1_t>> &danglers,
+                  range &bucket) {
+    vector<shared_ptr<bcf1_t>> remain;
+    for (const auto& dp : danglers) {
+        if (range(dp.get()).end > bucket.end) {
+            remain.push_back(dp);
+        }
+    }
+    danglers = remain;
+}
+
+// Prepare a bucket into which a record can be written.
+static Status write_danglers_up_to(BCFBucketRange& rangeHelper,
+                                   KeyValue::DB* db,
+                                   shared_ptr<BCFWriter> writer,
+                                   const string& dataset,
+                                   range &current_bkt,
+                                   BCFKeyValueData::import_result& rslt,
+                                   vector<shared_ptr<bcf1_t>> &danglers,
+                                   range &next_bkt) {
+    Status s;
+    // write old bucket K to DB
+    if (writer != nullptr && writer->get_num_entries() > 0) {
+        S(write_bucket(rangeHelper, db, writer.get(), dataset, current_bkt, rslt));
+    }
+    writer.reset();
+
+    // in which bucket does this next record reside?
+    range current = rangeHelper.inc_bucket(current_bkt);
+
+    // Subtlety: if this next record is in a bucket other than
+    // K+1, but there were danglers from the old bucket K into
+    // bucket K+1, then we need to write out bucket K+1
+    // (containing only the danglers) before moving on. For
+    // very long records, many contiguous filler buckets will
+    // be needed.
+    while (!danglers.empty() &&
+           current < next_bkt &&
+           range(danglers[0]).overlaps(current)) {
+        S(BCFWriter::Open(writer));
+        for (const auto& dp : danglers) {
+            if (range(dp.get()).overlaps(current)) {
+                CHECK_DANGLER_BUCKET(dp.get(), current);
+                S(writer->write(dp.get()));
+            }
+        }
+        S(write_bucket(rangeHelper, db, writer.get(), dataset, current, rslt));
+        writer.reset();
+        prune(danglers, current);
+        current = rangeHelper.inc_bucket(current);
+    }
+
+    // start a new in-memory chunk
+    S(BCFWriter::Open(writer));
+
+    // write danglers at the beginning of the new bucket
+    if (!danglers.empty()) {
+        for (const auto& dp : danglers) {
+            if (range(dp.get()).overlaps(next_bkt)) {
+                CHECK_DANGLER_BUCKET(dp.get(), next_bkt);
+                S(writer->write(dp.get()));
+            }
+        }
+        prune(danglers, next_bkt);
+    }
+
+    return Status::OK();
+}
+
+
 static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           MetadataCache& metadata,
                                           KeyValue::DB* db,
@@ -1115,13 +1208,10 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           vcfFile *vcf,
                                           BCFKeyValueData::import_result& rslt) {
     Status s;
-    unique_ptr<BCFWriter> writer;
+    shared_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
     int prev_pos = -1;
     int prev_rid = -1;
-    // buffer of records dangling from one bucket over to the next. For
-    // simplicity we assume a record can overlap only 1 or 2 buckets, or
-    // equivalently, the bucket size is an upper bound on record length.
     vector<shared_ptr<bcf1_t>> danglers;
     // current bucket
     range bucket(-1, 0, rangeHelper.interval_len);
@@ -1141,52 +1231,16 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             }
         }
 
-        // Check various aspects of the record's validity; e.g. Make sure the
-        // record is not longer than [BCFBucketRange::interval_len] which
-        // would violate aforementioned the assumption underlying how we
-        // handle danglers.
+        // Check various aspects of the record's validity; e.g. make sure the
+        // records are coordinate sorted.
         S(validate_bcf(rangeHelper, metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
-            // write old bucket K to DB
-            if (writer != nullptr && writer->get_num_entries() > 0) {
-                S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket, rslt));
-            }
-            writer.reset();
-
-            // in which bucket does this next record reside?
-            bucket = rangeHelper.bucket(vt.get());
-
-            // Subtlety: if this next record is in a bucket other than K+1,
-            // but there were danglers from the old bucket K into bucket K+1,
-            // then we need to write out bucket K+1 (containing only the
-            // danglers) before moving on to this next record.
-            if (!danglers.empty()) {
-                range dangler_bucket = rangeHelper.next_bucket(danglers[0].get());
-                if (dangler_bucket != bucket) {
-                    assert(dangler_bucket < bucket);
-                    S(BCFWriter::Open(writer));
-                    for (const auto& dp : danglers) {
-                        assert(rangeHelper.next_bucket(dp.get()) == dangler_bucket);
-                        CHECK_DANGLER_BUCKET(dp.get(), dangler_bucket)
-                        S(writer->write(dp.get()));
-                    }
-                    S(write_bucket(rangeHelper, db, writer.get(), dataset, dangler_bucket, rslt));
-                    writer.reset();
-                    danglers.clear();
-                }
-            }
-
-            // start a new in-memory chunk
-            S(BCFWriter::Open(writer));
-
-            // write danglers at the beginning of the new bucket
-            for (const auto& dp : danglers) {
-                CHECK_DANGLER_BUCKET(dp.get(), bucket)
-                S(writer->write(dp.get()));
-            }
-            danglers.clear();
+            range next_bucket = rangeHelper.bucket(vt.get());
+            S(write_danglers_up_to(rangeHelper, db, writer, dataset, bucket, rslt,
+                                   danglers, next_bucket));
+            bucket = next_bucket;
         }
         // write the record into the bucket
         S(writer->write(vt.get()));
@@ -1203,25 +1257,10 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
-    // write out last bucket
-    if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket, rslt));
-    }
-    writer.reset();
-
-    // ...and any last danglers
-    if (!danglers.empty()) {
-        range dangler_bucket = rangeHelper.next_bucket(danglers[0].get());
-        assert(bucket < dangler_bucket);
-        S(BCFWriter::Open(writer));
-        for (const auto& dp : danglers) {
-            CHECK_DANGLER_BUCKET(dp.get(), dangler_bucket)
-            S(writer->write(dp.get()));
-        }
-        S(write_bucket(rangeHelper, db, writer.get(), dataset, dangler_bucket, rslt));
-        writer.reset();
-        danglers.clear();
-    }
+    // write out last bucket, and any last danglers
+    range end_bucket = rangeHelper.bucket_at_end_of_chrom(vt->rid, metadata.contigs());
+    S(write_danglers_up_to(rangeHelper, db, writer, dataset, bucket, rslt,
+                           danglers, end_bucket));
 
     return Status::OK();
 }
