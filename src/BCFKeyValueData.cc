@@ -618,6 +618,7 @@ static Status scan_bucket(
         S(scanner.read_range(cur_range, n_allele));
         assert(cur_range.rid == query.rid);
         assert(last_range <= cur_range);
+        cerr << "cur_range=" << cur_range.str() << " bucket=" << bucket.str() << endl;
         assert(cur_range.overlaps(bucket));
 
         if (cur_range.overlaps(query) &&
@@ -1106,7 +1107,6 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
     assert(dangler_rng.overlaps(bkt)); \
     assert(dangler_rng.beg < (bkt).beg); \
     assert(dangler_rng.end > (bkt).beg); \
-    assert(dangler_rng.end <= (bkt).end); \
 }
 #else
 #define CHECK_DANGLER_BUCKET(pbcf,bkt)
@@ -1130,12 +1130,14 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
 // Leave in the danglers list only records that extend beyond [bucket].
 static void prune(vector<shared_ptr<bcf1_t>> &danglers,
                   range &bucket) {
+//    cerr << "prune" << endl;
     vector<shared_ptr<bcf1_t>> remain;
     for (const auto& dp : danglers) {
         if (range(dp.get()).end > bucket.end) {
             remain.push_back(dp);
         }
     }
+    danglers.clear();
     danglers = remain;
 }
 
@@ -1155,7 +1157,7 @@ static Status write_danglers_up_to(BCFBucketRange& rangeHelper,
     }
     writer.reset();
 
-    // in which bucket does this next record reside?
+    // move to bucket K+1
     range current = rangeHelper.inc_bucket(current_bkt);
 
     // Subtlety: if this next record is in a bucket other than
@@ -1165,8 +1167,7 @@ static Status write_danglers_up_to(BCFBucketRange& rangeHelper,
     // very long records, many contiguous filler buckets will
     // be needed.
     while (!danglers.empty() &&
-           current < next_bkt &&
-           range(danglers[0]).overlaps(current)) {
+           current < next_bkt) {
         S(BCFWriter::Open(writer));
         for (const auto& dp : danglers) {
             if (range(dp.get()).overlaps(current)) {
@@ -1174,7 +1175,9 @@ static Status write_danglers_up_to(BCFBucketRange& rangeHelper,
                 S(writer->write(dp.get()));
             }
         }
-        S(write_bucket(rangeHelper, db, writer.get(), dataset, current, rslt));
+        if (writer->get_num_entries() > 0) {
+            S(write_bucket(rangeHelper, db, writer.get(), dataset, current, rslt));
+        }
         writer.reset();
         prune(danglers, current);
         current = rangeHelper.inc_bucket(current);
@@ -1215,6 +1218,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     vector<shared_ptr<bcf1_t>> danglers;
     // current bucket
     range bucket(-1, 0, rangeHelper.interval_len);
+    S(BCFWriter::Open(writer));
 
     // scan the BCF records
     int c;

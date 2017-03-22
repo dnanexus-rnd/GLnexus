@@ -739,15 +739,16 @@ TEST_CASE("BCFData::long_confidence_intervals") {
         s = data->dataset_range("long_ref", hdr.get(), range(0, 1020, 1030), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
-        REQUIRE(records[0]->pos == 1017);
+        REQUIRE(records[0]->pos == 1016);
         REQUIRE(records[0]->n_allele == 2);
-        REQUIRE(string(records[0]->d.allele[0]) == "T");
+        REQUIRE(string(records[0]->d.allele[0]) == "A");
         REQUIRE(string(records[0]->d.allele[1]) == "<NON_REF>");
 
         s = data->dataset_range("long_ref", hdr.get(), range(0, 2100, 2900), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
-        REQUIRE(records[0]->pos == 2010);
+        REQUIRE(records[0]->pos == 2009);
+        REQUIRE(string(records[0]->d.allele[0]) == "C");
 
         // Several records are supposed to appear
         s = data->dataset_range("long_ref", hdr.get(), range(0, 2800, 3010), nullptr, records);
