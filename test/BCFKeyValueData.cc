@@ -708,7 +708,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 // in the database, because they fall into many buckets. This test
 // covers various cases where they appear.
 // --------------------------------------------------------------------
-TEST_CASE("BCFData::long_confidence_intervals") {
+TEST_CASE("BCFKeyValueData long_confidence_intervals") {
     std::vector<int> intervals = {5, 9, 11, 101};
 
     for (int ilen : intervals) {
@@ -766,7 +766,7 @@ TEST_CASE("BCFData::long_confidence_intervals") {
     }
 }
 
-TEST_CASE("BCFData::long_confidence_intervals2") {
+TEST_CASE("BCFKeyValueData long_confidence_intervals 2") {
     std::vector<int> intervals = {5, 9, 11, 101};
 
     for (int ilen : intervals) {
@@ -1345,10 +1345,10 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
 
-    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_rnd1.gvcf", samples_imported);
     cout << s.str() << endl;
     REQUIRE(s.ok());
-    s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+    s = data->import_gvcf(*cache, "2", "test/data/sampleset_rnd2.gvcf", samples_imported);
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "3", "test/data/sampleset_range3.gvcf", samples_imported);
     REQUIRE(s.ok());
