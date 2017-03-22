@@ -95,7 +95,7 @@
 ##reference=file:///home/dnanexus/genome.fa
 ##bcftools_concatVersion=1.1+htslib-1.1
 ##bcftools_concatCommand=concat -f results.per-chrom.txt -o output.vcf.gz -O z
-#CHROM	POS	ID	REF	ALT	  QUAL	FILTER	INFO	FORMAT	HX0002
+#CHROM	POS	ID	REF	ALT	  QUAL	FILTER	INFO	FORMAT	LR0002
 21	1101	.	T	<NON_REF>	.	.	END=1105	GT:DP:GQ:MIN_DP:PL	0/0:14:36:13:0,36,540
 21	1111	.	TCCAT	<NON_REF>	.	.	END=1116	GT:DP:GQ:MIN_DP:PL	0/0:14:36:13:0,36,540
 21	1133	.	A	<NON_REF>	.	.	END=1878	GT:DP:GQ:MIN_DP:PL	0/0:14:36:13:0,36,540

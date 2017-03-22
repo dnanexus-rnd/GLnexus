@@ -611,14 +611,12 @@ static Status scan_bucket(
     #ifndef NDEBUG
     range last_range(-1,-1,-1);
     #endif
-
     while (scanner.valid()) {
         srq.nBCFRecordsRead++; // statistics counter for BCF records
         unsigned n_allele;
         S(scanner.read_range(cur_range, n_allele));
         assert(cur_range.rid == query.rid);
         assert(last_range <= cur_range);
-        cerr << "cur_range=" << cur_range.str() << " bucket=" << bucket.str() << endl;
         assert(cur_range.overlaps(bucket));
 
         if (cur_range.overlaps(query) &&
@@ -683,7 +681,6 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
     bool first = true;
     StatsRangeQuery accu;
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
-        //cout << "scanning bucket " << r.str() << endl;
         assert(r.overlaps(query));
         string key = body_->rangeHelper->bucket_key(r, dataset);
         string data;
@@ -1128,9 +1125,8 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
 
 
 // Leave in the danglers list only records that extend beyond [bucket].
-static void prune(vector<shared_ptr<bcf1_t>> &danglers,
-                  range &bucket) {
-//    cerr << "prune" << endl;
+static void prune_danglers(vector<shared_ptr<bcf1_t>> &danglers,
+                           const range &bucket) {
     vector<shared_ptr<bcf1_t>> remain;
     for (const auto& dp : danglers) {
         if (range(dp.get()).end > bucket.end) {
@@ -1141,21 +1137,49 @@ static void prune(vector<shared_ptr<bcf1_t>> &danglers,
     danglers = remain;
 }
 
-// Prepare a bucket into which a record can be written.
-static Status write_danglers_up_to(BCFBucketRange& rangeHelper,
-                                   KeyValue::DB* db,
-                                   shared_ptr<BCFWriter> writer,
-                                   const string& dataset,
-                                   range &current_bkt,
-                                   BCFKeyValueData::import_result& rslt,
-                                   vector<shared_ptr<bcf1_t>> &danglers,
-                                   range &next_bkt) {
+static Status write_bucket_if_not_empty(BCFBucketRange& rangeHelper,
+                                        KeyValue::DB* db,
+                                        shared_ptr<BCFWriter> writer,
+                                        const string& dataset,
+                                        range &bucket,
+                                        BCFKeyValueData::import_result& rslt) {
     Status s;
-    // write old bucket K to DB
+
     if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(rangeHelper, db, writer.get(), dataset, current_bkt, rslt));
+        S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket, rslt));
     }
-    writer.reset();
+    return Status::OK();
+}
+
+
+static Status write_danglers_to_in_mem_bucket(vector<shared_ptr<bcf1_t>> &danglers,
+                                              shared_ptr<BCFWriter> writer,
+                                              const range &bucket) {
+    Status s;
+
+    if (!danglers.empty()) {
+        for (const auto& dp : danglers) {
+            if (range(dp.get()).overlaps(bucket)) {
+                CHECK_DANGLER_BUCKET(dp.get(), bucket);
+                S(writer->write(dp.get()));
+            }
+        }
+        prune_danglers(danglers, bucket);
+    }
+    return Status::OK();
+}
+
+// Write any existing dangling records into the range between [current_bkt]
+// and [next_bkt]
+static Status write_danglers_between(BCFBucketRange& rangeHelper,
+                                     KeyValue::DB* db,
+                                     const string& dataset,
+                                     range &current_bkt,
+                                     BCFKeyValueData::import_result& rslt,
+                                     vector<shared_ptr<bcf1_t>> &danglers,
+                                     range &next_bkt) {
+    Status s;
+    unique_ptr<BCFWriter> writer;
 
     // move to bucket K+1
     range current = rangeHelper.inc_bucket(current_bkt);
@@ -1179,22 +1203,8 @@ static Status write_danglers_up_to(BCFBucketRange& rangeHelper,
             S(write_bucket(rangeHelper, db, writer.get(), dataset, current, rslt));
         }
         writer.reset();
-        prune(danglers, current);
+        prune_danglers(danglers, current);
         current = rangeHelper.inc_bucket(current);
-    }
-
-    // start a new in-memory chunk
-    S(BCFWriter::Open(writer));
-
-    // write danglers at the beginning of the new bucket
-    if (!danglers.empty()) {
-        for (const auto& dp : danglers) {
-            if (range(dp.get()).overlaps(next_bkt)) {
-                CHECK_DANGLER_BUCKET(dp.get(), next_bkt);
-                S(writer->write(dp.get()));
-            }
-        }
-        prune(danglers, next_bkt);
     }
 
     return Status::OK();
@@ -1241,10 +1251,19 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
+            // write old bucket K to DB
+            S(write_bucket_if_not_empty(rangeHelper, db, writer, dataset, bucket, rslt));
+            writer.reset();
             range next_bucket = rangeHelper.bucket(vt.get());
-            S(write_danglers_up_to(rangeHelper, db, writer, dataset, bucket, rslt,
+            S(write_danglers_between(rangeHelper, db, dataset, bucket, rslt,
                                    danglers, next_bucket));
             bucket = next_bucket;
+
+            // start a new in-memory chunk
+            S(BCFWriter::Open(writer));
+
+            // write danglers at the beginning of the new bucket
+            write_danglers_to_in_mem_bucket(danglers, writer, next_bucket);
         }
         // write the record into the bucket
         S(writer->write(vt.get()));
@@ -1261,10 +1280,14 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
-    // write out last bucket, and any last danglers
+    // write out last bucket
+    S(write_bucket_if_not_empty(rangeHelper, db, writer, dataset, bucket, rslt));
+    writer.reset();
+
+    // write any last danglers
     range end_bucket = rangeHelper.bucket_at_end_of_chrom(vt->rid, metadata.contigs());
-    S(write_danglers_up_to(rangeHelper, db, writer, dataset, bucket, rslt,
-                           danglers, end_bucket));
+    S(write_danglers_between(rangeHelper, db, dataset, bucket, rslt,
+                             danglers, end_bucket));
 
     return Status::OK();
 }
