@@ -232,12 +232,6 @@ Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
     return Status::OK();
 }
 
-Status BCFWriter::Open(shared_ptr<BCFWriter>& ans) {
-    ans.reset(new BCFWriter);
-    ans->valid_bytes_ = 0;
-    return Status::OK();
-}
-
 BCFWriter::~BCFWriter() {
     oss_.clear();
     valid_bytes_ = 0;

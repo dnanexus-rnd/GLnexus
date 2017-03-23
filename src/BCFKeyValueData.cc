@@ -1113,7 +1113,7 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
 // The code below ingests records into database buckets. A bucket is
 // fairly large, and for the most part, records are short and entirely
 // fit into a single bucket. However, even short records can straddle
-// a boundary. Also, long confidence intervals and structural
+// a boundary. Also, long reference confidence records and structural
 // variations can be much longer than a bucket. To deal with these
 // corner cases, the *danglers list* is a buffer of records that dangle
 // from one bucket over to the next.
@@ -1127,33 +1127,15 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
 // Leave in the danglers list only records that extend beyond [bucket].
 static void prune_danglers(vector<shared_ptr<bcf1_t>> &danglers,
                            const range &bucket) {
-    vector<shared_ptr<bcf1_t>> remain;
-    for (const auto& dp : danglers) {
-        if (range(dp.get()).end > bucket.end) {
-            remain.push_back(dp);
-        }
-    }
-    danglers.clear();
-    danglers = remain;
+    auto it = remove_if(
+        danglers.begin(),
+        danglers.end(),
+        [&bucket] (shared_ptr<bcf1_t> &dp) {return range(dp.get()).end <= bucket.end; });
+    danglers.erase(it, danglers.end());
 }
-
-static Status write_bucket_if_not_empty(BCFBucketRange& rangeHelper,
-                                        KeyValue::DB* db,
-                                        shared_ptr<BCFWriter> writer,
-                                        const string& dataset,
-                                        range &bucket,
-                                        BCFKeyValueData::import_result& rslt) {
-    Status s;
-
-    if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket, rslt));
-    }
-    return Status::OK();
-}
-
 
 static Status write_danglers_to_in_mem_bucket(vector<shared_ptr<bcf1_t>> &danglers,
-                                              shared_ptr<BCFWriter> writer,
+                                              BCFWriter *writer,
                                               const range &bucket) {
     Status s;
 
@@ -1221,7 +1203,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           vcfFile *vcf,
                                           BCFKeyValueData::import_result& rslt) {
     Status s;
-    shared_ptr<BCFWriter> writer;
+    unique_ptr<BCFWriter> writer;
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
     int prev_pos = -1;
     int prev_rid = -1;
@@ -1252,7 +1234,9 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket K to DB
-            S(write_bucket_if_not_empty(rangeHelper, db, writer, dataset, bucket, rslt));
+            if (writer != nullptr && writer->get_num_entries() > 0) {
+                S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket, rslt));
+            }
             writer.reset();
             range next_bucket = rangeHelper.bucket(vt.get());
             S(write_danglers_between(rangeHelper, db, dataset, bucket, rslt,
@@ -1263,7 +1247,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             S(BCFWriter::Open(writer));
 
             // write danglers at the beginning of the new bucket
-            write_danglers_to_in_mem_bucket(danglers, writer, next_bucket);
+            write_danglers_to_in_mem_bucket(danglers, writer.get(), next_bucket);
         }
         // write the record into the bucket
         S(writer->write(vt.get()));
@@ -1281,7 +1265,9 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
     // write out last bucket
-    S(write_bucket_if_not_empty(rangeHelper, db, writer, dataset, bucket, rslt));
+    if (writer != nullptr && writer->get_num_entries() > 0) {
+        S(write_bucket(rangeHelper, db, writer.get(), dataset, bucket, rslt));
+    }
     writer.reset();
 
     // write any last danglers
