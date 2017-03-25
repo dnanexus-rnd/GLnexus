@@ -1229,10 +1229,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // Clean up emission order of alleles
     for(size_t i=0; i < samples.size(); i++) {
-// TODO
-//        if(genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing ||
-//           genotypes[2*i].allele > genotypes[2*i+1].allele) {
-        if(genotypes[2*i] > genotypes[2*i+1]) {
+        if (genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing ||
+            genotypes[2*i].allele > genotypes[2*i+1].allele) {
             swap(genotypes[2*i], genotypes[2*i+1]);
         }
     }
