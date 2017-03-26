@@ -549,6 +549,7 @@ unifier_config:
   min_AQ1: 70
   min_AQ2: 40
   min_GQ: 40
+  monoallelic_sites_for_lost_alleles: true
 genotyper_config:
   required_dp: 1
   revise_genotypes: true
