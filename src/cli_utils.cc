@@ -850,9 +850,9 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
     if (sites.size() > 1) {
         auto p = sites.begin();
         for (auto q = p+1; q != sites.end(); ++p, ++q) {
-            if (!(p->pos < q->pos) || p->pos.overlaps(q->pos)) {
+            if (q->pos < p->pos) {
                 return Status::Failure(
-                    "BUG: unified sites failed sanity check -- sites are out of order or overlapping.",
+                    "BUG: unified sites failed sanity check -- sites are out of order",
                     p->pos.str(contigs)  + " " + q->pos.str(contigs));
             }
         }
