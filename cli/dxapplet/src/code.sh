@@ -50,7 +50,6 @@ main() {
         # Kernel tracing implies user-space space tracing
         perf="true"
     fi
-
     if [[ "$perf" == "true" ]]; then
         setup_system_for_tracing
 
@@ -60,9 +59,13 @@ main() {
         sudo perf record -F $recordFreq -a --call-graph dwarf &
         perf_pid=$!
     fi
+    bucket_size_arg=""
+    if [ -n "$bucket_size" ]; then
+        bucket_size_arg="--bucket_size $bucket_size"
+    fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli --bed $bed_ranges $debug_flags $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+    time numactl --interleave=all glnexus_cli --bed $bed_ranges $bucket_size_arg $debug_flags $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then
         # Try to kill the perf process nicely; this does not always work

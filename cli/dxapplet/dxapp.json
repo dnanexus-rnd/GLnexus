@@ -18,6 +18,11 @@
       "optional": true
     },
     {
+      "name": "bucket_size",
+      "class": "int",
+      "optional": true
+    },
+    {
       "name": "gvcf",
       "help": "source gvcf files",
       "class": "array:file",
