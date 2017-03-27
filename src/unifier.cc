@@ -120,26 +120,27 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
     // go through each alt allele
     alts.clear();
     for (const auto& dal : dalts) {
-        allele alt = dal.first;
+        const allele& alt = dal.first;
 
         // find corresponding reference allele
         const auto rp = refs_by_range.find(alt.pos);
         if (rp == refs_by_range.end()) return Status::Invalid("minimize_alleles: missing REF allele for ", alt.pos.str());
 
         // minimize the alt allele
-        S(minimize_allele(rp->second.first, alt));
+        allele min_alt = alt;
+        S(minimize_allele(rp->second.first, min_alt));
 
         unsigned copy_number = dal.second.zGQ.copy_number(cfg.min_GQ);
 
         // add it to alts, combining originals, copy_number, and topAQ with any
         // previously observed occurrences of the same minimized alt allele.
-        auto ap = alts.find(alt);
+        auto ap = alts.find(min_alt);
         if (ap == alts.end()) {
             minimized_allele_info info;
             info.originals.insert(dal.first);
             info.topAQ = dal.second.topAQ;
             info.copy_number = copy_number;
-            alts[alt] = move(info);
+            alts[min_alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
             ap->second.topAQ += dal.second.topAQ;
@@ -155,14 +156,16 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
 // alleles in an active region are transitively connected through overlap.
 // (However, individual pairs of alleles within an active region might be non-
 // overlapping.)
+// The input is cleared by side-effect to save memory.
 template<class discovered_or_minimized_alleles>
-auto partition(const discovered_or_minimized_alleles& alleles) {
+auto partition(discovered_or_minimized_alleles& alleles) {
     map<range,discovered_or_minimized_alleles> ans;
 
     range rng(-1,-1,-1);
     discovered_or_minimized_alleles als;
 
-    for (const auto& it : alleles) {
+    for (auto pit = alleles.begin(); pit != alleles.end(); alleles.erase(pit++)) {
+        const auto& it = *pit;
         if (!rng.overlaps(it.first.pos)) {
             if (rng.rid != -1) {
                 assert(!als.empty());
@@ -267,23 +270,27 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
 // Delineate sites given all discovered alleles, potentially pruning some as
 // described above. The result maps the range of each site to a pair of the
 // discovered REF alleles and the minimized ALT alleles.
-Status delineate_sites(const unifier_config& cfg, const discovered_alleles& alleles,
+// The input alleles is cleared by side-effect to save memory.
+Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
                        map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>>& ans) {
     Status s;
 
     // Start by coarsely partitioning "active regions" (allele clusters)
     auto active_regions = partition<discovered_alleles>(alleles);
+    // alleles has been cleared by side effect
 
     // Decompose each active region into sites
     ans.clear();
-    for (const auto& active_region : active_regions) {
+    for (auto par = active_regions.begin(); par != active_regions.end(); active_regions.erase(par++)) {
+        const auto& active_region = *par;
+
         // minimize the alt alleles
         discovered_alleles refs;
         minimized_alleles alts, pruned;
         S(minimize_alleles(cfg, active_region.second, refs, alts));
 
         // prune alt alleles as necessary to yield sites
-        auto sites = prune_alleles(cfg, alts, pruned);
+        const auto sites = prune_alleles(cfg, alts, pruned);
 
         for (const auto& site : sites) {
             // find the ref alleles overlapping this site
@@ -348,6 +355,8 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
 }
 
 /// Unify the alleles at one site.
+/// pruned is in+out; we need to know which alleles were pruned in site delineation, and,
+/// we might prune more alleles in the process.
 Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
                      minimized_alleles& pruned, unified_site& ans) {
@@ -432,19 +441,19 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
 }
 
 Status unified_sites(const unifier_config& cfg,
-                     unsigned N, const discovered_alleles& alleles,
+                     unsigned N, discovered_alleles& alleles,
                      vector<unified_site>& ans) {
     Status s;
 
     map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>> sites;
     S(delineate_sites(cfg, alleles, sites));
+    // at this point, alleles has been cleared to save memory usage
 
-    ans.clear();
-    for (const auto& site : sites) {
-        UNPAIR(site, pos, site_alleles);
-        auto& ref_alleles = get<0>(site_alleles);
-        auto& alt_alleles = get<1>(site_alleles);
-        auto& pruned_alleles = get<2>(site_alleles);
+    for (auto psite = sites.begin(); psite != sites.end(); sites.erase(psite++)) {
+        UNPAIR(*psite, pos, site_alleles);
+        const auto& ref_alleles = get<0>(site_alleles);
+        const auto& alt_alleles = get<1>(site_alleles);
+        auto pruned_alleles = get<2>(site_alleles);
         unified_site us(pos);
         S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, pruned_alleles, us));
         ans.push_back(us);

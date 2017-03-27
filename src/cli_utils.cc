@@ -797,6 +797,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     Status s;
     unique_ptr<KeyValue::DB> db;
     unique_ptr<BCFKeyValueData> data;
+    dsals.clear();
 
     // open the database in read-only mode
     S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
@@ -819,6 +820,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
 
     for (auto it = valleles.begin(); it != valleles.end(); ++it) {
         S(merge_discovered_alleles(*it, dsals));
+        it->clear(); // free some memory
     }
     logger->info() << "discovered " << dsals.size() << " alleles";
     return Status::OK();
@@ -828,7 +830,7 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const unifier_config &unifier_cfg,
                    const vector<range> &ranges,
                    const vector<pair<string,size_t> > &contigs,
-                   const discovered_alleles &dsals,
+                   discovered_alleles &dsals,
                    unsigned sample_count,
                    vector<unified_site> &sites) {
     Status s;
