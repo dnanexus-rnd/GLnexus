@@ -846,7 +846,7 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
     sites.clear();
     S(unified_sites(unifier_cfg, sample_count, dsals, sites));
 
-    // sanity check, sites are in-order and non-overlapping
+    // sanity check, sites are in-order
     if (sites.size() > 1) {
         auto p = sites.begin();
         for (auto q = p+1; q != sites.end(); ++p, ++q) {

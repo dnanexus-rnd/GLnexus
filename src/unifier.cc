@@ -189,6 +189,14 @@ auto partition(const discovered_or_minimized_alleles& alleles) {
     return ans;
 }
 
+bool check_AQ(const unifier_config& cfg, const minimized_allele& al) {
+    return (al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2);
+}
+
+bool check_copy_number(const unifier_config& cfg, const minimized_allele& al) {
+    return al.second.copy_number >= cfg.min_allele_copy_number;
+}
+
 // Given a cluster of related/overlapping ALT alleles, decompose it into
 // "sites" by heuristically pruning rare or lengthy alleles to avoid excessive
 // collapsing
@@ -209,8 +217,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             al.second.copy_number = std::max(al.second.copy_number, 2U);
         }
 
-        if ((al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2) &&
-            al.second.copy_number >= cfg.min_allele_copy_number) {
+        if (check_AQ(cfg, al) && check_copy_number(cfg, al)) {
             valleles.push_back(al);
         } else {
             pruned.insert(al);
@@ -466,7 +473,7 @@ Status unified_sites(const unifier_config& cfg,
 
     if (cfg.monoallelic_sites_for_lost_alleles) {
         for (const auto& pa : all_pruned_alleles) {
-            if (pa.first.second.copy_number >= cfg.min_allele_copy_number) {
+            if (check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
                 unified_site ms(pa.first.first.pos);
                 S(unify_alleles(cfg, N, pa.first.first.pos, discovered_alleles{pa.second},
                                 minimized_alleles{pa.first}, minimized_alleles(), ms));
