@@ -702,6 +702,137 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
 }
 
 // --------------------------------------------------------------------
+// Confidence intervals are VCF records that reflect identify with the
+// reference genome. Such a record could be very long, nearly the
+// length of a chromosome. It is diffcult to store such long records
+// in the database, because they fall into many buckets. This test
+// covers various cases where they appear.
+// --------------------------------------------------------------------
+TEST_CASE("BCFKeyValueData long_confidence_intervals") {
+    std::vector<int> intervals = {5, 9, 11, 101};
+
+    for (int ilen : intervals) {
+        KeyValueMem::DB db({});
+        auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
+
+        // Buckets of size 9 break the ranges [1005 -- 1010] and [3004 -- 3006]
+        // in two.
+        REQUIRE(T::InitializeDB(&db, contigs, ilen).ok());
+        unique_ptr<T> data;
+        REQUIRE(T::Open(&db, data).ok());
+        unique_ptr<MetadataCache> cache;
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+        set<string> samples_imported;
+
+        Status s = data->import_gvcf(*cache, "long_ref", "test/data/long_ref_intervals_A.gvcf",
+                                     samples_imported);
+        if (s.bad()) {
+            cout << s.str() << endl;
+        }
+        REQUIRE(s.ok());
+        shared_ptr<const bcf_hdr_t> hdr;
+        s = data->dataset_header("long_ref", hdr);
+        REQUIRE(s.ok());
+
+        // only reference confidence records are supposed to show up in these queries
+        vector<shared_ptr<bcf1_t>> records;
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 1020, 1030), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+        REQUIRE(records[0]->pos == 1016);
+        REQUIRE(records[0]->n_allele == 2);
+        REQUIRE(string(records[0]->d.allele[0]) == "A");
+        REQUIRE(string(records[0]->d.allele[1]) == "<NON_REF>");
+
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 2100, 2900), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+        REQUIRE(records[0]->pos == 2009);
+        REQUIRE(string(records[0]->d.allele[0]) == "C");
+
+        // Several records are supposed to appear
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 2800, 3010), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 5);
+
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 1004, 3000), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 8);
+
+        // long record is last
+        s = data->dataset_range("long_ref", hdr.get(), range(0, 3000, 4000), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 5);
+    }
+}
+
+TEST_CASE("BCFKeyValueData long_confidence_intervals 2") {
+    std::vector<int> intervals = {5, 9, 11, 101};
+
+    for (int ilen : intervals) {
+        KeyValueMem::DB db({});
+        auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
+
+        REQUIRE(T::InitializeDB(&db, contigs, ilen).ok());
+        unique_ptr<T> data;
+        REQUIRE(T::Open(&db, data).ok());
+        unique_ptr<MetadataCache> cache;
+        REQUIRE(MetadataCache::Start(*data, cache).ok());
+        set<string> samples_imported;
+
+        Status s = data->import_gvcf(*cache, "A", "test/data/long_ref_intervals_A.gvcf",
+                                     samples_imported);
+        REQUIRE(s.ok());
+        s = data->import_gvcf(*cache, "B", "test/data/long_ref_intervals_B.gvcf", samples_imported);
+        REQUIRE(s.ok());
+
+        size_t ct;
+        REQUIRE(cache->sample_count(ct).ok());
+        REQUIRE(ct == 2);
+
+        // check * version number
+        KeyValue::CollectionHandle coll;
+        REQUIRE(db.collection("sampleset", coll).ok());
+        string version;
+        REQUIRE(db.get(coll, "*", version).ok());
+        REQUIRE(version == "2");
+
+        string sampleset;
+        s = cache->all_samples_sampleset(sampleset);
+        REQUIRE(s.ok());
+
+        shared_ptr<const bcf_hdr_t> hdr;
+        s = data->dataset_header("B", hdr);
+        REQUIRE(s.ok());
+
+        vector<shared_ptr<bcf1_t>> records;
+        s = data->dataset_range("B", hdr.get(), range(0, 1000, 1108), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+
+        s = data->dataset_range("B", hdr.get(), range(0, 3000, 4000), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 5);
+
+        s = data->dataset_range("B", hdr.get(), range(0, 5000, 5010), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 2);
+        REQUIRE(records[0]->pos == 3198);
+        REQUIRE(string(records[0]->d.allele[0]) == "C");
+
+        s = data->dataset_range("B", hdr.get(), range(0, 6000, 6005), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 1);
+        REQUIRE(records[0]->pos == 4002);
+        REQUIRE(string(records[0]->d.allele[0]) == "C");
+
+        s = data->dataset_range("B", hdr.get(), range(0, 8000, 10000), nullptr, records);
+        REQUIRE(s.ok());
+        REQUIRE(records.size() == 0);
+    }
+}
+
+// --------------------------------------------------------------------
 // This is a design for a test that will be useful with query primitives
 // that work on multiple datasets.
 //
@@ -1214,10 +1345,10 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     REQUIRE(MetadataCache::Start(*data, cache).ok());
     set<string> samples_imported;
 
-    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_range1.gvcf", samples_imported);
+    Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_rnd1.gvcf", samples_imported);
     cout << s.str() << endl;
     REQUIRE(s.ok());
-    s = data->import_gvcf(*cache, "2", "test/data/sampleset_range2.gvcf", samples_imported);
+    s = data->import_gvcf(*cache, "2", "test/data/sampleset_rnd2.gvcf", samples_imported);
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "3", "test/data/sampleset_range3.gvcf", samples_imported);
     REQUIRE(s.ok());
