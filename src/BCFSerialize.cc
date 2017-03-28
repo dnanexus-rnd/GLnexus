@@ -229,7 +229,6 @@ BCFWriter::BCFWriter() {}
 Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
     ans.reset(new BCFWriter);
     ans->valid_bytes_ = 0;
-    //ans->oss_;
     return Status::OK();
 }
 

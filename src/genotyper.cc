@@ -1208,7 +1208,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             // a separate monoallelic site
             const set<NoCallReason> non_residual_RNCs = { NoCallReason::N_A, NoCallReason::MissingData,
                                                           NoCallReason::PartialData, NoCallReason::InsufficientDepth,
-                                                          NoCalLReason::MonoallelicSite };
+                                                          NoCallReason::MonoallelicSite };
 
             bool any_lost_calls = false;
             for (int i = 0; i < bcf_nsamples; i++) {
