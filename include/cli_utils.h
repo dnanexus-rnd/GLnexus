@@ -74,13 +74,14 @@ Status unified_sites_of_yaml_stream(std::istream &is,
                                     const std::vector<std::pair<std::string,size_t> > &contigs,
                                     std::vector<unified_site> &sites);
 
-// Merge a bunch of discovered-allele files, all in YAML format.
+// Merge a bunch of discovered-allele files, all in capnp format.
 // N is summed across the files, and the contigs must be the same in all.
+// Returns one discovered_alleles structures per contig, in order.
 Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      size_t nr_threads,
                                      const std::vector<std::string> &filenames,
                                      unsigned& N, std::vector<std::pair<std::string,size_t>> &contigs,
-                                     discovered_alleles &dsals);
+                                     std::vector<discovered_alleles>& dsals);
 
 
 // Find which range contains [pos]. The ranges are assumed to be non-overlapping.
@@ -134,11 +135,14 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         discovered_alleles &dsals,
                         unsigned &sample_count);
 
+// Run unifier on given discovered alleles.
+// input dsals is cleared by side-effect to save memory
+// output sites is appended to (not cleared!)
 Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const unifier_config &unifier_cfg,
                    const std::vector<range> &ranges,
                    const std::vector<std::pair<std::string,size_t> > &contigs,
-                   const discovered_alleles &dsals,
+                   discovered_alleles &dsals,
                    unsigned sample_count,
                    std::vector<unified_site> &sites);
 

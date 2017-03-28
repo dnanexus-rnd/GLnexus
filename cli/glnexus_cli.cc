@@ -92,10 +92,21 @@ static int all_steps(const vector<string> &vcf_files,
           GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
     }
 
+    // partition dsals by contig to reduce peak memory usage in the unifier
+    std::vector<GLnexus::discovered_alleles> dsals_by_contig(contigs.size());
+    for (auto p = dsals.begin(); p != dsals.end(); dsals.erase(p++)) {
+        UNPAIR(*p, al, dai);
+        assert(al.pos.rid >= 0 && al.pos.rid < contigs.size());
+        dsals_by_contig[al.pos.rid][al] = dai;
+    }
+
     // unify sites
+    // we could parallelize over dsals_by_contig although this might increase memory usage.
     vector<GLnexus::unified_site> sites;
-    H("unify sites",
-      GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals, sample_count, sites));
+    for (auto& dsals_i : dsals_by_contig) {
+        H("unify sites",
+          GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals_i, sample_count, sites));
+    }
     if (debug) {
         string filename("/tmp/sites.yml");
         H("write unified sites to file",

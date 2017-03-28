@@ -22,7 +22,7 @@
 #include "yaml-cpp/yaml.h"
 #pragma GCC diagnostic pop
 
-#define UNPAIR(p,nm1,nm2) auto nm1 = (p).first; auto nm2 = (p).second;
+#define UNPAIR(p,nm1,nm2) const auto& nm1 = (p).first; const auto& nm2 = (p).second;
 template<typename T> inline void ignore_retval(T) {}
 
 namespace GLnexus {
