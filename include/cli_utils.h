@@ -103,7 +103,7 @@ Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
 
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec();
 
-const int default_bucket_size = 30000;
+const int default_bucket_size = 3000;
 
 // Initialize a database. Fills in the contigs.
 Status db_init(std::shared_ptr<spdlog::logger> logger,

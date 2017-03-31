@@ -25,7 +25,7 @@ public:
     /// Contigs are stored and an empty sample set "*" is created.
     static Status InitializeDB(KeyValue::DB* db,
                                const std::vector<std::pair<std::string,size_t> >& contigs,
-                               int interval_len = 30000);
+                               int interval_len = 3000);
 
     /// Open an existing database
     static Status Open(KeyValue::DB* db, std::unique_ptr<BCFKeyValueData>& ans);
