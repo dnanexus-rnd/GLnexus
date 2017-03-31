@@ -718,7 +718,15 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     S(MetadataCache::Start(*data, metadata));
     contigs = metadata->contigs();
 
-    logger->info() << "Beginning bulk load with no range filter.";
+     if (ranges.size()) {
+        ostringstream ss;
+        for (const auto& rng : ranges) {
+            ss << " " << rng.str(contigs);
+        }
+        logger->info() << "Beginning bulk load of records overlapping:" << ss.str();
+    } else {
+        logger->info() << "Beginning bulk load with no range filter.";
+    }
 
     ctpl::thread_pool threadpool(nr_threads);
     vector<future<Status>> statuses;

@@ -105,6 +105,7 @@ static int all_steps(const vector<string> &vcf_files,
         H("unify sites",
           GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals_i, sample_count, sites));
     }
+    console->info() << "unified to " << sites.size() << " sites";
     if (debug) {
         string filename("/tmp/sites.yml");
         H("write unified sites to file",
