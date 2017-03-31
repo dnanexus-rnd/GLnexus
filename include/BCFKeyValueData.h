@@ -21,11 +21,13 @@ private:
     BCFKeyValueData(const BCFKeyValueData&) = delete;
 
 public:
+    static const int default_bucket_size = 3000;
+
     /// Initialize a brand-new database, which SHOULD be empty to begin with.
     /// Contigs are stored and an empty sample set "*" is created.
     static Status InitializeDB(KeyValue::DB* db,
                                const std::vector<std::pair<std::string,size_t> >& contigs,
-                               int interval_len = 3000);
+                               int interval_len = default_bucket_size);
 
     /// Open an existing database
     static Status Open(KeyValue::DB* db, std::unique_ptr<BCFKeyValueData>& ans);

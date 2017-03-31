@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     bool iter_compare = false;
     string bedfilename;
     int nr_threads = std::thread::hardware_concurrency();
-    size_t bucket_size = GLnexus::cli::utils::default_bucket_size;
+    size_t bucket_size = GLnexus::BCFKeyValueData::default_bucket_size;
 
     optind = 1; // force optind past command positional argument
     while (-1 != (c = getopt_long(argc, argv, "hb:dIx:",
