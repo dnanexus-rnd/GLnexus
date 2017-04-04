@@ -479,6 +479,7 @@ Status unified_sites(const unifier_config& cfg,
     }
 
     if (cfg.monoallelic_sites_for_lost_alleles) {
+        auto k = ans.size();
         for (const auto& pa : all_pruned_alleles) {
             if (check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
                 unified_site ms(pa.first.first.pos);
@@ -488,7 +489,10 @@ Status unified_sites(const unifier_config& cfg,
                 ans.push_back(ms);
             }
         }
-        std::sort(ans.begin(), ans.end());
+        // merge the newly added monoallelic sites in position order with the others
+        // (in linear time)
+        std::inplace_merge(ans.begin(), ans.begin()+k, ans.end());
+        assert(std::is_sorted(ans.begin(), ans.end()));
     }
 
     return Status::OK();
