@@ -77,7 +77,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.OptimizeUniversalStyleCompaction(1<<30);
     opts.num_levels = 3;
     opts.target_file_size_base = 16 * size_t(1<<30);
-    opts.level0_file_num_compaction_trigger = 5;
+    opts.level0_file_num_compaction_trigger = 4;
 
     opts.compaction_options_universal.compression_size_percent = -1;
     opts.compaction_options_universal.max_size_amplification_percent = 300;
@@ -89,10 +89,10 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.compression_per_level.clear();
     opts.compression = rocksdb::kLZ4Compression;
 
-    // 64 KiB blocks, with a large sharded cache
+    // 256 KiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
-    bbto.block_size = 64 * 1024;
+    bbto.block_size = 256 * 1024;
     bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 8);
 
     if (prefix_length) {
