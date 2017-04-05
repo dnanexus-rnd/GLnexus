@@ -7,7 +7,7 @@
 #include "types.h"
 #include "spdlog/spdlog.h"
 #include "RocksKeyValue.h"
-#include "KeyValue.h"
+#include "BCFKeyValueData.h"
 
 namespace GLnexus {
 namespace cli {
@@ -103,14 +103,12 @@ Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
 
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec();
 
-const int default_bucket_size = 30000;
-
 // Initialize a database. Fills in the contigs.
 Status db_init(std::shared_ptr<spdlog::logger> logger,
                const std::string &dbpath,
                const std::string &exemplar_gvcf,
                std::vector<std::pair<std::string,size_t>> &contigs, // output parameter
-               size_t bucket_size = default_bucket_size);
+               size_t bucket_size = BCFKeyValueData::default_bucket_size);
 
 // Read the contigs from a database
 Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,

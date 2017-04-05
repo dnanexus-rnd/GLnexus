@@ -41,6 +41,7 @@ input:
 unifier_config:
   min_AQ1: 10
   min_AQ2: 5
+  monoallelic_sites_for_lost_alleles: true
 
 truth_unified_sites:
     - range: {ref: A, beg: 907971, end: 907971}

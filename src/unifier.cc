@@ -101,17 +101,19 @@ Status minimize_allele(const allele& ref, allele& alt) {
 
 // Separate discovered alleles into the REF alleles and minimized ALT alleles
 Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src,
-                        discovered_alleles& refs, minimized_alleles& alts) {
+                        map<range,discovered_allele>& refs, minimized_alleles& alts) {
     Status s;
 
     // separate the ref and alt alleles
-    map<range,discovered_allele> refs_by_range;
     discovered_alleles dalts;
     refs.clear();
     for (const auto& dal : src) {
         if (dal.second.is_ref) {
-            refs.insert(dal);
-            refs_by_range.insert(make_pair(dal.first.pos, dal));
+            const auto p = refs.find(dal.first.pos);
+            if (p != refs.end() && dal.first.dna != p->second.first.dna) {
+                return Status::Invalid("detected inconsistent REF alleles", dal.first.pos.str());
+            }
+            refs.insert(make_pair(dal.first.pos,dal));
         } else {
             dalts.insert(dal);
         }
@@ -123,8 +125,8 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
         const allele& alt = dal.first;
 
         // find corresponding reference allele
-        const auto rp = refs_by_range.find(alt.pos);
-        if (rp == refs_by_range.end()) return Status::Invalid("minimize_alleles: missing REF allele for ", alt.pos.str());
+        const auto rp = refs.find(alt.pos);
+        if (rp == refs.end()) return Status::Invalid("minimize_alleles: missing REF allele for ", alt.pos.str());
 
         // minimize the alt allele
         allele min_alt = alt;
@@ -190,6 +192,14 @@ auto partition(discovered_or_minimized_alleles& alleles) {
     return ans;
 }
 
+bool check_AQ(const unifier_config& cfg, const minimized_allele& al) {
+    return (al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2);
+}
+
+bool check_copy_number(const unifier_config& cfg, const minimized_allele& al) {
+    return al.second.copy_number >= cfg.min_allele_copy_number;
+}
+
 // Given a cluster of related/overlapping ALT alleles, decompose it into
 // "sites" by heuristically pruning rare or lengthy alleles to avoid excessive
 // collapsing
@@ -210,8 +220,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             al.second.copy_number = std::max(al.second.copy_number, 2U);
         }
 
-        if ((al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2) &&
-            al.second.copy_number >= cfg.min_allele_copy_number) {
+        if (check_AQ(cfg, al) && check_copy_number(cfg, al)) {
             valleles.push_back(al);
         } else {
             pruned.insert(al);
@@ -248,6 +257,12 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             continue;
         }
         if (related_site != sites.end()) {
+            // enforce max_alleles_per_site; NB, we count the ref allele toward
+            // this limit, while related_site.size() is the # of ALT alleles.
+            if (cfg.max_alleles_per_site > 1 && related_site->second.size()+1 >= cfg.max_alleles_per_site) {
+                pruned.insert(mal);
+                continue;
+            }
             // merge this allele into the related site
             range urng(mal.first.pos.rid,
                        min(mal.first.pos.beg, related_site->first.beg),
@@ -268,11 +283,16 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
 }
 
 // Delineate sites given all discovered alleles, potentially pruning some as
-// described above. The result maps the range of each site to a pair of the
-// discovered REF alleles and the minimized ALT alleles.
+// described above. The result maps the range of each site to a tuple of the
+// discovered REF alleles, the minimized ALT alleles, and any pruned alleles
+// overlapping the site. It is possible (even likely) that one pruned allele
+// overlaps multiple sites, and thus appears in more than one of those entries.
+// all_pruned_alleles is a unique list of the pruned alleles, each with the
+// corresponding reference allele.
 // The input alleles is cleared by side-effect to save memory.
 Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
-                       map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>>& ans) {
+                       map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>>& ans,
+                       vector<pair<minimized_allele,discovered_allele>>& all_pruned_alleles) {
     Status s;
 
     // Start by coarsely partitioning "active regions" (allele clusters)
@@ -281,11 +301,12 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
 
     // Decompose each active region into sites
     ans.clear();
+    all_pruned_alleles.clear();
     for (auto par = active_regions.begin(); par != active_regions.end(); active_regions.erase(par++)) {
         const auto& active_region = *par;
 
         // minimize the alt alleles
-        discovered_alleles refs;
+        map<range,discovered_allele> refs;
         minimized_alleles alts, pruned;
         S(minimize_alleles(cfg, active_region.second, refs, alts));
 
@@ -296,8 +317,8 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
             // find the ref alleles overlapping this site
             discovered_alleles site_refs;
             for (const auto& ref : refs) {
-                if (ref.first.pos.overlaps(site.first)) {
-                    site_refs.insert(ref);
+                if (ref.first.overlaps(site.first)) {
+                    site_refs.insert(ref.second);
                 }
             }
 
@@ -311,6 +332,21 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
 
             assert(ans.find(site.first) == ans.end());
             ans[site.first] = make_tuple(site_refs,site.second,site_pruned);
+        }
+
+        for (const auto& pa : pruned) {
+            discovered_allele *longest_original_ref = nullptr;
+            for (const auto& al : pa.second.originals) {
+                const auto r = refs.find(al.pos);
+                if (r == refs.end()) {
+                    return Status::Invalid("delineate_sites: missing REF allele for ", al.pos.str());
+                }
+                if (!longest_original_ref || longest_original_ref->first.dna.size() < r->second.first.dna.size()) {
+                    longest_original_ref = &(r->second);
+                }
+            }
+            assert(longest_original_ref);
+            all_pruned_alleles.push_back(make_pair(pa, *longest_original_ref));
         }
     }
     return Status::OK();
@@ -355,11 +391,9 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
 }
 
 /// Unify the alleles at one site.
-/// pruned is in+out; we need to know which alleles were pruned in site delineation, and,
-/// we might prune more alleles in the process.
 Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
-                     minimized_alleles& pruned, unified_site& ans) {
+                     const minimized_alleles& pruned, unified_site& ans) {
     Status s;
 
     // collapse the refs to get the reference allele for this site
@@ -370,25 +404,9 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     // decreasing copy number count (+ some tiebreakers). Note, this may be a
     // different sort order than used in prune_allele earlier.
     assert(alts.size() > 0);
+    assert(cfg.max_alleles_per_site < 2 || alts.size() < cfg.max_alleles_per_site);
     vector<minimized_allele> valts(alts.begin(), alts.end());
     sort(valts.begin(), valts.end(), minimized_allele_common_lt);
-
-    // enforce max_alleles_per_site. NB, valts does not include the ref
-    // allele, so we're truncating valts to cfg.max_alleles_per_site-1
-    if (cfg.max_alleles_per_site > 1 && valts.size() >= cfg.max_alleles_per_site) {
-        // Out of fairness, we also prune alt alleles with the same
-        // copy number as the first truncated one, except we always need
-        // to keep at least one alt allele of course.
-        unsigned int trunc0 = 1, trunc1 = 1;
-        for (; trunc1 < cfg.max_alleles_per_site; trunc1++) {
-            assert(valts[trunc0].second.copy_number >= valts[trunc1].second.copy_number);
-            while(valts[trunc0].second.copy_number > valts[trunc1].second.copy_number)
-                trunc0++;
-        }
-        pruned.insert(valts.begin()+trunc0, valts.end());
-        valts.assign(valts.begin(), valts.begin()+trunc0);
-        assert(valts.size() < cfg.max_alleles_per_site);
-    }
 
     // fill out the unification
     unified_site us(pos);
@@ -446,7 +464,8 @@ Status unified_sites(const unifier_config& cfg,
     Status s;
 
     map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>> sites;
-    S(delineate_sites(cfg, alleles, sites));
+    vector<pair<minimized_allele,discovered_allele>> all_pruned_alleles;
+    S(delineate_sites(cfg, alleles, sites, all_pruned_alleles));
     // at this point, alleles has been cleared to save memory usage
 
     for (auto psite = sites.begin(); psite != sites.end(); sites.erase(psite++)) {
@@ -458,6 +477,24 @@ Status unified_sites(const unifier_config& cfg,
         S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, pruned_alleles, us));
         ans.push_back(us);
     }
+
+    if (cfg.monoallelic_sites_for_lost_alleles) {
+        auto k = ans.size();
+        for (const auto& pa : all_pruned_alleles) {
+            if (check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
+                unified_site ms(pa.first.first.pos);
+                S(unify_alleles(cfg, N, pa.first.first.pos, discovered_alleles{pa.second},
+                                minimized_alleles{pa.first}, minimized_alleles(), ms));
+                ms.monoallelic = true;
+                ans.push_back(ms);
+            }
+        }
+        // merge the newly added monoallelic sites in position order with the others
+        // (in linear time)
+        std::inplace_merge(ans.begin(), ans.begin()+k, ans.end());
+        assert(std::is_sorted(ans.begin(), ans.end()));
+    }
+
     return Status::OK();
 }
 

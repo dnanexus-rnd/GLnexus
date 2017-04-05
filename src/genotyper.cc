@@ -87,7 +87,7 @@ class IFormatFieldHelper {
 
 public:
     // basic information for the retained field
-    const retained_format_field field_info;
+    const retained_format_field& field_info;
 
 
     // Expected number of samples in output bcf record
@@ -99,18 +99,18 @@ public:
     // output
     const int count;
 
-    IFormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
+    IFormatFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_) : field_info(field_info_), n_samples(n_samples_), count(count_) {}
 
     IFormatFieldHelper() = default;
 
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                   const map<int, int>& sample_mapping, const vector<int> allele_mapping,
+                                   const map<int, int>& sample_mapping, const vector<int>& allele_mapping,
                                    const vector<string>& field_names, int n_val_per_sample) = 0;
 
     virtual Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                const map<int, int>& sample_mapping, const vector<int> allele_mapping) = 0;
+                                   const map<int, int>& sample_mapping, const vector<int>& allele_mapping) = 0;
 
-    virtual Status censor(int sample) = 0;
+    virtual Status censor(int sample, bool half_call) = 0;
 
     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
@@ -119,10 +119,7 @@ public:
 
 template <class T>
 class FormatFieldHelper : public IFormatFieldHelper {
-
-    // Boolean on whether the AD field has been handled
-    bool handled_AD_field = false;
-
+protected:
     // A vector of length n_samples * count, where each element
     // is a vector consisting of format field value from
     // record(s) related to the given sample, at a specified
@@ -134,8 +131,9 @@ class FormatFieldHelper : public IFormatFieldHelper {
 
     // The FORMAT fields of some samples may need to be censored (emitted
     // as missing) under certain circumstances where they might otherwise
-    // be unreliable/misleading.
-    set<int> censored_samples;
+    // be unreliable/misleading. In some cases we have a flag to censor
+    // only fields discussing the reference allele (for "half-calls")
+    set<pair<int,bool>> censored_samples;
 
     // Combination function to handle combining multiple format values
     // from multiple records
@@ -274,9 +272,23 @@ class FormatFieldHelper : public IFormatFieldHelper {
         }
     }
 
+    virtual Status perform_censor(vector<T>& values) {
+        Status s;
+        if (!censored_samples.empty()) {
+            T missing_value;
+            S(get_missing_value(&missing_value));
+            for (auto& cs : censored_samples) {
+                for (int j = 0; j < count; j++) {
+                    values[cs.first*count+j] = missing_value;
+                }
+            }
+        }
+        return Status::OK();
+    }
+
 public:
 
-    FormatFieldHelper(const retained_format_field field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
+    FormatFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_) : IFormatFieldHelper(field_info_, n_samples_, count_) {
 
         switch (field_info.combi_method) {
             case FieldCombinationMethod::MIN:
@@ -294,15 +306,17 @@ public:
 
     // Wrapper with default values populated for
     // field_names and n_val_per_sample
-    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                                    const map<int, int>& sample_mapping, const vector<int> allele_mapping) {
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int, int>& sample_mapping,
+                           const vector<int>& allele_mapping) {
 
         return add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {}, -1);
     }
 
-    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
-                           const map<int, int>& sample_mapping, const vector<int> allele_mapping,
-                           const vector<string>& field_names={}, int n_val_per_sample=-1) {
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int, int>& sample_mapping,
+                           const vector<int>& allele_mapping,
+                           const vector<string>& field_names, int n_val_per_sample) {
 
         bool found = false;
         if (n_val_per_sample < 0) {
@@ -357,29 +371,13 @@ public:
             } // close rv >= 0
         }
 
-        if (!found && field_info.name == "AD" && !handled_AD_field) {
-        // Special case handling for AD field to convert ref
-        // DP/MIN_DP to repopulate AD field
-
-            // Prevent runaway recursion
-            handled_AD_field = true;
-
-            // Call add_record_data again, searching for DP, MIN_DP, override n_val_per_sample to 1
-            Status s = add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"MIN_DP", "DP"}, 1);
-
-            // Reset flag for next dataset
-            handled_AD_field = false;
-
-            return s;
-        }
-
-        return Status::OK();
+        return found ? Status::OK() : Status::NotFound();
     }
 
     // Mark the (output) sample as censored.
-    Status censor(int sample) {
+    Status censor(int sample, bool half_call) {
         if (sample < 0 || sample >= n_samples) return Status::Invalid("genotyper::FormatFieldHelper::censor");
-        censored_samples.insert(sample);
+        censored_samples.insert(make_pair(sample, half_call));
         return Status::OK();
     }
 
@@ -388,16 +386,7 @@ public:
         vector<T> ans;
         S(combine_format_data(ans));
         assert(ans.size() == n_samples*count);
-
-        if (!censored_samples.empty()) {
-            T missing_value;
-            S(get_missing_value(&missing_value));
-            for (int cs : censored_samples) {
-                for (int j = 0; j < count; j++) {
-                    ans[cs*count+j] = missing_value;
-                }
-            }
-        }
+        S(perform_censor(ans));
 
         int retval  = 0;
         switch (field_info.type) {
@@ -412,6 +401,49 @@ public:
         }
         if (retval != 0) {
             return Status::Failure("genotyper: failed to update record format when executing update_record_format.");
+        }
+        return Status::OK();
+    }
+};
+
+// Special-case logic for the allele depth (AD) field
+class ADFieldHelper : public FormatFieldHelper<int32_t> {
+public:
+    ADFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
+        : FormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+        assert(field_info.name == "AD");
+    }
+
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header,
+                           bcf1_t* record, const map<int, int>& sample_mapping,
+                           const vector<int>& allele_mapping,
+                           const vector<string>& field_names, int n_val_per_sample) {
+        Status s = FormatFieldHelper<int32_t>::add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, field_names, n_val_per_sample);
+
+        if (s == StatusCode::NOT_FOUND) {
+            // Record has no AD field, usually meaning it's a reference confidence record
+            // (though there are exceptions, e.g. gVCF test case DP0_noAD).
+            // use MIN_DP/DP as the reference allele depth
+            s = FormatFieldHelper<int32_t>::add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, {"MIN_DP", "DP"}, 1);
+        }
+
+        return s;
+    }
+
+protected:
+    Status perform_censor(vector<int32_t>& values) override {
+        Status s;
+        if (!censored_samples.empty()) {
+            int32_t missing_value;
+            S(get_missing_value(&missing_value));
+            for (auto& cs : censored_samples) {
+                // if a half-call (cs.second), censor only the reference allele
+                // depth, which can be misleading when there are overlapping or
+                // unphased records.
+                for (int j = 0; j < (cs.second ? 1 : count); j++) {
+                    values[cs.first*count+j] = missing_value;
+                }
+            }
         }
         return Status::OK();
     }
@@ -436,7 +468,9 @@ Status setup_format_helpers(vector<unique_ptr<IFormatFieldHelper>>& format_helpe
             return Status::Failure("setup_format_helpers: failed to identify count for format field");
         }
 
-        switch (format_field_info.type) {
+        if (format_field_info.name == "AD" && format_field_info.number == RetainedFieldNumber::ALLELES) {
+            format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new ADFieldHelper(format_field_info, samples.size(), count)));
+        } else switch (format_field_info.type) {
             case RetainedFieldType::INT:
             {
                 format_helpers.push_back(unique_ptr<IFormatFieldHelper>(new FormatFieldHelper<int32_t>(format_field_info, samples.size(), count)));
@@ -471,8 +505,11 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
         }
 
         for (const auto& record : *records_to_use) {
-            S(format_helper->add_record_data(dataset, dataset_header, record->p.get(),
-                                             sample_mapping, record->allele_mapping));
+            s = format_helper->add_record_data(dataset, dataset_header, record->p.get(),
+                                               sample_mapping, record->allele_mapping);
+            if (s.bad() && s != StatusCode::NOT_FOUND) {
+                return s;
+            }
         }
     }
     return Status::OK();
@@ -721,6 +758,10 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
 ///      variant_records empty, min_ref_depth updated accordingly, rnc = N_A
 /// Records span entire range, and include one or more variant records which
 ///      variant_records filled in, min_ref_depth updated accordingly, rnc = N_A
+///
+///
+/// FIXME: detect & complain if the reference confidence records actually overlap the
+///        variant records
 Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& site,
                                const string& dataset, const bcf_hdr_t* hdr, int bcf_nsamples,
                                const map<int, int>& sample_mapping,
@@ -794,10 +835,11 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                                   vector<int>& min_ref_depth,
                                   vector<one_call>& genotypes) {
     assert(genotypes.size() == 2*min_ref_depth.size());
+    assert(!site.monoallelic);
     Status s;
 
-    // Scan the variant records to identify ones with only 0/0 genotype calls. Presently
-    // we can deal with at most one record with a non-0/0 genotype.
+    // Scan the variant records to pull out those with 0/0 genotype calls
+    // from those actually presenting variation
     vector<shared_ptr<bcf1_t_plus>> records_00, records_non00;
     for (const auto& a_record : variant_records) {
         assert(!a_record->is_ref);
@@ -819,6 +861,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     S(update_min_ref_depth(dataset, dataset_header, bcf_nsamples, sample_mapping,
                            records_00, depth, min_ref_depth));
 
+    bcf1_t_plus* record = nullptr;
+    bool half_call = false;
+
     if (records_non00.size() == 0) {
         // no variation represented in this dataset; make homozygous ref calls
         // if min_ref_depth indicates sufficient coverage for this sample
@@ -836,34 +881,68 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             }
         }
         return Status::OK();
-    } else if (records_non00.size() > 1) {
-        // multiple non-0/0 records; we'll need to bug out with OverlappingVariants
-        // or UnphasedVariants. Analyze the ranges to distinguish these two cases.
-        // Maybe we'll be able to handle some cases better in the future.
+    } else if (records_non00.size() == 1)  {
+        // simple common case: one variant record overlapping the unified site
+        record = records_non00[0].get();
+    } else {
+        // complex situation: multiple non-0/0 records overlapping the unified site.
+        //
+        // If the records don't all share at least one position in common (i.e. their
+        // ALT alleles aren't mutually exclusive on one chromosome), punt with
+        // UnphasedVariants. We'll improve this in the future.
+        //
+        // If at least one record is a heterozygous 0/X call where X is a known
+        // allele in the unified site, and none of the records call >1 ALT allele,
+        // generate a half-call from the highest-quality such record.
+        // This at least recovers some of the information when the GVCF has two
+        // overlapping 0/X records for one sample (we'd rather it present one record
+        // heterozygous for two ALTs)
+        //
+        // Otherwise: punt with OverlappingVariants
+
+        half_call = true;
         range intersection(records_non00[0]->p);
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
             assert(record_rng.rid == intersection.rid);
             intersection.beg = max(record_rng.beg, intersection.beg);
             intersection.end = min(record_rng.end, intersection.end);
+
+            for (int i = 0; half_call && i < bcf_nsamples; i++) {
+                assert(a_record->gt.capacity > 2*i);
+                if (!bcf_gt_is_missing(a_record->gt[2*i]) && bcf_gt_allele(a_record->gt[2*i]) != 0) {
+                    half_call = false;
+                } else if (!bcf_gt_is_missing(a_record->gt[2*i+1])) {
+                    auto al = bcf_gt_allele(a_record->gt[2*i+1]);
+                    if (al > 0 && a_record->allele_mapping[al] > 0 &&
+                        (!record || record->p->qual < a_record->p->qual)) {
+                        record = a_record.get();
+                    }
+                }
+            }
         }
 
-        NoCallReason rnc = NoCallReason::OverlappingVariants;
         if (intersection.beg >= intersection.end) {
-            // UnphasedVariants: non-overlapping variant records
-            rnc = NoCallReason::UnphasedVariants;
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC =
+                        NoCallReason::UnphasedVariants;
+            }
+            return Status::OK();
         }
 
-        for (int i = 0; i < bcf_nsamples; i++) {
-            genotypes[sample_mapping.at(i)*2].RNC =
-                genotypes[sample_mapping.at(i)*2+1].RNC =
-                    rnc;
+        if (!record || !half_call) {
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC =
+                        NoCallReason::OverlappingVariants;
+            }
+            return Status::OK();
         }
-        return Status::OK();
     }
 
     // Now, translating genotypes from one variant BCF record.
-    const bcf1_t_plus* record = records_non00[0].get();
+    assert(record != nullptr);
 
     // get the genotype calls
     htsvecbox<int> gt;
@@ -879,6 +958,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         assert(2*ij.first < nGT);
         assert(ij.second < min_ref_depth.size());
 
+        // TODO: are depth and allele_mapping checks inside-out????
         #define fill_allele(ofs)                                                  \
             if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
                 !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                       \
@@ -902,8 +982,102 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                         NoCallReason::InsufficientDepth;                          \
                 }                                                                 \
             }
-        fill_allele(0)
+
+        if (half_call) {
+            genotypes[2*ij.second].RNC = NoCallReason::OverlappingVariants;
+        } else {
+            fill_allele(0)
+        }
         fill_allele(1)
+    }
+
+    return Status::OK();
+}
+
+/// streamlined version of translate_genotypes for monoallelic sites
+/// FIXME: not coded to deal with multi-sample gVCFs properly.
+static Status translate_monoallelic(const genotyper_config& cfg, const unified_site& site,
+                                    const string& dataset, const bcf_hdr_t* dataset_header,
+                                    int bcf_nsamples, const map<int,int>& sample_mapping,
+                                    const vector<shared_ptr<bcf1_t_plus>>& variant_records,
+                                    AlleleDepthHelper& depth,
+                                    vector<int>& min_ref_depth,
+                                    vector<one_call>& genotypes) {
+    assert(genotypes.size() == 2*min_ref_depth.size());
+    assert(site.monoallelic);
+    assert(site.alleles.size() == 2);
+    Status s;
+    bcf1_t_plus* record = nullptr;
+
+    // scan the (potentially) multiple overlapping records to find the one with
+    // the desired allele
+    for (auto& a_record : variant_records) {
+        assert(!a_record->is_ref);
+        for (unsigned al = 1; al < a_record->allele_mapping.size(); al++) {
+            if (a_record->allele_mapping[al] == 1) {
+                if (record == nullptr) {
+                    record = a_record.get();
+                } else {
+                    // uh, overlapping records with the same allele!?
+                    for (int i = 0; i < bcf_nsamples; i++) {
+                        genotypes[sample_mapping.at(i)*2].RNC =
+                            genotypes[sample_mapping.at(i)*2+1].RNC =
+                                NoCallReason::OverlappingVariants;
+                    }
+                    return Status::OK();
+                }
+            }
+        }
+    }
+
+    if (record == nullptr) {
+        // we have nothing to say here
+        for (int i = 0; i < bcf_nsamples; i++) {
+            genotypes[sample_mapping.at(i)*2].RNC =
+                genotypes[sample_mapping.at(i)*2+1].RNC =
+                    NoCallReason::MonoallelicSite;
+        }
+        return Status::OK();
+    }
+
+    // Now, translating genotypes from one variant BCF record.
+
+    // get the genotype calls
+    htsvecbox<int> gt;
+    int nGT = bcf_get_genotypes(dataset_header, record->p.get(), &gt.v, &gt.capacity);
+    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
+    if (!gt.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
+    assert(record->p->n_sample == bcf_hdr_nsamples(dataset_header));
+
+    S(depth.Load(dataset, dataset_header, record->p.get()));
+
+    // for each shared sample, record the genotype call.
+    for (const auto& ij : sample_mapping) {
+        assert(2*ij.first < nGT);
+        assert(ij.second < min_ref_depth.size());
+
+        #define fill_monoallelic(ofs)                                             \
+            if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
+                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                       \
+                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);                    \
+                assert(al >= 0 && al < record->p->n_allele);                      \
+                if (record->allele_mapping[al] > 0) {                             \
+                    if (depth.get(ij.first, al) >= cfg.required_dp) {             \
+                        genotypes[2*ij.second+(ofs)] =                            \
+                            one_call(bcf_gt_unphased(record->allele_mapping[al]), \
+                                     NoCallReason::N_A);                          \
+                    } else {                                                      \
+                        genotypes[2*ij.second+(ofs)].RNC =                        \
+                            NoCallReason::InsufficientDepth;                      \
+                    }                                                             \
+                } else {                                                          \
+                    genotypes[2*ij.second+(ofs)].RNC =                            \
+                        NoCallReason::MonoallelicSite;                            \
+                }                                                                 \
+            }
+
+        fill_monoallelic(0)
+        fill_monoallelic(1)
     }
 
     return Status::OK();
@@ -992,11 +1166,15 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 genotypes[p.second*2].RNC =
                     genotypes[p.second*2+1].RNC = rnc;
             }
-        } else {
+        } else if (!site.monoallelic) {
             // make genotype calls for the samples in this dataset
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                   sample_mapping, variant_records, adh, min_ref_depth,
                                   genotypes));
+        } else {
+            S(translate_monoallelic(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
+                                    sample_mapping, variant_records, adh, min_ref_depth,
+                                    genotypes));
         }
 
         // Update FORMAT fields for this dataset.
@@ -1005,33 +1183,32 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
         // we must censor the FORMAT fields as potentially unreliable/misleading.
         for (const auto& p : sample_mapping) {
-            if (genotypes[p.second*2].RNC == genotypes[p.second*2+1].RNC) {
-                switch (genotypes[p.second*2].RNC) {
-                    case NoCallReason::MissingData:
-                    case NoCallReason::PartialData:
-                        for (const auto& fh : format_helpers) {
-                            S(fh->censor(p.second));
-                        }
-                        break;
-                    case NoCallReason::UnphasedVariants:
-                    case NoCallReason::OverlappingVariants:
-                        for (const auto& fh : format_helpers) {
-                            if (fh->field_info.name != "DP") {
-                                // TODO: hard-coded exception for DP, which we're fine passing
-                                // through for unphased & overlapping variants;
-                                // does this need to be configurable?
-                                S(fh->censor(p.second));
-                            }
-                        }
-                        break;
+            auto rnc1 = genotypes[p.second*2].RNC;
+            auto rnc2 = genotypes[p.second*2+1].RNC;
+
+            if (rnc1 == NoCallReason::MissingData || rnc1 == NoCallReason::PartialData) {
+                assert(rnc1 == rnc2);
+                for (const auto& fh : format_helpers) {
+                    S(fh->censor(p.second, false));
+                }
+            } else if (site.monoallelic || rnc1 == NoCallReason::UnphasedVariants || rnc1 == NoCallReason::OverlappingVariants) {
+                const bool half_call = site.monoallelic || ((genotypes[p.second*2].RNC == NoCallReason::N_A) != (genotypes[p.second*2+1].RNC == NoCallReason::N_A));
+
+                for (const auto& fh : format_helpers) {
+                    if (fh->field_info.name != "DP") {
+                        S(fh->censor(p.second, half_call));
+                    }
                 }
             }
         }
 
         // Handle residuals
         if (residualsFlag) {
+            // TODO: don't emit residuals for lost alleles which will be represented in
+            // a separate monoallelic site
             const set<NoCallReason> non_residual_RNCs = { NoCallReason::N_A, NoCallReason::MissingData,
-                                                          NoCallReason::PartialData, NoCallReason::InsufficientDepth };
+                                                          NoCallReason::PartialData, NoCallReason::InsufficientDepth,
+                                                          NoCallReason::MonoallelicSite };
 
             bool any_lost_calls = false;
             for (int i = 0; i < bcf_nsamples; i++) {
@@ -1055,7 +1232,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // Clean up emission order of alleles
     for(size_t i=0; i < samples.size(); i++) {
-        if(genotypes[2*i] > genotypes[2*i + 1]) {
+        if (genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing ||
+            genotypes[2*i].allele > genotypes[2*i+1].allele) {
             swap(genotypes[2*i], genotypes[2*i+1]);
         }
     }
@@ -1103,6 +1281,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             RNC_CASE(LostAllele,"L")
             RNC_CASE(UnphasedVariants,"U")
             RNC_CASE(OverlappingVariants,"O")
+            RNC_CASE(MonoallelicSite,"M")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }
@@ -1111,6 +1290,10 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     assert (gt.size() == rnc.size());
     if (bcf_update_format_string(hdr, ans.get(), "RNC", rnc.data(), rnc.size()) != 0) {
         return Status::Failure("bcf_update_format_string RNC");
+    }
+
+    if (site.monoallelic && bcf_add_filter(hdr, ans.get(), bcf_hdr_id2int(hdr, BCF_DT_ID, "MONOALLELIC")) != 1) {
+        return Status::Failure("bcf_add_filter MONOALLELIC");
     }
 
     if (residualsFlag &&

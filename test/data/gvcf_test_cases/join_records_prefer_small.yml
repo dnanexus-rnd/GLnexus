@@ -62,5 +62,5 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	1000	.	T	A	232	.	.	GT:RNC	0/0:..	0/.:.-	0/.:.-	0/1:..
-      A	1002	.	C	G	232	.	.	GT:RNC	0/0:..	0/.:.-	0/.:.-	0/1:..
+      A	1000	.	T	A	232	.	.	GT:RNC	0/0:..	./0:-.	./0:-.	0/1:..
+      A	1002	.	C	G	232	.	.	GT:RNC	0/0:..	./0:-.	./0:-.	0/1:..

@@ -663,6 +663,11 @@ TEST_CASE("lost deletion") {
     GVCFTestCase("lost_deletion").perform_gvcf_test();
 }
 
+TEST_CASE("lost deletion_monoallelic_site") {
+    vector<string> v_formats = {"GT", "RNC", "DP", "AD"};
+    GVCFTestCase("lost_deletion_monoallelic_site", v_formats, {}).perform_gvcf_test();
+}
+
 TEST_CASE("join records with unifier preference for small alleles") {
     GVCFTestCase("join_records_prefer_small").perform_gvcf_test();
 }
@@ -698,7 +703,7 @@ TEST_CASE("revise_overlapping") {
 }
 
 TEST_CASE("censor_rnc_format_fields") {
-    vector<string> v_formats = {"DP", "GT", "RNC", "GQ"};
+    vector<string> v_formats = {"DP", "GT", "RNC", "GQ", "AD"};
     vector<string> v_infos = {};
     GVCFTestCase gtc("censor_rnc_format_fields", v_formats, v_infos);
     gtc.perform_gvcf_test();

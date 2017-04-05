@@ -467,17 +467,26 @@ struct unified_site {
     /// DNA) onto the unified alleles (by index).
     std::map<allele,int> unification;
 
+    /// Estimated frequencies of the alleles. Presently, the first entry, corresponding
+    /// to the reference allele, is left undefined (to be fixed in the future).
     std::vector<float> allele_frequencies;
+    /// Total frequency of alleles overlapping the site but were 'lost' by the unifier
+    /// for whatever reason.
     float lost_allele_frequency = 0.0f;
 
-    // variant QUAL score (as in VCF)
+    /// variant QUAL score (as in VCF)
     int qual = 0;
+
+    /// Signify that this record represents *one* ALT allele *without* any assertion
+    /// about the presence or absence of the reference allele.
+    bool monoallelic = false;
 
     bool operator==(const unified_site& rhs) const noexcept {
         if (!(pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
               && allele_frequencies.size() == rhs.allele_frequencies.size()
               && lost_allele_frequency == rhs.lost_allele_frequency
-              && qual == rhs.qual)) {
+              && qual == rhs.qual
+              && monoallelic == rhs.monoallelic)) {
             return false;
         }
         // nan-tolerant comparison of allele_frequencies
@@ -496,6 +505,7 @@ struct unified_site {
     }
     bool operator<(const unified_site& rhs) const noexcept{
         if (pos != rhs.pos) return pos < rhs.pos;
+        if (monoallelic != rhs.monoallelic) return !monoallelic;
         if (alleles != rhs.alleles) return alleles < rhs.alleles;
         if (unification != rhs.unification) return unification < rhs.unification;
         return allele_frequencies < rhs.allele_frequencies;
@@ -574,6 +584,15 @@ struct unifier_config {
     /// editing the smallest portion of the reference (least likely to
     /// conflict with other alleles).
     UnifierPreference preference = UnifierPreference::Common;
+
+    /// In some situations the unifier "loses" complex alleles because they
+    /// cannot be represented cleanly with the other alleles in one or more
+    /// non-overlapping multiallelic sites. If this flag is true, then the
+    /// unifier generates additional sites which each represent just one such
+    /// "lost" allele. This preserves a representation of the allele, with
+    /// the disadvantage that the generated sites are not all non-overlapping
+    /// (and thus it's more difficult to reason about their partitioning).
+    bool monoallelic_sites_for_lost_alleles = false;
 
     bool operator==(const unifier_config& rhs) const noexcept {
         return min_allele_copy_number == rhs.min_allele_copy_number &&

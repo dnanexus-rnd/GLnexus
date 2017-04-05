@@ -74,5 +74,5 @@ truth_output_vcf:
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12879
       21	10009464	.	TA	T	16	.	.	GT:RNC	./.:DD	0/0:..
-      21	10009466	.	A	G	16	.	.	GT:RNC	0/0:..	0/.:.D
-      21	10009467	.	A	C	16	.	.	GT:RNC	./.:DD	0/.:.D
+      21	10009466	.	A	G	16	.	.	GT:RNC	0/0:..	./0:D.
+      21	10009467	.	A	C	16	.	.	GT:RNC	./.:DD	./0:D.

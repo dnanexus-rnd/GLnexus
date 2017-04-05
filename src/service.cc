@@ -189,8 +189,9 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
                                  const vector<string>& samples, const vector<retained_format_field> format_fields,
                                  shared_ptr<bcf_hdr_t>& ans) {
     vector<string> hdr_lines;
+    hdr_lines.push_back("##FILTER=<ID=MONOALLELIC,Description=\"Site represents one ALT allele in a region with multiple variants that could not be unified into non-overlapping multi-allelic sites\"");
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-    hdr_lines.push_back("##FORMAT=<ID=RNC,Number=G,Type=Character,Description=\"Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present\">");
+    hdr_lines.push_back("##FORMAT=<ID=RNC,Number=G,Type=Character,Description=\"Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present, M = site is Monoallelic, no assertion about presence of REF or ALT allele\">");
     for (auto& format_field : format_fields) {
         hdr_lines.push_back(format_field.description);
     }

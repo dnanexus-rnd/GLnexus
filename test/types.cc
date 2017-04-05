@@ -472,6 +472,7 @@ containing_target: {ref: '17', beg: 1, end: 10000}
 alleles: [AG, AC, C]
 allele_frequencies: [.nan, 0.05, 0.001]
 quality: 100
+monoallelic: false
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AG
