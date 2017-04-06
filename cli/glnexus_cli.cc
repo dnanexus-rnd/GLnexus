@@ -88,6 +88,10 @@ static int all_steps(const vector<string> &vcf_files,
         string filename("/tmp/dsals.yml");
         H("serialize discovered alleles to a file",
           GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
+
+        string filename_cflat("/tmp/dsals.cflat");
+        H("Verify that the cflat file is readable",
+          GLnexus::capnp_discover_alleles_verify(sample_count, contigs, dsals, filename_cflat));
     }
 
     // partition dsals by contig to reduce peak memory usage in the unifier
