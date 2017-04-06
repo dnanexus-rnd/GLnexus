@@ -24,7 +24,7 @@ static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 // This limit should be much larger than the message size. It is a security,
 // preventing the demarshaller from using too much memory, and getting into
 // infinite loops.
-const uint64_t CAPNP_TRAVERSAL_LIMIT = 20 * 1024L * 1024L * 1024L;
+const uint64_t CAPNP_TRAVERSAL_LIMIT = 1024L * 1024L * 1024L * 1024L;
 
 regex regex_dna     ("[ACGTN]+")
     , regex_id      ("[-_a-zA-Z0-9\\.]{1,100}")
@@ -336,34 +336,55 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
                                                 unsigned int &sample_count,
                                                 std::vector<std::pair<std::string,size_t> >& contigs,
                                                 discovered_alleles &dsals) {
+    cerr << "_capnp_read_discovered_alleles_fd <" << endl;
     ::capnp::ReaderOptions ropt;
     ropt.traversalLimitInWords = CAPNP_TRAVERSAL_LIMIT;
     ::capnp::PackedFdMessageReader message(fd, ropt);
     capnp::DiscoveredAlleles::Reader dsals_pk = message.getRoot<capnp::DiscoveredAlleles>();
     sample_count = dsals_pk.getSampleCount();
+    cerr << "sample_count=" << sample_count << endl;
 
     // contigs
     contigs.clear();
+    cerr << "reading contigs=[" << endl;
     for (capnp::Contig::Reader ctg : dsals_pk.getContigs()) {
         auto p = make_pair<string,size_t>(ctg.getName(), ctg.getSize());
         contigs.push_back(p);
     }
+    cerr << "]" << endl;
 
     // Discovered Alleles
     dsals.clear();
+    int i=0;
+    int lim=34898120, delta=10;
+    cerr << "reading dsals=[" << endl;
     for (capnp::AlleleInfoPair::Reader aip : dsals_pk.getAips()) {
+        i++;
+        if (i >= lim && i < (lim+delta)) {
+            cerr << "read  " << i << " records" << endl;
+        }
         // Unpack allele
         capnp::Range::Reader range_pk = aip.getRange();
         range r(range_pk.getRid(),
                 range_pk.getBeg(),
                 range_pk.getEnd());
+        if (i >= lim && i < (lim+delta)) {
+            cerr << r.str(contigs) << endl;
+        }
+
         string dna = aip.getDna();
+        if (i >= lim && i < (lim+delta)) {
+            cerr << "dna=" << dna << endl;
+        }
         allele alle(r, dna);
 
         // Unpack allele-info
         discovered_allele_info dai;
         capnp::DiscoveredAlleleInfo::Reader dai_pk = aip.getDai();
         dai.is_ref = dai_pk.getIsRef();
+        if (i >= lim && i < (lim+delta)) {
+            cerr << "is_ref=" << dai.is_ref << endl;
+        }
 
         ::capnp::List<int64_t>::Reader topAQ_pk = dai_pk.getTopAQ();
         if (topAQ_pk.size() != top_AQ::COUNT) {
@@ -373,6 +394,9 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
             dai.topAQ.V[k] =  topAQ_pk[k];
         }
         // skipping addbuf, it is used for scratch space
+        if (i >= lim && i < (lim+delta)) {
+            cerr << "read topAQ size=" << topAQ_pk.size() << endl;
+        }
 
         // Unpack Zygosity information
         ::capnp::List<uint64_t>::Reader zGQ0_pk = dai_pk.getZGQ0();
@@ -388,7 +412,8 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
 
         dsals[alle] = dai;
     }
-
+    cerr << "]" << endl;
+    cerr << ">" << endl;
     return Status::OK();
 }
 
