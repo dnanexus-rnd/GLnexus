@@ -717,7 +717,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     S(MetadataCache::Start(*data, metadata));
     contigs = metadata->contigs();
 
-    logger->info() << "Beginning bulk load with no range filter.";
+    logger->info() << "Beginning db_bulk_load";
 
     ctpl::thread_pool threadpool(nr_threads);
     vector<future<Status>> statuses;
