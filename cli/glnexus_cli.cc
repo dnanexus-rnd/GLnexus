@@ -34,7 +34,8 @@ static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
                      int nr_threads,
                      bool debug,
-                     bool iter_compare) {
+                     bool iter_compare,
+                     size_t bucket_size) {
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
@@ -53,7 +54,8 @@ static int all_steps(const vector<string> &vcf_files,
     // initilize empty database
     string dbpath("GLnexus.DB");
     vector<pair<string,size_t> > contigs;
-    H("initializing database", GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs));
+    H("initializing database", GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs,
+                                                            bucket_size));
 
     {
         // sanity check, see that we can get the contigs back
@@ -132,6 +134,7 @@ void help(const char* prog) {
          << "Options:" << endl
          << "  --help, -h           print this help message" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+         << "  --bucket_size INT, -x INT  set the bucket size" << endl
          << "  --debug, -d          create additional file outputs for diagnostics/debugging" << endl
          << "  --iter_compare, -i   compare different implementations of database iteration" << endl;
 }
@@ -153,6 +156,7 @@ int main(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
+        {"bucket_size", required_argument, 0, 'x'},
         {"debug", no_argument, 0, 'd'},
         {"iter_compare", no_argument, 0, 'i'},
         {0, 0, 0, 0}
@@ -163,9 +167,10 @@ int main(int argc, char *argv[]) {
     bool iter_compare = false;
     string bedfilename;
     int nr_threads = std::thread::hardware_concurrency();
+    size_t bucket_size = GLnexus::cli::utils::default_bucket_size;
 
     optind = 1; // force optind past command positional argument
-    while (-1 != (c = getopt_long(argc, argv, "hb:dI",
+    while (-1 != (c = getopt_long(argc, argv, "hb:dIx:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -190,6 +195,14 @@ int main(int argc, char *argv[]) {
                 iter_compare = true;
                 break;
 
+            case 'x':
+                bucket_size = strtoul(optarg, nullptr, 10);
+                if (bucket_size == 0 || bucket_size > 1000000000) {
+                    cerr << "bucket size should be in (1,1e9]" << endl;
+                    return 1;
+                }
+                break;
+
             default:
                 abort ();
         }
@@ -204,5 +217,5 @@ int main(int argc, char *argv[]) {
     for (int i=optind; i < argc; i++)
         vcf_files.push_back(string(argv[i]));
 
-    return all_steps(vcf_files, bedfilename, nr_threads, debug, iter_compare);
+    return all_steps(vcf_files, bedfilename, nr_threads, debug, iter_compare, bucket_size);
 }
