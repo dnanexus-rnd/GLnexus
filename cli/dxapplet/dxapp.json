@@ -74,7 +74,7 @@
   "outputSpec": [
     {
       "name": "discovered_alleles",
-      "class": "file",
+      "class": "array:file",
       "optional": true
     },
     {
