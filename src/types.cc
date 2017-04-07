@@ -479,6 +479,10 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
 
     ans << YAML::Key << "quality" << YAML::Value << qual;
 
+    if (monoallelic) {
+        ans << YAML::Key << "monoallelic" << YAML::Value << true;
+    }
+
     ans << YAML::Key << "unification";
     ans << YAML::Value << YAML::BeginSeq;
     // sort unification entries by to, then by range, then by dna
@@ -585,6 +589,12 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     ans.qual = n_qual.as<int>();
     VR(ans.qual >= 0, "invalid 'qual' field");
 
+    const auto n_monoallelic = yaml["monoallelic"];
+    if (n_monoallelic) {
+        VR(n_monoallelic.IsScalar(), "invalid 'monoallelic' field");
+        ans.monoallelic = n_monoallelic.as<bool>();
+    }
+
     #undef V
     #undef VR
     return Status::OK();
@@ -634,6 +644,12 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
         ans.max_alleles_per_site = (size_t) max_alleles_per_site;
     }
 
+    const auto n_monoallelic_sites_for_lost_alleles = yaml["monoallelic_sites_for_lost_alleles"];
+    if (n_monoallelic_sites_for_lost_alleles) {
+        V(n_monoallelic_sites_for_lost_alleles.IsScalar(), "invalid monoallelic_sites_for_lost_alleles");
+        ans.monoallelic_sites_for_lost_alleles = n_monoallelic_sites_for_lost_alleles.as<bool>();
+    }
+
     const auto n_preference = yaml["preference"];
     if (n_preference) {
         V(n_preference.IsScalar(), "invalid preference");
@@ -658,6 +674,7 @@ Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "min_AQ2" << YAML::Value << min_AQ2;
     ans << YAML::Key << "min_GQ" << YAML::Value << min_GQ;
     ans << YAML::Key << "max_alleles_per_site" << YAML::Value << max_alleles_per_site;
+    ans << YAML::Key << "monoallelic_sites_for_lost_alleles" << YAML::Value << monoallelic_sites_for_lost_alleles;
 
     ans << YAML::Key << "preference" << YAML::Value;
     if (preference == UnifierPreference::Common) {

@@ -550,6 +550,7 @@ unifier_config:
   min_AQ1: 70
   min_AQ2: 40
   min_GQ: 40
+  monoallelic_sites_for_lost_alleles: true
 genotyper_config:
   required_dp: 1
   revise_genotypes: true
@@ -717,7 +718,15 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     S(MetadataCache::Start(*data, metadata));
     contigs = metadata->contigs();
 
-    logger->info() << "Beginning db_bulk_load";
+     if (ranges.size()) {
+        ostringstream ss;
+        for (const auto& rng : ranges) {
+            ss << " " << rng.str(contigs);
+        }
+        logger->info() << "Beginning bulk load of records overlapping:" << ss.str();
+    } else {
+        logger->info() << "Beginning bulk load with no range filter.";
+    }
 
     ctpl::thread_pool threadpool(nr_threads);
     vector<future<Status>> statuses;
@@ -847,13 +856,13 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
     Status s;
     S(unified_sites(unifier_cfg, sample_count, dsals, sites));
 
-    // sanity check, sites are in-order and non-overlapping
+    // sanity check, sites are in-order
     if (sites.size() > 1) {
         auto p = sites.begin();
         for (auto q = p+1; q != sites.end(); ++p, ++q) {
-            if (!(p->pos < q->pos) || p->pos.overlaps(q->pos)) {
+            if (q->pos < p->pos) {
                 return Status::Failure(
-                    "BUG: unified sites failed sanity check -- sites are out of order or overlapping.",
+                    "BUG: unified sites failed sanity check -- sites are out of order",
                     p->pos.str(contigs)  + " " + q->pos.str(contigs));
             }
         }

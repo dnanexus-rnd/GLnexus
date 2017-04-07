@@ -111,6 +111,7 @@ static int all_steps(const vector<string> &vcf_files,
         H("unify sites",
           GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals_i, sample_count, sites));
     }
+    console->info() << "unified to " << sites.size() << " sites";
     if (debug) {
         string filename("/tmp/sites.yml");
         H("write unified sites to file",
@@ -167,7 +168,7 @@ int main(int argc, char *argv[]) {
     bool iter_compare = false;
     string bedfilename;
     int nr_threads = std::thread::hardware_concurrency();
-    size_t bucket_size = GLnexus::cli::utils::default_bucket_size;
+    size_t bucket_size = GLnexus::BCFKeyValueData::default_bucket_size;
 
     optind = 1; // force optind past command positional argument
     while (-1 != (c = getopt_long(argc, argv, "hb:dIx:",
