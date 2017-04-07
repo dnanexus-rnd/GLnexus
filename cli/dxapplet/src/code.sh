@@ -89,6 +89,10 @@ main() {
         mkdir -p out/discovered_alleles
         $compressor -c /tmp/dsals.yml > out/discovered_alleles/"${output_name}.discovered_alleles.yml.${compress_ext}"
     fi
+    if [ -f /tmp/dsals.cflat ]; then
+        mkdir -p out/discovered_alleles
+        $compressor -c /tmp/dsals.cflat > out/discovered_alleles/"${output_name}.discovered_alleles.cflat.${compress_ext}"
+    fi
 
     # unified alleles file
     if [ -f /tmp/sites.yml ]; then

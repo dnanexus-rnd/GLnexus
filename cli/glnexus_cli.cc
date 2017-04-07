@@ -88,8 +88,15 @@ static int all_steps(const vector<string> &vcf_files,
       GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
+        console->info() << "Writing discovered alleles as YAML to " << filename;
         H("serialize discovered alleles to a file",
           GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
+
+        string filename_cflat("/tmp/dsals.cflat");
+        console->info() << "Writing discovered alleles in serialized capnproto to " << filename
+                        << ", verifying that it is readable";
+        H("Verify that the cflat file is readable",
+          GLnexus::capnp_discover_alleles_verify(sample_count, contigs, dsals, filename_cflat));
     }
 
     // partition dsals by contig to reduce peak memory usage in the unifier
@@ -110,6 +117,7 @@ static int all_steps(const vector<string> &vcf_files,
     console->info() << "unified to " << sites.size() << " sites";
     if (debug) {
         string filename("/tmp/sites.yml");
+        console->info() << "Writing unified sites as YAML to " << filename;
         H("write unified sites to file",
           GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
     }
