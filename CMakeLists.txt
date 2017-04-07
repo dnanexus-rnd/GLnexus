@@ -162,19 +162,15 @@ ExternalProject_Get_Property(spdlog source_dir)
 set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
 include_directories(${SPDLOG_INCLUDE_DIR})
 
-# Note: installing the sources from git is significantly more
-# complicated. For example, you need to install the google-test
-# package (gtest).
 ExternalProject_Add(capnp
-    URL https://capnproto.org/capnproto-c++-0.5.3.tar.gz
+    URL https://github.com/sandstorm-io/capnproto/archive/6e1d23179980321a6dfd1ac7af0988014d73145f.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/external
+    CONFIGURE_COMMAND cd c++ && cmake -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/external .
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make -j6 check
-    INSTALL_COMMAND make install
+    BUILD_COMMAND make -C c++ -j4 check
+    INSTALL_COMMAND make -C c++ install
     LOG_DOWNLOAD ON
   )
-
 
 execute_process(COMMAND git describe --tags --long --dirty --always
                 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -193,7 +189,7 @@ include_directories(${COMMON_INCLUDES} capnp/serialize)
 # definitions.
 add_custom_command(
   OUTPUT  capnp/serialize/defs.capnp.c++ capnp/serialize/defs.capnp.h
-  COMMAND ${CMAKE_BINARY_DIR}/external/bin/capnp compile -oexternal/bin/capnpc-c++ capnp/serialize/defs.capnp
+  COMMAND ${CMAKE_BINARY_DIR}/external/bin/capnp compile -I${CMAKE_CURRENT_BINARY_DIR}/external/include -oexternal/bin/capnpc-c++ capnp/serialize/defs.capnp
   DEPENDS capnp/serialize/defs.capnp
   COMMENT "GLnexus: generating cap'n proto C++ and H files")
 

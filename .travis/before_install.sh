@@ -9,10 +9,10 @@ sudo apt-get -qq update
 sudo apt-get -qq install -y liblz4-dev
 
 # Install GCC 4.9
-sudo apt-get -qq install -y gcc-4.9 g++-4.9 binutils
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 \
-                         --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 \
-                         --slave /usr/bin/gcov gcov /usr/bin/gcov-4.9
+sudo apt-get -qq install -y gcc-5 g++-5 binutils
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 \
+                         --slave /usr/bin/g++ g++ /usr/bin/g++-5 \
+                         --slave /usr/bin/gcov gcov /usr/bin/gcov-5
 
 # Install boost for use in yaml-cpp
 sudo apt-get -qq install -y libboost1.55-dev

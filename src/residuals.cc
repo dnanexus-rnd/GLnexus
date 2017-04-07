@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <algorithm>
+#include <numeric>
 #include <kstring.h>
 #include <vcf.h>
 #include "BCFSerialize.h"
