@@ -246,7 +246,7 @@ static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
                                                 const std::vector<std::pair<std::string,size_t> >& contigs,
                                                 const discovered_alleles &dsals,
                                                 int fd) {
-    ::capnp::MallocMessageBuilder message(::capnp::SUGGESTED_FIRST_SEGMENT_WORDS, ::capnp::AllocationStrategy::FIXED_SIZE);
+    ::capnp::MallocMessageBuilder message;
     capnp::DiscoveredAlleles::Builder dsals_pk = message.initRoot<capnp::DiscoveredAlleles>();
     dsals_pk.setSampleCount(sample_count);
 
