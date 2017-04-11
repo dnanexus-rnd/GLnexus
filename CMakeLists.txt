@@ -163,7 +163,7 @@ set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
 include_directories(${SPDLOG_INCLUDE_DIR})
 
 ExternalProject_Add(capnp
-    URL https://github.com/sandstorm-io/capnproto/archive/6e1d23179980321a6dfd1ac7af0988014d73145f.zip
+    URL https://github.com/dnanexus-rnd/capnproto/archive/b97b6e72e676b9ddadabfe7ebfbbd756367466a9.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND cd c++ && cmake -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/external .
     BUILD_IN_SOURCE 1
