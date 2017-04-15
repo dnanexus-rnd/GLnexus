@@ -110,8 +110,8 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
         // Increase memtable size (and shrink block cache to compensate)
-        opts.write_buffer_size = totalRAM() / 3;
-        opts.max_write_buffer_number = 2;
+        opts.write_buffer_size = totalRAM() / 5;
+        opts.max_write_buffer_number = 3;
         opts.min_write_buffer_number_to_merge = 1;
         bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 10, 6);
 
