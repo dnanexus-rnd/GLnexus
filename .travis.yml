@@ -12,6 +12,7 @@ addons:
     packages:
       - libjemalloc-dev
       - libsnappy-dev
+      - liblzma-dev
       - libc6-dbg
       - gdb
       - cmake
