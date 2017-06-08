@@ -85,9 +85,9 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.compaction_options_universal.min_merge_width = 2;
     opts.compaction_options_universal.max_merge_width = 10;
 
-    // compress all files with LZ4
+    // compress all files with Zstandard
     opts.compression_per_level.clear();
-    opts.compression = rocksdb::kLZ4Compression;
+    opts.compression = rocksdb::kZSTD;
 
     // 256 KiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
