@@ -719,7 +719,7 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "basic";
     } else if (number == RetainedFieldNumber::ALT) {
         ans << "alt";
-    } if (number == RetainedFieldNumber::GENOTYPE) {
+    } else if (number == RetainedFieldNumber::GENOTYPE) {
         ans << "genotype";
     } else if (number == RetainedFieldNumber::ALLELES) {
         ans << "alleles";

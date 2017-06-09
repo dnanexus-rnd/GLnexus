@@ -100,6 +100,8 @@ main() {
         $compressor -c /tmp/sites.yml > "out/unified_sites/${output_name}.sites.yml.${compress_ext}"
     fi
 
+    ls -Rlh
+
     # upload
     dx-upload-all-outputs --parallel
 
