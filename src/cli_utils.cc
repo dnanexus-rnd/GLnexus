@@ -586,6 +586,47 @@ test:
               combi_method: max
               number: basic
               count: 4
+xAtlas:
+    unifier_config:
+        min_AQ1: 70
+        min_AQ2: 40
+        min_GQ: 40
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        # TODO: ref_dp_format=DPX[0] would be more precise
+        ref_dp_format: DP
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [RR]
+              name: RR
+              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [VR]
+              name: VR
+              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
 )eof";
 
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,

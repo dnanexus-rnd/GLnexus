@@ -26,8 +26,9 @@ static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 // infinite loops.
 const uint64_t CAPNP_TRAVERSAL_LIMIT = 20 * 1024L * 1024L * 1024L;
 
-regex regex_dna     ("[ACGTN]+")
-    , regex_id      ("[-_a-zA-Z0-9\\.]{1,100}")
+regex regex_dna               ("[ACGTN]+")
+    , regex_iupac_nucleotide  ("[ACGTURYSWKMBDHVN]+")
+    , regex_id                ("[-_a-zA-Z0-9\\.]{1,100}")
     ;
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
@@ -971,9 +972,11 @@ bool is_symbolic_allele(const char* allele) {
     return regex_match(allele, regex_symbolic_allele);
 }
 
-// gVCF reference confidence records recognized as having exactly one, symbolic ALT allele
+// gVCF reference confidence records recognized as having either:
+// a) zero ALT alleles
+// b) one symbolic ALT allele
 bool is_gvcf_ref_record(const bcf1_t* record) {
-    return record->n_allele == 2 && is_symbolic_allele(record->d.allele[1]);
+    return record->n_allele == 1 || (record->n_allele == 2 && is_symbolic_allele(record->d.allele[1]));
 }
 
 } // namespace GLnexus

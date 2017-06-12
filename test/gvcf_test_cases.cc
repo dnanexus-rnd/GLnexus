@@ -708,3 +708,9 @@ TEST_CASE("censor_rnc_format_fields") {
     GVCFTestCase gtc("censor_rnc_format_fields", v_formats, v_infos);
     gtc.perform_gvcf_test();
 }
+
+TEST_CASE("xAtlas") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "RR", "VR"};
+    vector<string> v_infos = {};
+    GVCFTestCase("xAtlas", v_formats, v_infos).perform_gvcf_test();
+}

@@ -73,7 +73,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // create an entry for the ref allele, if we discovered at least one alt allele.
             string refdna(record->d.allele[0]);
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
-            if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
+            if (refdna.size() > 0 && regex_match(refdna, regex_iupac_nucleotide)) {
                 if (any_alt) {
                     discovered_allele_info ai;
                     ai.is_ref = true;

@@ -968,19 +968,23 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    // check that alleles are all distinct, and some gVCF-specific assumptions: all
-    // alleles are valid DNA, except the last one which MAY be a symbolic allele.
+    // check that alleles are all distinct, and that all alleles are valid DNA;
+    // exceptions:
+    //   (1) the last ALT allele may be a symbolic one.
+    //   (2) the REF allele may contain general IUPAC nucleotide codes (a few of
+    //       which are present in the human genome reference assembly)
     set<string> alleles;
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (!regex_match(allele_i, regex_dna) &&
-            (i < bcf->n_allele-1 || !is_symbolic_allele(bcf->d.allele[bcf->n_allele-1]))) {
+        if (!(regex_match(allele_i, regex_dna) ||
+              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())) ||
+              (i == 0 && regex_match(allele_i, regex_iupac_nucleotide)))) {
             return Status::Invalid("allele is not a DNA sequence ",
                                 filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }
         alleles.insert(allele_i);
     }
-    if (bcf->n_allele<2 || alleles.size() != bcf->n_allele) {
+    if (bcf->n_allele<1 || alleles.size() != bcf->n_allele) {
         return Status::Invalid("alleles are not distinct ", filename + " " + range(bcf).str(contigs));
     }
 
@@ -1003,7 +1007,8 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     htsvecbox<int32_t> pl;
     int nPL = bcf_get_format_int32(hdr, bcf, "PL", &pl.v, &pl.capacity);
     if (nPL >= 0) {
-        if (nPL != bcf->n_sample * diploid::genotypes(bcf->n_allele)) {
+        if (nPL != bcf->n_sample * diploid::genotypes(bcf->n_allele) && bcf->n_allele > 1) {
+            // the exception when bcf->n_allele == 1 accommodates xAtlas
             return Status::Invalid("gVCF record doesn't have expected # of PL entries", filename + " " + range(bcf).str(contigs));
         }
         for (int i = 0; i < nPL; i++) {

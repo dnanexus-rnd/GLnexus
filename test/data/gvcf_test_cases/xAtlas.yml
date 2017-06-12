@@ -1,0 +1,129 @@
+readme: |
+  Basic test of loading xAtlas GVCF dialect
+
+input:
+  header : |-
+    ##fileformat=VCFv4.2
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##fileDate=20170323
+    ##source=/stornext/snfs5/next-gen/scratch/farek/dev/xatlas_dev/xatlas v0.0.2-hgsc
+    ##reference=/stornext/snfs5/next-gen/Illumina/bwa_references/h/hs37d5/hs37d5.fa
+    ##command=/stornext/snfs5/next-gen/scratch/farek/dev/xatlas_dev/xatlas -r /stornext/snfs5/next-gen/Illumina/bwa_references/h/hs37d5/hs37d5.fa -i HG002.bam -p HG002 -s HG002 -gz
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+    ##FORMAT=<ID=PL,Number=3,Type=Integer,Description="Genotype Likelihood">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+    ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">
+    ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
+    ##FORMAT=<ID=DPX,Number=4,Type=Float,Description="Minimum, maximum, average, and standard deviation of DP values within this non-variant block">
+    ##FORMAT=<ID=RRX,Number=4,Type=Float,Description="Minimum, maximum, average, and standard deviation of RR values within this non-variant block">
+    ##FORMAT=<ID=VRX,Number=4,Type=Float,Description="Minimum, maximum, average, and standard deviation of VR values within this non-variant block">
+    ##FILTER=<ID=low_snpqual,Description="SNP posterior probability is less than 0.50">
+    ##FILTER=<ID=low_VariantReads,Description="Variant read depth is less than 2">
+    ##FILTER=<ID=low_VariantRatio,Description="Variant read ratio is less than 0.25">
+    ##FILTER=<ID=low_coverage,Description="Total coverage is less than 6">
+    ##FILTER=<ID=high_coverage,Description="Total coverage is greater than 8000">
+    ##FILTER=<ID=single_strand,Description="All variant reads are in a single strand direction">
+    ##FILTER=<ID=No_data,Description="No valid reads on this site">
+    ##FILTER=<ID=No_var,Description="No valid variants reads on this site">
+    ##INFO=<ID=P,Number=1,Type=Float,Description="SNP p-value">
+    ##INFO=<ID=equal_majority,Number=0,Type=Flag,Description="The called SNP has an equal number of reads indicating another variant call and base was chosen by highest summed quality score">
+    ##INFO=<ID=BLOCKAVG_min30p3a,Number=0,Type=Flag,Description="Non-variant block compression scheme BLOCKAVG_min30p3a">
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="End position of this non-variant block">
+    ##contig=<ID=1,length=249250621>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - HG002.gvcf: |
+        HG002
+        1	15890	.	C	.	.	PASS	END=15905;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
+        1	15906	.	A	.	.	PASS	END=15910;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	./.:0:0:0:.:0,27,30:0,0,0,0:0,0,0,0:0,0,0,0
+        1	15911	.	C	.	.	PASS	END=15921;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:0:1:.:0,28,63:0,1,0.0909091,0.301511:0,2,1.27273,0.64667:1,2,1.36364,0.504525
+        1	15922	.	A	G	34	low_coverage	P=0.999618	GT:VR:RR:DP:GQ:PL	1/1:4:0:4:.:85,9,0
+        1	15923	.	A	.	.	PASS	END=15929;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,45,206:0,0,0,0:4,7,6.14286,1.21499:4,7,6.14286,1.21499
+        1	15930	.	C	.	.	PASS	END=15936;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:9:9:.:0,57,321:0,0,0,0:9,11,10.1429,1.06904:9,11,10.1429,1.06904
+        1	15937	.	A	.	.	PASS	END=15950;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:13:13:.:0,68,444:0,1,0.0714286,0.267261:13,16,14.5,1.28602:13,16,14.5714,1.34246
+        1	15951	.	G	.	.	PASS	END=15955;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:17:17:.:0,80,535:0,0,0,0:17,19,17.6,0.894427:17,19,17.6,0.894427
+        1	15956	.	G	A	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
+        1	15957	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:20:20:.:0,95,690:0,1,0.0384615,0.196116:20,26,23.0385,2.34061:20,26,23.0769,2.38198
+
+genotyper_config:
+    required_dp: 0
+    revise_genotypes: false
+    # TODO: ref_dp_format=DPX[0] would be more precise
+    ref_dp_format: DP
+    liftover_fields:
+        - orig_names: [GQ]
+          name: GQ
+          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+          type: int
+          number: basic
+          combi_method: min
+          count: 1
+          ignore_non_variants: true
+        - orig_names: [DP]
+          name: DP
+          description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+          type: int
+          combi_method: min
+          number: basic
+          count: 1
+        - orig_names: [RR]
+          name: RR
+          description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+          type: int
+          combi_method: min
+          number: basic
+          count: 1
+        - orig_names: [VR]
+          name: VR
+          description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+          type: int
+          combi_method: min
+          number: basic
+          count: 1
+
+truth_discovered_alleles:
+    - range: {ref: "1", beg: 15922, end: 15922}
+      dna: 'A'
+      is_ref: true
+      top_AQ: [240,240]
+      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15922, end: 15922}
+      dna: 'G'
+      is_ref: false
+      top_AQ: [2,2]
+      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+
+truth_unified_sites:
+    - range: {ref: "1", beg: 15922, end: 15922}
+      alleles: [A, G]
+      allele_frequencies: [.nan, 1.0]
+      quality: 85
+      unification:
+        - range: {beg: 15922, end: 15922}
+          dna: G
+          to: 1
+    - range: {ref: 1, beg: 15956, end: 15956}
+      alleles: [G, A]
+      allele_frequencies: [.nan, 0.5]
+      quality: 257
+      unification:
+        - range: {beg: 15956, end: 15956}
+          dna: A
+          to: 1
+
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+      ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">
+      ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
+      ##contig=<ID=21,length=48129895>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002
+      1	15922	.	A	G	85	.	.	GT:GQ:DP:RR:VR:RNC	1/1:.:4:0:4:..
+      1	15956	.	G	A	257	.	.	GT:GQ:DP:RR:VR:RNC	0/1:.:20:8:12:..

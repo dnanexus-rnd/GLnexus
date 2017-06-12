@@ -65,7 +65,7 @@ main() {
     fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli --bed $bed_ranges $bucket_size_arg $debug_flags $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+    time numactl --interleave=all glnexus_cli --config "$config" --bed $bed_ranges $bucket_size_arg $debug_flags $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then
         # Try to kill the perf process nicely; this does not always work

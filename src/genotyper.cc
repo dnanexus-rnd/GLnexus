@@ -398,10 +398,10 @@ public:
                 retval = bcf_update_format_float(hdr, record, field_info.name.c_str(), ans.data(), n_samples * count);
                 break;
             default:
-                return Status::Invalid("genotyper: Unexpected RetainedFieldType when executing update_record_format.");
+                return Status::Invalid("genotyper: Unexpected RetainedFieldType when executing update_record_format.", field_info.name);
         }
         if (retval != 0) {
-            return Status::Failure("genotyper: failed to update record format when executing update_record_format.");
+            return Status::Failure("genotyper: failed to update record format when executing update_record_format.", field_info.name);
         }
         return Status::OK();
     }
@@ -518,8 +518,8 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
 
 // Helper class for keeping track of the per-allele depth of coverage info in
 // a bcf1_t record. There are a couple different cases to handle, depending on
-// whether we're looking at a gVCF reference confidence record or a "regular"
-// VCF record.
+// the upstream variant caller and whether we're looking at a reference confidence
+// or variant record.
 class AlleleDepthHelper {
     const genotyper_config& cfg_;
     size_t n_sample_ = 0, n_allele_ = 0;

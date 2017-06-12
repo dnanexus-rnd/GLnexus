@@ -6,23 +6,6 @@
   "version": "0.0.1",
   "inputSpec": [
     {
-      "name": "bed_ranges_to_genotype",
-      "help": "limit genotyping to these ranges",
-      "class": "file"
-    },
-    {
-      "name": "debug",
-      "help": "output additional files (unified-sites, discovered alleles, residuals)",
-      "class": "boolean",
-      "default": false,
-      "optional": true
-    },
-    {
-      "name": "bucket_size",
-      "class": "int",
-      "optional": true
-    },
-    {
       "name": "gvcf",
       "help": "source gvcf files",
       "class": "array:file",
@@ -37,10 +20,32 @@
       "patterns": ["*.tar"]
     },
     {
+      "name": "bed_ranges_to_genotype",
+      "help": "limit genotyping to these ranges",
+      "class": "file"
+    },
+    {
       "name": "output_name",
       "help": "prefix for output file names",
       "class": "string",
       "default": "GLnexus"
+    },
+    {
+      "name": "config",
+      "class": "string",
+      "default": "test"
+    },
+    {
+      "name": "bucket_size",
+      "class": "int",
+      "optional": true
+    },
+    {
+      "name": "debug",
+      "help": "output additional files (unified-sites, discovered alleles, residuals)",
+      "class": "boolean",
+      "default": false,
+      "optional": true
     },
     {
       "name": "perf",

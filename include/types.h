@@ -130,7 +130,7 @@ public:
 #define S(st) s = st; if (s.bad()) return s;
 
 /// common regular expressions
-extern std::regex regex_dna, regex_id;
+extern std::regex regex_dna, regex_iupac_nucleotide, regex_id;
 
 /// Genomic range (chromosome id, begin coordinate, end coordinate)
 struct range {
