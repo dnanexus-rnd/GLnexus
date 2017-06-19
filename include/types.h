@@ -520,6 +520,21 @@ struct unified_site {
                           unified_site& ans);
 };
 
+// write vector<unified_site> structure to a file, with cap'n proto serialization
+Status capnp_of_unified_sites(const std::vector<unified_site> &sites, const std::string &filename);
+
+// write unified sites capnp to a file descriptor.
+Status capnp_of_unified_sites_fd(const std::vector<unified_site> &sites, int fd);
+
+// read unified sites from a capnp file
+Status unified_sites_of_capnp(const std::string &filename, std::vector<unified_site>& sites);
+
+// Verify that we can serialize and deserialize unified sites
+//
+// Note: this is a debugging function
+Status capnp_unified_sites_verify(const std::vector<unified_site> &sites, const std::string &filename);
+
+
 // Statistics collected during range queries
 struct StatsRangeQuery {
     int64_t nBCFRecordsRead;    // how many BCF records were read from the DB
