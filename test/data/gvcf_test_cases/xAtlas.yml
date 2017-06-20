@@ -83,26 +83,18 @@ genotyper_config:
           count: 1
 
 truth_discovered_alleles:
-    - range: {ref: "1", beg: 15922, end: 15922}
-      dna: 'A'
-      is_ref: true
-      top_AQ: [240,240]
-      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
-    - range: {ref: "1", beg: 15922, end: 15922}
+    - range: {ref: "1", beg: 15956, end: 15956}
       dna: 'G'
+      is_ref: true
+      top_AQ: [172]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15956, end: 15956}
+      dna: 'A'
       is_ref: false
-      top_AQ: [2,2]
-      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+      top_AQ: [257]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
-    - range: {ref: "1", beg: 15922, end: 15922}
-      alleles: [A, G]
-      allele_frequencies: [.nan, 1.0]
-      quality: 85
-      unification:
-        - range: {beg: 15922, end: 15922}
-          dna: G
-          to: 1
     - range: {ref: 1, beg: 15956, end: 15956}
       alleles: [G, A]
       allele_frequencies: [.nan, 0.5]
@@ -125,5 +117,4 @@ truth_output_vcf:
       ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002
-      1	15922	.	A	G	85	.	.	GT:GQ:DP:RR:VR:RNC	1/1:.:4:0:4:..
       1	15956	.	G	A	257	.	.	GT:GQ:DP:RR:VR:RNC	0/1:.:20:8:12:..
