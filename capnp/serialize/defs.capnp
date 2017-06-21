@@ -3,6 +3,8 @@
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("GLnexus::capnp");
 
+### discovered alleles
+
 struct DiscoveredAlleleInfo {
     isRef @0 :Bool = false;
 
@@ -37,4 +39,30 @@ struct DiscoveredAlleles {
     sampleCount @0 : UInt64;
     contigs @1 : List(Contig);
     aips @2 :List(AlleleInfoPair);
+}
+
+### unified sites
+
+struct OriginalAllele {
+    pos @0 :Range;
+    dna @1 :Text;
+    unifiedAllele @2 :Int64;
+}
+
+struct UnifiedSite {
+    pos @0 :Range;
+    containingTargetOption :union {
+        noContainingTarget @1 :Void;
+        containingTarget @2 :Range;
+    }
+    alleles @3 :List(Text);
+    unification @4 :List(OriginalAllele);
+    alleleFrequencies @5 :List(Float32);
+    lostAlleleFrequency @6 :Float32;
+    qual @7 :Int64;
+    monoallelic @8 :Bool;
+}
+
+struct UnifiedSites {
+    sites @0 :List(UnifiedSite);
 }

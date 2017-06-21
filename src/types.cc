@@ -600,6 +600,167 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     return Status::OK();
 }
 
+// write unified sites list to a file-descriptor, with cap'n proto serialization
+static Status capnp_write_unified_sites_fd(const std::vector<unified_site>& sites, int fd) {
+    ::capnp::MallocMessageBuilder message;
+    auto us_b = message.initRoot<capnp::UnifiedSites>();
+
+    auto sites_b = us_b.initSites(sites.size());
+    for (int i = 0; i < sites.size(); i++) {
+        const auto& site = sites[i];
+        auto site_b = sites_b[i];
+        int j;
+
+        auto pos_b = site_b.initPos();
+        pos_b.setRid(site.pos.rid);
+        pos_b.setBeg(site.pos.beg);
+        pos_b.setEnd(site.pos.end);
+
+        if (site.containing_target.rid > -1) {
+            auto ct_b = site_b.getContainingTargetOption().initContainingTarget();
+            ct_b.setRid(site.containing_target.rid);
+            ct_b.setBeg(site.containing_target.beg);
+            ct_b.setEnd(site.containing_target.end);
+        } else {
+            site_b.getContainingTargetOption().setNoContainingTarget(::capnp::VOID);
+        }
+
+        auto alleles_b = site_b.initAlleles(site.alleles.size());
+        for (j = 0; j < site.alleles.size(); j++) {
+            alleles_b.set(j, site.alleles[j]);
+        }
+
+        auto unification_b = site_b.initUnification(site.unification.size());
+        j = 0;
+        for (const auto& p : site.unification) {
+            auto oa_b = unification_b[j++];
+            auto oa_pos_b = oa_b.initPos();
+            oa_pos_b.setRid(p.first.pos.rid);
+            oa_pos_b.setBeg(p.first.pos.beg);
+            oa_pos_b.setEnd(p.first.pos.end);
+            oa_b.setDna(p.first.dna);
+            oa_b.setUnifiedAllele(p.second);
+        }
+
+        auto allele_frequencies_b = site_b.initAlleleFrequencies(site.allele_frequencies.size());
+        for (j = 0; j < site.allele_frequencies.size(); j++) {
+            allele_frequencies_b.set(j, site.allele_frequencies[j]);
+        }
+
+        site_b.setLostAlleleFrequency(site.lost_allele_frequency);
+        site_b.setQual(site.qual);
+        site_b.setMonoallelic(site.monoallelic);
+    }
+
+    // Capnp throws exceptions on errors, and only in extreme cases.
+    writePackedMessageToFd(fd, message);
+    return Status::OK();
+}
+
+
+Status capnp_of_unified_sites_fd(const vector<unified_site> &sites, int fd) {
+    try {
+        return capnp_write_unified_sites_fd(sites, fd);
+    } catch (exception &e) {
+        return Status::IOError("Capnproto error during de-serialization", e.what());
+    }
+}
+
+Status capnp_of_unified_sites(const vector<unified_site>& sites, const std::string &filename) {
+    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+    if (fd < 0) {
+        return Status::IOError("Could not open file for writing", filename);
+    }
+    Status s = capnp_of_unified_sites_fd(sites, fd);
+    if (close(fd) != 0) {
+        return Status::IOError("file close failed", filename);
+    }
+    return s;
+}
+
+// read unified_site list from a file-descriptor, as serialized by cap'n proto
+static Status _capnp_read_unified_sites_fd(int fd, vector<unified_site>& sites) {
+    ::capnp::ReaderOptions ropt;
+    ropt.traversalLimitInWords = CAPNP_TRAVERSAL_LIMIT;
+    ::capnp::PackedFdMessageReader message(fd, ropt);
+    auto sites_r = message.getRoot<capnp::UnifiedSites>();
+
+    sites.clear();
+    for(const auto site_r : sites_r.getSites()) {
+        range pos(-1,-1,-1);
+        const auto pos_r = site_r.getPos();
+        pos.rid = pos_r.getRid();
+        pos.beg = pos_r.getBeg();
+        pos.end = pos_r.getEnd();
+
+        unified_site site(pos);
+
+        const auto cto_r = site_r.getContainingTargetOption();
+        if (cto_r.hasContainingTarget()) {
+            const auto ct_r = cto_r.getContainingTarget();
+            site.containing_target.rid = ct_r.getRid();
+            site.containing_target.beg = ct_r.getBeg();
+            site.containing_target.end = ct_r.getEnd();
+        }
+
+        for (const auto& al : site_r.getAlleles()) {
+            site.alleles.push_back(string(al));
+        }
+
+        for (const auto oa_r : site_r.getUnification()) {
+            range oa_pos(-1,-1,-1);
+            auto oa_pos_r = oa_r.getPos();
+            oa_pos.rid = oa_pos_r.getRid();
+            oa_pos.beg = oa_pos_r.getBeg();
+            oa_pos.end = oa_pos_r.getEnd();
+
+            site.unification[allele(oa_pos, oa_r.getDna())] = oa_r.getUnifiedAllele();
+        }
+
+        for (const auto x : site_r.getAlleleFrequencies()) {
+            site.allele_frequencies.push_back(x);
+        }
+
+        site.lost_allele_frequency = site_r.getLostAlleleFrequency();
+        site.qual = site_r.getQual();
+        site.monoallelic = site_r.getMonoallelic();
+
+        sites.push_back(std::move(site));
+    }
+
+    return Status::OK();
+}
+
+Status unified_sites_of_capnp(const std::string &filename, vector<unified_site>& sites) {
+    int fd = open(filename.c_str(), O_RDONLY);
+    if (fd < 0) {
+        return Status::IOError("Could not open file for reading", filename);
+    }
+    Status s;
+    try {
+        // Capnp throws exceptions on errors, and only in extreme cases.
+        s = _capnp_read_unified_sites_fd(fd, sites);
+    } catch (exception &e) {
+        return Status::IOError("Capnproto error during de-serialization", e.what());
+    }
+    if (close(fd) != 0) {
+        return Status::IOError("file close failed", filename);
+    }
+    return s;
+}
+
+// verify roundtrip of sites
+Status capnp_unified_sites_verify(const vector<unified_site>& sites, const string& filename) {
+    Status s;
+    vector<unified_site> sites2;
+    S(capnp_of_unified_sites(sites, filename));
+    S(unified_sites_of_capnp(filename, sites2));
+    if (sites == sites2) {
+        return Status::OK();
+    }
+    return Status::Invalid("capnp serialization/deserialization of unified sites does not return original value");
+}
+
 Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     Status s;
 
