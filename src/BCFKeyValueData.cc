@@ -265,7 +265,13 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
     // create * sample set, with version number 0
     KeyValue::CollectionHandle sampleset;
     S(db->collection("sampleset", sampleset));
-    return db->put(sampleset, "*", "0");
+    S(db->put(sampleset, "*", "0"));
+
+
+    // open the database once to trigger otherwise-lazy creation of the * sample set;
+    // necessary to ensure the database can subsequently be opened read-only (albeit empty)
+    unique_ptr<BCFKeyValueData> nop;
+    return BCFKeyValueData::Open(db, nop);
 }
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {

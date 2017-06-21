@@ -683,13 +683,13 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
 
     unique_ptr<KeyValue::DB> db;
 
-    // Note: READ_ONLY mode does not work here. It seems to not load
-    // the configuration information from the database.
     S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::BULK_LOAD));
-    unique_ptr<BCFKeyValueData> data;
-    S(BCFKeyValueData::Open(db.get(), data));
-    S(data->contigs(contigs));
+                          RocksKeyValue::OpenMode::READ_ONLY));
+    {
+        unique_ptr<BCFKeyValueData> data;
+        S(BCFKeyValueData::Open(db.get(), data));
+        S(data->contigs(contigs));
+    }
 
     return Status::OK();
 }

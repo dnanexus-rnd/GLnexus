@@ -49,7 +49,7 @@ static Status convertStatus(const rocksdb::Status &s)
     case rocksdb::Status::kCorruption:
         return Status::Failure("corruption");
     case rocksdb::Status::kNotSupported:
-        return Status::NotImplemented();
+        return Status::NotImplemented("RocksDB kNotSupported", s.ToString());
     case rocksdb::Status::kInvalidArgument:
         return Status::Invalid("RocksDB kInvalidArgument", s.ToString());
     case rocksdb::Status::kIOError:
