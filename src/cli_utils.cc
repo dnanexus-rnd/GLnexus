@@ -779,7 +779,8 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     logger->info() << "Loaded " << datasets_loaded.size() << " datasets with "
                     << stats.samples.size() << " samples; "
                     << stats.bytes << " bytes in "
-                    << stats.records << " BCF records in "
+                    << stats.records << " BCF records ("
+                    << stats.duplicate_records << " duplicate) in "
                     << stats.buckets << " buckets. "
                     << "Bucket max " << stats.max_bytes << " bytes, max "
                     << stats.max_records << " records.";
