@@ -64,7 +64,7 @@ int bcf_raw_calc_packed_len(bcf1_t *v)
       int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
   The original routine writes to a file, not to memory.
 */
-void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr) {
+void bcf_raw_write_to_mem(bcf1_t *v, int reclen, uint8_t *addr) {
     int loc = 0;
     uint32_t x[8];
     assert(sizeof(x) == 32);
@@ -96,7 +96,7 @@ void bcf_raw_write_to_mem(bcf1_t *v, int reclen, char *addr) {
     If v is being reused (rather than a newly allocated bcf1_t) then the
     caller should first sanitize it with bcf_clear1 as in bcf_read1_core.
 */
-Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
+Status bcf_raw_read_from_mem(const uint8_t *buf, int start, size_t len, bcf1_t *v,
                              int &ans) {
     int loc = 0;
     uint32_t x[8];
@@ -129,7 +129,7 @@ Status bcf_raw_read_from_mem(const char *buf, int start, size_t len, bcf1_t *v,
 }
 
 // Calculate the total length of a record, without unpacking it.
-Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &ans) {
+Status bcf_raw_calc_rec_len(const uint8_t *buf, int start, size_t len, uint32_t &ans) {
     BOUNDS_CHECK(start + 32, len, "calculating BCF record length");
 
     uint32_t *x = (uint32_t*) &buf[start];
@@ -140,7 +140,7 @@ Status bcf_raw_calc_rec_len(const char *buf, int start, size_t len, uint32_t &an
 
 // Get the range of the serialized BCF record starting at memory address
 // [buf+start], without deserializing the whole record.
-Status bcf_raw_range(const char *buf, int start, size_t len, range& rng, unsigned& n_allele) {
+Status bcf_raw_range(const uint8_t *buf, int start, size_t len, range& rng) {
     BOUNDS_CHECK(start + 32, len, "reading BCF record range");
 
     uint32_t *x = (uint32_t*) &buf[start];
@@ -148,7 +148,6 @@ Status bcf_raw_range(const char *buf, int start, size_t len, range& rng, unsigne
     uint32_t beg = x[3];
     uint32_t rlen = x[4];
     rng = range(rid, beg, beg + rlen);
-    n_allele = x[6]>>16;
     return Status::OK();
 }
 
@@ -174,11 +173,9 @@ int bcf_shallow_compare(const bcf1_t *x, const bcf1_t *y) {
 /* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
    from memory instead of disk.
 */
-static Status bcf_raw_read_header(const char* buf,
-                                  int hdrlen,
-                                  int& consumed,
-                                  shared_ptr<bcf_hdr_t>& ans) {
-    if (strncmp(buf, "BCF\2\2", 5) != 0) {
+Status bcf_raw_read_header(const uint8_t* buf, int hdrlen,
+                           int& consumed, shared_ptr<bcf_hdr_t>& ans) {
+    if (hdrlen < 9 || strncmp((const char*)buf, "BCF\2\2", 5) != 0) {
         return Status::Invalid("BCFSerialize::bcf_raw_read_header invalid BCF2 magic string");
     }
 
@@ -205,83 +202,7 @@ static Status bcf_raw_read_header(const char* buf,
     return Status::OK();
 }
 
-// convert a BCF record into a string
-shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf) {
-    kstring_t kstr;
-    memset((void*)&kstr, 0, sizeof(kstring_t));
-    vcf_format(hdr, bcf, &kstr);
-    auto retval = make_shared<string>(kstr.s, kstr.l);
-    if (retval->length() > 0)
-        retval->erase(retval->find_last_not_of(" \n\r\t")+1); // get rid of extra spaces at the end
-
-    // cleanup
-    if (kstr.s != NULL)
-        free(kstr.s);
-
-    return retval;
-}
-
-
-int BCFWriter::STACK_ALLOC_LIMIT = 32 * 1024;
-
-BCFWriter::BCFWriter() {}
-
-Status BCFWriter::Open(unique_ptr<BCFWriter>& ans) {
-    ans.reset(new BCFWriter);
-    ans->valid_bytes_ = 0;
-    return Status::OK();
-}
-
-BCFWriter::~BCFWriter() {
-    oss_.clear();
-    valid_bytes_ = 0;
-    num_entries_ = 0;
-}
-
-Status BCFWriter::write(bcf1_t* x) {
-    int reclen = bcf_raw_calc_packed_len(x);
-
-    // Note: allocation on the stack for small memory
-    // sizes, this should be the normal usage case. The idea
-    // is to avoid contention if multiple threads access this
-    // method.
-    char *scratch_pad;
-    bool heap_allocation = false;
-    if (reclen <= STACK_ALLOC_LIMIT) {
-        scratch_pad = (char*) alloca(reclen);
-    } else {
-        heap_allocation = true;
-        scratch_pad = (char*) malloc(reclen);
-    }
-
-    // Separate the C code, from the C++ code
-    // Serialize the bcf1_t stuct into a [char*], then
-    // append it to the end of the buffer.
-    bcf_raw_write_to_mem(x, reclen, scratch_pad);
-    oss_.write(scratch_pad, reclen);
-    valid_bytes_ += reclen;
-    num_entries_ ++;
-
-    if (heap_allocation) {
-        free(scratch_pad);
-    }
-    return Status::OK();
-}
-
-Status BCFWriter::contents(string& ans) {
-    ans.clear();
-    ans.append(oss_.str(), 0, valid_bytes_);
-    return Status::OK();
-}
-
-int BCFWriter::get_num_entries() const {
-    return num_entries_;
-}
-
-/* Adapted from [htslib::vcf.c::bcf_hdr_write] to write
-   to memory instead of disk.
-*/
-std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
+std::string bcf_write_header(const bcf_hdr_t *hdr) {
     int hlen;
     char *htxt = bcf_hdr_fmt_text(hdr, 1, &hlen);
     hlen++; // include the \0 byte
@@ -303,53 +224,20 @@ std::string BCFWriter::write_header(const bcf_hdr_t *hdr) {
     return rc;
 }
 
+// convert a BCF record into a string
+shared_ptr<string> bcf1_to_string(const bcf_hdr_t *hdr, const bcf1_t *bcf) {
+    kstring_t kstr;
+    memset((void*)&kstr, 0, sizeof(kstring_t));
+    vcf_format(hdr, bcf, &kstr);
+    auto retval = make_shared<string>(kstr.s, kstr.l);
+    if (retval->length() > 0)
+        retval->erase(retval->find_last_not_of(" \n\r\t")+1); // get rid of extra spaces at the end
 
+    // cleanup
+    if (kstr.s != NULL)
+        free(kstr.s);
 
-// BCFScanner
-// constructor
-BCFScanner::BCFScanner(const char* buf, size_t bufsz) :
-    buf_(buf), bufsz_(bufsz)
-{}
-
-BCFScanner::~BCFScanner() {
-    buf_ = nullptr;
-    bufsz_ = 0;
-    current_ = 0;
-}
-
-bool BCFScanner::valid() {
-    return (size_t)current_ < bufsz_;
-}
-
- // move the cursor to the next record
-Status BCFScanner::next() {
-    Status s = Status::OK();
-    uint32_t reclen = 0;
-    S(bcf_raw_calc_rec_len(buf_, current_, bufsz_, reclen));
-    current_ += reclen;
-    return s;
-}
-
-Status BCFScanner::read(shared_ptr<bcf1_t>& ans) {
-    if (ans) {
-        // sanitation as in bcf_read1_core
-        bcf_clear1(ans.get());
-    } else {
-        ans = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
-    }
-    int reclen;
-    return bcf_raw_read_from_mem(buf_, current_, bufsz_, ans.get(), reclen);
-}
-
-Status BCFScanner::read_range(range& rng, unsigned& n_allele) {
-    return bcf_raw_range(buf_, current_, bufsz_, rng, n_allele);
-}
-
-/* Adapted from [htslib::vcf.c::bcf_hdr_read] to read
-   from memory instead of disk.
-*/
-Status BCFScanner::read_header(const char* buf, int hdrlen, int& consumed, shared_ptr<bcf_hdr_t>& ans) {
-    return bcf_raw_read_header(buf, hdrlen, consumed, ans);
+    return retval;
 }
 
 } // namespace GLnexus

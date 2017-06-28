@@ -16,6 +16,9 @@
 #include "khash.h"
 #include <regex>
 #include <endian.h>
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include <defs.capnp.h>
 using namespace std;
 
 const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
@@ -560,7 +563,7 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     // Parse the header
     shared_ptr<bcf_hdr_t> ans;
     int consumed;
-    S(BCFScanner::read_header(data.c_str(), data.size(), consumed, ans));
+    S(bcf_raw_read_header((const uint8_t*) data.c_str(), data.size(), consumed, ans));
     hdr = ans;
 
     // Memoize it
@@ -568,9 +571,161 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     return Status::OK();
 }
 
-// Parse the records and extract those overlapping the query range
-// Assumptions: the bucket contains records only from the same reference
-// contig as the query, and these records are sorted by increasing beg.
+// A "BCF Bucket" is the value serialized into the database containing some
+// number of BCF records. The records are ordered by position and must all
+// lie on the same contig. They may overlap.
+//
+// Range queries within the bucket may be performed by a linear scan of the
+// records. Such a scan can be truncated upon seeing a record whose beg is
+// greater than the end of the query range. For further optimization, we
+// save a "skip index" along with the list of records. An entry in the skip
+// index has an index into the list of records, and the position.beg of the
+// corresponding record. A record may be represented in the skip index
+// only if no preceding records in the bucket overlap it. Given this, the
+// scan can begin at the index indicated by the last skip index entry whose
+// beg is <= the query beg, thus 'skipping' the preceding records.
+
+class BCFBucketWriter {
+    vector<vector<uint8_t>> records_;
+    int rid_, last_beg_, end_;
+    vector<pair<int,int>> skips_;
+
+public:
+    BCFBucketWriter()
+        : rid_(-1), last_beg_(-1), end_(-1)
+        {
+    }
+
+    void clear() {
+        records_.clear();
+        skips_.clear();
+        rid_ = last_beg_ = end_ = -1;
+    }
+
+    Status add(bcf1_t* rec) {
+        range rng(rec);
+        if (rid_ == -1) {
+            rid_ = rng.rid;
+        } else if (rid_ != rng.rid) {
+            return Status::Invalid("BCFBucketWriter: contig mismatch (BUG)");
+        }
+        if (rng.beg < last_beg_) {
+            return Status::Invalid("BCFBucketWriter: records not sorted (BUG)");
+        }
+        last_beg_ = rng.beg;
+        if (end_ <= rng.beg && records_.size()/10 > skips_.size()) {
+            // no preceding records in the bucket overlap this one, so record
+            // this skip index entry (for every 10th record, 10 arbitrary)
+            skips_.push_back(make_pair((int)records_.size(), rng.beg));
+        }
+        end_ = max(end_, rng.end);
+
+        size_t reclen = bcf_raw_calc_packed_len(rec);
+        assert(reclen > 0);
+        vector<uint8_t> buf(reclen);
+        bcf_raw_write_to_mem(rec, reclen, buf.data());
+        records_.push_back(move(buf));
+        return Status::OK();
+    }
+
+    size_t get_num_entries() const {
+        return records_.size();
+    }
+
+    Status contents(string& ans) const {
+        try {
+            ::capnp::MallocMessageBuilder b;
+            auto msg_b = b.initRoot<capnp::BCFBucket>();
+            auto records_b = msg_b.initRecords(records_.size());
+            for (int i = 0; i < records_.size(); i++) {
+                records_b.set(i, kj::arrayPtr((kj::byte*) records_[i].data(), records_[i].size()));
+                assert(records_b[i].begin() != nullptr); assert(records_b[i].size() == records_[i].size());
+            }
+
+            if (skips_.size()) {
+                auto skips_b = msg_b.initSkips(skips_.size());
+                for (int i = 0; i < skips_.size(); i++) {
+                    skips_b[i].setRecordIndex(skips_[i].first);
+                    skips_b[i].setPosBeg(skips_[i].second);
+                }
+            }
+
+            kj::VectorOutputStream os;
+            writeMessage(os, b);
+            auto p = os.getArray();
+            assert(p.begin() != nullptr); assert(p.size() > 0);
+            ans.assign((char*) p.begin(), p.size());
+
+            #ifndef NDEBUG
+            {
+                // verify correct deserialization, with different memory alignments
+                // more info about why memory alignment is of interest below, in ScanBCFBucket.
+                int alignments_to_test = sizeof(::capnp::word);
+                #ifndef __x86_64__
+                alignments_to_test = 1;
+                #endif
+                for (int ofs = 0; ofs < alignments_to_test; ofs++) {
+                    auto buf = (uint8_t*) calloc(ans.size() + ofs, 1);
+                    memcpy(buf+ofs, ans.data(), ans.size());
+                    ::capnp::FlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)(buf+ofs), ans.size() / sizeof(::capnp::word)));
+                    capnp::BCFBucket::Reader bucket_reader = message.getRoot<capnp::BCFBucket>();
+                    auto records = bucket_reader.getRecords();
+                    assert(records.size() == records_.size());
+                    for (int i = 0; i < records.size(); i++) {
+                        assert(records[i].size() == records_[i].size());
+                        assert(memcmp(records[i].begin(), records_[i].data(), records[i].size()) == 0);
+                    }
+                    auto skips = bucket_reader.getSkips();
+                    assert(skips.size() == skips_.size());
+                    for (int i = 0; i < skips.size(); i++) {
+                        assert(skips[i].getRecordIndex() == skips_[i].first);
+                        assert(skips[i].getPosBeg() == skips_[i].second);
+                    }
+                    free(buf);
+                }
+            }
+            #endif
+
+            return Status::OK();
+        } catch (exception &e) {
+            return Status::IOError("exception serializing BCF bucket", e.what());
+        }
+    }
+};
+
+// Search the bucket's 'skip index' to find the index of a record in the bucket
+// from which it is safe to begin a scan for records overlapping query.
+static int SearchBCFBucketSkipIndex(const capnp::BCFBucket::Reader& bucket, const range& query) {
+    auto skips = bucket.getSkips();
+    if (skips.size() == 0 || skips[0].getPosBeg() > query.beg) {
+        return 0;
+    }
+    int i = 0, hi = skips.size(); // invariant: skips[i].getPosBeg() <= query.beg
+    while (i < hi-1) {
+        int mid = (i + hi) / 2;
+        if (skips[mid].getPosBeg() <= query.beg) {
+            assert(mid > i);
+            i = mid;
+        } else {
+            assert(mid < hi);
+            hi = mid;
+        }
+    }
+    #ifndef NDEBUG
+    int naive;
+    for (naive = skips.size()-1; naive >= 0; naive--) {
+        if (skips[naive].getPosBeg() <= query.beg) {
+            break;
+        }
+    }
+    assert(i == naive);
+    #endif
+    return skips[i].getRecordIndex();
+}
+
+// Extract bucket records overlapping the query range and satsifying the
+// predicate, if any
+//
 // include_danglers: if false, exclude records whose beg is below that of
 //                   the bucket's. This is used when scanning multiple
 //                   adjacent buckets; records spanning adjacent buckets
@@ -578,63 +733,73 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
 //                   de-duplicated while scanning. In practice you set
 //                   include_danglers to true on the first bucket you're
 //                   scanning, and false on the rest.
-static Status scan_bucket(
-    const range& bucket,
-    const string &dataset,
-    const pair<const char*, size_t>& data,
-    const bcf_hdr_t* hdr,
-    const range& query,
-    bcf_predicate predicate,
-    const bool include_danglers,
-    StatsRangeQuery &srq,
-    vector<shared_ptr<bcf1_t> >& records)
-{
+static Status ScanBCFBucket(const range& bucket, const string& dataset, 
+                            const pair<const char*, size_t>& data,
+                            const bcf_hdr_t* hdr,
+                            const range& query,
+                            bcf_predicate predicate,
+                            const bool include_danglers,
+                            StatsRangeQuery &srq,
+                            vector<shared_ptr<bcf1_t> >& ans) {
     Status s;
-    BCFScanner scanner(data.first, data.second);
-    range cur_range(-1,-1,-1);
-    #ifndef NDEBUG
-    range last_range(-1,-1,-1);
-    #endif
-    while (scanner.valid()) {
-        srq.nBCFRecordsRead++; // statistics counter for BCF records
-        unsigned n_allele;
-        S(scanner.read_range(cur_range, n_allele));
-        assert(cur_range.rid == query.rid);
-        assert(last_range <= cur_range);
-        assert(cur_range.overlaps(bucket));
+    // DO NOT ans.clear(), as caller may intend to accumulate results over consecutive buckets
 
-        if (cur_range.overlaps(query) &&
-            (include_danglers || cur_range.beg >= bucket.beg)) {
-            shared_ptr<bcf1_t> vt;
-            S(scanner.read(vt));
-            assert(vt->n_allele == n_allele);
-
-            bool rec_ok = false;
-            if (predicate == nullptr) {
-                rec_ok = true;
-            } else {
-                S(predicate(hdr, vt.get(), rec_ok));
-            }
-            if (rec_ok) {
-                if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
-                    return Status::IOError("BCFKeyValueData bcf_unpack",
-                                           dataset + "@" + query.str());
-                }
-                records.push_back(vt);
-            }
-        } else if (cur_range.beg >= query.end) {
-            // We can quit the scan at this point since the bucket's remaining
-            // records all begin past the end of the query range.
-            break;
-        }
-        S(scanner.next());
-
-        #ifndef NDEBUG
-        last_range = cur_range;
-        #endif
+    // Ideally capnp wants the data buffer to be word-aligned. This probably
+    // doesn't matter on modern x86-64 though. 
+    // background: https://groups.google.com/forum/#!topic/capnproto/CIUxq-Y4128
+    //             https://groups.google.com/forum/#!msg/capnproto/RPqMlhkSdeo/z2O6JgztBAAJ
+    //             https://github.com/capnproto/capnproto/issues/313
+    //             https://lemire.me/blog/2012/05/31/data-alignment-for-speed-myth-or-reality/
+    //             http://pzemtsov.github.io/2016/11/06/bug-story-alignment-on-x86.html
+    #ifndef __x86_64__
+    if (uint64_t(data.first) % sizeof(::capnp::word)) {
+         return Status::Failure("BCFBucketReader: input buffer isn't word-aligned");
     }
+    #endif
+    try {
+        ::capnp::FlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)data.first, data.second / sizeof(::capnp::word)));
+        capnp::BCFBucket::Reader bucket_reader = message.getRoot<capnp::BCFBucket>();
 
-    return s;
+        // Scan: begin at a position informed by the 'skip index'
+        //       end on encounting a record whose beg position is >= query.end
+        auto records = bucket_reader.getRecords();
+        for (int scan_index = SearchBCFBucketSkipIndex(bucket_reader, query);
+             scan_index < records.size(); ++scan_index) {
+            srq.nBCFRecordsRead++;
+
+            auto buf = records[scan_index];
+            range cur_range(-1,-1,-1);
+            assert(buf.begin() != nullptr); assert(buf.size() > 0);
+            S(bcf_raw_range(buf.begin(), 0, buf.size(), cur_range));
+            assert(cur_range.rid == query.rid);
+            assert(cur_range.overlaps(bucket));
+
+            if (cur_range.overlaps(query) &&
+                (include_danglers || cur_range.beg >= bucket.beg)) {
+                shared_ptr<bcf1_t> vt(bcf_init(), &bcf_destroy);
+                int bytes_read = -1;
+                S(bcf_raw_read_from_mem(buf.begin(), 0, buf.size(), vt.get(), bytes_read));
+                assert(range(vt) == cur_range);
+
+                bool rec_ok = true;
+                if (predicate != nullptr) {
+                    S(predicate(hdr, vt.get(), rec_ok));
+                }
+                if (rec_ok) {
+                    if (bcf_unpack(vt.get(), BCF_UN_ALL) != 0 || vt->errcode != 0) {
+                        return Status::IOError("BCFKeyValueData bcf_unpack",
+                                               dataset + "@" + query.str());
+                    }
+                    ans.push_back(vt);
+                }
+            } else if (cur_range.beg >= query.end) {
+                break;
+            }
+        }
+    } catch (exception &e) {
+        return Status::IOError("exception deserializing BCF bucket", e.what());
+    }
+    return Status::OK();
 }
 
 // Search all the buckets that may hold records within the query range.
@@ -670,8 +835,8 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         string data;
         s = body_->db->get(coll, key, data);
         if (s.ok()) {
-            S(scan_bucket(r, dataset, make_pair(data.c_str(), data.size()), hdr, query, predicate,
-                          first, accu, records));
+            S(ScanBCFBucket(r, dataset, make_pair(data.c_str(), data.size()), hdr, query, predicate,
+                            first, accu, records));
         } else if (s != StatusCode::NOT_FOUND) {
             return s;
         }
@@ -776,8 +941,8 @@ class BCFBucketIterator : public RangeBCFIterator {
         }
 
         // extract the records overlapping query_
-        s = scan_bucket(bucket_, dataset, it_->value(), hdr.get(), query_, predicate_,
-                        include_danglers_, stats_, records);
+        s = ScanBCFBucket(bucket_, dataset, it_->value(), hdr.get(), query_, predicate_,
+                          include_danglers_, stats_, records);
         if (s.ok()) {
             stats_.nBCFRecordsInRange += records.size();
         }
@@ -1128,21 +1293,26 @@ public:
 // Add a <key,value> pair to the database.
 // The key is a concatenation of the dataset name and the chromosome and genomic range.
 static Status write_bucket(BCFBucketRange& rangeHelper, BulkInsertBuffer& db, KeyValue::CollectionHandle& coll_bcf,
-                    BCFWriter *writer, unsigned int danglers, const string& dataset,
+                    const BCFBucketWriter& writer, unsigned int danglers, const string& dataset,
                     const range& rng,
                     BCFKeyValueData::import_result& rslt) {
-    // Generate the key
-    string key = rangeHelper.bucket_key(rng, dataset);
-    Status s;
-    string data;
-    //assert(db->get(coll_bcf, key, data) == StatusCode::NOT_FOUND);
+    if (writer.get_num_entries()) {
+        // Generate the key
+        string key = rangeHelper.bucket_key(rng, dataset);
+        Status s;
+        string data;
+        //assert(db->get(coll_bcf, key, data) == StatusCode::NOT_FOUND);
 
-    // extract the data
-    S(writer->contents(data));
+        // extract the data
+        S(writer.contents(data));
 
-    // write to the database
-    S(db.put(coll_bcf, key, data));
-    rslt.add_bucket(writer->get_num_entries(), data.size(), danglers);
+        // write to the database
+        S(db.put(coll_bcf, key, data));
+        assert(danglers <= writer.get_num_entries());
+        rslt.add_bucket(writer.get_num_entries(), data.size(), danglers);
+    } else {
+        assert(danglers == 0);
+    }
     return Status::OK();
 }
 
@@ -1183,7 +1353,7 @@ static void prune_danglers(vector<shared_ptr<bcf1_t>> &danglers,
 #endif
 
 static Status write_danglers_to_in_mem_bucket(vector<shared_ptr<bcf1_t>> &danglers,
-                                              BCFWriter *writer,
+                                              BCFBucketWriter& writer,
                                               const range &bucket) {
     Status s;
 
@@ -1191,7 +1361,7 @@ static Status write_danglers_to_in_mem_bucket(vector<shared_ptr<bcf1_t>> &dangle
         for (const auto& dp : danglers) {
             if (range(dp.get()).overlaps(bucket)) {
                 CHECK_DANGLER_BUCKET(dp.get(), bucket);
-                S(writer->write(dp.get()));
+                S(writer.add(dp.get()));
             }
         }
         prune_danglers(danglers, bucket);
@@ -1210,7 +1380,6 @@ static Status write_danglers_between(BCFBucketRange& rangeHelper,
                                      vector<shared_ptr<bcf1_t>> &danglers,
                                      range &next_bkt) {
     Status s;
-    unique_ptr<BCFWriter> writer;
 
     // move to bucket K+1
     range current = rangeHelper.inc_bucket(current_bkt);
@@ -1223,18 +1392,17 @@ static Status write_danglers_between(BCFBucketRange& rangeHelper,
     // be needed.
     while (!danglers.empty() &&
            current < next_bkt) {
-        S(BCFWriter::Open(writer));
+        BCFBucketWriter writer;
         for (const auto& dp : danglers) {
             if (range(dp.get()).overlaps(current)) {
                 CHECK_DANGLER_BUCKET(dp.get(), current);
-                S(writer->write(dp.get()));
+                S(writer.add(dp.get()));
             }
         }
-        if (writer->get_num_entries() > 0) {
-            S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), writer->get_num_entries(),
+        if (writer.get_num_entries() > 0) {
+            S(write_bucket(rangeHelper, db, coll_bcf, writer, writer.get_num_entries(),
                            dataset, current, rslt));
         }
-        writer.reset();
         prune_danglers(danglers, current);
         current = rangeHelper.inc_bucket(current);
     }
@@ -1252,7 +1420,6 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                                           vcfFile *vcf,
                                           BCFKeyValueData::import_result& rslt) {
     Status s;
-    unique_ptr<BCFWriter> writer;
     BulkInsertBuffer buffer(*db);
     unique_ptr<bcf1_t, void(*)(bcf1_t*)> vt(bcf_init(), &bcf_destroy);
     int prev_pos = -1;
@@ -1261,7 +1428,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     unsigned int danglers_written_to_current_bucket = 0;
     // current bucket
     range bucket(-1, 0, rangeHelper.interval_len);
-    S(BCFWriter::Open(writer));
+    BCFBucketWriter writer;
 
     KeyValue::CollectionHandle coll_bcf;
     S(db->collection("bcf", coll_bcf));
@@ -1297,25 +1464,22 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket K to DB
-            if (writer != nullptr && writer->get_num_entries() > 0) {
-                S(write_bucket(rangeHelper, buffer, coll_bcf, writer.get(), danglers_written_to_current_bucket,
-                               dataset, bucket, rslt));
-            }
-            writer.reset();
+            S(write_bucket(rangeHelper, buffer, coll_bcf, writer, danglers_written_to_current_bucket,
+                           dataset, bucket, rslt));
             range next_bucket = rangeHelper.bucket(vt.get());
             S(write_danglers_between(rangeHelper, buffer, coll_bcf, dataset, bucket, rslt,
-                                   danglers, next_bucket));
+                                     danglers, next_bucket));
             bucket = next_bucket;
 
             // start a new in-memory chunk
-            S(BCFWriter::Open(writer));
+            writer.clear();
 
             // write danglers at the beginning of the new bucket
             danglers_written_to_current_bucket = danglers.size();
-            write_danglers_to_in_mem_bucket(danglers, writer.get(), next_bucket);
+            write_danglers_to_in_mem_bucket(danglers, writer, next_bucket);
         }
         // write the record into the bucket
-        S(writer->write(vt.get()));
+        S(writer.add(vt.get()));
         // if it dangles off the end of the bucket, add it to danglers for
         // inclusion in the next bucket
         if (range(vt.get()).end > bucket.end) {
@@ -1335,11 +1499,8 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 
     // write out last bucket
-    if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(rangeHelper, buffer, coll_bcf, writer.get(), danglers_written_to_current_bucket,
-                       dataset, bucket, rslt));
-    }
-    writer.reset();
+    S(write_bucket(rangeHelper, buffer, coll_bcf, writer, danglers_written_to_current_bucket,
+                    dataset, bucket, rslt));
 
     // write any last danglers
     range end_bucket = rangeHelper.bucket_at_end_of_chrom(vt->rid, metadata.contigs());
@@ -1406,7 +1567,7 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
         std::lock_guard<std::mutex> lock(body_->mutex);
 
         // Serialize header into a string
-        string hdr_data = BCFWriter::write_header(hdr.get());
+        string hdr_data = bcf_write_header(hdr.get());
 
         // Get collection handles and current * sample set version number
         KeyValue::CollectionHandle coll_header, coll_sample_dataset, coll_sampleset;
