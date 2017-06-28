@@ -15,10 +15,11 @@
 #include "fcmm.hpp"
 #include "khash.h"
 #include <regex>
+#include <endian.h>
 using namespace std;
 
-#define MAX_NUM_CONTIGS_PER_GVCF (10000)
-#define MAX_CONTIG_LEN (10000000000)  // 10^10
+const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
+const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
 
 namespace GLnexus {
 
@@ -80,7 +81,7 @@ private:
     BCFBucketRange& operator=(const BCFBucketRange&);
 
 public:
-    static const size_t PREFIX_LENGTH = 14;
+    static const size_t PREFIX_LENGTH = 8;
     int interval_len;
 
     // constructor
@@ -91,14 +92,14 @@ public:
     // BCFBucketRange::bucket below translates an arbitrary range into a
     // bucket's range.
     std::string bucket_prefix(const range& rng) {
-        stringstream ss;
-        // We add leading zeros to ensure that string lexicographic ordering will sort
-        // keys in ascending order.
-        ss << setw(4) << setfill('0') << rng.rid
-           << setw(10) << setfill('0') << rng.beg;
-        std::string ans = ss.str();
-        assert(ans.size() == PREFIX_LENGTH);
-        return ans;
+        uint64_t rid_be = htobe64(rng.rid);
+        uint64_t beg_be = htobe64(rng.beg);
+        assert(be64toh(rid_be) < MAX_NUM_CONTIGS_PER_GVCF);
+        assert(be64toh(beg_be) < MAX_CONTIG_LEN);
+        char buf[8]; static_assert(PREFIX_LENGTH == 8, "assumption");
+        memcpy(buf, ((char*)&rid_be)+5, 3);
+        memcpy(buf+3, ((char*)&beg_be)+3, 5);
+        return string(buf, 8);
     }
 
     // Produce the complete key for a bucket (given the prefix) in a dataset
