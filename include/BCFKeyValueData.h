@@ -76,13 +76,15 @@ public:
         size_t bytes = 0;             // total BCF bytes
         size_t max_bytes = 0;         // max bytes in any bucket
         unsigned int buckets = 0;     // # buckets
+        unsigned int duplicate_records = 0; // # of records duplicated in multiple buckets
 
-        import_result& add_bucket(unsigned int bucket_records, size_t bucket_bytes) {
+        import_result& add_bucket(unsigned int bucket_records, size_t bucket_bytes, unsigned int duplicates) {
             records += bucket_records;
             max_records = std::max(max_records, bucket_records);
             bytes += bucket_bytes;
             max_bytes = std::max(max_bytes, bucket_bytes);
             buckets++;
+            duplicate_records += duplicates;
             return *this;
         }
 
@@ -97,6 +99,7 @@ public:
             bytes += rhs.bytes;
             max_bytes = std::max(max_bytes, rhs.max_bytes);
             buckets += rhs.buckets;
+            duplicate_records += rhs.duplicate_records;
             return *this;
         }
     };

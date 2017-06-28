@@ -570,7 +570,7 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
 // Add a <key,value> pair to the database.
 // The key is a concatenation of the dataset name and the chromosome and genomic range.
 Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db, KeyValue::CollectionHandle& coll_bcf,
-                    BCFWriter *writer, const string& dataset,
+                    BCFWriter *writer, unsigned int danglers, const string& dataset,
                     const range& rng,
                     BCFKeyValueData::import_result& rslt) {
     // Generate the key
@@ -584,7 +584,7 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db, KeyValue::Col
 
     // write to the database
     S(db->put(coll_bcf, key, data));
-    rslt.add_bucket(writer->get_num_entries(), data.size());
+    rslt.add_bucket(writer->get_num_entries(), data.size(), danglers);
     return Status::OK();
 }
 
@@ -1188,7 +1188,8 @@ static Status write_danglers_between(BCFBucketRange& rangeHelper,
             }
         }
         if (writer->get_num_entries() > 0) {
-            S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), dataset, current, rslt));
+            S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), writer->get_num_entries(),
+                           dataset, current, rslt));
         }
         writer.reset();
         prune_danglers(danglers, current);
@@ -1214,6 +1215,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     int prev_pos = -1;
     int prev_rid = -1;
     vector<shared_ptr<bcf1_t>> danglers;
+    unsigned int danglers_written_to_current_bucket = 0;
     // current bucket
     range bucket(-1, 0, rangeHelper.interval_len);
     S(BCFWriter::Open(writer));
@@ -1244,7 +1246,8 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket K to DB
             if (writer != nullptr && writer->get_num_entries() > 0) {
-                S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), dataset, bucket, rslt));
+                S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), danglers_written_to_current_bucket,
+                               dataset, bucket, rslt));
             }
             writer.reset();
             range next_bucket = rangeHelper.bucket(vt.get());
@@ -1256,6 +1259,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             S(BCFWriter::Open(writer));
 
             // write danglers at the beginning of the new bucket
+            danglers_written_to_current_bucket = danglers.size();
             write_danglers_to_in_mem_bucket(danglers, writer.get(), next_bucket);
         }
         // write the record into the bucket
@@ -1275,7 +1279,8 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
 
     // write out last bucket
     if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), dataset, bucket, rslt));
+        S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), danglers_written_to_current_bucket,
+                       dataset, bucket, rslt));
     }
     writer.reset();
 
