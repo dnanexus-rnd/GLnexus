@@ -1109,6 +1109,12 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     AlleleDepthHelper adh(cfg);
     vector<DatasetResidual> lost_calls_info;
 
+    map<string,int> samples_index;
+    for (int i = 0; i < samples.size(); i++) {
+        assert(samples_index.find(samples[i]) == samples_index.end());
+        samples_index[samples[i]] = i;
+    }
+
     // for each pertinent dataset
     for (const auto& dataset : *datasets) {
         if (ext_abort && *ext_abort) {
@@ -1136,19 +1142,15 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                             return range(p1) < range(p2);
                          }));
 
-        // index the samples shared between the sample set and the BCFs
-        // TODO: better algorithm, with caching (LRU given sampleset-dataset cross)
+        // index the samples shared between the sample set and the BCFs.
+        // this could be cached on sampleset/dataset cross
         map<int,int> sample_mapping;
         int bcf_nsamples = bcf_hdr_nsamples(dataset_header.get());
         for (int i = 0; i < bcf_nsamples; i++) {
             string sample_i(bcf_hdr_int2id(dataset_header.get(), BCF_DT_SAMPLE, i));
-            int j = 0;
-            for (const auto& sample_j : samples) {
-                if (sample_i == sample_j) {
-                    sample_mapping[i] = j;
-                    break;
-                }
-                j++;
+            const auto p = samples_index.find(sample_i);
+            if (p != samples_index.end()) {
+                sample_mapping[i] = p->second;
             }
         }
 
