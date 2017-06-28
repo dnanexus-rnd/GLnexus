@@ -19,7 +19,7 @@ using namespace std;
 
 TEST_CASE("memory bounds-checking in BCFSerialize reader") {
     // A BCF record that is too short, reading should fail
-    char buf[16];
+    uint8_t buf[16];
     int reclen = 0;
     shared_ptr<bcf1_t> vt = shared_ptr<bcf1_t>(bcf_init(), &bcf_destroy);
     GLnexus::Status s = GLnexus::bcf_raw_read_from_mem(buf, 16, sizeof(buf), vt.get(), reclen);
@@ -192,7 +192,7 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
         memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
     }
     //std::cout << "memlen=" << memlen << std::endl;
-    char *buf = (char*) calloc(1, memlen);
+    uint8_t *buf = (uint8_t*) calloc(1, memlen);
     REQUIRE(buf != NULL);
 
     int loc = 0;
@@ -329,12 +329,12 @@ TEST_CASE("Ensure uncompressed BCF encoding remains consistent") {
 
     // serialize the BCF records into a memory buffer  (without the header)
     int memlen = 0;
-    char *buf;
+    uint8_t *buf;
     {
         for (const auto& rec : records) {
             memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
         }
-        buf = (char*) calloc(1, memlen);
+        buf = (uint8_t*) calloc(1, memlen);
         REQUIRE(buf != NULL);
 
         int loc = 0;

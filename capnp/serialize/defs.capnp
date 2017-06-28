@@ -69,3 +69,15 @@ struct UnifiedSite {
 struct UnifiedSites {
     sites @0 :List(UnifiedSite);
 }
+
+
+
+### BCFBucket (for internal database use)
+struct BCFBucketSkipEntry {
+    recordIndex @0 : UInt32;
+    posBeg @1 : Int64;
+}
+struct BCFBucket {
+    records @0 : List(Data);
+    skips @1 : List(BCFBucketSkipEntry);
+}

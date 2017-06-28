@@ -55,6 +55,7 @@ TEST_CASE("cli") {
         discovered_alleles dsals;
         unsigned sample_count;
         s = cli::utils::discover_alleles(console, nr_threads, DB_PATH, ranges, contigs, dsals, sample_count);
+        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         string filename = DB_DIR + "/dsals.yml";
