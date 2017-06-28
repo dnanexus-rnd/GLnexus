@@ -737,12 +737,20 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
 
     // load the gVCFs on the thread pool
     for (const auto& gvcf : gvcfs) {
-        // default dataset name (the gVCF filename)
+        // infer dataset name as the gVCF filename minus path and extension
         size_t p = gvcf.find_last_of('/');
         if (p != string::npos && p < gvcf.size()-1) {
             dataset = gvcf.substr(p+1);
         } else {
             dataset = gvcf;
+        }
+        for (const string& ext : {".bgzip",".gz",".gvcf",".g.vcf",".vcf"}) {
+            if (dataset.size() > ext.size()) {
+                p = dataset.size() - ext.size();
+                if (dataset.rfind(ext) == p) {
+                    dataset.erase(p);
+                }
+            }
         }
 
         auto fut = threadpool.push([&, gvcf, dataset](int tid) {
@@ -757,7 +765,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     datasets_loaded.insert(dataset);
                     size_t n = datasets_loaded.size();
                     if (n % 100 == 0) {
-                        logger->info() << n << "...";
+                        logger->info() << n << " (" << dataset << ")...";
                     }
                 }
                 return ls;
