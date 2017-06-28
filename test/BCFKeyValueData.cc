@@ -1388,7 +1388,7 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     cout << "Compared " << (nIter+1) << " range queries between the two iterators" << endl;
 }
 
-
+/* disabled when we raised max contigs from 10,000 to 2^24
 TEST_CASE("BCFKeyValueData too many contigs") {
     KeyValueMem::DB db({});
     std::vector<std::pair<std::string,size_t> > contigs;
@@ -1398,6 +1398,7 @@ TEST_CASE("BCFKeyValueData too many contigs") {
     Status s = T::InitializeDB(&db, contigs);
     REQUIRE(s.bad());
 }
+*/
 
 TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
     KeyValueMem::DB db({});
