@@ -80,7 +80,7 @@ private:
     BCFBucketRange& operator=(const BCFBucketRange&);
 
 public:
-    static const size_t PREFIX_LENGTH = 24;
+    static const size_t PREFIX_LENGTH = 14;
     int interval_len;
 
     // constructor
@@ -95,8 +95,7 @@ public:
         // We add leading zeros to ensure that string lexicographic ordering will sort
         // keys in ascending order.
         ss << setw(4) << setfill('0') << rng.rid
-           << setw(10) << setfill('0') << rng.beg
-           << setw(10) << setfill('0') << rng.end;
+           << setw(10) << setfill('0') << rng.beg;
         std::string ans = ss.str();
         assert(ans.size() == PREFIX_LENGTH);
         return ans;
