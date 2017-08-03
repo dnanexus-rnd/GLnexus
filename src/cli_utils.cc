@@ -727,13 +727,13 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
 
     unique_ptr<KeyValue::DB> db;
 
-    // Note: READ_ONLY mode does not work here. It seems to not load
-    // the configuration information from the database.
     S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::BULK_LOAD));
-    unique_ptr<BCFKeyValueData> data;
-    S(BCFKeyValueData::Open(db.get(), data));
-    S(data->contigs(contigs));
+                          RocksKeyValue::OpenMode::READ_ONLY));
+    {
+        unique_ptr<BCFKeyValueData> data;
+        S(BCFKeyValueData::Open(db.get(), data));
+        S(data->contigs(contigs));
+    }
 
     return Status::OK();
 }
@@ -781,12 +781,20 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
 
     // load the gVCFs on the thread pool
     for (const auto& gvcf : gvcfs) {
-        // default dataset name (the gVCF filename)
+        // infer dataset name as the gVCF filename minus path and extension
         size_t p = gvcf.find_last_of('/');
         if (p != string::npos && p < gvcf.size()-1) {
             dataset = gvcf.substr(p+1);
         } else {
             dataset = gvcf;
+        }
+        for (const string& ext : {".bgzip",".gz",".gvcf",".g.vcf",".vcf"}) {
+            if (dataset.size() > ext.size()) {
+                p = dataset.size() - ext.size();
+                if (dataset.rfind(ext) == p) {
+                    dataset.erase(p);
+                }
+            }
         }
 
         auto fut = threadpool.push([&, gvcf, dataset](int tid) {
@@ -801,7 +809,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     datasets_loaded.insert(dataset);
                     size_t n = datasets_loaded.size();
                     if (n % 100 == 0) {
-                        logger->info() << n << "...";
+                        logger->info() << n << " (" << dataset << ")...";
                     }
                 }
                 return ls;
@@ -823,7 +831,8 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     logger->info() << "Loaded " << datasets_loaded.size() << " datasets with "
                     << stats.samples.size() << " samples; "
                     << stats.bytes << " bytes in "
-                    << stats.records << " BCF records in "
+                    << stats.records << " BCF records ("
+                    << stats.duplicate_records << " duplicate) in "
                     << stats.buckets << " buckets. "
                     << "Bucket max " << stats.max_bytes << " bytes, max "
                     << stats.max_records << " records.";

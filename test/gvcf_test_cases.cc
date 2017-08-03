@@ -231,6 +231,7 @@ public:
             const auto n_unified_sites = yaml["truth_unified_sites"];
             REQUIRE(n_unified_sites);
             S(parse_unified_sites(n_unified_sites, contigs));
+            REQUIRE(GLnexus::capnp_unified_sites_verify(truth_sites, "/tmp/unified_sites_capnp_check").ok());
         }
 
         // write truth gvcf if test_genotypes is set to true

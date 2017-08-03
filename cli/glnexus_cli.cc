@@ -118,6 +118,12 @@ static int all_steps(const vector<string> &vcf_files,
         console->info() << "Writing unified sites as YAML to " << filename;
         H("write unified sites to file",
           GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
+
+        string filename_cflat("/tmp/sites.cflat");
+        console->info() << "Writing unified sites in serialized capnproto to " << filename
+                        << ", verifying that it is readable";
+        H("Verify that the cflat file is readable",
+          GLnexus::capnp_unified_sites_verify(sites, filename_cflat));
     }
 
     // genotype

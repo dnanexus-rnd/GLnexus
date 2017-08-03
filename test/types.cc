@@ -345,13 +345,14 @@ unification:
     SECTION("snp+del") {
         vector<YAML::Node> ns = YAML::LoadAll("---\n" + string(snp) + "\n---\n" + string(del) + "\n...");
         REQUIRE(ns.size() == 2);
-        unified_site us(range(-1,-1,-1));
+        unified_site us(range(-1,-1,-1)), us2(range(-1,-1,-1));
         Status s = unified_site::of_yaml(ns[0], contigs, us);
         REQUIRE(s.ok());
         VERIFY_SNP(us);
-        s = unified_site::of_yaml(ns[1], contigs, us);
+        s = unified_site::of_yaml(ns[1], contigs, us2);
         REQUIRE(s.ok());
-        VERIFY_DEL(us);
+        VERIFY_DEL(us2);
+        REQUIRE(GLnexus::capnp_unified_sites_verify({us, us2}, "/tmp/unified_sites.capnp").ok());
     }
 
     SECTION("optional ref") {
@@ -497,6 +498,8 @@ unification:
         unified_site us2(range(-1,-1,-1));
         REQUIRE(unified_site::of_yaml(n, contigs, us2).ok());
         REQUIRE(us == us2);
+
+        REQUIRE(GLnexus::capnp_unified_sites_verify({us}, "/tmp/unified_sites.capnp").ok());
     }
 }
 

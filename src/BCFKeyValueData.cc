@@ -15,10 +15,11 @@
 #include "fcmm.hpp"
 #include "khash.h"
 #include <regex>
+#include <endian.h>
 using namespace std;
 
-#define MAX_NUM_CONTIGS_PER_GVCF (10000)
-#define MAX_CONTIG_LEN (10000000000)  // 10^10
+const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
+const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
 
 namespace GLnexus {
 
@@ -80,7 +81,7 @@ private:
     BCFBucketRange& operator=(const BCFBucketRange&);
 
 public:
-    static const size_t PREFIX_LENGTH = 24;
+    static const size_t PREFIX_LENGTH = 8;
     int interval_len;
 
     // constructor
@@ -91,15 +92,14 @@ public:
     // BCFBucketRange::bucket below translates an arbitrary range into a
     // bucket's range.
     std::string bucket_prefix(const range& rng) {
-        stringstream ss;
-        // We add leading zeros to ensure that string lexicographic ordering will sort
-        // keys in ascending order.
-        ss << setw(4) << setfill('0') << rng.rid
-           << setw(10) << setfill('0') << rng.beg
-           << setw(10) << setfill('0') << rng.end;
-        std::string ans = ss.str();
-        assert(ans.size() == PREFIX_LENGTH);
-        return ans;
+        uint64_t rid_be = htobe64(rng.rid);
+        uint64_t beg_be = htobe64(rng.beg);
+        assert(be64toh(rid_be) < MAX_NUM_CONTIGS_PER_GVCF);
+        assert(be64toh(beg_be) < MAX_CONTIG_LEN);
+        char buf[8]; static_assert(PREFIX_LENGTH == 8, "assumption");
+        memcpy(buf, ((char*)&rid_be)+5, 3);
+        memcpy(buf+3, ((char*)&beg_be)+3, 5);
+        return string(buf, 8);
     }
 
     // Produce the complete key for a bucket (given the prefix) in a dataset
@@ -265,7 +265,13 @@ Status BCFKeyValueData::InitializeDB(KeyValue::DB* db,
     // create * sample set, with version number 0
     KeyValue::CollectionHandle sampleset;
     S(db->collection("sampleset", sampleset));
-    return db->put(sampleset, "*", "0");
+    S(db->put(sampleset, "*", "0"));
+
+
+    // open the database once to trigger otherwise-lazy creation of the * sample set;
+    // necessary to ensure the database can subsequently be opened read-only (albeit empty)
+    unique_ptr<BCFKeyValueData> nop;
+    return BCFKeyValueData::Open(db, nop);
 }
 
 Status BCFKeyValueData::Open(KeyValue::DB* db, unique_ptr<BCFKeyValueData>& ans) {
@@ -564,7 +570,7 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
 // Add a <key,value> pair to the database.
 // The key is a concatenation of the dataset name and the chromosome and genomic range.
 Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db, KeyValue::CollectionHandle& coll_bcf,
-                    BCFWriter *writer, const string& dataset,
+                    BCFWriter *writer, unsigned int danglers, const string& dataset,
                     const range& rng,
                     BCFKeyValueData::import_result& rslt) {
     // Generate the key
@@ -578,7 +584,7 @@ Status write_bucket(BCFBucketRange& rangeHelper, KeyValue::DB* db, KeyValue::Col
 
     // write to the database
     S(db->put(coll_bcf, key, data));
-    rslt.add_bucket(writer->get_num_entries(), data.size());
+    rslt.add_bucket(writer->get_num_entries(), data.size(), danglers);
     return Status::OK();
 }
 
@@ -1187,7 +1193,8 @@ static Status write_danglers_between(BCFBucketRange& rangeHelper,
             }
         }
         if (writer->get_num_entries() > 0) {
-            S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), dataset, current, rslt));
+            S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), writer->get_num_entries(),
+                           dataset, current, rslt));
         }
         writer.reset();
         prune_danglers(danglers, current);
@@ -1213,6 +1220,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     int prev_pos = -1;
     int prev_rid = -1;
     vector<shared_ptr<bcf1_t>> danglers;
+    unsigned int danglers_written_to_current_bucket = 0;
     // current bucket
     range bucket(-1, 0, rangeHelper.interval_len);
     S(BCFWriter::Open(writer));
@@ -1243,7 +1251,8 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {
             // write old bucket K to DB
             if (writer != nullptr && writer->get_num_entries() > 0) {
-                S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), dataset, bucket, rslt));
+                S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), danglers_written_to_current_bucket,
+                               dataset, bucket, rslt));
             }
             writer.reset();
             range next_bucket = rangeHelper.bucket(vt.get());
@@ -1255,6 +1264,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             S(BCFWriter::Open(writer));
 
             // write danglers at the beginning of the new bucket
+            danglers_written_to_current_bucket = danglers.size();
             write_danglers_to_in_mem_bucket(danglers, writer.get(), next_bucket);
         }
         // write the record into the bucket
@@ -1274,7 +1284,8 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
 
     // write out last bucket
     if (writer != nullptr && writer->get_num_entries() > 0) {
-        S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), dataset, bucket, rslt));
+        S(write_bucket(rangeHelper, db, coll_bcf, writer.get(), danglers_written_to_current_bucket,
+                       dataset, bucket, rslt));
     }
     writer.reset();
 
