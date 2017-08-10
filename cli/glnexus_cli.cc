@@ -69,7 +69,7 @@ static int all_steps(const vector<string> &vcf_files,
         // use an empty range filter
         vector<GLnexus::range> ranges;
         H("bulk load into DB",
-          GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, true));
+          GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, false));
     }
 
     if (iter_compare) {
@@ -78,6 +78,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     // discover alleles
+    // TODO: if bedfilename is empty, fill ranges with all contigs
     vector<GLnexus::range> ranges;
     H("parsing the bed file", GLnexus::cli::utils::parse_bed_file(console, bedfilename, contigs, ranges));
     GLnexus::discovered_alleles dsals;
@@ -157,7 +158,7 @@ int main(int argc, char *argv[]) {
     spdlog::set_pattern("[%t] %+");
     console->info() << "glnexus_cli " << GIT_REVISION;
 
-    if (argc <= 2) {
+    if (argc < 2) {
         help(argv[0]);
         return 1;
     }
@@ -180,7 +181,6 @@ int main(int argc, char *argv[]) {
     int nr_threads = std::thread::hardware_concurrency();
     size_t bucket_size = GLnexus::BCFKeyValueData::default_bucket_size;
 
-    optind = 1; // force optind past command positional argument
     while (-1 != (c = getopt_long(argc, argv, "hb:dIx:",
                                   long_options, nullptr))) {
         switch (c) {
