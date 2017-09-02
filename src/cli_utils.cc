@@ -624,6 +624,7 @@ xAtlas:
               combi_method: min
               number: basic
               count: 1
+              ignore_non_variants: true
 )eof";
 
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
