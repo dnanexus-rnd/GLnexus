@@ -138,13 +138,13 @@ protected:
 
     // Combination function to handle combining multiple format values
     // from multiple records
-    T (*combine_f) (vector<T>);
+    T (*combine_f) (const vector<T>&);
 
-    static T max_element_wrapper(vector<T> v) {
+    static T max_element_wrapper(const vector<T>& v) {
         return (*max_element(v.begin(), v.end()));
     }
 
-    static T min_element_wrapper(vector<T> v) {
+    static T min_element_wrapper(const vector<T>& v) {
         return (*min_element(v.begin(), v.end()));
     }
 
