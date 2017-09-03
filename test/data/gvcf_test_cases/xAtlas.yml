@@ -45,6 +45,10 @@ input:
         1	15951	.	G	.	.	PASS	END=15955;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:17:17:.:0,80,535:0,0,0,0:17,19,17.6,0.894427:17,19,17.6,0.894427
         1	15956	.	G	A	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
         1	15957	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:20:20:.:0,95,690:0,1,0.0384615,0.196116:20,26,23.0385,2.34061:20,26,23.0769,2.38198
+        1	15983	.	C	G	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
+    - xAtlasTester.gvcf: |
+        xAtlasTester
+        1	15983	.	C	T	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	1/1:19:1:20:.:257,172,0
 
 genotyper_config:
     required_dp: 0
@@ -59,6 +63,14 @@ genotyper_config:
           number: basic
           combi_method: min
           count: 1
+          ignore_non_variants: true
+        - orig_names: [PL]
+          name: PL
+          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+          type: int
+          number: genotype
+          combi_method: missing
+          count: 0
           ignore_non_variants: true
         - orig_names: [DP]
           name: DP
@@ -93,16 +105,42 @@ truth_discovered_alleles:
       is_ref: false
       top_AQ: [257]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15983, end: 15983}
+      dna: 'C'
+      is_ref: true
+      top_AQ: [172,0]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15983, end: 15983}
+      dna: 'G'
+      is_ref: false
+      top_AQ: [257]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15983, end: 15983}
+      dna: 'T'
+      is_ref: false
+      top_AQ: [257]
+      zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
       alleles: [G, A]
-      allele_frequencies: [.nan, 0.5]
+      allele_frequencies: [.nan, 0.25]
       quality: 257
       unification:
         - range: {beg: 15956, end: 15956}
           dna: A
           to: 1
+    - range: {ref: 1, beg: 15983, end: 15983}
+      alleles: [C, T, G]
+      allele_frequencies: [.nan, 0.5, 0.25]
+      quality: 257
+      unification:
+        - range: {beg: 15983, end: 15983}
+          dna: T
+          to: 1
+        - range: {beg: 15983, end: 15983}
+          dna: G
+          to: 2
 
 
 truth_output_vcf:
@@ -111,10 +149,12 @@ truth_output_vcf:
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
       ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
-      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="">
+      ##FORMAT=<ID=RNC,Number=1,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
       ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
       ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">
       ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
       ##contig=<ID=21,length=48129895>
-      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002
-      1	15956	.	G	A	257	.	.	GT:GQ:DP:RR:VR:RNC	0/1:.:20:8:12:..
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002 xAtlasTester
+      1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:RNC	0/1:.:257,0,172:20:8:12:..	./.:.:.:.:.:.:MM
+      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:RNC	0/2:.:.:20:8:12:..	1/1:.:.:20:1:19:..

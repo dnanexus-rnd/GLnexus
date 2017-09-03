@@ -919,6 +919,8 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "min";
     } else if (combi_method == FieldCombinationMethod::MAX) {
         ans << "max";
+    } else if (combi_method == FieldCombinationMethod::MISSING) {
+        ans << "missing";
     } else {
         return Status::Invalid("retained_format_field::yaml: invalid combi_method");
     }
@@ -1017,6 +1019,8 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         combi_method = FieldCombinationMethod::MIN;
     } else if (s_combi_method == "max") {
         combi_method = FieldCombinationMethod::MAX;
+    } else if (s_combi_method == "missing") {
+        combi_method = FieldCombinationMethod::MISSING;
     } else {
         V(false, "invalid combi_method");
     }

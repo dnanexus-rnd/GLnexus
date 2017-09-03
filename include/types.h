@@ -633,9 +633,12 @@ enum class RetainedFieldType {
     FLOAT,
 };
 
+// Method of combining analogous format field numerical values from multiple input
+// gVCF records into one value to emit in the output pVCF record.
 enum class FieldCombinationMethod {
     MIN,
     MAX,
+    MISSING // combination not allowed; set to missing value if there are multiple input records
 };
 
 enum class RetainedFieldNumber {
