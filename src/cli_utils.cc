@@ -603,6 +603,14 @@ xAtlas:
               combi_method: min
               count: 1
               ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
             - orig_names: [DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
@@ -622,6 +630,14 @@ xAtlas:
               description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
               type: int
               combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [FILTER]
+              name: FT
+              description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
+              type: string
+              combi_method: missing
               number: basic
               count: 1
               ignore_non_variants: true

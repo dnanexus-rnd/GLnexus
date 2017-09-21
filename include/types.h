@@ -631,6 +631,7 @@ enum class GLnexusOutputFormat {
 enum class RetainedFieldType {
     INT,
     FLOAT,
+    STRING
 };
 
 // Method of combining analogous format field numerical values from multiple input
@@ -638,7 +639,8 @@ enum class RetainedFieldType {
 enum class FieldCombinationMethod {
     MIN,
     MAX,
-    MISSING // combination not allowed; set to missing value if there are multiple input records
+    MISSING, // combination not allowed; set to missing value if there are multiple input records
+    SEMICOLON // semicolon-join in order (mainly for String fields)
 };
 
 enum class RetainedFieldNumber {
@@ -693,6 +695,7 @@ struct retained_format_field {
 
     // Handling of "missing" values by using default
     // values, or leaving as empty, as instructed
+    // (applies to numeric types)
     DefaultValueFiller default_type;
 
     // Handling of "combining" the same field

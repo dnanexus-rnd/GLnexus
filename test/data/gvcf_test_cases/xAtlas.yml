@@ -46,9 +46,12 @@ input:
         1	15956	.	G	A	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
         1	15957	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:20:20:.:0,95,690:0,1,0.0384615,0.196116:20,26,23.0385,2.34061:20,26,23.0769,2.38198
         1	15983	.	C	G	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
+        1	15985	.	A	T	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
     - xAtlasTester.gvcf: |
         xAtlasTester
+        1	15890	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	15983	.	C	T	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	1/1:19:1:20:.:257,172,0
+        1	15985	.	A	T	36	low_coverage	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:4:0:4:.:257,0,172
 
 genotyper_config:
     required_dp: 0
@@ -93,6 +96,14 @@ genotyper_config:
           combi_method: min
           number: basic
           count: 1
+        - orig_names: [FILTER]
+          name: FT
+          description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
+          type: string
+          combi_method: missing
+          number: basic
+          count: 1
+          ignore_non_variants: true
 
 truth_discovered_alleles:
     - range: {ref: "1", beg: 15956, end: 15956}
@@ -120,6 +131,16 @@ truth_discovered_alleles:
       is_ref: false
       top_AQ: [257]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15985, end: 15985}
+      dna: 'A'
+      is_ref: true
+      top_AQ: [172,0]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15985, end: 15985}
+      dna: 'T'
+      is_ref: false
+      top_AQ: [257]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
@@ -141,6 +162,14 @@ truth_unified_sites:
         - range: {beg: 15983, end: 15983}
           dna: G
           to: 2
+    - range: {ref: 1, beg: 15985, end: 15985}
+      alleles: [A, T]
+      allele_frequencies: [.nan, 0.25]
+      quality: 257
+      unification:
+        - range: {beg: 15985, end: 15985}
+          dna: T
+          to: 1
 
 
 truth_output_vcf:
@@ -149,12 +178,14 @@ truth_output_vcf:
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
       ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
-      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="">
-      ##FORMAT=<ID=RNC,Number=1,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype Likelihood">
+      ##FORMAT=<ID=RNC,Number=2,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
       ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
       ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">
       ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
+      ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002 xAtlasTester
-      1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:RNC	0/1:.:257,0,172:20:8:12:..	./.:.:.:.:.:.:MM
-      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:RNC	0/2:.:.:20:8:12:..	1/1:.:.:20:1:19:..
+      1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/0:.:0,42,177:4:4:0:.:..
+      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:.:20:8:12:.:..	1/1:.:.:20:1:19:.:..
+      1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..

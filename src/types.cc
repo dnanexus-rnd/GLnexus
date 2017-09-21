@@ -886,6 +886,8 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "int";
     } else if (type == RetainedFieldType::FLOAT) {
         ans << "float";
+    } else if (type == RetainedFieldType::STRING) {
+        ans << "string";
     } else {
         return Status::Invalid("retained_format_field::yaml: invalid type");
     }
@@ -921,6 +923,8 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "max";
     } else if (combi_method == FieldCombinationMethod::MISSING) {
         ans << "missing";
+    } else if (combi_method == FieldCombinationMethod::SEMICOLON) {
+        ans << "semicolon";
     } else {
         return Status::Invalid("retained_format_field::yaml: invalid combi_method");
     }
@@ -969,6 +973,8 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         type = RetainedFieldType::INT;
     } else if (s_type == "float") {
         type = RetainedFieldType::FLOAT;
+    } else if (s_type == "string") {
+        type = RetainedFieldType::STRING;
     } else {
         V(false, "invalid type");
     }
@@ -1021,6 +1027,8 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         combi_method = FieldCombinationMethod::MAX;
     } else if (s_combi_method == "missing") {
         combi_method = FieldCombinationMethod::MISSING;
+    } else if (s_combi_method == "semicolon") {
+        combi_method = FieldCombinationMethod::SEMICOLON;
     } else {
         V(false, "invalid combi_method");
     }
