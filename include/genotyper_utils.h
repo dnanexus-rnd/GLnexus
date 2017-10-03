@@ -68,7 +68,7 @@ protected:
             expected_count = record->n_allele;
         } else if (field_info.number == RetainedFieldNumber::GENOTYPE) {
             auto n = max(record->n_allele, 2U); // accommodate GVCF ALT=. representation for non-variants
-            expected_count = (n+1)*n/2;
+            expected_count = diploid::genotypes(n);
         }
         return expected_count;
     }
@@ -93,7 +93,7 @@ protected:
             case RetainedFieldNumber::ALLELES:
             {
                 // Fall through for both cases that require allele_mapping
-                int mapped_j = allele_mapping[unmapped_j];
+                int mapped_j = allele_mapping.at(unmapped_j);
                 if (mapped_j < 0) {
                     // Allele is not mappable (trimmed or is a gvcf record)
                     return -1;
@@ -103,13 +103,26 @@ protected:
             }
             case RetainedFieldNumber::GENOTYPE:
             {
-                // One value per diploid genotype. For the time being, we
-                // only lift over from and to biallelic sites.
-                if (allele_mapping.size() <= 2 && n_allele_out == 2) {
-                    assert(count == 3 && unmapped_j >= 0 && unmapped_j < 3);
-                    return mapped_i * count + unmapped_j;
+                // One value per diploid genotype.
+                pair<unsigned,unsigned> unmapped_alleles = diploid::gt_alleles(unmapped_j);
+                int mapped_al1, mapped_al2;
+                if (allele_mapping.size() > 1) {
+                    mapped_al1 = allele_mapping.at(unmapped_alleles.first);
+                    mapped_al2 = allele_mapping.at(unmapped_alleles.second);
+                } else {
+                    mapped_al1 = unmapped_alleles.first <= 1 ? unmapped_alleles.first : -1;
+                    mapped_al2 = unmapped_alleles.second <= 1 ? unmapped_alleles.second : -1;
                 }
-                return -1;
+                assert(mapped_al1 < n_allele_out && mapped_al2 < n_allele_out);
+                if (mapped_al1 < 0 || mapped_al2 < 0) {
+                    // TODO: arguably PL should be censored if the max-likelihood entry (0) does
+                    // not map into the output vector. They may be open to misinterpretation
+                    // otherwise.
+                    return -1;
+                }
+                int mapped_j = diploid::alleles_gt(mapped_al1, mapped_al2);
+                assert(mapped_j >= 0 && mapped_j < count);
+                return mapped_i * count + mapped_j;
             }
             default:
             {
@@ -564,6 +577,7 @@ public:
             for (int i = 0; i < record->d.n_flt; i++) {
                 string filter = dataset_header->id[BCF_DT_ID][record->d.flt[i]].key;
                 if (filter.size() && filter != "PASS") {
+                    // TODO: scheme to deduplicate filters seen in multiple records
                     if (!first) {
                         filters << ';';
                     }

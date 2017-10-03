@@ -187,5 +187,5 @@ truth_output_vcf:
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002 xAtlasTester
       1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/0:.:0,42,177:4:4:0:.:..
-      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:.:20:8:12:.:..	1/1:.:.:20:1:19:.:..
+      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:20:8:12:.:..	1/1:.:257,172,0,.,.,.:20:1:19:.:..
       1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..
