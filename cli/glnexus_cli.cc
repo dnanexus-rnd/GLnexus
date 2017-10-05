@@ -1,6 +1,4 @@
-// GLnexus crude command-line interface. This is a temporary thing to get us
-// bootstrapped with the core algorithms and storage engine before engineering
-// an always-on "server"
+// Basic GLnexus command-line interface for use on one compute node
 
 #include <iostream>
 #include <exception>
@@ -139,11 +137,13 @@ static int all_steps(const vector<string> &vcf_files,
 
 void help(const char* prog) {
     cerr << "usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
-         << "Joint genotype all source VCF files, and generate a project VCF file" << endl
+         << "Joint genotype all source gVCF files, and generate a project VCF file" << endl
          << "on standard out. The source files must be in GVCF format." << endl
          << "Options:" << endl
          << "  --help, -h           print this help message" << endl
+         << "  --config X, -c X     configuration setting" << endl
          << "  --bed FILE, -b FILE  path to three-column BED file" << endl
+         << "  --list, -l           given files contain lists of gVCF filenames one per line" << endl
          << "  --bucket_size INT, -x INT  set the bucket size" << endl
          << "  --debug, -d          create additional file outputs for diagnostics/debugging" << endl
          << "  --iter_compare, -i   compare different implementations of database iteration" << endl;
@@ -167,6 +167,7 @@ int main(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
+        {"list", no_argument, 0, 'l'},
         {"bucket_size", required_argument, 0, 'x'},
         {"debug", no_argument, 0, 'd'},
         {"iter_compare", no_argument, 0, 'i'},
@@ -175,6 +176,7 @@ int main(int argc, char *argv[]) {
 
     int c;
     string config_preset = "test";
+    bool list_of_files = false;
     bool debug = false;
     bool iter_compare = false;
     string bedfilename;
@@ -190,6 +192,10 @@ int main(int argc, char *argv[]) {
                     cerr <<  "invalid BED filename" << endl;
                     return 1;
                 }
+                break;
+
+            case 'l':
+                list_of_files = true;
                 break;
 
             case 'c':
@@ -228,9 +234,25 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    vector<string> vcf_files;
-    for (int i=optind; i < argc; i++)
-        vcf_files.push_back(string(argv[i]));
+    vector<string> vcf_files, vcf_files_precursor;
+    for (int i=optind; i < argc; i++) {
+        vcf_files_precursor.push_back(string(argv[i]));
+    }
+
+    if (list_of_files) {
+        for (const string& fn : vcf_files_precursor) {
+            string gvcf;
+            ifstream infile(fn);
+            while (getline(infile, gvcf)) {
+                vcf_files.push_back(gvcf);
+            }
+            if (infile.bad() || !infile.eof()) {
+                H("reading input file list", GLnexus::Status::IOError("reading", bedfilename));
+            }
+        }
+    } else {
+        vcf_files = vcf_files_precursor;
+    }
 
     return all_steps(vcf_files, bedfilename, config_preset, nr_threads, debug, iter_compare, bucket_size);
 }
