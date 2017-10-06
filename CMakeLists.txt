@@ -227,7 +227,7 @@ target_link_libraries(playground glnexus libhts librocksdb libyaml-cpp libz.a li
 
 add_executable(glnexus_cli cli/glnexus_cli.cc)
 add_dependencies(glnexus_cli libglnexus)
-target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
+target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a liblz4.a librt.a libcapnp.a libkj.a)
 
 install(TARGETS playground DESTINATION bin)
 
@@ -266,7 +266,7 @@ if (test)
                  test/cli.cc)
   add_dependencies(unit_tests catch)
   add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
+  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a liblz4.a librt.a libcapnp.a libkj.a)
 
   add_test(unit_tests unit_tests)
 endif()
