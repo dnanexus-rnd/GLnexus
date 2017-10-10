@@ -87,7 +87,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
 
     // compress all files with Zstandard
     opts.compression_per_level.clear();
-    //opts.compression = rocksdb::kZSTD;
+    opts.compression = rocksdb::kZSTD;
 
     // 256 KiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
