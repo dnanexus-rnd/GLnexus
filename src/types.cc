@@ -181,7 +181,7 @@ Status one_discovered_allele_of_yaml(const YAML::Node& yaml,
     VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
     const string& dna = n_dna.Scalar();
     VR(dna.size() > 0, "empty 'dna' in entry");
-    VR(regex_match(dna, regex_dna), "invalid allele DNA");
+    VR(regex_match(dna, regex_iupac_nucleotide), "invalid allele DNA");
     allele al(rng, dna);
     dsal = std::move(al);
 

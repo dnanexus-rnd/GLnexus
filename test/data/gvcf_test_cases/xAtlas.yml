@@ -52,6 +52,7 @@ input:
         1	15890	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	15983	.	C	T	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	1/1:19:1:20:.:257,172,0
         1	15985	.	A	T	36	low_coverage	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:4:0:4:.:257,0,172
+        1	15987	.	M	C	45	PASS	P=0.999968	GT:VR:RR:DP:GQ:PL	1/1:26:0:26:.:716,75,0
 
 genotyper_config:
     required_dp: 0
@@ -141,6 +142,16 @@ truth_discovered_alleles:
       is_ref: false
       top_AQ: [257]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15987, end: 15987}
+      dna: 'M'
+      is_ref: true
+      top_AQ: [0]
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15987, end: 15987}
+      dna: 'C'
+      is_ref: false
+      top_AQ: [716]
+      zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
@@ -170,6 +181,14 @@ truth_unified_sites:
         - range: {beg: 15985, end: 15985}
           dna: T
           to: 1
+    - range: {ref: 1, beg: 15987, end: 15987}
+      alleles: [M, C]
+      allele_frequencies: [.nan, 0.5]
+      quality: 716
+      unification:
+        - range: {beg: 15987, end: 15987}
+          dna: C
+          to: 1
 
 
 truth_output_vcf:
@@ -189,3 +208,4 @@ truth_output_vcf:
       1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/0:.:0,42,177:4:4:0:.:..
       1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:20:8:12:.:..	1/1:.:257,172,0,.,.,.:20:1:19:.:..
       1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..
+      1	15987	.	M	C	716	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:716,75,0:26:0:26:.:..
