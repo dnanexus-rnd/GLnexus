@@ -11,7 +11,7 @@ main() {
     compress_ext="gz"
 
     # log detailed utilization
-    dstat -cmdn 20 &
+    dstat -cmdn 60 &
 
     # Replace malloc with jemalloc
     export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1

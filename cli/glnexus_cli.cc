@@ -77,6 +77,7 @@ static int all_steps(const vector<string> &vcf_files,
 
     // discover alleles
     // TODO: if bedfilename is empty, fill ranges with all contigs
+    // TODO: overlap allele discovery with final compactions. have db_bulk_load output a RocksKeyValue pointer which we can reuse
     vector<GLnexus::range> ranges;
     H("parsing the bed file", GLnexus::cli::utils::parse_bed_file(console, bedfilename, contigs, ranges));
     GLnexus::discovered_alleles dsals;
