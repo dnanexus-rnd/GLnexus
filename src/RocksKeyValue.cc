@@ -75,8 +75,8 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
                               rocksdb::ColumnFamilyOptions& opts) {
     // universal compaction, 1GiB memtable budget
     opts.OptimizeUniversalStyleCompaction(1<<30);
-    opts.num_levels = 3;
-    opts.target_file_size_base = 16 * size_t(1<<30);
+    opts.num_levels = 4;
+    opts.target_file_size_base = 10 * size_t(1<<30);
     opts.level0_file_num_compaction_trigger = 4;
 
     opts.compaction_options_universal.compression_size_percent = -1;
@@ -85,15 +85,16 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.compaction_options_universal.min_merge_width = 2;
     opts.compaction_options_universal.max_merge_width = 6;
 
-    // compress all files with Zstandard
-    opts.compression_per_level.clear();
-    opts.compression = rocksdb::kZSTD;
-
     // 256 KiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
     bbto.block_size = 256 * 1024;
     bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 8);
+
+    // compress all files with Zstandard
+    opts.compression_per_level.clear();
+    opts.compression = rocksdb::kZSTD;
+    opts.compression_opts.max_dict_bytes = bbto.block_size * 4;
 
     if (prefix_length) {
         // prefix-based hash indexing for this column family
@@ -141,13 +142,11 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
 
     opts.max_open_files = -1;
 
-    // increase parallelism
-    opts.enable_thread_tracking = true;
-    opts.max_background_compactions = std::min(std::thread::hardware_concurrency(),
-                                               mode == OpenMode::BULK_LOAD ? 8U : 3U);
-    opts.max_background_flushes = std::min(std::thread::hardware_concurrency(), 4U);
-    opts.env->SetBackgroundThreads(opts.max_background_compactions, rocksdb::Env::LOW);
-    opts.env->SetBackgroundThreads(opts.max_background_flushes, rocksdb::Env::HIGH);
+    // configure parallelism
+    opts.max_background_jobs = std::max(std::thread::hardware_concurrency() / 2, 2U);
+    opts.max_subcompactions = std::min(opts.max_background_jobs, 10);
+    opts.env->SetBackgroundThreads(opts.max_background_jobs, rocksdb::Env::LOW);
+    opts.env->SetBackgroundThreads(opts.max_background_jobs, rocksdb::Env::HIGH);
 
     opts.access_hint_on_compaction_start = rocksdb::Options::AccessHint::SEQUENTIAL;
     opts.compaction_readahead_size = 16 << 20;
@@ -411,7 +410,10 @@ public:
             // there's no more than one background compaction running.
             // Argument: once that's the case, the number of sorted runs can't
             // be far above level0_file_num_compaction_trigger, or else a
-            // second background compaction would start.
+            // second background compaction would start. And, while it'd
+            // be nice to let the 'final' compaction finish, we don't want to
+            // sit around waiting for an often-lengthy, single-threaded
+            // operation.
             uint64_t num_running_compactions = 0;
             do {
                 if (num_running_compactions) {
