@@ -48,15 +48,15 @@
       "optional": true
     },
     {
-      "name": "perf",
+      "name": "generate_perf",
       "help": "add performance tracing and outputs",
       "class": "boolean",
       "default": false,
       "optional": true
     },
     {
-      "name": "perf_kernel",
-      "help": "trace kernel symbols, requires special permissions on the container. Implies the perf flag.",
+      "name": "generate_perf_kernel",
+      "help": "trace kernel symbols, requires special permissions on the container. Implies the generate_perf flag.",
       "class": "boolean",
       "default": false,
       "optional": true

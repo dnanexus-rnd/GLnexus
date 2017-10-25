@@ -47,11 +47,11 @@ main() {
     if [[ $iter_compare == "true" ]]; then
         debug_flags+=" --iter_compare"
     fi
-    if [[ "$perf_kernel" == "true" ]]; then
+    if [[ "$generate_perf_kernel" == "true" ]]; then
         # Kernel tracing implies user-space space tracing
-        perf="true"
+        generate_perf="true"
     fi
-    if [[ "$perf" == "true" ]]; then
+    if [[ "$generate_perf" == "true" ]]; then
         setup_system_for_tracing
 
         # Run a perf command that will record everything the
