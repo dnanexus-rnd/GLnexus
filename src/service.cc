@@ -324,6 +324,11 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     atomic<bool> abort(false);
     for (size_t i = 0; i < sites.size(); i++) {
         auto fut = body_->threadpool_.push([&, i](int tid){
+            if (abort || (ext_abort && *ext_abort)) {
+                abort = true;
+                return Status::Aborted();
+            }
+
             unsigned stalled_ms = 0;
             while (i > results_retrieved+4*body_->cfg_.threads) {
                 // throttle worker thread if the results retrieval, below, is falling
@@ -333,12 +338,13 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 stalled_ms += 10;
             }
+            if (i < body_->cfg_.threads && results_retrieved == 0) {
+                // throttle startup so that database cache can burn in
+                std::this_thread::sleep_for(std::chrono::milliseconds(i*10));
+                stalled_ms += i*10;
+            }
             if (stalled_ms) body_->threads_stalled_ms_ += stalled_ms;
 
-            if (abort || (ext_abort && *ext_abort)) {
-                abort = true;
-                return Status::Aborted();
-            }
             shared_ptr<string> residual_rec = nullptr;
             shared_ptr<bcf1_t> bcf;
             Status ls = genotype_site(cfg, *(body_->metadata_), body_->data_, sites[i],

@@ -26,8 +26,9 @@ static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 // infinite loops.
 const uint64_t CAPNP_TRAVERSAL_LIMIT = 20 * 1024L * 1024L * 1024L;
 
-regex regex_dna     ("[ACGTN]+")
-    , regex_id      ("[-_a-zA-Z0-9\\.]{1,100}")
+regex regex_dna               ("[ACGTN]+")
+    , regex_iupac_nucleotide  ("[ACGTURYSWKMBDHVN]+")
+    , regex_id                ("[-_a-zA-Z0-9\\.]{1,100}")
     ;
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
@@ -180,7 +181,7 @@ Status one_discovered_allele_of_yaml(const YAML::Node& yaml,
     VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
     const string& dna = n_dna.Scalar();
     VR(dna.size() > 0, "empty 'dna' in entry");
-    VR(regex_match(dna, regex_dna), "invalid allele DNA");
+    VR(regex_match(dna, regex_iupac_nucleotide), "invalid allele DNA");
     allele al(rng, dna);
     dsal = std::move(al);
 
@@ -885,6 +886,8 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "int";
     } else if (type == RetainedFieldType::FLOAT) {
         ans << "float";
+    } else if (type == RetainedFieldType::STRING) {
+        ans << "string";
     } else {
         return Status::Invalid("retained_format_field::yaml: invalid type");
     }
@@ -894,7 +897,7 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "basic";
     } else if (number == RetainedFieldNumber::ALT) {
         ans << "alt";
-    } if (number == RetainedFieldNumber::GENOTYPE) {
+    } else if (number == RetainedFieldNumber::GENOTYPE) {
         ans << "genotype";
     } else if (number == RetainedFieldNumber::ALLELES) {
         ans << "alleles";
@@ -918,6 +921,10 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
         ans << "min";
     } else if (combi_method == FieldCombinationMethod::MAX) {
         ans << "max";
+    } else if (combi_method == FieldCombinationMethod::MISSING) {
+        ans << "missing";
+    } else if (combi_method == FieldCombinationMethod::SEMICOLON) {
+        ans << "semicolon";
     } else {
         return Status::Invalid("retained_format_field::yaml: invalid combi_method");
     }
@@ -966,6 +973,8 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         type = RetainedFieldType::INT;
     } else if (s_type == "float") {
         type = RetainedFieldType::FLOAT;
+    } else if (s_type == "string") {
+        type = RetainedFieldType::STRING;
     } else {
         V(false, "invalid type");
     }
@@ -1016,6 +1025,10 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         combi_method = FieldCombinationMethod::MIN;
     } else if (s_combi_method == "max") {
         combi_method = FieldCombinationMethod::MAX;
+    } else if (s_combi_method == "missing") {
+        combi_method = FieldCombinationMethod::MISSING;
+    } else if (s_combi_method == "semicolon") {
+        combi_method = FieldCombinationMethod::SEMICOLON;
     } else {
         V(false, "invalid combi_method");
     }
@@ -1146,9 +1159,11 @@ bool is_symbolic_allele(const char* allele) {
     return regex_match(allele, regex_symbolic_allele);
 }
 
-// gVCF reference confidence records recognized as having exactly one, symbolic ALT allele
+// gVCF reference confidence records recognized as having either:
+// a) zero ALT alleles
+// b) one symbolic ALT allele
 bool is_gvcf_ref_record(const bcf1_t* record) {
-    return record->n_allele == 2 && is_symbolic_allele(record->d.allele[1]);
+    return record->n_allele == 1 || (record->n_allele == 2 && is_symbolic_allele(record->d.allele[1]));
 }
 
 } // namespace GLnexus

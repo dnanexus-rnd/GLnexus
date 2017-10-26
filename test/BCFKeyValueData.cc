@@ -1412,22 +1412,19 @@ TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
 
     // empty allele structure
     Status s = data->import_gvcf(*cache, "bad", "test/data/bad_dna.gvcf", samples_imported);
-    cout << s.str() << endl;
     REQUIRE(s.bad());
 
     // bad letter (K)
     s = data->import_gvcf(*cache, "bad", "test/data/bad_dna2.gvcf", samples_imported);
-    cout << s.str() << endl;
     REQUIRE(s.bad());
+    REQUIRE(s.str().find("ZCCAT") != string::npos); // note: a prior record with an IUPAC-letter REF was accepted
 
     // wrong contig size, does not match DB
     s = data->import_gvcf(*cache, "bad", "test/data/bad_dna3.gvcf", samples_imported);
-    cout << s.str() << endl;
     REQUIRE(s.bad());
 
     // empty allele
     s = data->import_gvcf(*cache, "bad", "test/data/bad_dna4.gvcf", samples_imported);
-    cout << s.str() << endl;
     REQUIRE(s.bad());
 
     // bad sample name

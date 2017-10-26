@@ -11,7 +11,7 @@ main() {
     compress_ext="gz"
 
     # log detailed utilization
-    dstat -cmdn 20 &
+    dstat -cmdn 60 &
 
     # Replace malloc with jemalloc
     export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
@@ -34,7 +34,8 @@ main() {
     done
 
     # Make a list of all gvcf files
-    gvcfs=$(find in/gvcf -type f)
+    find in/gvcf -type f > /tmp/gvcf_list
+    wc -l /tmp/gvcf_list
 
     debug_flags=""
     if [[ $bed_ranges_to_genotype ]]; then
@@ -65,7 +66,8 @@ main() {
     fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli --bed $bed_ranges $bucket_size_arg $debug_flags $gvcfs | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+    time numactl --interleave=all glnexus_cli --config "$config" --list --bed $bed_ranges $bucket_size_arg $debug_flags /tmp/gvcf_list \
+        | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then
         # Try to kill the perf process nicely; this does not always work
@@ -99,6 +101,9 @@ main() {
         mkdir -p out/unified_sites
         $compressor -c /tmp/sites.yml > "out/unified_sites/${output_name}.sites.yml.${compress_ext}"
     fi
+
+    ls -Rlh GLnexus.DB
+    ls -Rlh out
 
     # upload
     dx-upload-all-outputs --parallel

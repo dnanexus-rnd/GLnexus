@@ -130,7 +130,7 @@ public:
 #define S(st) s = st; if (s.bad()) return s;
 
 /// common regular expressions
-extern std::regex regex_dna, regex_id;
+extern std::regex regex_dna, regex_iupac_nucleotide, regex_id;
 
 /// Genomic range (chromosome id, begin coordinate, end coordinate)
 struct range {
@@ -242,7 +242,7 @@ struct allele {
 
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
-        if (!std::regex_match(dna, regex_dna)) throw std::invalid_argument("allele(): invalid DNA " + dna);
+        if (!std::regex_match(dna, regex_iupac_nucleotide)) throw std::invalid_argument("allele(): invalid DNA " + dna);
     }
 
     /// Equality is based on identity of position and allele
@@ -631,11 +631,16 @@ enum class GLnexusOutputFormat {
 enum class RetainedFieldType {
     INT,
     FLOAT,
+    STRING
 };
 
+// Method of combining analogous format field numerical values from multiple input
+// gVCF records into one value to emit in the output pVCF record.
 enum class FieldCombinationMethod {
     MIN,
     MAX,
+    MISSING, // combination not allowed; set to missing value if there are multiple input records
+    SEMICOLON // semicolon-join in order (mainly for String fields)
 };
 
 enum class RetainedFieldNumber {
@@ -690,6 +695,7 @@ struct retained_format_field {
 
     // Handling of "missing" values by using default
     // values, or leaving as empty, as instructed
+    // (applies to numeric types)
     DefaultValueFiller default_type;
 
     // Handling of "combining" the same field

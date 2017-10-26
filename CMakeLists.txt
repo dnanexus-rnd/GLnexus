@@ -86,11 +86,11 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/v5.4.6.zip
+    URL https://github.com/facebook/rocksdb/archive/v5.8.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -D__SSE4_2__' && make -n static_lib && make -j8 static_lib"
+    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export USE_SSE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42' && make -n static_lib && make -j8 static_lib"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
@@ -203,6 +203,7 @@ add_library(glnexus
             include/discovery.h src/discovery.cc
             include/unifier.h src/unifier.cc
             include/genotyper.h src/genotyper.cc
+            include/genotyper_utils.h
             include/residuals.h src/residuals.cc
             include/KeyValue.h src/KeyValue.cc
             include/BCFSerialize.h src/BCFSerialize.cc

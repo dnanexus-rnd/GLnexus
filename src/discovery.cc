@@ -44,6 +44,11 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 // sites.
                 continue;
             }
+            if (bcf_has_filter(dataset_header.get(), record.get(), ".") == 0) {
+                // Skip records that fail a filter. It might be nice to have a
+                // whitelist in the future.
+                continue;
+            }
 
             // find the max AQ for each allele
             S(diploid::bcf_alleles_topAQ(dataset_header.get(), record.get(), dataset_relevant_samples, topAQ));
@@ -73,7 +78,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // create an entry for the ref allele, if we discovered at least one alt allele.
             string refdna(record->d.allele[0]);
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
-            if (refdna.size() > 0 && regex_match(refdna, regex_dna)) {
+            if (refdna.size() > 0 && regex_match(refdna, regex_iupac_nucleotide)) {
                 if (any_alt) {
                     discovered_allele_info ai;
                     ai.is_ref = true;

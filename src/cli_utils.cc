@@ -546,45 +546,101 @@ bool check_dir_exists(const string &path) {
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
 static const char* config_presets_yml = R"eof(
-unifier_config:
-  min_AQ1: 70
-  min_AQ2: 40
-  min_GQ: 40
-  monoallelic_sites_for_lost_alleles: true
-genotyper_config:
-  required_dp: 1
-  revise_genotypes: true
-  liftover_fields:
-    - orig_names: [GQ]
-      name: GQ
-      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-      type: int
-      number: basic
-      combi_method: min
-      count: 1
-      ignore_non_variants: true
-    - orig_names: [DP, MIN_DP]
-      name: DP
-      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
-      type: int
-      combi_method: min
-      number: basic
-      count: 1
-    - orig_names: [AD]
-      name: AD
-      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
-      type: int
-      number: alleles
-      combi_method: min
-      default_type: zero
-      count: 0
-    - orig_names: [SB]
-      name: SB
-      description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
-      type: int
-      combi_method: max
-      number: basic
-      count: 4
+test:
+    unifier_config:
+        min_AQ1: 70
+        min_AQ2: 40
+        min_GQ: 40
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 1
+        revise_genotypes: true
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [DP, MIN_DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
+            - orig_names: [SB]
+              name: SB
+              description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
+              type: int
+              combi_method: max
+              number: basic
+              count: 4
+xAtlas:
+    unifier_config:
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        # TODO: ref_dp_format=DPX[0] would be more precise
+        ref_dp_format: DP
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
+            - orig_names: [DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [RR]
+              name: RR
+              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [VR]
+              name: VR
+              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [FILTER]
+              name: FT
+              description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
+              type: string
+              combi_method: missing
+              number: basic
+              count: 1
+              ignore_non_variants: true
 )eof";
 
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
@@ -592,21 +648,26 @@ Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
                           unifier_config& unifier_cfg,
                           genotyper_config& genotyper_cfg) {
     Status s;
-    logger->info() << "Loading config " << config_presets_yml;
-    YAML::Node yaml = YAML::Load(config_presets_yml);
-    if (!yaml) {
+    logger->info() << "Loading config " << name;
+    YAML::Node presets = YAML::Load(config_presets_yml);
+    if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
         return Status::NotFound("unknown configuration preset", name);
     }
-    if (!yaml.IsMap()) {
-        return Status::Invalid("configuration presets");
+    YAML::Node preset = presets[name];
+    if (preset["unifier_config"]) {
+        S(unifier_config::of_yaml(preset["unifier_config"], unifier_cfg));
     }
-    if (yaml["unifier_config"]) {
-        S(unifier_config::of_yaml(yaml["unifier_config"], unifier_cfg));
+    if (preset["genotyper_config"]) {
+        S(genotyper_config::of_yaml(preset["genotyper_config"], genotyper_cfg));
     }
-    if (yaml["genotyper_config"]) {
-        S(genotyper_config::of_yaml(yaml["genotyper_config"], genotyper_cfg));
-    }
-
+    YAML::Emitter em;
+    em << YAML::BeginMap
+       << YAML::Key << "unifier_config" << YAML::Value;
+    S(unifier_cfg.yaml(em));
+    em << YAML::Key << "genotyper_config" << YAML::Value;
+    S(genotyper_cfg.yaml(em));
+    em << YAML::EndMap;
+    logger->info() << "config:\n" << em.c_str();
     return Status::OK();
 }
 
