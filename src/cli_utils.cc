@@ -588,6 +588,7 @@ test:
               count: 4
 xAtlas:
     unifier_config:
+        drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
         required_dp: 0

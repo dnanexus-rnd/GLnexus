@@ -86,11 +86,13 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
@@ -120,6 +122,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: 'bogus', beg: 100, end: 100}
@@ -136,6 +139,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
         n = YAML::Load(1 + R"(
 - dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
@@ -147,6 +151,7 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: 123
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
@@ -160,11 +165,13 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: BOGUS
   is_ref: false
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
@@ -179,11 +186,13 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: 100
 )");
@@ -198,11 +207,13 @@ TEST_CASE("discovered_alleles_of_yaml") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
+  all_filtered: false
   top_AQ: false
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )");
@@ -232,11 +243,13 @@ TEST_CASE("yaml_of_discovered_alleles") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 100, end: 100}
   dna: G
   is_ref: false
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";

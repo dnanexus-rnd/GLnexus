@@ -54,6 +54,9 @@ input:
         1	15985	.	A	T	36	low_coverage	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:4:0:4:.:257,0,172
         1	15987	.	M	C	45	PASS	P=0.999968	GT:VR:RR:DP:GQ:PL	1/1:26:0:26:.:716,75,0
 
+unifier_config:
+    drop_filtered: true
+
 genotyper_config:
     required_dp: 0
     revise_genotypes: false
@@ -107,49 +110,70 @@ genotyper_config:
           ignore_non_variants: true
 
 truth_discovered_alleles:
+    - range: {ref: "1", beg: 15922, end: 15922}
+      dna: 'A'
+      is_ref: true
+      all_filtered: true
+      top_AQ: [0]
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15922, end: 15922}
+      dna: 'G'
+      is_ref: false
+      all_filtered: true
+      top_AQ: [85]
+      zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15956, end: 15956}
       dna: 'G'
       is_ref: true
+      all_filtered: false
       top_AQ: [172]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15956, end: 15956}
       dna: 'A'
       is_ref: false
+      all_filtered: false
       top_AQ: [257]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15983, end: 15983}
       dna: 'C'
       is_ref: true
+      all_filtered: false
       top_AQ: [172,0]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15983, end: 15983}
       dna: 'G'
       is_ref: false
+      all_filtered: false
       top_AQ: [257]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15983, end: 15983}
       dna: 'T'
       is_ref: false
+      all_filtered: false
       top_AQ: [257]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15985, end: 15985}
       dna: 'A'
       is_ref: true
-      top_AQ: [172,0]
-      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+      all_filtered: false
+      top_AQ: [172, 172]
+      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15985, end: 15985}
       dna: 'T'
       is_ref: false
-      top_AQ: [257]
-      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+      all_filtered: false
+      top_AQ: [257, 257]
+      zygosity_by_GQ: [[2,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15987, end: 15987}
       dna: 'M'
       is_ref: true
+      all_filtered: false
       top_AQ: [0]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 15987, end: 15987}
       dna: 'C'
       is_ref: false
+      all_filtered: false
       top_AQ: [716]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
@@ -175,7 +199,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: 1, beg: 15985, end: 15985}
       alleles: [A, T]
-      allele_frequencies: [.nan, 0.25]
+      allele_frequencies: [.nan, 0.5]
       quality: 257
       unification:
         - range: {beg: 15985, end: 15985}

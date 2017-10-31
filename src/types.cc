@@ -43,6 +43,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
             if (ai.is_ref != p->second.is_ref) {
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
+            p->second.all_filtered = p->second.all_filtered && ai.all_filtered;
             p->second.topAQ += ai.topAQ;
             p->second.zGQ += ai.zGQ;
         }
@@ -121,6 +122,8 @@ Status yaml_of_one_discovered_allele(const allele& allele,
         << YAML::Value << allele.dna;
     out << YAML::Key << "is_ref"
         << YAML::Value << ainfo.is_ref;
+    out << YAML::Key << "all_filtered"
+        << YAML::Value << ainfo.all_filtered;
     out << YAML::Key << "top_AQ"
         << YAML::Value << YAML::Flow << YAML::BeginSeq;
     for (unsigned i = 0; i < top_AQ::COUNT; i++) {
@@ -189,6 +192,10 @@ Status one_discovered_allele_of_yaml(const YAML::Node& yaml,
     const auto n_is_ref = yaml["is_ref"];
     VR(n_is_ref && n_is_ref.IsScalar(), "missing/invalid 'is_ref' field in entry");
     ai.is_ref = n_is_ref.as<bool>();
+
+    const auto n_all_filtered = yaml["all_filtered"];
+    VR(n_all_filtered && n_all_filtered.IsScalar(), "missing/invalid 'all_filtered' field in entry");
+    ai.all_filtered = n_all_filtered.as<bool>();
 
     const auto n_topAQ = yaml["top_AQ"];
     VR(n_topAQ && n_topAQ.IsSequence(), "missing/invalid 'top_AQ' field in entry");
@@ -280,6 +287,7 @@ static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
 
         capnp::DiscoveredAlleleInfo::Builder dai = al_pk.initDai();
         dai.setIsRef(val.is_ref);
+        dai.setAllFiltered(val.all_filtered);
 
         ::capnp::List<int64_t>::Builder topAQ = dai.initTopAQ(top_AQ::COUNT);
         for (int k=0; k < top_AQ::COUNT; k++) {
@@ -365,6 +373,7 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
         discovered_allele_info dai;
         capnp::DiscoveredAlleleInfo::Reader dai_pk = aip.getDai();
         dai.is_ref = dai_pk.getIsRef();
+        dai.all_filtered = dai_pk.getAllFiltered();
 
         ::capnp::List<int64_t>::Reader topAQ_pk = dai_pk.getTopAQ();
         if (topAQ_pk.size() != top_AQ::COUNT) {
@@ -784,6 +793,12 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("unifier_config::of_yaml: " msg)
     V(yaml.IsMap(), "not a map at top level");
 
+    const auto n_drop_filtered = yaml["drop_filtered"];
+    if (n_drop_filtered) {
+        V(n_drop_filtered.IsScalar(), "invalid drop_filtered");
+        ans.drop_filtered = n_drop_filtered.as<bool>();
+    }
+
     const auto n_min_allele_copy_number = yaml["min_allele_copy_number"];
     if (n_min_allele_copy_number) {
         V(n_min_allele_copy_number.IsScalar(), "invalid min_allele_copy_number");
@@ -845,6 +860,7 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
 
 Status unifier_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::BeginMap;
+    ans << YAML::Key << "drop_filtered" << YAML::Value << drop_filtered;
     ans << YAML::Key << "min_allele_copy_number" << YAML::Value << min_allele_copy_number;
     ans << YAML::Key << "min_AQ1" << YAML::Value << min_AQ1;
     ans << YAML::Key << "min_AQ2" << YAML::Value << min_AQ2;

@@ -44,11 +44,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 // sites.
                 continue;
             }
-            if (bcf_has_filter(dataset_header.get(), record.get(), ".") == 0) {
-                // Skip records that fail a filter. It might be nice to have a
-                // whitelist in the future.
-                continue;
-            }
+            bool filtered = (bcf_has_filter(dataset_header.get(), record.get(), ".") == 0);
 
             // find the max AQ for each allele
             S(diploid::bcf_alleles_topAQ(dataset_header.get(), record.get(), dataset_relevant_samples, topAQ));
@@ -68,6 +64,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
                     discovered_allele_info ai;
                     ai.is_ref = false;
+                    ai.all_filtered = filtered;
                     ai.topAQ = topAQ[i];
                     ai.zGQ = zGQ[i];
                     dsals.insert(make_pair(allele(rng, aldna), ai));
@@ -82,6 +79,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                 if (any_alt) {
                     discovered_allele_info ai;
                     ai.is_ref = true;
+                    ai.all_filtered = filtered;
                     ai.topAQ = topAQ[0];
                     ai.zGQ = zGQ[0];
                     dsals.insert(make_pair(allele(rng, refdna), ai));

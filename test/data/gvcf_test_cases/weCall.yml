@@ -61,6 +61,7 @@ input:
         12	112080563	.	AACAC	A	79	PASS	PP=79;DP=8;DPR=6;DPF=2;VC=5;VCR=4;VCF=1;ABPV=.;SBPV=0.6332;MQ=60;BR=14;QD=24.58	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|1:125,65,0:65:3000:11080543:0,5:8:0.62
 
 unifier_config:
+  drop_filtered: true
   monoallelic_sites_for_lost_alleles: true
 
 genotyper_config:
@@ -118,8 +119,8 @@ truth_unified_sites:
         to: 1
   - range: {ref: 12, beg: 112080563, end: 112080567}
     alleles: [AACAC, A]
-    allele_frequencies: [.nan, 0.333334]
-    quality: 125
+    allele_frequencies: [.nan, 0.5]
+    quality: 165
     unification:
       - range: {beg: 112080563, end: 112080567}
         dna: A
@@ -140,4 +141,4 @@ truth_output_vcf:
       ##contig=<ID=12,length=133275309>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
       12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:0:0,0:.:..	0/1:476:770,0,476:52:22,30:.:..
-      12	112080563	.	AACAC	A	125	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:21:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
+      12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:21:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
