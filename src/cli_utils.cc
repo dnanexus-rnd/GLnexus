@@ -642,6 +642,53 @@ xAtlas:
               number: basic
               count: 1
               ignore_non_variants: true
+weCall:
+    unifier_config:
+        drop_filtered: true
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
+            - orig_names: [MIN_DP, DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
+            - orig_names: [FILTER]
+              name: FT
+              description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
+              type: string
+              combi_method: missing
+              number: basic
+              count: 1
+              ignore_non_variants: true
 )eof";
 
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
