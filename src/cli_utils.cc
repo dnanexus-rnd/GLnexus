@@ -666,7 +666,7 @@ weCall:
               combi_method: missing
               count: 0
               ignore_non_variants: true
-            - orig_names: [MIN_DP, DP]
+            - orig_names: [DP, MIN_DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
               type: int

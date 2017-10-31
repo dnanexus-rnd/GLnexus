@@ -84,7 +84,7 @@ genotyper_config:
           combi_method: missing
           count: 0
           ignore_non_variants: true
-        - orig_names: [MIN_DP, DP]
+        - orig_names: [DP, MIN_DP]
           name: DP
           description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
           type: int
@@ -140,5 +140,5 @@ truth_output_vcf:
       ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=12,length=133275309>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
-      12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:0:0,0:.:..	0/1:476:770,0,476:52:22,30:.:..
-      12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:21:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
+      12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:162:0,0:.:..	0/1:476:770,0,476:52:22,30:.:..
+      12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:41:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
