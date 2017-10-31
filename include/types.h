@@ -709,11 +709,8 @@ struct retained_format_field {
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0,
         DefaultValueFiller default_type_=DefaultValueFiller::MISSING, bool ignore_non_variants_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_) {
-        // Keep the names in sorted order, so that the comparison operator
-        // will compare orig_name vectors element-wise.
-        std::sort(orig_names.begin(), orig_names.end());
-    };
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_)
+        {}
 
     Status yaml(YAML::Emitter &out) const;
     static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);

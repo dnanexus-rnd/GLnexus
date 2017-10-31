@@ -715,3 +715,9 @@ TEST_CASE("xAtlas") {
     vector<string> v_infos = {};
     GVCFTestCase("xAtlas", v_formats, v_infos, true).perform_gvcf_test();
 }
+
+TEST_CASE("weCall") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT"};
+    vector<string> v_infos = {};
+    GVCFTestCase("weCall", v_formats, v_infos, false).perform_gvcf_test();
+}
