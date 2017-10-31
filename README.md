@@ -8,13 +8,12 @@ This is an early-stage R&D project we're developing openly. The code doesn't yet
 
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
-Install [gcc 5+](http://askubuntu.com/a/581497), [CMake 3.2+](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), [zstd 0.8.0+](https://github.com/facebook/zstd/releases/tag/v1.2.0), and packages: `autoconf` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `libbz2-dev` `python-pyvcf`.
+Install [gcc 5+](http://askubuntu.com/a/581497), [CMake 3.2+](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), and packages: `autoconf` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `libbz2-dev` `python-pyvcf`.
 
-Install version 1.2 of zstd. Note that zstd is under heavy
-development, and other versions, including apt packages, may not work.
+Install version 1.3.2 of [zstd](https://github.com/facebook/zstd) (developing rapidly; older versions commonly found in package repositories may not work):
 
 ```
-tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.2.0.tar.gz)
+tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.3.2.tar.gz)
 make -C zstd-* -j8
 sudo make -C zstd-* install
 ```
