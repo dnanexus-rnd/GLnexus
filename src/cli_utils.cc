@@ -944,7 +944,8 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     << stats.duplicate_records << " duplicate) in "
                     << stats.buckets << " buckets. "
                     << "Bucket max " << stats.max_bytes << " bytes, max "
-                    << stats.max_records << " records.";
+                    << stats.max_records << " records. "
+                    << stats.skipped_records << " BCF records skipped due to caller-specific exceptions.";
 
     // call all_samples_sampleset to create the sample set including
     // the newly loaded ones. By doing this now we make it possible

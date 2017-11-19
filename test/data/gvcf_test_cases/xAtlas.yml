@@ -26,6 +26,7 @@ input:
     ##FILTER=<ID=single_strand,Description="All variant reads are in a single strand direction">
     ##FILTER=<ID=No_data,Description="No valid reads on this site">
     ##FILTER=<ID=No_var,Description="No valid variants reads on this site">
+    ##FILTER=<ID=VRFromDeletion,Description="Variant read coverage recorded in non-variant block originates from deletion called upstream">
     ##INFO=<ID=P,Number=1,Type=Float,Description="SNP p-value">
     ##INFO=<ID=equal_majority,Number=0,Type=Flag,Description="The called SNP has an equal number of reads indicating another variant call and base was chosen by highest summed quality score">
     ##INFO=<ID=BLOCKAVG_min30p3a,Number=0,Type=Flag,Description="Non-variant block compression scheme BLOCKAVG_min30p3a">
@@ -53,6 +54,8 @@ input:
         1	15983	.	C	T	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	1/1:19:1:20:.:257,172,0
         1	15985	.	A	T	36	low_coverage	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:4:0:4:.:257,0,172
         1	15987	.	M	C	45	PASS	P=0.999968	GT:VR:RR:DP:GQ:PL	1/1:26:0:26:.:716,75,0
+        1	15989	.	AG	A	40	PASS	P=0.999904	GT:VR:RR:DP:GQ:PL	1/1:25:1:26:.:659,47,0
+        1	15990	.	G	.	.	VRFromDeletion	END=15990;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	1/1:25:1:26:.:659,47,0:25,25,25,0:1,1,1,0:26,26,26,0
 
 unifier_config:
     drop_filtered: true
@@ -176,6 +179,18 @@ truth_discovered_alleles:
       all_filtered: false
       top_AQ: [716]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15989, end: 15990}
+      dna: 'AG'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [0]
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 15989, end: 15990}
+      dna: 'A'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [659]
+      zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
@@ -213,6 +228,14 @@ truth_unified_sites:
         - range: {beg: 15987, end: 15987}
           dna: C
           to: 1
+    - range: {ref: 1, beg: 15989, end: 15990}
+      alleles: [AG, A]
+      allele_frequencies: [.nan, 0.5]
+      quality: 659
+      unification:
+        - range: {beg: 15989, end: 15990}
+          dna: A
+          to: 1
 
 
 truth_output_vcf:
@@ -233,3 +256,4 @@ truth_output_vcf:
       1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:20:8:12:.:..	1/1:.:257,172,0,.,.,.:20:1:19:.:..
       1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..
       1	15987	.	M	C	716	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:716,75,0:26:0:26:.:..
+      1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..

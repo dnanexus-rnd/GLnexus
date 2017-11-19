@@ -1243,6 +1243,11 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             }
         }
 
+        if (bcf_has_filter(hdr, vt.get(), "VRFromDeletion") == 1) {
+            rslt.skipped_records++;
+            continue;
+        }
+
         // Check various aspects of the record's validity; e.g. make sure the
         // records are coordinate sorted.
         S(validate_bcf(rangeHelper, metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos));
