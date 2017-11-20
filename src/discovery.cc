@@ -56,7 +56,8 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // alleles that span multiple discovery ranges
 
             // create a discovered_alleles entry for each alt allele matching [ACGT]+
-            // In particular this excludes gVCF <NON_REF> symbolic alleles
+            // In particular this excludes gVCF <NON_REF> symbolic alleles, and any
+            // ALT alleles containing IUPAC degenerate letters.
             bool any_alt = false;
             for (int i = 1; i < record->n_allele; i++) {
                 string aldna(record->d.allele[i]);

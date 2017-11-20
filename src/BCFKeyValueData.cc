@@ -974,17 +974,13 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    // check that alleles are all distinct, and that all alleles are valid DNA;
-    // exceptions:
-    //   (1) the last ALT allele may be a symbolic one.
-    //   (2) the REF allele may contain general IUPAC nucleotide codes (a few of
-    //       which are present in the human genome reference assembly)
+    // check that alleles are all distinct, and that all alleles are valid strings
+    // of IUPAC nucleotides, except the last ALT allele which may be symbolic.
     set<string> alleles;
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (!(is_dna(allele_i) ||
-              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())) ||
-              (i == 0 && is_iupac_nucleotides(allele_i)))) {
+        if (!(is_iupac_nucleotides(allele_i) ||
+              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())))) {
             return Status::Invalid("allele is not a DNA sequence ",
                                 filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }
