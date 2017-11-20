@@ -65,7 +65,7 @@ static inline bool is_deletion(const string& ref, const string& alt) {
     string ref_al(record->d.allele[0]);
     for (int i = 1; i < record->n_allele; i++) {
         string al(record->d.allele[i]);
-        if (regex_match(al, regex_dna)) {
+        if (is_dna(al)) {
             auto p = site.unification.find(allele(rng, al));
             if (p != site.unification.end()) {
                 ans.allele_mapping[i] = p->second;

@@ -982,9 +982,9 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     set<string> alleles;
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (!(regex_match(allele_i, regex_dna) ||
+        if (!(is_dna(allele_i) ||
               (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())) ||
-              (i == 0 && regex_match(allele_i, regex_iupac_nucleotide)))) {
+              (i == 0 && is_iupac_nucleotides(allele_i)))) {
             return Status::Invalid("allele is not a DNA sequence ",
                                 filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }

@@ -61,7 +61,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             for (int i = 1; i < record->n_allele; i++) {
                 string aldna(record->d.allele[i]);
                 transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-                if (aldna.size() > 0 && regex_match(aldna, regex_dna)) {
+                if (aldna.size() > 0 && is_dna(aldna)) {
                     discovered_allele_info ai;
                     ai.is_ref = false;
                     ai.all_filtered = filtered;
@@ -75,7 +75,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // create an entry for the ref allele, if we discovered at least one alt allele.
             string refdna(record->d.allele[0]);
             transform(refdna.begin(), refdna.end(), refdna.begin(), ::toupper);
-            if (refdna.size() > 0 && regex_match(refdna, regex_iupac_nucleotide)) {
+            if (refdna.size() > 0 && is_iupac_nucleotides(refdna)) {
                 if (any_alt) {
                     discovered_allele_info ai;
                     ai.is_ref = true;
