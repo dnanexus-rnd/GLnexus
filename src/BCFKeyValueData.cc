@@ -20,6 +20,7 @@ using namespace std;
 
 const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
 const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
+const uint64_t MAX_RECORD_LEN = 100000;
 
 namespace GLnexus {
 
@@ -1239,7 +1240,11 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             }
         }
 
-        if (bcf_has_filter(hdr, vt.get(), "VRFromDeletion") == 1) {
+        // A few hard-coded cases where we, reluctantly, skip ingestion
+        // VRFromDeletion: accessory information from xAtlas
+        // MAX_RECORD_LEN: blows up database (due to repetition across buckets)
+        //                 and usually stems from gVCF caller bug anyway
+        if (bcf_has_filter(hdr, vt.get(), "VRFromDeletion") == 1 || vt_rng.size() >= MAX_RECORD_LEN) {
             rslt.skipped_records++;
             continue;
         }
