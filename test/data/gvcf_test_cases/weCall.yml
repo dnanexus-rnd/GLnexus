@@ -1,5 +1,9 @@
 readme: |
   weCall GVCF dialect
+  Subtleties:
+  1. Phased genotypes
+  2. Long reference confidence records (MIN_DP often zero)
+  3. Monoallelic representation for overlapping ALT alleles (two sites, one with 1|. and the other .|1)
 
 input:
   header : |-
@@ -47,10 +51,16 @@ input:
         12	111803962	.	G	A	498	PASS	PP=498;DP=35;DPR=29;DPF=6;VC=21;VCR=17;VCF=4;ABPV=.;SBPV=0.4884;MQ=60;BR=27;QD=25.37	GT:PL:GQ:PQ:PS:AD:DP:VAF	0|1:539,0,297:297:3000:111803941:14,21:35:0.6
         12	111803963	.	A	<NON_REF>	62	PASS	BEG=111803963;END=111803982;LEN=20	GT:DP:MIN_DP:GQ	0|0:35:30:62
         12	112080563	.	AACAC	A	119	BR	PP=119;DP=7;DPR=7;DPF=0;VC=4;VCR=4;VCF=0;ABPV=.;SBPV=.;MQ=56.43;BR=8;QD=40.72	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|0:165,0,373:17:475:11080533:3,4:7:0.5714
+        12	116271370	.	A	<NON_REF>	128	PASS	BEG=116271370;END=116271388;LEN=19	GT:DP:MIN_DP:GQ	0|0:124:97:128
+        12	116271389	.	CT	C	409	PASS	PP=409;DP=65;DPR=65;DPF=0;VC=27;VCR=27;VCF=0;ABPV=0.2226;SBPV=.;MQ=60;BR=33;QD=16.67	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|.:454,0,538:454:3000:36271369:1,27:65:0.4154
+        12	116271389	.	CTT	C	492	PASS	PP=492;DP=65;DPR=65;DPF=0;VC=37;VCR=37;VCF=0;ABPV=.;SBPV=.;MQ=60.58;BR=33;QD=14.43	GT:PL:GQ:PQ:PS:AD:DP:VAF	.|1:538,0,454:454:3000:36271369:1,37:65:0.5692
+        12	116271392	.	T	<NON_REF>	78	PASS	BEG=116271392;END=116271419;LEN=28	GT:DP:MIN_DP:GQ	0|0:58:42:78
+
     - B.gvcf: |
         B
         12	111803509	.	G	<NON_REF>	.	PASS	BEG=111803509;END=111804324;LEN=816	GT:DP:MIN_DP:GQ	0|0:162:0:.
         12	112080544	.	A	<NON_REF>	48	PASS	BEG=112080544;END=112080664;LEN=121	GT:DP:MIN_DP:GQ	0|0:41:21:48
+        12	116271370	.	A	<NON_REF>	128	PASS	BEG=116271370;END=116271470;LEN=101	GT:DP:MIN_DP:GQ	0|0:124:97:128
     - C.gvcf: |
         C
         12	111803769	.	A	<NON_REF>	58	PASS	BEG=111803769;END=111803941;LEN=173	GT:DP:MIN_DP:GQ	0|0:166:27:58
@@ -125,6 +135,17 @@ truth_unified_sites:
       - range: {beg: 112080563, end: 112080567}
         dna: A
         to: 1
+  - range: {ref: 12, beg: 116271389, end: 116271391}
+    alleles: [CTT, C, CT]
+    allele_frequencies: [.nan, 0.166667, 0.166667]
+    quality: 538
+    unification:
+      - range: {beg: 116271389, end: 116271391}
+        dna: C
+        to: 1
+      - range: {beg: 116271389, end: 116271390}
+        dna: C
+        to: 2
 
 truth_output_vcf:
   - truth.vcf: |
@@ -142,3 +163,4 @@ truth_output_vcf:
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
       12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:162:0,0:.:..	0/1:476:770,0,476:52:22,30:.:..
       12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:41:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
+      12	116271389	.	CTT	C,CT	538	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:65:.,37,27:.:O.	0/0:128:.:124:97,0,0:.:..	./.:.:.:.:.:.:MM

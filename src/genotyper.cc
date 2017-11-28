@@ -333,9 +333,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // ALT alleles aren't mutually exclusive on one chromosome), punt with
         // UnphasedVariants. We'll improve this in the future.
         //
-        // If at least one record is a heterozygous 0/X call where X is a known
-        // allele in the unified site, and none of the records call >1 ALT allele,
-        // generate a half-call from the highest-quality such record.
+        // If at least one record is a heterozygous 0/X or ./X call, where X is a
+        // known allele in the unified site, and none of the records call >1 ALT
+        // allele, generate a half-call from the highest-quality such record.
         // This at least recovers some of the information when the GVCF has two
         // overlapping 0/X records for one sample (we'd rather it present one record
         // heterozygous for two ALTs)
@@ -352,14 +352,14 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
             for (int i = 0; half_call && i < bcf_nsamples; i++) {
                 assert(a_record->gt.capacity > 2*i);
-                if (!bcf_gt_is_missing(a_record->gt[2*i]) && bcf_gt_allele(a_record->gt[2*i]) != 0) {
+                int al1 = bcf_gt_is_missing(a_record->gt[2*i]) ? -1 : bcf_gt_allele(a_record->gt[2*i]),
+                    al2 = bcf_gt_is_missing(a_record->gt[2*i+1]) ? -1 : bcf_gt_allele(a_record->gt[2*i+1]);
+                if (al1 > 0 && al2 > 0) {
                     half_call = false;
-                } else if (!bcf_gt_is_missing(a_record->gt[2*i+1])) {
-                    auto al = bcf_gt_allele(a_record->gt[2*i+1]);
-                    if (al > 0 && a_record->allele_mapping[al] > 0 &&
-                        (!record || record->p->qual < a_record->p->qual)) {
-                        record = a_record.get();
-                    }
+                } else if ((!record || record->p->qual < a_record->p->qual) &&
+                           ((al1 > 0 && a_record->allele_mapping[al1] > 0) ||
+                            (al2 > 0 && a_record->allele_mapping[al2] > 0))) {
+                    record = a_record.get();
                 }
             }
         }
