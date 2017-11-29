@@ -556,7 +556,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // Setup format field helpers
     vector<unique_ptr<FormatFieldHelper>> format_helpers;
-    S(setup_format_helpers(format_helpers, cfg.liftover_fields, site, samples));
+    S(setup_format_helpers(format_helpers, cfg, site, samples));
 
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;

@@ -700,6 +700,7 @@ weCall:
     genotyper_config:
         required_dp: 0
         revise_genotypes: false
+        ref_dp_format: DP
         liftover_fields:
             - orig_names: [GQ]
               name: GQ

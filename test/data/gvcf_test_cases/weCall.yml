@@ -82,6 +82,7 @@ unifier_config:
 genotyper_config:
     required_dp: 0
     revise_genotypes: false
+    ref_dp_format: DP
     liftover_fields:
         - orig_names: [GQ]
           name: GQ
@@ -177,7 +178,7 @@ truth_output_vcf:
       ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=12,length=133275309>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
-      12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:162:0,0:.:..	0/1:476:770,0,476:52:22,30:.:..
-      12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:41:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
-      12	116271389	.	CTT	C,CT	538	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:65:.,37,27:.:O.	0/0:128:.:124:97,0,0:.:..	./.:.:.:.:.:.:MM
-      12	116271420	.	TAC	T,TAG	668	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:31:.,18,12:.:O.	0/0:128:.:124:97,0,0:.:..	./.:.:.:.:.:.:MM
+      12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:162:162,0:.:..	0/1:476:770,0,476:52:22,30:.:..
+      12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:41:41,0:.:..	1/1:65:125,65,0:8:0,5:.:..
+      12	116271389	.	CTT	C,CT	538	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:65:.,37,27:.:O.	0/0:128:.:124:124,0,0:.:..	./.:.:.:.:.:.:MM
+      12	116271420	.	TAC	T,TAG	668	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:31:.,18,12:.:O.	0/0:128:.:124:124,0,0:.:..	./.:.:.:.:.:.:MM
