@@ -150,6 +150,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
                 const std::string &dbpath,
                 const GLnexus::genotyper_config &genotyper_cfg,
                 const std::vector<unified_site> &sites,
+                const std::vector<std::string> &extra_header_lines,
                 const std::string &output_filename);
 
 // compare different implementations of database iteration methods.

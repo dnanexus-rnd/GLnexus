@@ -1056,6 +1056,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
                 const string &dbpath,
                 const genotyper_config &genotyper_cfg,
                 const vector<unified_site> &sites,
+                const vector<string>& extra_header_lines,
                 const string &output_filename) {
     Status s;
     logger->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
@@ -1073,6 +1074,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     // start service, discover alleles, unify sites, genotype sites
     service_config svccfg;
     svccfg.threads = nr_threads;
+    svccfg.extra_header_lines = extra_header_lines;
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
 

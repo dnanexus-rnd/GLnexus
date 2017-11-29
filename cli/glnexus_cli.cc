@@ -128,9 +128,10 @@ static int all_steps(const vector<string> &vcf_files,
 
     // genotype
     genotyper_cfg.output_residuals = debug;
+    vector<string> hdr_lines = { ("##GLnexusConfigPreset="+config_preset) };
     string outfile("-");
     H("Genotyping",
-      GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, outfile));
+      GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, hdr_lines, outfile));
 
     return 0;
 }
