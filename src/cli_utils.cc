@@ -693,7 +693,9 @@ xAtlas:
               ignore_non_variants: true
 weCall:
     unifier_config:
-        drop_filtered: true
+        min_AQ1: 60
+        min_AQ2: 30
+        min_GQ: 30
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
         required_dp: 0

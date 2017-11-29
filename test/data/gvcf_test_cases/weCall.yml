@@ -71,7 +71,9 @@ input:
         12	112080563	.	AACAC	A	79	PASS	PP=79;DP=8;DPR=6;DPF=2;VC=5;VCR=4;VCF=1;ABPV=.;SBPV=0.6332;MQ=60;BR=14;QD=24.58	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|1:125,65,0:65:3000:11080543:0,5:8:0.62
 
 unifier_config:
-  drop_filtered: true
+  min_AQ1: 60
+  min_AQ2: 30
+  min_GQ: 30
   monoallelic_sites_for_lost_alleles: true
 
 genotyper_config:
@@ -129,7 +131,7 @@ truth_unified_sites:
         to: 1
   - range: {ref: 12, beg: 112080563, end: 112080567}
     alleles: [AACAC, A]
-    allele_frequencies: [.nan, 0.5]
+    allele_frequencies: [.nan, 0.333334]
     quality: 165
     unification:
       - range: {beg: 112080563, end: 112080567}
