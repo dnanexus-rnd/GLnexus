@@ -55,6 +55,9 @@ input:
         12	116271389	.	CT	C	409	PASS	PP=409;DP=65;DPR=65;DPF=0;VC=27;VCR=27;VCF=0;ABPV=0.2226;SBPV=.;MQ=60;BR=33;QD=16.67	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|.:454,0,538:454:3000:36271369:1,27:65:0.4154
         12	116271389	.	CTT	C	492	PASS	PP=492;DP=65;DPR=65;DPF=0;VC=37;VCR=37;VCF=0;ABPV=.;SBPV=.;MQ=60.58;BR=33;QD=14.43	GT:PL:GQ:PQ:PS:AD:DP:VAF	.|1:538,0,454:454:3000:36271369:1,37:65:0.5692
         12	116271392	.	T	<NON_REF>	78	PASS	BEG=116271392;END=116271419;LEN=28	GT:DP:MIN_DP:GQ	0|0:58:42:78
+        12	116271420	.	TAC	T	620	MQ	PP=620;DP=36;DPR=21;DPF=15;VC=18;VCR=14;VCF=4;ABPV=.;SBPV=0.1199;MQ=36.56;BR=33;QD=36.77	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|.:668,0,494:164:1652:1722547:5,18:36:0.5
+        12	116271422	.	C	G	265	MQ	PP=265;DP=31;DPR=19;DPF=12;VC=12;VCR=4;VCF=8;ABPV=0.21;SBPV=0.06592;MQ=33.12;BR=33;QD=24.98	GT:PL:GQ:PQ:PS:AD:DP:VAF	.|1:301,0,1074:164:1652:1722547:3,12:31:0.3871
+        12	116271423	.	A	<NON_REF>	48	PASS	BEG=1722575;END=1722598;LEN=24	GT:DP:MIN_DP:GQ	0|0:30:21:48
 
     - B.gvcf: |
         B
@@ -148,6 +151,17 @@ truth_unified_sites:
       - range: {beg: 116271389, end: 116271390}
         dna: C
         to: 2
+  - range: {ref: 12, beg: 116271420, end: 116271422}
+    alleles: [TAC, T, TAG]
+    allele_frequencies: [.nan, 0.166667, 0.166667]
+    quality: 668
+    unification:
+      - range: {beg: 116271420, end: 116271422}
+        dna: T
+        to: 1
+      - range: {beg: 116271422, end: 116271422}
+        dna: G
+        to: 2
 
 truth_output_vcf:
   - truth.vcf: |
@@ -166,3 +180,4 @@ truth_output_vcf:
       12	111803962	.	G	A	770	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:297:539,0,297:35:14,21:.:..	0/0:.:.:162:0,0:.:..	0/1:476:770,0,476:52:22,30:.:..
       12	112080563	.	AACAC	A	165	.	.	GT:GQ:PL:DP:AD:FT:RNC	0/1:17:165,0,373:7:3,4:BR:..	0/0:48:.:41:21,0:.:..	1/1:65:125,65,0:8:0,5:.:..
       12	116271389	.	CTT	C,CT	538	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:65:.,37,27:.:O.	0/0:128:.:124:97,0,0:.:..	./.:.:.:.:.:.:MM
+      12	116271420	.	TAC	T,TAG	668	.	.	GT:GQ:PL:DP:AD:FT:RNC	./1:.:.:31:.,18,12:.:O.	0/0:128:.:124:97,0,0:.:..	./.:.:.:.:.:.:MM

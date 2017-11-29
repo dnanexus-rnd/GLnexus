@@ -503,6 +503,8 @@ Status unified_sites(const unifier_config& cfg,
         assert(std::is_sorted(ans.begin(), ans.end()));
     }
 
+    // TODO: report final count of alleles pruned due to failing filters/AQ/#
+
     return Status::OK();
 }
 
