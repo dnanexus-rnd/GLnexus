@@ -725,7 +725,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             RNC_CASE(LostAllele,"L")
             RNC_CASE(UnphasedVariants,"U")
             RNC_CASE(OverlappingVariants,"O")
-            RNC_CASE(MonoallelicSite,"M")
+            RNC_CASE(MonoallelicSite,"1")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }
