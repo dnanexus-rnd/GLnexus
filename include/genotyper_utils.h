@@ -617,6 +617,7 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
             count = (site.alleles.size());
         } else if (format_field_info.number == RetainedFieldNumber::GENOTYPE) {
             count = diploid::genotypes(site.alleles.size());
+            // TODO: censor if count > 15 (5 alleles) to prevent explosion
         }
 
         if (count < 0) {
