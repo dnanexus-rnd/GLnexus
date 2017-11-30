@@ -116,6 +116,6 @@ truth_output_vcf:
       ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
-      A	608819	.	AGGGACTGGGGCCGGGACCGGGACC	A	150	MONOALLELIC	.	GT:DP:AD:RNC	./.:12:.,0:MM	./.:.:.:PP	./.:13:.,0:MM	1/1:4:.,4:..
+      A	608819	.	AGGGACTGGGGCCGGGACCGGGACC	A	150	MONOALLELIC	.	GT:DP:AD:RNC	./.:12:.,0:11	./.:.:.:PP	./.:13:.,0:11	1/1:4:.,4:..
       A	608825	.	TGGGGCCG	T,TGGAGCCG	1003	.	.	GT:DP:AD:RNC	1/1:16:0,18,0:..	2/2:14:0,0,15:..	1/1:18:0,18,0:..	./.:4:0,0,0:--
       A	608835	.	ACCGGGACCGGGACTGGG	A	831	.	.	GT:DP:AD:RNC	1/1:12:0,19:..	0/0:6:6,0:..	1/1:17:0,17:..	./.:4:0,0:--

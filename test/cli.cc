@@ -78,7 +78,7 @@ TEST_CASE("cli") {
         REQUIRE(s.ok());
 
         filename = DB_DIR + "/results.bcf";
-        s = cli::utils::genotype(console, nr_threads, DB_PATH, genotyper_cfg, sites, filename);
+        s = cli::utils::genotype(console, nr_threads, DB_PATH, genotyper_cfg, sites, {}, filename);
         REQUIRE(s.ok());
     }
 

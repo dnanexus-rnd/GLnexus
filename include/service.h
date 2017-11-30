@@ -13,6 +13,9 @@ namespace GLnexus {
 
 struct service_config {
     size_t threads = 0;
+
+    // additional (informational) lines to insert into output pVCF headers
+    std::vector<std::string> extra_header_lines;
 };
 
 class Service {

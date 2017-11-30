@@ -20,6 +20,7 @@ using discovered_allele = pair<allele,discovered_allele_info>;
 // original representations.
 struct minimized_allele_info {
     set<allele> originals;
+    bool all_filtered = false;
     top_AQ topAQ;
     unsigned copy_number = 0;
 
@@ -141,11 +142,13 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
         if (ap == alts.end()) {
             minimized_allele_info info;
             info.originals.insert(dal.first);
+            info.all_filtered = dal.second.all_filtered;
             info.topAQ = dal.second.topAQ;
             info.copy_number = copy_number;
             alts[min_alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
+            ap->second.all_filtered = ap->second.all_filtered && dal.second.all_filtered;
             ap->second.topAQ += dal.second.topAQ;
             ap->second.copy_number += copy_number;
         }
@@ -193,6 +196,10 @@ auto partition(discovered_or_minimized_alleles& alleles) {
     return ans;
 }
 
+bool check_filtered(const unifier_config& cfg, const minimized_allele& al) {
+    return !(cfg.drop_filtered && al.second.all_filtered);
+}
+
 bool check_AQ(const unifier_config& cfg, const minimized_allele& al) {
     return (al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2);
 }
@@ -221,7 +228,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
             al.second.copy_number = std::max(al.second.copy_number, 2U);
         }
 
-        if (check_AQ(cfg, al) && check_copy_number(cfg, al)) {
+        if (check_filtered(cfg, al) && check_AQ(cfg, al) && check_copy_number(cfg, al)) {
             valleles.push_back(al);
         } else {
             pruned.insert(al);
@@ -482,7 +489,7 @@ Status unified_sites(const unifier_config& cfg,
     if (cfg.monoallelic_sites_for_lost_alleles) {
         auto k = ans.size();
         for (const auto& pa : all_pruned_alleles) {
-            if (check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
+            if (check_filtered(cfg, pa.first) && check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
                 unified_site ms(pa.first.first.pos);
                 S(unify_alleles(cfg, N, pa.first.first.pos, discovered_alleles{pa.second},
                                 minimized_alleles{pa.first}, minimized_alleles(), ms));
@@ -495,6 +502,8 @@ Status unified_sites(const unifier_config& cfg,
         std::inplace_merge(ans.begin(), ans.begin()+k, ans.end());
         assert(std::is_sorted(ans.begin(), ans.end()));
     }
+
+    // TODO: report final count of alleles pruned due to failing filters/AQ/#
 
     return Status::OK();
 }

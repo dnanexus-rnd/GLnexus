@@ -186,12 +186,14 @@ Status Service::discover_alleles(const string& sampleset, const vector<range>& r
 }
 
 static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
-                                 const vector<string>& samples, const vector<retained_format_field> format_fields,
+                                 const vector<string>& samples,
+                                 const vector<retained_format_field> format_fields,
+                                 const vector<string>& extra_header_lines,
                                  shared_ptr<bcf_hdr_t>& ans) {
     vector<string> hdr_lines;
     hdr_lines.push_back("##FILTER=<ID=MONOALLELIC,Description=\"Site represents one ALT allele in a region with multiple variants that could not be unified into non-overlapping multi-allelic sites\"");
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-    hdr_lines.push_back("##FORMAT=<ID=RNC,Number=2,Type=Character,Description=\"Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present, M = site is Monoallelic, no assertion about presence of REF or ALT allele\">");
+    hdr_lines.push_back("##FORMAT=<ID=RNC,Number=2,Type=Character,Description=\"Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present, 1 = site is Monoallelic, no assertion about presence of REF or ALT allele\">");
     for (auto& format_field : format_fields) {
         hdr_lines.push_back(format_field.description);
     }
@@ -199,6 +201,10 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
         ostringstream stm;
         stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
         hdr_lines.push_back(stm.str());
+    }
+    hdr_lines.push_back("##GLnexusVersion=" + string(GIT_REVISION));
+    for (const auto& line : extra_header_lines) {
+        hdr_lines.push_back(line);
     }
 
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w1"), &bcf_hdr_destroy);
@@ -293,7 +299,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // create a BCF header for this sample set
     // TODO: make optional
     shared_ptr<bcf_hdr_t> hdr;
-    S(prepare_bcf_header(body_->metadata_->contigs(), sample_names, cfg.liftover_fields, hdr));
+    S(prepare_bcf_header(body_->metadata_->contigs(), sample_names, cfg.liftover_fields,
+                         body_->cfg_.extra_header_lines, hdr));
 
     // open output BCF file
     unique_ptr<BCFFileSink> bcf_out;

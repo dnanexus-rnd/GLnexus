@@ -372,8 +372,8 @@ public:
 // Special-case logic for the allele depth (AD) field
 class ADFieldHelper : public NumericFormatFieldHelper<int32_t> {
 public:
-    ADFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
-        : NumericFormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+    ADFieldHelper(const string& ref_dp_format, const retained_format_field& field_info_, int n_samples_, int count_)
+        : NumericFormatFieldHelper<int32_t>(field_info_, n_samples_, count_), ref_dp_format_(ref_dp_format) {
         assert(field_info.name == "AD");
     }
 
@@ -387,13 +387,15 @@ public:
             // Record has no AD field, usually meaning it's a reference confidence record
             // (though there are exceptions, e.g. gVCF test case DP0_noAD).
             // use MIN_DP/DP as the reference allele depth
-            s = NumericFormatFieldHelper<int32_t>::add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, n_allele_out, {"MIN_DP", "DP"}, 1);
+            s = NumericFormatFieldHelper<int32_t>::add_record_data(dataset, dataset_header, record, sample_mapping, allele_mapping, n_allele_out, {ref_dp_format_}, 1);
         }
 
         return s;
     }
 
 protected:
+    const string& ref_dp_format_;
+
     Status perform_censor(vector<int32_t>& values) override {
         Status s;
         if (!censored_samples.empty()) {
@@ -603,10 +605,10 @@ public:
 
 
 Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helpers,
-                            const vector<retained_format_field>& liftover_fields,
+                            const genotyper_config& cfg,
                             const unified_site& site,
                             const vector<string>& samples) {
-    for (const auto& format_field_info : liftover_fields) {
+    for (const auto& format_field_info : cfg.liftover_fields) {
         int count = -1;
         if (format_field_info.number == RetainedFieldNumber::BASIC) {
             count = format_field_info.count;
@@ -617,6 +619,7 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
             count = (site.alleles.size());
         } else if (format_field_info.number == RetainedFieldNumber::GENOTYPE) {
             count = diploid::genotypes(site.alleles.size());
+            // TODO: censor if count > 15 (5 alleles) to prevent explosion
         }
 
         if (count < 0) {
@@ -627,7 +630,7 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
             if (format_field_info.type != RetainedFieldType::INT || format_field_info.number != RetainedFieldNumber::ALLELES) {
                 return Status::Invalid("genotyper misconfiguration: AD format field should have type=int, number=alleles");
             }
-            format_helpers.push_back(unique_ptr<FormatFieldHelper>(new ADFieldHelper(format_field_info, samples.size(), count)));
+            format_helpers.push_back(unique_ptr<FormatFieldHelper>(new ADFieldHelper(cfg.ref_dp_format, format_field_info, samples.size(), count)));
         } else if (format_field_info.name == "FT") {
             if (format_field_info.type != RetainedFieldType::STRING || format_field_info.number != RetainedFieldNumber::BASIC || format_field_info.count != 1) {
                 return Status::Invalid("genotyper misconfiguration: FT format field should have type=string, number=basic, count=1");

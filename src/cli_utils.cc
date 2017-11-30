@@ -637,6 +637,7 @@ gatk_unfiltered:
               count: 4
 xAtlas:
     unifier_config:
+        drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
         required_dp: 0
@@ -685,6 +686,48 @@ xAtlas:
             - orig_names: [FILTER]
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
+              type: string
+              combi_method: missing
+              number: basic
+              count: 1
+              ignore_non_variants: true
+weCall:
+    unifier_config:
+        min_AQ1: 60
+        min_AQ2: 30
+        min_GQ: 30
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        ref_dp_format: DP
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [DP, MIN_DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
+            - orig_names: [FILTER]
+              name: FT
+              description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
               type: string
               combi_method: missing
               number: basic
@@ -1008,6 +1051,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
                 const string &dbpath,
                 const genotyper_config &genotyper_cfg,
                 const vector<unified_site> &sites,
+                const vector<string>& extra_header_lines,
                 const string &output_filename) {
     Status s;
     logger->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
@@ -1025,6 +1069,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     // start service, discover alleles, unify sites, genotype sites
     service_config svccfg;
     svccfg.threads = nr_threads;
+    svccfg.extra_header_lines = extra_header_lines;
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
 

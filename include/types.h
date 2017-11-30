@@ -377,6 +377,9 @@ struct zygosity_by_GQ {
 struct discovered_allele_info {
     bool is_ref = false;
 
+    // if true, then all observations of this allele had a non-PASS FILTER
+    bool all_filtered = false;
+
     // top_AQ statistics are used to adjudicate allele existence
     top_AQ topAQ;
 
@@ -384,13 +387,13 @@ struct discovered_allele_info {
     zygosity_by_GQ zGQ;
 
     bool operator==(const discovered_allele_info& rhs) const noexcept {
-        return is_ref == rhs.is_ref && topAQ == rhs.topAQ && zGQ == rhs.zGQ;
+        return is_ref == rhs.is_ref && all_filtered == rhs.all_filtered && topAQ == rhs.topAQ && zGQ == rhs.zGQ;
     }
     bool operator!=(const discovered_allele_info& rhs) const noexcept { return !(*this == rhs); }
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " maxAQ: " << topAQ.V[0] << " copy number: " << zGQ.copy_number() << "]";
+        os << "[ is_ref: " << std::boolalpha << is_ref << " all_filtered: " << std::boolalpha << all_filtered << " maxAQ: " << topAQ.V[0] << " copy number: " << zGQ.copy_number() << "]";
         return os.str();
     }
 };
@@ -572,6 +575,10 @@ struct StatsRangeQuery {
 enum class UnifierPreference { Common, Small };
 
 struct unifier_config {
+    // drop a discovered ALT allele if all observations of it fail some FILTER
+    // in the input GVCFs
+    bool drop_filtered = false;
+
     // AQ phred score thresholds: the unifier will include alleles having any
     // observation with AQ > min_AQ1, or having multiple observations with
     // AQ > min_AQ2 (min_AQ1 >= min_AQ2).
@@ -709,11 +716,8 @@ struct retained_format_field {
     retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0,
         DefaultValueFiller default_type_=DefaultValueFiller::MISSING, bool ignore_non_variants_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_) {
-        // Keep the names in sorted order, so that the comparison operator
-        // will compare orig_name vectors element-wise.
-        std::sort(orig_names.begin(), orig_names.end());
-    };
+        : orig_names(orig_names_), name(name_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_)
+        {}
 
     Status yaml(YAML::Emitter &out) const;
     static Status of_yaml(const YAML::Node& yaml, std::unique_ptr<retained_format_field>& ans);

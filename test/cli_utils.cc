@@ -39,11 +39,13 @@ TEST_CASE("cli_utils") {
 - range: {ref: '16', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '16', beg: 113, end: 120}
   dna: G
   is_ref: false
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
@@ -52,11 +54,13 @@ TEST_CASE("cli_utils") {
 - range: {ref: '17', beg: 100, end: 100}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 200, end: 310}
   dna: G
   is_ref: false
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
@@ -65,11 +69,13 @@ TEST_CASE("cli_utils") {
 - range: {ref: '16', beg: 107, end: 109}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 220, end: 330}
   dna: G
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";
@@ -478,6 +484,7 @@ unification:
 - range: {ref: '16', beg: 107, end: 109}
   dna: A
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 )";
@@ -486,16 +493,19 @@ unification:
 - range: {ref: '16', beg: 107, end: 109}
   dna: G
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[100,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 - range: {ref: '17', beg: 500, end: 501}
   dna: G
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 - range: {ref: '17', beg: 1190, end: 1200}
   dna: G
   is_ref: true
+  all_filtered: false
   top_AQ: [99]
   zygosity_by_GQ: [[0,0],[10,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,5]]
 )";

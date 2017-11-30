@@ -8,6 +8,9 @@ $Cxx.namespace("GLnexus::capnp");
 struct DiscoveredAlleleInfo {
     isRef @0 :Bool = false;
 
+    # indicates whether all observations of this allele failed some VCF FILTER
+    allFiltered @4 :Bool = false;
+
     # top_AQ statistics are used to adjudicate allele existence
     topAQ @1 :List(Int64);
 

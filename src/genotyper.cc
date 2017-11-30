@@ -304,7 +304,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                            records_00, depth, min_ref_depth));
 
     bcf1_t_plus* record = nullptr;
-    bool half_call = false;
+    int half_call = -1; // -1: full call, 0: half-call of left allele, 1: half-call of right allele
 
     if (records_non00.size() == 0) {
         // no variation represented in this dataset; make homozygous ref calls
@@ -331,18 +331,18 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         //
         // If the records don't all share at least one position in common (i.e. their
         // ALT alleles aren't mutually exclusive on one chromosome), punt with
-        // UnphasedVariants. We'll improve this in the future.
+        // UnphasedVariants. We may improve upon this especially if there is phasing
+        // info.
         //
-        // If at least one record is a heterozygous 0/X call where X is a known
-        // allele in the unified site, and none of the records call >1 ALT allele,
-        // generate a half-call from the highest-quality such record.
-        // This at least recovers some of the information when the GVCF has two
-        // overlapping 0/X records for one sample (we'd rather it present one record
-        // heterozygous for two ALTs)
+        // If all of the records call only one ALT allele, generate a half-call from
+        // the highest-quality such record. This at least recovers some of the
+        // information when the GVCF has two overlapping 0/X records for one sample
+        // (we'd rather it present one record heterozygous for two ALTs). We may try
+        // to combine them in some cases in the future.
         //
         // Otherwise: punt with OverlappingVariants
 
-        half_call = true;
+        bool can_half_call = true;
         range intersection(records_non00[0]->p);
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
@@ -350,14 +350,18 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             intersection.beg = max(record_rng.beg, intersection.beg);
             intersection.end = min(record_rng.end, intersection.end);
 
-            for (int i = 0; half_call && i < bcf_nsamples; i++) {
+            for (int i = 0; can_half_call && i < bcf_nsamples; i++) {
                 assert(a_record->gt.capacity > 2*i);
-                if (!bcf_gt_is_missing(a_record->gt[2*i]) && bcf_gt_allele(a_record->gt[2*i]) != 0) {
-                    half_call = false;
-                } else if (!bcf_gt_is_missing(a_record->gt[2*i+1])) {
-                    auto al = bcf_gt_allele(a_record->gt[2*i+1]);
-                    if (al > 0 && a_record->allele_mapping[al] > 0 &&
-                        (!record || record->p->qual < a_record->p->qual)) {
+                int al1 = bcf_gt_is_missing(a_record->gt[2*i]) ? -1 : bcf_gt_allele(a_record->gt[2*i]),
+                    al2 = bcf_gt_is_missing(a_record->gt[2*i+1]) ? -1 : bcf_gt_allele(a_record->gt[2*i+1]);
+                if (al1 > 0 && al2 > 0) {
+                    can_half_call = false;
+                } else if ((!record || record->p->qual < a_record->p->qual)) {
+                    if (al1 > 0 && a_record->allele_mapping[al1] > 0) {
+                        half_call = 0;
+                        record = a_record.get();
+                    } else if (al2 > 0 && a_record->allele_mapping[al2] > 0) {
+                        half_call = 1;
                         record = a_record.get();
                     }
                 }
@@ -373,7 +377,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             return Status::OK();
         }
 
-        if (!record || !half_call) {
+        if (!record || !can_half_call) {
             for (int i = 0; i < bcf_nsamples; i++) {
                 genotypes[sample_mapping.at(i)*2].RNC =
                     genotypes[sample_mapping.at(i)*2+1].RNC =
@@ -425,12 +429,25 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                 }                                                                 \
             }
 
-        if (half_call) {
-            genotypes[2*ij.second].RNC = NoCallReason::OverlappingVariants;
-        } else {
-            fill_allele(0)
+        switch (half_call) {
+            case 0: {
+                genotypes[2*ij.second+1].RNC = NoCallReason::OverlappingVariants;
+                fill_allele(0)
+                break;
+            }
+            case 1: {
+                genotypes[2*ij.second].RNC = NoCallReason::OverlappingVariants;
+                fill_allele(1)
+                break;
+            }
+            case -1: {
+                fill_allele(0)
+                fill_allele(1)
+                break;
+            }
+            default:
+                assert(false);
         }
-        fill_allele(1)
     }
 
     return Status::OK();
@@ -539,7 +556,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // Setup format field helpers
     vector<unique_ptr<FormatFieldHelper>> format_helpers;
-    S(setup_format_helpers(format_helpers, cfg.liftover_fields, site, samples));
+    S(setup_format_helpers(format_helpers, cfg, site, samples));
 
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
@@ -635,7 +652,9 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 for (const auto& fh : format_helpers) {
                     S(fh->censor(p.second, false));
                 }
-            } else if (site.monoallelic || rnc1 == NoCallReason::UnphasedVariants || rnc1 == NoCallReason::OverlappingVariants) {
+            } else if (site.monoallelic ||
+                       rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
+                       rnc1 == NoCallReason::OverlappingVariants || rnc2 == NoCallReason::OverlappingVariants) {
                 const bool half_call = site.monoallelic || ((genotypes[p.second*2].RNC == NoCallReason::N_A) != (genotypes[p.second*2+1].RNC == NoCallReason::N_A));
 
                 for (const auto& fh : format_helpers) {
@@ -725,7 +744,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             RNC_CASE(LostAllele,"L")
             RNC_CASE(UnphasedVariants,"U")
             RNC_CASE(OverlappingVariants,"O")
-            RNC_CASE(MonoallelicSite,"M")
+            RNC_CASE(MonoallelicSite,"1")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }

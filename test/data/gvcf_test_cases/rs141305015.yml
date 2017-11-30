@@ -35,46 +35,55 @@ truth_discovered_alleles:
     - range: {ref: A, beg: 36643697, end: 36643700}
       dna: 'AACG'
       is_ref: true
+      all_filtered: false
       top_AQ: [2757]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: A, beg: 36643697, end: 36643700}
       dna: 'A'
       is_ref: false
+      all_filtered: false
       top_AQ: [0]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: A, beg: 36643699, end: 36643702}
       dna: 'CGAG'
       is_ref: true
+      all_filtered: false
       top_AQ: [2011]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1]]
     - range: {ref: A, beg: 36643699, end: 36643702}
       dna: 'C'
       is_ref: false
+      all_filtered: false
       top_AQ: [0]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: A, beg: 36643700, end: 36643703}
       dna: 'GAGA'
       is_ref: true
+      all_filtered: false
       top_AQ: [1026]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[1,0]]
     - range: {ref: A, beg: 36643700, end: 36643703}
       dna: 'G'
       is_ref: false
+      all_filtered: false
       top_AQ: [1890,629]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[1,1]]
     - range: {ref: A, beg: 36643703, end: 36643703}
       dna: 'A'
       is_ref: true
+      all_filtered: false
       top_AQ: [2639,1949]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1]]
     - range: {ref: A, beg: 36643703, end: 36643703}
       dna: 'G'
       is_ref: false
+      all_filtered: false
       top_AQ: [0]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: A, beg: 36643703, end: 36643703}
       dna: 'T'
       is_ref: false
+      all_filtered: false
       top_AQ: [0]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
