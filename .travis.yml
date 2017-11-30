@@ -58,7 +58,7 @@ after_success:
   # report the coverage (regardless of branch)
   - |
       if [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
-        sudo pip install cpp-coveralls
+        sudo pip install -U cpp-coveralls
         coveralls --include src --include include --gcov-options '\-lp'
       fi
   # update doxygen from Release builds on the master branch only
