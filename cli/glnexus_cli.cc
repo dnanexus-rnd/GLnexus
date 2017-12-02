@@ -109,11 +109,16 @@ static int all_steps(const vector<string> &vcf_files,
     // unify sites
     // we could parallelize over dsals_by_contig although this might increase memory usage.
     vector<GLnexus::unified_site> sites;
+    GLnexus::unifier_stats stats;
     for (auto& dsals_i : dsals_by_contig) {
+        GLnexus::unifier_stats stats1;
         H("unify sites",
-          GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals_i, sample_count, sites));
+          GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals_i, sample_count, sites, stats1));
+        stats += stats1;
     }
-    console->info() << "unified to " << sites.size() << " sites";
+    console->info() << "unified to " << sites.size() << " sites cleanly with " << stats.unified_alleles << " ALT alleles. "
+                    << stats.lost_alleles << " ALT alleles were " << (unifier_cfg.monoallelic_sites_for_lost_alleles ? "additionally included in monoallelic sites" : "lost due to failure to unify")
+                    << " and " << stats.filtered_alleles << " were filtered out on quality thresholds.";
     if (debug) {
         string filename("/tmp/sites.yml");
         console->info() << "Writing unified sites as YAML to " << filename;

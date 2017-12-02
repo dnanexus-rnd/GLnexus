@@ -295,7 +295,8 @@ public:
         Status s = svc->discover_alleles("<ALL>", range(0, 0, 1000000000), N, als);
         REQUIRE(s.ok());
 
-        s = unified_sites(unifier_cfg, N, als, sites);
+        unifier_stats stats;
+        s = unified_sites(unifier_cfg, N, als, sites, stats);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
@@ -530,10 +531,20 @@ TEST_CASE("services test: discover_alleles") {
         // looking only at one homozygous ref individual
         s = discover_allele_case.execute_discover_alleles(als, "trio1.fa", range(0, 1001, 1002));
         REQUIRE(s.ok());
-        REQUIRE(als.size() == 3);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "C"))->second.zGQ.copy_number() == 2);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "G"))->second.zGQ.copy_number() == 0);
-        REQUIRE(als.find(allele(range(0, 1001, 1002), "T"))->second.zGQ.copy_number() == 0);
+        REQUIRE(als.size() == 0);
+
+
+        s = discover_allele_case.execute_discover_alleles(als, "discover_alleles_trio1", range(0, 1000, 1001));
+        REQUIRE(s.ok());
+        REQUIRE(als.size() == 2);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "A"))->second.zGQ.copy_number() == 2);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "G"))->second.zGQ.copy_number() == 4);
+
+        s = discover_allele_case.execute_discover_alleles(als, "trio1.fa", range(0, 1000, 1001));
+        REQUIRE(s.ok());
+        REQUIRE(als.size() == 2);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "A"))->second.zGQ.copy_number() == 1);
+        REQUIRE(als.find(allele(range(0, 1000, 1001), "G"))->second.zGQ.copy_number() == 1);
     }
 
     discover_allele_case.cleanup();

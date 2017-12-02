@@ -8,6 +8,7 @@
 #include "spdlog/spdlog.h"
 #include "RocksKeyValue.h"
 #include "BCFKeyValueData.h"
+#include "unifier.h"
 
 namespace GLnexus {
 namespace cli {
@@ -142,7 +143,8 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const std::vector<std::pair<std::string,size_t> > &contigs,
                    discovered_alleles &dsals,
                    unsigned sample_count,
-                   std::vector<unified_site> &sites);
+                   std::vector<unified_site> &sites,
+                   GLnexus::unifier_stats& stats);
 
 // if the file name is "-", then output is written to stdout.
 Status genotype(std::shared_ptr<spdlog::logger> logger,

@@ -212,7 +212,8 @@ TEST_CASE("unified_sites") {
         REQUIRE(N == 3);
 
         vector<unified_site> sites;
-        s = unified_sites(unifier_config(), N, als, sites);
+        unifier_stats stats;
+        s = unified_sites(unifier_config(), N, als, sites, stats);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -290,7 +291,8 @@ TEST_CASE("unified_sites") {
         REQUIRE(N == 6);
 
         vector<unified_site> sites;
-        s = unified_sites(unifier_config(), N, als, sites);
+        unifier_stats stats;
+        s = unified_sites(unifier_config(), N, als, sites, stats);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -408,7 +410,8 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(s.ok());
         REQUIRE(N == 6);
         vector<unified_site> sites;
-        s = unified_sites(unifier_config(), N, als, sites);
+        unifier_stats stats;
+        s = unified_sites(unifier_config(), N, als, sites, stats);
         REQUIRE(s.ok());
 
         unique_ptr<SimFailBCFData> faildata;
@@ -449,7 +452,8 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(merge_discovered_alleles(als1, als).ok());
 
         vector<unified_site> sites;
-        s = unified_sites(unifier_config(), N, als, sites);
+        unifier_stats stats;
+        s = unified_sites(unifier_config(), N, als, sites, stats);
         cout << s.str() << endl;
         REQUIRE(s.ok());
 
@@ -578,7 +582,8 @@ TEST_CASE("genotype residuals") {
     REQUIRE(s.ok());
 
     vector<unified_site> sites;
-    s = unified_sites(unifier_config(), N, als, sites);
+    unifier_stats stats;
+    s = unified_sites(unifier_config(), N, als, sites, stats);
     REQUIRE(s.ok());
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");

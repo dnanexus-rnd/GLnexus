@@ -27,6 +27,7 @@ input:
     ##FILTER=<ID=No_data,Description="No valid reads on this site">
     ##FILTER=<ID=No_var,Description="No valid variants reads on this site">
     ##FILTER=<ID=VRFromDeletion,Description="Variant read coverage recorded in non-variant block originates from deletion called upstream">
+    ##FILTER=<ID=read_end_ratio,Description="Ratio of variants reads within 5 bp of read end is greater than 0.80">
     ##INFO=<ID=P,Number=1,Type=Float,Description="SNP p-value">
     ##INFO=<ID=equal_majority,Number=0,Type=Flag,Description="The called SNP has an equal number of reads indicating another variant call and base was chosen by highest summed quality score">
     ##INFO=<ID=BLOCKAVG_min30p3a,Number=0,Type=Flag,Description="Non-variant block compression scheme BLOCKAVG_min30p3a">
@@ -48,6 +49,9 @@ input:
         1	15957	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:20:20:.:0,95,690:0,1,0.0384615,0.196116:20,26,23.0385,2.34061:20,26,23.0769,2.38198
         1	15983	.	C	G	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
         1	15985	.	A	T	36	PASS	P=0.999774	GT:VR:RR:DP:GQ:PL	0/1:12:8:20:.:257,0,172
+        1	69155	.	T	.	.	PASS	END=69214;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:1:1:.:0,32,82:0,0,0,0:1,4,1.83333,0.806051:1,4,1.83333,0.806051
+        1	69215	.	T	TA	15	read_end_ratio	P=0.971431	GT:VR:RR:DP:GQ:PL	0/1:2:5:5:.:9,0,125
+        1	69216	.	G	.	.	PASS	END=69259;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:5:5:.:0,45,208:0,0,0,0:5,7,6.22727,0.522233:5,7,6.22727,0.522233
     - xAtlasTester.gvcf: |
         xAtlasTester
         1	15890	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
@@ -56,6 +60,7 @@ input:
         1	15987	.	M	C	45	PASS	P=0.999968	GT:VR:RR:DP:GQ:PL	1/1:26:0:26:.:716,75,0
         1	15989	.	AG	A	40	PASS	P=0.999904	GT:VR:RR:DP:GQ:PL	1/1:25:1:26:.:659,47,0
         1	15990	.	G	.	.	VRFromDeletion	END=15990;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	1/1:25:1:26:.:659,47,0:25,25,25,0:1,1,1,0:26,26,26,0
+        1	69215	.	T	TA	3	PASS	P=0.526272	GT:VR:RR:DP:GQ:PL	0/0:2:8:8:.:0,0,202
 
 unifier_config:
     drop_filtered: true
@@ -191,6 +196,18 @@ truth_discovered_alleles:
       all_filtered: false
       top_AQ: [659]
       zygosity_by_GQ: [[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 69215, end: 69215}
+      dna: 'T'
+      is_ref: true
+      all_filtered: true
+      top_AQ: [125]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 69215, end: 69215}
+      dna: 'TA'
+      is_ref: false
+      all_filtered: true
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}

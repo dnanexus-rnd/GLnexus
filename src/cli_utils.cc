@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "service.h"
-#include "unifier.h"
 #include "compare_queries.h"
 
 #include "BCFKeyValueData.h"
@@ -1015,9 +1014,10 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const vector<pair<string,size_t> > &contigs,
                    discovered_alleles &dsals,
                    unsigned sample_count,
-                   vector<unified_site> &sites) {
+                   vector<unified_site> &sites,
+                   unifier_stats& stats) {
     Status s;
-    S(unified_sites(unifier_cfg, sample_count, dsals, sites));
+    S(unified_sites(unifier_cfg, sample_count, dsals, sites, stats));
 
     // sanity check, sites are in-order
     if (sites.size() > 1) {

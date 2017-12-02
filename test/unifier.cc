@@ -29,7 +29,8 @@ TEST_CASE("unifier max_alleles_per_site") {
 
     SECTION("0") {
         // No limit on # of max alleles
-        Status s = unified_sites(cfg, 200, dal, sites);
+        unifier_stats stats;
+        Status s = unified_sites(cfg, 200, dal, sites, stats);
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 6);
@@ -38,7 +39,8 @@ TEST_CASE("unifier max_alleles_per_site") {
 
     SECTION("5") {
         cfg.max_alleles_per_site = 5;
-        Status s = unified_sites(cfg, 200, dal, sites);
+        unifier_stats stats;
+        Status s = unified_sites(cfg, 200, dal, sites, stats);
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 5);
@@ -47,7 +49,8 @@ TEST_CASE("unifier max_alleles_per_site") {
 
     SECTION("4") {
         cfg.max_alleles_per_site = 4;
-        Status s = unified_sites(cfg, 200, dal, sites);
+        unifier_stats stats;
+        Status s = unified_sites(cfg, 200, dal, sites, stats);
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 4);
@@ -56,7 +59,8 @@ TEST_CASE("unifier max_alleles_per_site") {
 
     SECTION("3") {
         cfg.max_alleles_per_site = 3;
-        Status s = unified_sites(cfg, 200, dal, sites);
+        unifier_stats stats;
+        Status s = unified_sites(cfg, 200, dal, sites, stats);
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 3);
@@ -65,7 +69,8 @@ TEST_CASE("unifier max_alleles_per_site") {
 
     SECTION("2") {
         cfg.max_alleles_per_site = 2;
-        Status s = unified_sites(cfg, 200, dal, sites);
+        unifier_stats stats;
+        Status s = unified_sites(cfg, 200, dal, sites, stats);
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 2);
