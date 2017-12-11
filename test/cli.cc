@@ -71,8 +71,9 @@ TEST_CASE("cli") {
 
         // unify sites
         vector<GLnexus::unified_site> sites;
+        unifier_stats stats;
         s = cli::utils::unify_sites(console, unifier_cfg, ranges,
-                                    contigs, dsals, sample_count, sites);
+                                    contigs, dsals, sample_count, sites, stats);
         filename = DB_DIR + "/sites.yml";
         s = cli::utils::write_unified_sites_to_file(sites, contigs, filename);
         REQUIRE(s.ok());

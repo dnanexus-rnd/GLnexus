@@ -6,6 +6,27 @@
 namespace GLnexus {
 
 // unification_config...
+struct unifier_stats {
+    // # ALT alleles represented in idiomatic sites.
+    size_t unified_alleles = 0;
+
+    // # ALT alleles passing quality thresholds but 'lost' due to not unifying
+    // cleanly with other overlapping alleles. If
+    // unifier_config::monoallelic_sites_for_lost_alleles is true, then these
+    // are included as monoallelic sites (but still NOT counted in
+    // unified_alleles.)
+    size_t lost_alleles = 0;
+
+    // # alleles discarded due to failing quality thresholds
+    size_t filtered_alleles = 0;
+
+    unifier_stats& operator+=(const unifier_stats& rhs) {
+        unified_alleles += rhs.unified_alleles;
+        lost_alleles += rhs.lost_alleles;
+        filtered_alleles += rhs.filtered_alleles;
+        return *this;
+    }
+};
 
 /// Compute unified sites from all discovered alleles in some genomic region
 /// N = sample count (used to estimate allele frequencies)
@@ -16,7 +37,8 @@ namespace GLnexus {
 Status unified_sites(const unifier_config& cfg,
                      unsigned N,
                      /* const */ discovered_alleles& alleles,
-                     std::vector<unified_site>& ans);
+                     std::vector<unified_site>& ans,
+                     unifier_stats& stats);
 }
 
 #endif

@@ -130,7 +130,9 @@ public:
 #define S(st) s = st; if (s.bad()) return s;
 
 /// common regular expressions
-extern std::regex regex_dna, regex_iupac_nucleotide, regex_id;
+extern std::regex regex_id;
+bool is_dna(const std::string&);
+bool is_iupac_nucleotides(const std::string&);
 
 /// Genomic range (chromosome id, begin coordinate, end coordinate)
 struct range {
@@ -242,7 +244,7 @@ struct allele {
 
     allele(const range& pos_, const std::string& dna_) : pos(pos_), dna(dna_) {
         // Note; dna.size() may not equal pos.size(), for indel alleles
-        if (!std::regex_match(dna, regex_iupac_nucleotide)) throw std::invalid_argument("allele(): invalid DNA " + dna);
+        if (!is_iupac_nucleotides(dna)) throw std::invalid_argument("allele(): invalid DNA " + dna);
     }
 
     /// Equality is based on identity of position and allele

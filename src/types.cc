@@ -26,10 +26,61 @@ static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 // infinite loops.
 const uint64_t CAPNP_TRAVERSAL_LIMIT = 20 * 1024L * 1024L * 1024L;
 
-regex regex_dna               ("[ACGTN]+")
-    , regex_iupac_nucleotide  ("[ACGTURYSWKMBDHVN]+")
-    , regex_id                ("[-_a-zA-Z0-9\\.]{1,100}")
-    ;
+regex regex_id ("[-_a-zA-Z0-9\\.]{1,100}");
+
+// We'd prefer is_dna and is_iupac_nucleotides be done with regex as originally.
+// However we ran into some appalling libstdc++ regex bugs with long strings
+//   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61582
+// So we replaced with these hard-coded functions, which themselves could be
+// improved to use lookup tables.
+bool is_dna(const std::string& s) {
+    size_t sz = s.size();
+    if (sz == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < sz; i++) {
+        switch (s[i]) {
+            case 'A':
+            case 'C':
+            case 'G':
+            case 'T':
+                continue;
+            default:
+                return false;
+        }
+    }
+    return true;
+}
+bool is_iupac_nucleotides(const std::string& s) {
+    size_t sz = s.size();
+    if (sz == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < sz; i++) {
+        switch (s[i]) {
+            case 'A':
+            case 'C':
+            case 'G':
+            case 'T':
+            case 'U':
+            case 'R':
+            case 'Y':
+            case 'S':
+            case 'W':
+            case 'K':
+            case 'M':
+            case 'B':
+            case 'D':
+            case 'H':
+            case 'V':
+            case 'N':
+                continue;
+            default:
+                return false;
+        }
+    }
+    return true;
+}
 
 // Add src alleles to dest alleles. Identical alleles alleles are merged,
 // updating topAQ and combining zygosity_by_GQ
@@ -184,7 +235,7 @@ Status one_discovered_allele_of_yaml(const YAML::Node& yaml,
     VR(n_dna && n_dna.IsScalar(), "missing/invalid 'dna' field in entry");
     const string& dna = n_dna.Scalar();
     VR(dna.size() > 0, "empty 'dna' in entry");
-    VR(regex_match(dna, regex_iupac_nucleotide), "invalid allele DNA");
+    VR(is_iupac_nucleotides(dna), "invalid allele DNA");
     allele al(rng, dna);
     dsal = std::move(al);
 

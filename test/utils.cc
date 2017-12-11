@@ -50,6 +50,22 @@ class VCFData : public Metadata, public BCFData {
             } else if (bcf_unpack(record.get(),BCF_UN_ALL) != 0) {
                 return Status::IOError("bcf_unpack", path);
             }
+
+            // Genotype validation from BCFKeyValueData::validate_bcf. Reproduced here for a regression test depending on this check
+            if (bcf_has_filter(hdr.get(), record.get(), "VRFromDeletion") == 1) {
+                continue;
+            }
+            htsvecbox<int> gt;
+            int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt.v, &gt.capacity);
+            if (nGT != 2*record->n_sample) {
+                return Status::Invalid("gVCF record doesn't have expected # of GT entries", path + " " + range(record).str());
+            }
+            for (int i = 0; i < nGT; i++) {
+                if (!bcf_gt_is_missing(gt[i]) && (bcf_gt_allele(gt[i]) < 0 || bcf_gt_allele(gt[i]) >= record->n_allele)) {
+                    return Status::Invalid("invalid GT entry in gVCF record", path + " " + range(record).str());
+                }
+            }
+
             records.push_back(move(record));
         }
 

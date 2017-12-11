@@ -1,7 +1,6 @@
 readme: |
   This tests the treatment of "pseudo" reference confidence records that don't all overlap a variant record.
 
-  Also performs a detailed check of zygosity_by_GQ tabulation.
 input:
   header : |-
       ##fileformat=VCFv4.2
@@ -25,37 +24,13 @@ input:
     - B.gvcf: |
         B
         A	36643699	.	CGAG	C,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:55,2,0:57:99:0,122,2011,165,2017,2060:21,34,0,0
-        A	36643700	rs141305015	GAGA	G,<NON_REF>	1851.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:2,52,0:54:99:1890,113,0,1896,156,1940:1,1,19,33
+        A	36643700	rs141305015	GAGA	G,<NON_REF>	1851.73	.	.	GT:AD:DP:GQ:PL:SB	1/1:2,52,0:54:72:1890,113,0,1896,156,1940:1,1,19,33
         A	36643703	.	A	T,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:53,2,0:55:99:0,116,1949,159,1955,1999:20,33,0,0
     - C.gvcf: |
         C
         A	36643699	.	A	<NON_REF>	.	.	END=36645699	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
 
 truth_discovered_alleles:
-    - range: {ref: A, beg: 36643697, end: 36643700}
-      dna: 'AACG'
-      is_ref: true
-      all_filtered: false
-      top_AQ: [2757]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0]]
-    - range: {ref: A, beg: 36643697, end: 36643700}
-      dna: 'A'
-      is_ref: false
-      all_filtered: false
-      top_AQ: [0]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
-    - range: {ref: A, beg: 36643699, end: 36643702}
-      dna: 'CGAG'
-      is_ref: true
-      all_filtered: false
-      top_AQ: [2011]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1]]
-    - range: {ref: A, beg: 36643699, end: 36643702}
-      dna: 'C'
-      is_ref: false
-      all_filtered: false
-      top_AQ: [0]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: A, beg: 36643700, end: 36643703}
       dna: 'GAGA'
       is_ref: true
@@ -67,25 +42,7 @@ truth_discovered_alleles:
       is_ref: false
       all_filtered: false
       top_AQ: [1890,629]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[1,1]]
-    - range: {ref: A, beg: 36643703, end: 36643703}
-      dna: 'A'
-      is_ref: true
-      all_filtered: false
-      top_AQ: [2639,1949]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1]]
-    - range: {ref: A, beg: 36643703, end: 36643703}
-      dna: 'G'
-      is_ref: false
-      all_filtered: false
-      top_AQ: [0]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
-    - range: {ref: A, beg: 36643703, end: 36643703}
-      dna: 'T'
-      is_ref: false
-      all_filtered: false
-      top_AQ: [0]
-      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+      zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,1],[0,0],[1,0]]
 
 truth_unified_sites:
     - range: {ref: A, beg: 36643700, end: 36643703}

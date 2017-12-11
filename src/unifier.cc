@@ -468,8 +468,10 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
 
 Status unified_sites(const unifier_config& cfg,
                      unsigned N, discovered_alleles& alleles,
-                     vector<unified_site>& ans) {
+                     vector<unified_site>& ans,
+                     unifier_stats& stats_out) {
     Status s;
+    unifier_stats stats;
 
     map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>> sites;
     vector<pair<minimized_allele,discovered_allele>> all_pruned_alleles;
@@ -484,27 +486,30 @@ Status unified_sites(const unifier_config& cfg,
         unified_site us(pos);
         S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, pruned_alleles, us));
         ans.push_back(us);
+        stats.unified_alleles += alt_alleles.size();
     }
 
-    if (cfg.monoallelic_sites_for_lost_alleles) {
-        auto k = ans.size();
-        for (const auto& pa : all_pruned_alleles) {
-            if (check_filtered(cfg, pa.first) && check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
+    auto k = ans.size();
+    for (const auto& pa : all_pruned_alleles) {
+        if (check_filtered(cfg, pa.first) && check_AQ(cfg, pa.first) && check_copy_number(cfg, pa.first)) {
+            if (cfg.monoallelic_sites_for_lost_alleles) {
                 unified_site ms(pa.first.first.pos);
                 S(unify_alleles(cfg, N, pa.first.first.pos, discovered_alleles{pa.second},
                                 minimized_alleles{pa.first}, minimized_alleles(), ms));
                 ms.monoallelic = true;
                 ans.push_back(ms);
             }
+            stats.lost_alleles++;
+        } else {
+            stats.filtered_alleles++;
         }
-        // merge the newly added monoallelic sites in position order with the others
-        // (in linear time)
-        std::inplace_merge(ans.begin(), ans.begin()+k, ans.end());
-        assert(std::is_sorted(ans.begin(), ans.end()));
     }
+    // merge any the newly added monoallelic sites in position order with the others
+    // (in linear time)
+    std::inplace_merge(ans.begin(), ans.begin()+k, ans.end());
+    assert(std::is_sorted(ans.begin(), ans.end()));
 
-    // TODO: report final count of alleles pruned due to failing filters/AQ/#
-
+    stats_out = stats;
     return Status::OK();
 }
 

@@ -77,6 +77,7 @@ public:
         size_t max_bytes = 0;         // max bytes in any bucket
         unsigned int buckets = 0;     // # buckets
         unsigned int duplicate_records = 0; // # of records duplicated in multiple buckets
+        unsigned int skipped_records = 0; // # of records skipped in source gVCF for various caller-specific reasons
 
         import_result& add_bucket(unsigned int bucket_records, size_t bucket_bytes, unsigned int duplicates) {
             records += bucket_records;
@@ -100,6 +101,7 @@ public:
             max_bytes = std::max(max_bytes, rhs.max_bytes);
             buckets += rhs.buckets;
             duplicate_records += rhs.duplicate_records;
+            skipped_records += rhs.skipped_records;
             return *this;
         }
     };

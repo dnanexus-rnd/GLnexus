@@ -20,6 +20,7 @@ using namespace std;
 
 const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
 const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
+const uint64_t MAX_RECORD_LEN = 100000;
 
 namespace GLnexus {
 
@@ -974,17 +975,13 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
                                filename + " " + range(bcf).str(contigs) + " " + to_string(contig_len) + " " + contig_name);
     }
 
-    // check that alleles are all distinct, and that all alleles are valid DNA;
-    // exceptions:
-    //   (1) the last ALT allele may be a symbolic one.
-    //   (2) the REF allele may contain general IUPAC nucleotide codes (a few of
-    //       which are present in the human genome reference assembly)
+    // check that alleles are all distinct, and that all alleles are valid strings
+    // of IUPAC nucleotides, except the last ALT allele which may be symbolic.
     set<string> alleles;
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
-        if (!(regex_match(allele_i, regex_dna) ||
-              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())) ||
-              (i == 0 && regex_match(allele_i, regex_iupac_nucleotide)))) {
+        if (!(is_iupac_nucleotides(allele_i) ||
+              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())))) {
             return Status::Invalid("allele is not a DNA sequence ",
                                 filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }
@@ -1241,6 +1238,15 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
                        [&vt_rng](const range& r) { return !r.overlaps(vt_rng); })) {
                 continue;
             }
+        }
+
+        // A few hard-coded cases where we, reluctantly, skip ingestion
+        // VRFromDeletion: accessory information from xAtlas
+        // MAX_RECORD_LEN: blows up database (due to repetition across buckets)
+        //                 and usually stems from gVCF caller bug anyway
+        if (bcf_has_filter(hdr, vt.get(), "VRFromDeletion") == 1 || vt_rng.size() >= MAX_RECORD_LEN) {
+            rslt.skipped_records++;
+            continue;
         }
 
         // Check various aspects of the record's validity; e.g. make sure the
