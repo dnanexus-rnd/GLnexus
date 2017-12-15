@@ -191,7 +191,7 @@ TEST_CASE("DNAnexus VCF/BCF serialization") {
     for (const auto& rec : records) {
         memlen += GLnexus::bcf_raw_calc_packed_len(rec.get());
     }
-    std::cout << "memlen=" << memlen << std::endl;
+    //std::cout << "memlen=" << memlen << std::endl;
     char *buf = (char*) calloc(1, memlen);
     REQUIRE(buf != NULL);
 
@@ -353,13 +353,13 @@ TEST_CASE("Ensure uncompressed BCF encoding remains consistent") {
                          (std::istreambuf_iterator<char>()    ) );
     int filelen = content.length();
     const char *filebuf = content.c_str();
-    std::cout << "filelen=" << filelen << " memlen=" << memlen << std::endl;
+    //std::cout << "filelen=" << filelen << " memlen=" << memlen << std::endl;
     assert(filelen >= memlen);
 
     // compare the last [memlen] bytes
     int rc = memcmp(&filebuf[filelen - memlen], buf, memlen);
     if (rc == 0) {
-        std::cout << "BCF formats match" << std::endl;
+        //std::cout << "BCF formats match" << std::endl;
     }
     else {
         std::cout << "BCF format mismatch" << std::endl;

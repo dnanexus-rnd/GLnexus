@@ -445,8 +445,8 @@ static void querySampleset(T *data, int num_iter) {
     Status s;
 
     for (int i=0; i < num_iter; i++) {
-        if ((i % 10) == 0)
-            cout << "querySampleset " << std::to_string(i) << endl;
+//        if ((i % 10) == 0)
+//            cout << "querySampleset " << std::to_string(i) << endl;
 
         // map global sampleset to samples
         string sampleset;
@@ -483,12 +483,12 @@ static void printDBSamples(T *data) {
     s = data->sampleset_samples(sampleset, samples);
     assert(s.ok());
     assert(samples->size() == 4);
-
+/*
     const char* const delim = ", ";
     std::ostringstream imploded;
     std::copy(samples->begin(), samples->end(),
               std::ostream_iterator<std::string>(imploded, delim));
-    cout << "samples = [" << imploded.str() << "]" << endl;
+    cout << "samples = [" << imploded.str() << "]" << endl; */
 }
 
 
@@ -525,14 +525,14 @@ TEST_CASE("Multi-threading") {
     for (auto thr : threads)
         thr->join();
     threads.clear();
-    std::cout << "All import threads completed\n";
+    //std::cout << "All import threads completed\n";
 
     // sanity check the resulting database
     printDBSamples(data.get());
 
     // Spawn a thread for each file to import. All these calls should fail, because
     // the data is already in the database.
-    cout << "Trying to add the same data ..." << endl;
+    //cout << "Trying to add the same data ..." << endl;
     for (auto filename : files) {
         shared_ptr<thread> thr = make_shared<thread>(importGVCF,
                                                      data.get(), cache.get(), filename,
@@ -543,13 +543,13 @@ TEST_CASE("Multi-threading") {
     // wait for all import threads to complete
     for (auto thr : threads)
         thr->join();
-    cout << "Success" << endl;
+    //cout << "Success" << endl;
     threads.clear();
 
     // sanity checks
     printDBSamples(data.get());
 
-    cout << "Running queries serially" << endl;
+    //cout << "Running queries serially" << endl;
     {
         // Now run some queries
         for (auto filename : files) {
@@ -557,7 +557,7 @@ TEST_CASE("Multi-threading") {
         }
     }
 
-    cout << "Running queries in parallel" << endl;
+    //cout << "Running queries in parallel" << endl;
     {
         for (auto filename : files) {
             shared_ptr<thread> thr = make_shared<thread>(queryDataset,
@@ -570,7 +570,7 @@ TEST_CASE("Multi-threading") {
             thr->join();
         threads.clear();
     }
-    cout << "Success" << endl;
+    //cout << "Success" << endl;
 
     RocksKeyValue::destroy(dbPath);
 }

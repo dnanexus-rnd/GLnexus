@@ -90,9 +90,11 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "A"))->second.zGQ.copy_number() == 2);
         REQUIRE(mals[3].find(allele(range(1, 1000, 1001), "AA"))->second.zGQ.copy_number() == 4);
 
-        REQUIRE(mals[4].size() == 2);
+        REQUIRE(mals[4].size() == 4);
         REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "AG"))->second.zGQ.copy_number() == 3);
         REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "CC"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "AGA"))->second.zGQ.copy_number() == 2);
+        REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "CCC"))->second.zGQ.copy_number() == 4);
 
         REQUIRE(mals[5].empty());
     }

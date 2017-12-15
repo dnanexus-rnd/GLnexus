@@ -369,7 +369,6 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         REQUIRE(MetadataCache::Start(*data, cache).ok());
 
         Status s = data->import_gvcf(*cache, "1", "test/data/discover_alleles_trio1.vcf", samples_imported);
-        cout << s.str() << endl;
         REQUIRE(s.ok());
         REQUIRE(samples_imported.size() == 3);
 
@@ -412,7 +411,6 @@ TEST_CASE("BCFKeyValueData::import_gvcf") {
         BCFKeyValueData::import_result rslt;
         Status s = data->import_gvcf(*cache, "1", "test/data/discover_alleles_trio1.vcf",
                                      {range(1, 1000, 1010), range(2, 0, 1000000000)}, rslt);
-        cout << s.str() << endl;
         REQUIRE(s.ok());
         REQUIRE(rslt.samples == (set<string>({"trio1.fa", "trio1.mo", "trio1.ch"})));
         REQUIRE(rslt.records == 3);
@@ -535,7 +533,6 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
     set<string> samples_imported;
 
     Status s = data->import_gvcf(*cache, "NA12878D", "test/data/NA12878D_HiSeqX.21.10009462-10009469.gvcf", samples_imported);
-    cout << s.str() << endl;
     REQUIRE(s.ok());
 
     SECTION("dataset_header") {
@@ -696,8 +693,8 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
         REQUIRE(s.ok());
         REQUIRE(records.size() == 3);
 
-        std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
-        cout << statsRq->str() << endl;
+//        std::shared_ptr<GLnexus::StatsRangeQuery> statsRq = data->getRangeStats();
+//        cout << statsRq->str() << endl;
     }
 }
 
@@ -1301,8 +1298,6 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     s = iterators[0]->next(dataset, hdr, records);
     REQUIRE(s.ok());
     REQUIRE(dataset == "1");
-    cout << range(records[0].get()).str() << endl;
-    cout << range(records[1].get()).str() << endl;
     REQUIRE(range(records[0].get()).beg == 299899);
     REQUIRE(range(records[1].get()).beg == 299999);
     REQUIRE(range(records[2].get()).beg == 300000);
@@ -1346,7 +1341,6 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     set<string> samples_imported;
 
     Status s = data->import_gvcf(*cache, "1", "test/data/sampleset_rnd1.gvcf", samples_imported);
-    cout << s.str() << endl;
     REQUIRE(s.ok());
     s = data->import_gvcf(*cache, "2", "test/data/sampleset_rnd2.gvcf", samples_imported);
     REQUIRE(s.ok());
@@ -1385,7 +1379,7 @@ TEST_CASE("BCFKeyValueData compare iterator implementations") {
     case -1: break;  // Query used too much memory, continue
     }
 
-    cout << "Compared " << (nIter+1) << " range queries between the two iterators" << endl;
+    //cout << "Compared " << (nIter+1) << " range queries between the two iterators" << endl;
 }
 
 /* disabled when we raised max contigs from 10,000 to 2^24

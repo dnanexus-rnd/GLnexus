@@ -1,0 +1,88 @@
+readme: |
+  Building on edge_spanning_deletion.yml
+  Adds another variant overlapping the dangling deletion but not itself within the target region.
+  The discovery and unification work the same. But the genotyping differs due to the overlapper,
+  reflecting the problem that we didn't unify that additional allele.
+
+input:
+  header: |-
+      ##fileformat=VCFv4.1
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+      ##FILTER=<ID=LowQual,Description="Low quality">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+      ##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
+      ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+        A	1000	.	CCCC	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:3:20:1,19,0:35,3,0,35,3,35:5,6,7,8
+        A	1003	.	C	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:2:20:3,17,0:35,3,0,35,2,35:1,2,3,4
+        A	1004	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+    - B.gvcf: |
+        B
+        A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+        A	1000	.	C	T,<NON_REF>	1.38	.	.	GT:GQ:DP:AD:PL:SB	0/1:2:20:3,17,0:35,3,0,35,2,35:1,2,3,4
+        A	1001	.	C	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:SB:PL	0/0:2:0:1:11,12,13,14:0,0,0
+
+genotyper_config:
+  liftover_fields:
+    - orig_names: [SB]
+      name: SB
+      description: "##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.\">"
+      type: int
+      combi_method: max
+      number: basic
+      count: 4
+    - orig_names: [DP, MIN_DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_type: zero
+      count: 0
+
+truth_unified_sites:
+    - range: {ref: "A", beg: 1000, end: 1003}
+      alleles: [CCCC, TCCC, T]
+      allele_frequencies: [.nan, 0.25, 0.25]
+      quality: 35
+      unification:
+        - range: {beg: 1000, end: 1000}
+          dna: T
+          to: 1
+        - range: {beg: 1000, end: 1003}
+          dna: T
+          to: 2
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
+      A	1000	.	CCCC	TCCC,T	35	.	.	GT:SB:DP:AD:RNC	./2:.,.,.,.:20:.,0,19:O.	0/1:11,12,13,14:2:1,17,0:..

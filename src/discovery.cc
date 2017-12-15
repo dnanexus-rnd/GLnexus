@@ -35,15 +35,6 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             assert(!is_gvcf_ref_record(record.get()));
             range rng(record);
             assert(pos.overlaps(rng));
-            if (!pos.contains(rng)) {
-                // Skip records that dangle off the edge of the target range.
-                // The problem is that such alleles could overlap other
-                // alleles not overlapping the target range at all, and that
-                // we therefore won't see in our query. So it wouldn't be safe
-                // for us to make claims about the genotypes of the resulting
-                // sites.
-                continue;
-            }
             bool filtered = (bcf_has_filter(dataset_header.get(), record.get(), ".") == 0);
 
             // find the max AQ for each allele

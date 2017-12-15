@@ -145,8 +145,8 @@ int compare_query(T &data, MetadataCache &cache,
         }
     }
 
-    cerr << "compare_query " << rng.str()
-         << " num_entries=" << calc_tot_num_entries(resultsSoph) << endl;
+//    cerr << "compare_query " << rng.str()
+//         << " num_entries=" << calc_tot_num_entries(resultsSoph) << endl;
 
     // compare all the elements between the two results
     return compare_results(resultsBase, resultsSoph);
