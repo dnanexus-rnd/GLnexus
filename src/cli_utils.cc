@@ -699,7 +699,6 @@ weCall:
     genotyper_config:
         required_dp: 0
         revise_genotypes: false
-        ref_dp_format: DP
         liftover_fields:
             - orig_names: [GQ]
               name: GQ
@@ -709,7 +708,7 @@ weCall:
               combi_method: min
               count: 1
               ignore_non_variants: true
-            - orig_names: [DP, MIN_DP]
+            - orig_names: [MIN_DP, DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
               type: int
