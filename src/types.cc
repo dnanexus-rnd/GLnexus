@@ -510,9 +510,9 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     ans << YAML::Key << "range" << YAML::Value;
     S(range_yaml(contigs, pos, ans));
 
-    if (containing_target.rid >= 0) {
-        ans << YAML::Key << "containing_target" << YAML::Value;
-        S(range_yaml(contigs, containing_target, ans));
+    if (in_target.rid >= 0) {
+        ans << YAML::Key << "in_target" << YAML::Value;
+        S(range_yaml(contigs, in_target, ans));
     }
 
     ans << YAML::Key << "alleles";
@@ -582,9 +582,9 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     S(range_of_yaml(n_range, contigs, ans.pos));
     #define VR(pred,msg) if (!(pred)) return Status::Invalid("unified_site_of_yaml: " msg, ans.pos.str(contigs))
 
-    const auto n_containing_target = yaml["containing_target"];
-    if (n_containing_target) {
-        S(range_of_yaml(n_containing_target, contigs, ans.containing_target));
+    const auto n_in_target = yaml["in_target"];
+    if (n_in_target) {
+        S(range_of_yaml(n_in_target, contigs, ans.in_target));
     }
 
     ans.alleles.clear();
@@ -685,11 +685,11 @@ static Status capnp_write_unified_sites_fd(const vector<const vector<unified_sit
             pos_b.setBeg(site.pos.beg);
             pos_b.setEnd(site.pos.end);
 
-            if (site.containing_target.rid > -1) {
+            if (site.in_target.rid > -1) {
                 auto ct_b = site_b.getContainingTargetOption().initContainingTarget();
-                ct_b.setRid(site.containing_target.rid);
-                ct_b.setBeg(site.containing_target.beg);
-                ct_b.setEnd(site.containing_target.end);
+                ct_b.setRid(site.in_target.rid);
+                ct_b.setBeg(site.in_target.beg);
+                ct_b.setEnd(site.in_target.end);
             } else {
                 site_b.getContainingTargetOption().setNoContainingTarget(::capnp::VOID);
             }
@@ -773,9 +773,9 @@ static Status _capnp_read_unified_sites_fd(int fd, vector<unified_site>& sites) 
         const auto cto_r = site_r.getContainingTargetOption();
         if (cto_r.hasContainingTarget()) {
             const auto ct_r = cto_r.getContainingTarget();
-            site.containing_target.rid = ct_r.getRid();
-            site.containing_target.beg = ct_r.getBeg();
-            site.containing_target.end = ct_r.getEnd();
+            site.in_target.rid = ct_r.getRid();
+            site.in_target.beg = ct_r.getBeg();
+            site.in_target.end = ct_r.getEnd();
         }
 
         for (const auto& al : site_r.getAlleles()) {

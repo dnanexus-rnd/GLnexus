@@ -458,7 +458,7 @@ struct unified_site {
     range pos;
 
     /// Optional: the sequencing target range (e.g. exon) containing this site
-    range containing_target;
+    range in_target;
 
 
     /// Alleles at the position.
@@ -516,7 +516,7 @@ struct unified_site {
         return allele_frequencies < rhs.allele_frequencies;
     }
 
-    unified_site(const range& pos_) noexcept : pos(pos_), containing_target(-1,-1,-1) {}
+    unified_site(const range& pos_) noexcept : pos(pos_), in_target(-1,-1,-1) {}
 
     Status yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
                 YAML::Emitter& out) const;

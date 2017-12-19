@@ -525,7 +525,7 @@ unification:
     }
 }
 
-TEST_CASE("find_containing_range") {
+TEST_CASE("find_target_range") {
     vector<pair<string,size_t>> contigs;
     contigs.push_back(make_pair("1",100000));
     contigs.push_back(make_pair("2",130001));
@@ -544,41 +544,53 @@ TEST_CASE("find_containing_range") {
 
         // beginning
         range pos(1,17,18);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(1,15,20));
 
         // last
         pos = range(3,1200,1218);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(3,1000,1507));
 
-        pos = range(3,1000,1000);
-        s = utils::find_containing_range(ranges, pos, ans);
+        pos = range(3,1000,1001);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(3,1000,1507));
 
         // middle
         pos = range(2,31,35);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(2,31,50));
 
         // missing range
         pos = range(2,301,302);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.bad());
 
         // missing range
         pos = range(3,2000,2003);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.bad());
 
         // missing range
         pos = range(1,2,4);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.bad());
+
+        // dangling not within (from the left)
+        pos = range(1,105,110);
+        s = utils::find_target_range(ranges, pos, ans);
+        REQUIRE(s.ok());
+        REQUIRE(ans == range(1,108,151));
+
+        // dangling to the right
+        pos = range(1,150,155);
+        s = utils::find_target_range(ranges, pos, ans);
+        REQUIRE(s.ok());
+        REQUIRE(ans == range(1,108,151));
     }
 
     SECTION("1 range") {
@@ -590,24 +602,24 @@ TEST_CASE("find_containing_range") {
 
         // beginning
         range pos(1,17,18);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(1,15,20));
 
         // missing range
         pos = range(3,1200,1218);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.bad());
 
         // missing range
         pos = range(1,2,5);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.bad());
 
-        // non overlapping
+        // dangling
         pos = range(1,15,30);
-        s = utils::find_containing_range(ranges, pos, ans);
-        REQUIRE(s.bad());
+        s = utils::find_target_range(ranges, pos, ans);
+        REQUIRE(s.ok());
     }
 
     SECTION("no ranges") {
@@ -616,7 +628,7 @@ TEST_CASE("find_containing_range") {
         std::set<range> ranges;
 
         range pos(1,17,18);
-        s = utils::find_containing_range(ranges, pos, ans);
+        s = utils::find_target_range(ranges, pos, ans);
         REQUIRE(s.bad());
     }
 
@@ -646,7 +658,7 @@ TEST_CASE("find_containing_range") {
 
         range pos(1, 249211350, 249211350);
         range ans(-1,-1,-1);
-        Status s = utils::find_containing_range(ranges,pos,ans);
+        Status s = utils::find_target_range(ranges,pos,ans);
         REQUIRE(s.ok());
         REQUIRE(ans == range(1,249210800,249214146));
     }

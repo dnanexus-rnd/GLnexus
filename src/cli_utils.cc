@@ -494,7 +494,7 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     return Status::OK();
 }
 
-Status find_containing_range(const std::set<range> &ranges,
+Status find_target_range(const std::set<range> &ranges,
                              const range &pos,
                              range &ans) {
     if (ranges.size() == 0) {
@@ -504,14 +504,14 @@ Status find_containing_range(const std::set<range> &ranges,
     // The returned value here is the first element that is
     // greater or equal to [pos].
     auto it = ranges.lower_bound(pos);
-    if (it == ranges.end() ||  !it->contains(pos)) {
+    if (it == ranges.end() || !it->overlaps(pos)) {
         // we landed one range after the one we need
         if (it != ranges.begin()) {
             it = std::prev(it);
         }
     }
 
-    if (it->contains(pos)) {
+    if (it->overlaps(pos)) {
         // we got the right range
         ans = *it;
         return Status::OK();
@@ -1038,7 +1038,7 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
 
         // set the containing ranges for each site
         for (auto &us : sites) {
-            S(utils::find_containing_range(ranges_set, us.pos, us.containing_target));
+            S(utils::find_target_range(ranges_set, us.pos, us.in_target));
         }
     }
 

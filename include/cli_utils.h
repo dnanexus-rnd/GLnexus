@@ -85,10 +85,8 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
                                      std::vector<discovered_alleles>& dsals);
 
 
-// Find which range contains [pos]. The ranges are assumed to be non-overlapping.
-Status find_containing_range(const std::set<range> &ranges,
-                             const range &pos,
-                             range &ans);
+// Find which range overlaps [pos]. The ranges are assumed to be non-overlapping.
+Status find_target_range(const std::set<range> &ranges, const range &pos, range &ans);
 
 // Check if a file exists
 bool check_file_exists(const std::string &path);
