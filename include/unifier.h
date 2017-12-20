@@ -30,6 +30,7 @@ struct unifier_stats {
 
 /// Compute unified sites from all discovered alleles in some genomic region
 /// N = sample count (used to estimate allele frequencies)
+/// target_ranges: If nonempty, only emit sites overlapping these ranges.
 // Important I/O notes:
 // (1) The input discovered_alleles structure is cleared as a
 //     side-effect, to save memory since it can be quite large.
@@ -37,8 +38,14 @@ struct unifier_stats {
 Status unified_sites(const unifier_config& cfg,
                      unsigned N,
                      /* const */ discovered_alleles& alleles,
+                     const std::set<range>& target_ranges,
                      std::vector<unified_site>& ans,
                      unifier_stats& stats);
+
+// Find which range overlaps [pos]. The ranges are assumed to be non-overlapping.
+// (exposed for unit testing)
+Status find_target_range(const std::set<range> &ranges, const range &pos, range &ans);
+
 }
 
 #endif

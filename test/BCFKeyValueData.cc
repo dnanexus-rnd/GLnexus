@@ -1323,6 +1323,17 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     REQUIRE(dataset == "1");
     REQUIRE(records.size() == 1);
     REQUIRE(range(records[0].get()).beg == 5999998);
+
+    // test non-retrieval of records which abut, but don't overlap, the query range
+    rng = range(0, 400200, 400201);
+    s = data->sampleset_range(*cache, sampleset, rng, nullptr,
+                              samples, datasets, iterators);
+    REQUIRE(s.ok());
+    REQUIRE(iterators.size() == 1);
+    s = iterators[0]->next(dataset, hdr, records);
+    REQUIRE(s.ok());
+    REQUIRE(dataset == "1");
+    REQUIRE(records.size() == 0);
 }
 
 TEST_CASE("BCFKeyValueData compare iterator implementations") {

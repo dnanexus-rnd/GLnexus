@@ -296,7 +296,11 @@ public:
         REQUIRE(s.ok());
 
         unifier_stats stats;
-        s = unified_sites(unifier_cfg, N, als, sites, stats);
+        set<range> pos_set;
+        if (pos != range(0, 0, 1000000000)) {
+            pos_set.insert(pos);
+        }
+        s = unified_sites(unifier_cfg, N, als, pos_set, sites, stats);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
@@ -336,6 +340,13 @@ public:
             }
         }
         REQUIRE(sites == truth_sites);
+        // unified_site::operator== does not cover the optional in_target field, se
+        // check those if present
+        for (int i = 0; i < truth_sites.size(); i++) {
+            if (truth_sites[i].in_target.rid != -1) {
+                REQUIRE(truth_sites[i].in_target == sites[i].in_target);
+            }
+        }
         return Status::OK();
     }
 
@@ -749,4 +760,11 @@ TEST_CASE("edge_spanning_deletion2") {
     vector<string> v_infos = {};
     GVCFTestCase edge_spanning_deletion("edge_spanning_deletion2", v_formats, v_infos);
     edge_spanning_deletion.perform_gvcf_test(range(0, 999, 1000));
+}
+
+TEST_CASE("edge_spanning_deletion3") {
+    vector<string> v_formats = {"GT", "RNC", "AD", "DP", "SB"};
+    vector<string> v_infos = {};
+    GVCFTestCase edge_spanning_deletion("edge_spanning_deletion3", v_formats, v_infos);
+    edge_spanning_deletion.perform_gvcf_test(range(0, 1001, 1002));
 }

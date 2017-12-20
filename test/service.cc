@@ -64,6 +64,7 @@ TEST_CASE("service::discover_alleles") {
         ranges.push_back(range(1, 1000, 1001));
         ranges.push_back(range(1, 1010, 1012));
         ranges.push_back(range(1, 2000, 2100));
+        ranges.push_back(range(2, 1001, 1002));
         vector<discovered_alleles> mals;
         s = svc->discover_alleles("<ALL>", ranges, N, mals);
         REQUIRE(s.ok());
@@ -97,6 +98,8 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "CCC"))->second.zGQ.copy_number() == 4);
 
         REQUIRE(mals[5].empty());
+
+        REQUIRE(mals[6].empty());
     }
 
     SECTION("simulate I/O errors - single") {
@@ -215,7 +218,7 @@ TEST_CASE("unified_sites") {
 
         vector<unified_site> sites;
         unifier_stats stats;
-        s = unified_sites(unifier_config(), N, als, sites, stats);
+        s = unified_sites(unifier_config(), N, als, {}, sites, stats);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -294,7 +297,7 @@ TEST_CASE("unified_sites") {
 
         vector<unified_site> sites;
         unifier_stats stats;
-        s = unified_sites(unifier_config(), N, als, sites, stats);
+        s = unified_sites(unifier_config(), N, als, {}, sites, stats);
         REQUIRE(s.ok());
 
         vector<pair<string,size_t> > contigs;
@@ -413,7 +416,7 @@ TEST_CASE("genotyper placeholder") {
         REQUIRE(N == 6);
         vector<unified_site> sites;
         unifier_stats stats;
-        s = unified_sites(unifier_config(), N, als, sites, stats);
+        s = unified_sites(unifier_config(), N, als, {}, sites, stats);
         REQUIRE(s.ok());
 
         unique_ptr<SimFailBCFData> faildata;
@@ -455,7 +458,7 @@ TEST_CASE("genotyper placeholder") {
 
         vector<unified_site> sites;
         unifier_stats stats;
-        s = unified_sites(unifier_config(), N, als, sites, stats);
+        s = unified_sites(unifier_config(), N, als, {}, sites, stats);
         cout << s.str() << endl;
         REQUIRE(s.ok());
 
@@ -585,7 +588,7 @@ TEST_CASE("genotype residuals") {
 
     vector<unified_site> sites;
     unifier_stats stats;
-    s = unified_sites(unifier_config(), N, als, sites, stats);
+    s = unified_sites(unifier_config(), N, als, {}, sites, stats);
     REQUIRE(s.ok());
 
     const string tfn("/tmp/GLnexus_unit_tests.bcf");
