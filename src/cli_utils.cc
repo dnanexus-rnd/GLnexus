@@ -494,31 +494,6 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
     return Status::OK();
 }
 
-Status find_target_range(const std::set<range> &ranges,
-                             const range &pos,
-                             range &ans) {
-    if (ranges.size() == 0) {
-        return Status::NotFound();
-    }
-
-    // The returned value here is the first element that is
-    // greater or equal to [pos].
-    auto it = ranges.lower_bound(pos);
-    if (it == ranges.end() || !it->overlaps(pos)) {
-        // we landed one range after the one we need
-        if (it != ranges.begin()) {
-            it = std::prev(it);
-        }
-    }
-
-    if (it->overlaps(pos)) {
-        // we got the right range
-        ans = *it;
-        return Status::OK();
-    }
-    return Status::NotFound();
-}
-
 // Check if a file exists
 bool check_file_exists(const string &filename) {
     ifstream ifs(filename);
@@ -1016,7 +991,12 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    vector<unified_site> &sites,
                    unifier_stats& stats) {
     Status s;
-    S(unified_sites(unifier_cfg, sample_count, dsals, sites, stats));
+
+    set<range> ranges_set;
+    for (auto& r : ranges) {
+        ranges_set.insert(r);
+    }
+    S(unified_sites(unifier_cfg, sample_count, dsals, ranges_set, sites, stats));
 
     // sanity check, sites are in-order
     if (sites.size() > 1) {
@@ -1027,18 +1007,6 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                     "BUG: unified sites failed sanity check -- sites are out of order",
                     p->pos.str(contigs)  + " " + q->pos.str(contigs));
             }
-        }
-    }
-
-    if (!ranges.empty()) {
-        // convert the ranges vector to a set
-        set<range> ranges_set;
-        for (auto &r : ranges)
-            ranges_set.insert(r);
-
-        // set the containing ranges for each site
-        for (auto &us : sites) {
-            S(utils::find_target_range(ranges_set, us.pos, us.in_target));
         }
     }
 
