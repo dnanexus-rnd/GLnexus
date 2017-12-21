@@ -71,15 +71,15 @@ public:
 
     struct import_result {
         std::set<std::string> samples;
-        unsigned int records = 0;     // total # BCF records
-        unsigned int max_records = 0; // max # records in any bucket
+        uint64_t records = 0;     // total # BCF records
+        uint64_t max_records = 0; // max # records in any bucket
         size_t bytes = 0;             // total BCF bytes
         size_t max_bytes = 0;         // max bytes in any bucket
-        unsigned int buckets = 0;     // # buckets
-        unsigned int duplicate_records = 0; // # of records duplicated in multiple buckets
-        unsigned int skipped_records = 0; // # of records skipped in source gVCF for various caller-specific reasons
+        uint64_t buckets = 0;     // # buckets
+        uint64_t duplicate_records = 0; // # of records duplicated in multiple buckets
+        uint64_t skipped_records = 0; // # of records skipped in source gVCF for various caller-specific reasons
 
-        import_result& add_bucket(unsigned int bucket_records, size_t bucket_bytes, unsigned int duplicates) {
+        import_result& add_bucket(uint64_t bucket_records, size_t bucket_bytes, uint64_t duplicates) {
             records += bucket_records;
             max_records = std::max(max_records, bucket_records);
             bytes += bucket_bytes;

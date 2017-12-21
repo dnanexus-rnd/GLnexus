@@ -70,7 +70,7 @@ public:
     // Report cumulative time (milliseconds) worker threads in the above
     // operations have spent 'stalled' waiting on single-threaded processing
     // steps (e.g. output serialization)
-    unsigned threads_stalled_ms() const;
+    uint64_t threads_stalled_ms() const;
 };
 
 }

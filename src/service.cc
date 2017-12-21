@@ -31,7 +31,7 @@ struct Service::body {
     // "genotype_sites operations
     ctpl::thread_pool metapool_;
 
-    atomic<unsigned> threads_stalled_ms_;
+    atomic<uint64_t> threads_stalled_ms_;
 
     body(BCFData& data) : data_(data) {}
 };
@@ -336,7 +336,7 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
                 return Status::Aborted();
             }
 
-            unsigned stalled_ms = 0;
+            uint64_t stalled_ms = 0;
             while (i > results_retrieved+4*body_->cfg_.threads) {
                 // throttle worker thread if the results retrieval, below, is falling
                 // too far behind. Otherwise memory usage would be unbounded because
@@ -415,6 +415,6 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     return bcf_out->close();
 }
 
-unsigned Service::threads_stalled_ms() const { return body_->threads_stalled_ms_; }
+uint64_t Service::threads_stalled_ms() const { return body_->threads_stalled_ms_; }
 
 }

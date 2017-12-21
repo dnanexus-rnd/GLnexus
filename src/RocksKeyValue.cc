@@ -160,7 +160,10 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     opts.allow_concurrent_memtable_write = false;
 
     if (mode == OpenMode::BULK_LOAD) {
-        opts.delayed_write_rate = (1<<30);
+        // don't throttle ingest, and free up disk space more frequently than the
+        // 6h default interval
+        opts.delayed_write_rate = 10ULL * (1<<30);
+        opts.delete_obsolete_files_period_micros = 15ULL * 60 * 1000000;
     }
 }
 
