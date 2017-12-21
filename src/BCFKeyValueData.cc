@@ -1082,35 +1082,8 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
     return Status::OK();
 }
 
-// convenience macro for some sanity-checking in bulk_insert_gvcf_key_values below
-#ifndef NDEBUG
-#define CHECK_DANGLER_BUCKET(pbcf,bkt) { \
-    range dangler_rng(pbcf); \
-    assert(dangler_rng.overlaps(bkt)); \
-    assert(dangler_rng.beg < (bkt).beg); \
-    assert(dangler_rng.end > (bkt).beg); \
-}
-#else
-#define CHECK_DANGLER_BUCKET(pbcf,bkt)
-#endif
-
-
-// The code below ingests records into database buckets. A bucket is
-// fairly large, and for the most part, records are short and entirely
-// fit into a single bucket. However, even short records can straddle
-// a boundary. Also, long reference confidence records and structural
-// variations can be much longer than a bucket. To deal with these
-// corner cases, the *danglers list* is a buffer of records that dangle
-// from one bucket over to the next.
-//
-// Short records that straddle a boundary will appear as regular
-// records in bucket K, and as danglers in bucket K+1. Long records
-// appear as regular records in the first bucket they belong to, and
-// as danglers in all the others (they belong to).
-
-
-// helper class for bulk_insert_gvcf_key_values: gather sizable batches of
-// buckets (key/value pairs) before insertion into the KeyValue database.
+// helper class for bulk_insert_gvcf_key_values: accumulate sizable batches of
+// key/value pairs before insertion into the KeyValue database.
 // This is to reduce database write lock contention during intense multi-
 // threaded bulk loads, as each thread makes fewer larger inserts instead
 // of many smaller inserts.
@@ -1128,12 +1101,16 @@ public:
 
     Status put(KeyValue::CollectionHandle coll, const std::string& key, const std::string& value) {
         Status s;
+        size_t delta = key.size() + value.size() + 32;
+        if (bufsz_ + delta >= LIMIT) {
+            S(flush());
+        }
         if (!buf_) {
             S(db_.begin_writes(buf_));
         }
         S(buf_->put(coll, key, value));
-        bufsz_ += key.size() + value.size() + 32;
-        return (bufsz_ >= LIMIT ? flush() : Status::OK());
+        bufsz_ += delta;
+        return Status::OK();
     }
 
     // make sure to call when finished
@@ -1169,6 +1146,20 @@ static Status write_bucket(BCFBucketRange& rangeHelper, BulkInsertBuffer& db, Ke
     return Status::OK();
 }
 
+// The code below ingests GVCF records into database buckets. Each bucket is
+// inserted as a key/value pair in the database, with the key encoding the
+// dataset identifier and genome position. Buckets encompass several kilobases
+// of the genome, so most GVCF records fit entirely into a single bucket.
+// However, even short records can straddle the a boundary between buckets,
+// and reference confidence records and structural variations can be much
+// longer than a bucket. To deal with these corner cases, the *danglers
+// list* is a buffer of records that dangle from one bucket over to the next.
+//
+// Short records that straddle a boundary will appear as regular records in
+// bucket K, and as danglers in bucket K+1. Long records appear as regular
+// records in the first bucket they belong to, and as danglers in all the
+// others (they belong to).
+
 // Leave in the danglers list only records that extend beyond [bucket].
 static void prune_danglers(vector<shared_ptr<bcf1_t>> &danglers,
                            const range &bucket) {
@@ -1178,6 +1169,18 @@ static void prune_danglers(vector<shared_ptr<bcf1_t>> &danglers,
         [&bucket] (shared_ptr<bcf1_t> &dp) {return range(dp.get()).end <= bucket.end; });
     danglers.erase(it, danglers.end());
 }
+
+// convenience macro for some sanity-checking
+#ifndef NDEBUG
+#define CHECK_DANGLER_BUCKET(pbcf,bkt) { \
+    range dangler_rng(pbcf); \
+    assert(dangler_rng.overlaps(bkt)); \
+    assert(dangler_rng.beg < (bkt).beg); \
+    assert(dangler_rng.end > (bkt).beg); \
+}
+#else
+#define CHECK_DANGLER_BUCKET(pbcf,bkt)
+#endif
 
 static Status write_danglers_to_in_mem_bucket(vector<shared_ptr<bcf1_t>> &danglers,
                                               BCFWriter *writer,

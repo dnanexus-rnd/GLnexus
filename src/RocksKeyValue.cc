@@ -94,7 +94,10 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     // compress all files with Zstandard
     opts.compression_per_level.clear();
     opts.compression = rocksdb::kZSTD;
+    opts.compression_opts.level = 2;
     opts.compression_opts.max_dict_bytes = bbto.block_size * 4;
+    // TODO when released: https://github.com/facebook/rocksdb/commit/24ad4306001e0e9ec13ec29f11e50b4a7b070bf4
+    // opts.compression_opts.zstd_max_train_bytes = opts.compression_opts.max_dict_bytes;
 
     if (prefix_length) {
         // prefix-based hash indexing for this column family
@@ -114,8 +117,8 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
         // Increase memtable size (and shrink block cache to compensate)
-        opts.write_buffer_size = totalRAM() / 4;
-        opts.max_write_buffer_number = 3;
+        opts.write_buffer_size = totalRAM() / 6;
+        opts.max_write_buffer_number = 4;
         opts.min_write_buffer_number_to_merge = 1;
         bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 10, 6);
 
@@ -123,6 +126,8 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
         // at the end of the bulk load operation
         opts.level0_slowdown_writes_trigger = (1<<30);
         opts.level0_stop_writes_trigger = (1<<30);
+        opts.soft_pending_compaction_bytes_limit = 0;
+        opts.hard_pending_compaction_bytes_limit = 0;
 
         // Size amplification isn't really a thing during bulk loading because
         // nothing is getting deleted. The heuristic can also lead to merges
@@ -143,7 +148,7 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
     opts.max_open_files = -1;
 
     // configure parallelism
-    opts.max_background_jobs = std::max(std::thread::hardware_concurrency() / 2, 2U);
+    opts.max_background_jobs = std::max(std::thread::hardware_concurrency(), 2U);
     opts.max_subcompactions = std::min(opts.max_background_jobs, 10);
     opts.env->SetBackgroundThreads(opts.max_background_jobs, rocksdb::Env::LOW);
     opts.env->SetBackgroundThreads(opts.max_background_jobs, rocksdb::Env::HIGH);
@@ -153,6 +158,10 @@ void ApplyDBOptions(OpenMode mode, rocksdb::Options& opts) {
 
     // legacy issue -- feature not supported by the memtable implemetations we select
     opts.allow_concurrent_memtable_write = false;
+
+    if (mode == OpenMode::BULK_LOAD) {
+        opts.delayed_write_rate = (1<<30);
+    }
 }
 
 class Iterator : public KeyValue::Iterator {
