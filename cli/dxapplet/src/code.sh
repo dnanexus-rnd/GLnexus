@@ -20,18 +20,13 @@ main() {
     check_use_of_jemalloc_lib
 
     # download inputs.
-    # TODO: it would be nice to overlap the staging of the input gVCFs with
-    # the bulk load, by streaming the filenames into glnexus_cli as they're
-    # staged.
-    mkdir -p "in/gvcf" "in/gvcf_tar"
-    dx-download-all-inputs --parallel --except gvcf_tar
-    for tar_dxlink in "${gvcf_tar[@]}"
-    do
-        tar_dxid=$(dx-jobutil-parse-link --no-project "$tar_dxlink")
-        dn="in/gvcf/${tar_dxid}"
-        mkdir -p "$dn"
-        dx cat "$tar_dxid" | tar x -C "$dn" --strip-components=1
-    done
+    dx-download-all-inputs --parallel
+
+    if [ -n "$gvcf_folder" ]; then
+        mkdir -p in/gvcf/folder
+        dx find data --project $DX_PROJECT_CONTEXT_ID --folder "$gvcf_folder" --name "$gvcf_folder_pattern" --brief \
+            | xargs -n 100 -P 5 dx download --no-progress -o in/gvcf/folder
+    fi
 
     # Make a list of all gvcf files
     find in/gvcf -type f > /tmp/gvcf_list
