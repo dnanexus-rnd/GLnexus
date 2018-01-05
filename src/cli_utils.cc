@@ -887,6 +887,9 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                         logger->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
                     }
                     lock_guard<mutex> lock(mu);
+                    if (rslt.records == 0) {
+                        logger->warn() << "No data loaded from " << gvcf << " after range and other filters.";
+                    }
                     stats += rslt;
                     datasets_loaded.insert(dataset);
                     size_t n = datasets_loaded.size();
