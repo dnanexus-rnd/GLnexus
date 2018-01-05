@@ -1269,7 +1269,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     // scan the BCF records
     int c;
     for(c = bcf_read(vcf, hdr, vt.get());
-        c == 0;
+        c == 0 && vt->errcode == 0;
         c = bcf_read(vcf, hdr, vt.get())) {
         range vt_rng(vt.get());
         if (!range_filter.empty()) {
@@ -1326,6 +1326,11 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         }
         prev_rid = vt->rid;
         prev_pos = vt->pos;
+    }
+    if (vt->errcode != 0) {
+        ostringstream msg;
+        msg << filename << " bcf1_t::errcode = " << vt->errcode;
+        return Status::IOError("reading from gVCF file", msg.str());
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
 

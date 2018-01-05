@@ -1444,4 +1444,10 @@ TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
     s = data->import_gvcf(*cache, "", "test/data/bad_sample.gvcf", samples_imported);
     REQUIRE(s.bad());
     REQUIRE(s.str().find("data set name") != string::npos);
+
+    // bad # of samples / truncated record
+    s = data->import_gvcf(*cache, "bad_nsample", "test/data/bad_nsample.gvcf", samples_imported);
+    REQUIRE(s.bad());
+    cout << s.str() << endl;
+    REQUIRE(s.str().find("errcode") != string::npos);
 }
