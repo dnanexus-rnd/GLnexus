@@ -21,7 +21,7 @@ private:
     BCFKeyValueData(const BCFKeyValueData&) = delete;
 
 public:
-    static const int default_bucket_size = 3000;
+    static const int default_bucket_size = 30000;
 
     /// Initialize a brand-new database, which SHOULD be empty to begin with.
     /// Contigs are stored and an empty sample set "*" is created.
