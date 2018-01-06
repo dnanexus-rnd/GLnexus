@@ -214,11 +214,9 @@ public:
                 }
             }
 
-            kj::VectorOutputStream os;
-            writeMessage(os, b);
-            auto p = os.getArray();
-            assert(p.begin() != nullptr); assert(p.size() > 0);
-            ans.assign((char*) p.begin(), p.size());
+            auto msg_words = ::capnp::messageToFlatArray(b);
+            auto msg_bytes = msg_words.asBytes();
+            ans.assign((char*)msg_bytes.begin(), msg_bytes.size());
 
             #ifndef NDEBUG
             {
