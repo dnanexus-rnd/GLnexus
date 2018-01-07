@@ -23,6 +23,17 @@
 namespace GLnexus {
 namespace RocksKeyValue {
 
+// expose KeyValue::Data by taking ownership of a rocksdb::PinnableSlice
+struct PinnableSliceData : public KeyValue::Data {
+    PinnableSliceData(std::unique_ptr<rocksdb::PinnableSlice>& ps)
+        : KeyValue::Data(ps->data(), ps->size()) {
+        ps_ = move(ps);
+    }
+
+private:
+    std::unique_ptr<rocksdb::PinnableSlice> ps_;
+};
+
 static size_t totalRAM() {
     // http://nadeausoftware.com/articles/2012/09/c_c_tip_how_get_physical_memory_size_system
     static size_t memoized = 0;
@@ -178,7 +189,8 @@ private:
 
 public:
 
-    Iterator(std::unique_ptr<rocksdb::Iterator>&& iter) : iter_(move(iter)) {
+    Iterator(std::unique_ptr<rocksdb::Iterator>&& iter)
+        : iter_(move(iter)) {
         if (iter_->Valid()) {
             key_ = iter_->key();
             value_ = iter_->value();
@@ -189,11 +201,11 @@ public:
         return iter_->Valid();
     }
 
-    std::pair<const char*, size_t> key() const override {
-        return std::make_pair(key_.data(), key_.size());
+    KeyValue::Data key() const override {
+        return KeyValue::Data(key_.data(), key_.size());
     }
-    std::pair<const char*, size_t> value() const override {
-        return std::make_pair(value_.data(), value_.size());
+    KeyValue::Data value() const override {
+        return KeyValue::Data(value_.data(), value_.size());
     }
 
     Status next() override {
@@ -230,15 +242,15 @@ public:
 
     ~Reader() {}
 
-    Status get(KeyValue::CollectionHandle _coll,
-               const std::string& key,
-               std::string& value) const override {
+    Status get0(KeyValue::CollectionHandle _coll,
+                const std::string& key,
+                std::shared_ptr<KeyValue::Data>& value) const override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
         const rocksdb::ReadOptions r_options; // what should this be set to?
-        std::string v_tmp;
-        rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
-        value = std::move(v_tmp);
-        return convertStatus(s);
+        auto ps = std::make_unique<rocksdb::PinnableSlice>();
+        rocksdb::Status s = db_->Get(r_options, coll, key, ps.get());
+        value = std::make_shared<PinnableSliceData>(ps);
+        return convertStatus(s);;
     }
 
     Status iterator(KeyValue::CollectionHandle _coll,
@@ -288,9 +300,9 @@ public:
 
     Status put(KeyValue::CollectionHandle _coll,
                const std::string& key,
-               const std::string& value) override {
+               const KeyValue::Data& value) override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        wb_->Put(coll, key, value);
+        wb_->Put(coll, key, rocksdb::Slice(value.data, value.size));
         return Status::OK();
     }
 
@@ -488,22 +500,22 @@ public:
         return Status::OK();
     }
 
-    Status get(KeyValue::CollectionHandle _coll,
-               const std::string& key,
-               std::string& value) const override {
+    Status get0(KeyValue::CollectionHandle _coll,
+                const std::string& key,
+                std::shared_ptr<KeyValue::Data>& value) const override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        static const rocksdb::ReadOptions r_options; // what should this be set to?
-        std::string v_tmp;
-        rocksdb::Status s = db_->Get(r_options, coll, key, &v_tmp);
-        value = std::move(v_tmp);
+        const rocksdb::ReadOptions r_options; // what should this be set to?
+        auto ps = std::make_unique<rocksdb::PinnableSlice>();
+        rocksdb::Status s = db_->Get(r_options, coll, key, ps.get());
+        value = std::make_shared<PinnableSliceData>(ps);
         return convertStatus(s);
     }
 
     Status put(KeyValue::CollectionHandle _coll,
                const std::string& key,
-               const std::string& value) override {
+               const KeyValue::Data& value) override {
         auto coll = reinterpret_cast<rocksdb::ColumnFamilyHandle*>(_coll);
-        rocksdb::Status s = db_->Put(write_options_, coll, key, value);
+        rocksdb::Status s = db_->Put(write_options_, coll, key, rocksdb::Slice(value.data, value.size));
         return convertStatus(s);
     }
 

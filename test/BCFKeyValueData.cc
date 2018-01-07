@@ -21,12 +21,12 @@ namespace KeyValueMem {
             return it_ != data_.end();
         }
 
-        pair<const char*,size_t> key() const override {
-            return make_pair(it_->first.c_str(), it_->first.size());
+        KeyValue::Data key() const override {
+            return KeyValue::Data(it_->first.c_str(), it_->first.size());
         }
 
-        pair<const char*,size_t> value() const override {
-            return make_pair(it_->second.c_str(), it_->second.size());
+        KeyValue::Data value() const override {
+            return KeyValue::Data(it_->second.c_str(), it_->second.size());
         }
 
         Status next() override {
@@ -42,13 +42,15 @@ namespace KeyValueMem {
         friend class DB;
 
     public:
-        Status get(CollectionHandle _coll, const std::string& key, std::string& value) const override {
+        Status get0(CollectionHandle _coll, const std::string& key, std::shared_ptr<KeyValue::Data>& value) const override {
             auto coll = reinterpret_cast<uint64_t>(_coll);
             assert(coll < data_.size());
             const auto& m = data_[coll];
             auto p = m.find(key);
             if (p == m.end()) return Status::NotFound("key", key);
-            value = p->second;
+            std::string* s = new std::string(p->second);
+            KeyValue::Data* d = new KeyValue::Data(s->data(), s->size());
+            value = shared_ptr<KeyValue::Data>(d, [s, d](KeyValue::Data*) { delete d; delete s; });
             return Status::OK();
         }
 
@@ -75,10 +77,10 @@ namespace KeyValueMem {
         friend class DB;
 
     public:
-        Status put(CollectionHandle _coll, const std::string& key, const std::string& value) override {
+        Status put(CollectionHandle _coll, const std::string& key, const KeyValue::Data& value) override {
             auto coll = reinterpret_cast<uint64_t>(_coll);
             assert(coll < data_.size());
-            data_[coll][key] = value;
+            data_[coll][key] = value.str();
             return Status::OK();
         }
         Status commit() override;
