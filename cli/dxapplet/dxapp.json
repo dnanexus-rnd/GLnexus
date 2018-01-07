@@ -13,16 +13,10 @@
       "patterns": ["*.gvcf.gz", "*.g.vcf.gz", "*.gvcf", "*.g.vcf"]
     },
     {
-      "name": "gvcf_folder",
-      "help": "folder to search for source gvcf files",
-      "class": "string",
+      "name": "gvcf_manifest",
+      "help": "File containing DNAnexus IDs of gVCF files to process (file-xxxx or project-yyyy:file-xxxx), one ID per line.",
+      "class": "file",
       "optional": true
-    },
-    {
-      "name": "gvcf_folder_pattern",
-      "help": "(with gvcf_folder) search pattern for gvcf files within folder",
-      "class": "string",
-      "default": "*.gvcf.gz"
     },
     {
       "name": "bed_ranges_to_genotype",

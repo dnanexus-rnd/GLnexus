@@ -22,10 +22,10 @@ main() {
     # download inputs.
     dx-download-all-inputs --parallel
 
-    if [ -n "$gvcf_folder" ]; then
-        mkdir -p in/gvcf/folder
-        dx find data --project $DX_PROJECT_CONTEXT_ID --folder "$gvcf_folder" --name "$gvcf_folder_pattern" --brief \
-            | xargs -n 100 -P 5 dx download --no-progress -o in/gvcf/folder
+    if [ -n "$gvcf_manifest" ]; then
+        dx download "$gvcf_manifest" -o gvcf_manifest.txt
+        mkdir -p in/gvcf/manifest
+        cat gvcf_manifest.txt | xargs -n 100 -P 5 dx download --no-progress -o in/gvcf/manifest
     fi
 
     # Make a list of all gvcf files
