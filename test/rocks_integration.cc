@@ -482,13 +482,12 @@ static void printDBSamples(T *data) {
     std::shared_ptr<const std::set<std::string> > samples;
     s = data->sampleset_samples(sampleset, samples);
     assert(s.ok());
+    //const char* const delim = ", ";
+    //std::ostringstream imploded;
+    //std::copy(samples->begin(), samples->end(),
+    //          std::ostream_iterator<std::string>(imploded, delim));
+    //cout << "samples = [" << imploded.str() << "]" << endl;
     assert(samples->size() == 4);
-/*
-    const char* const delim = ", ";
-    std::ostringstream imploded;
-    std::copy(samples->begin(), samples->end(),
-              std::ostream_iterator<std::string>(imploded, delim));
-    cout << "samples = [" << imploded.str() << "]" << endl; */
 }
 
 

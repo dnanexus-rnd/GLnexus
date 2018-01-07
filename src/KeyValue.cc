@@ -9,11 +9,11 @@ namespace GLnexus { namespace KeyValue {
     // iterator), or apply a "batch" of one write. Derived classes may want to
     // provide more efficient overrides.
 
-    Status DB::get(CollectionHandle coll, const std::string& key, std::string& value) const {
+    Status DB::get0(CollectionHandle coll, const std::string& key, std::shared_ptr<Data>& value) const {
         Status s;
         unique_ptr<Reader> curr;
         S(current(curr));
-        return curr->get(coll, key, value);
+        return curr->get0(coll, key, value);
     }
 
     Status DB::iterator(CollectionHandle coll, const string& key, unique_ptr<Iterator>& it) const {
@@ -23,7 +23,7 @@ namespace GLnexus { namespace KeyValue {
         return curr->iterator(coll, key, it);
     }
 
-    Status DB::put(CollectionHandle coll, const std::string& key, const std::string& value) {
+    Status DB::put(CollectionHandle coll, const std::string& key, const KeyValue::Data& value) {
         Status s;
         unique_ptr<WriteBatch> batch;
         S(begin_writes(batch));

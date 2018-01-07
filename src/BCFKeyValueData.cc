@@ -276,13 +276,13 @@ Status BCFKeyValueData::sampleset_samples(const string& sampleset,
     unique_ptr<KeyValue::Iterator> it;
     S(body_->db->iterator(coll, sampleset, it));
 
-    if (!it->valid() || it->key_str() != sampleset) {
+    if (!it->valid() || it->key().str() != sampleset) {
         return Status::NotFound("sample set not found", sampleset);
     }
 
     auto samples = make_shared<set<string>>();
     for (s = it->next(); s.ok() && it->valid(); s = it->next()) {
-        auto key = it->key_str();
+        auto key = it->key().str();
         size_t nullpos = key.find('\0');
         if (nullpos == string::npos || key.substr(0, nullpos) != sampleset) {
             break;
@@ -311,8 +311,8 @@ Status BCFKeyValueData::all_samples_sampleset(string& ans) {
     S(body_->db->collection("sampleset",coll));
     unique_ptr<KeyValue::Iterator> it;
     S(body_->db->iterator(coll, "*", it));
-    if (!it->valid() || it->key_str() != "*") return Status::NotFound("BCFKeyValueData::all_samples_sampleset: improperly initialized database");
-    uint64_t version = strtoull(string(it->value().first, it->value().second).c_str(), nullptr, 10);
+    if (!it->valid() || it->key().str() != "*") return Status::NotFound("BCFKeyValueData::all_samples_sampleset: improperly initialized database");
+    uint64_t version = strtoull(it->value().str().c_str(), nullptr, 10);
     ans = "*@" + to_string(version); // this is the desired sample set
 
     // Does the desired sample set exist already? If so, we are done.
@@ -328,7 +328,7 @@ Status BCFKeyValueData::all_samples_sampleset(string& ans) {
     S(body_->db->begin_writes(wb));
     S(wb->put(coll, ans, string()));
     for (s = it->next(); s.ok() && it->valid(); s = it->next()) {
-        auto key = it->key_str();
+        auto key = it->key().str();
         size_t nullpos = key.find('\0');
         if (nullpos == string::npos || key.substr(0, nullpos) != "*") {
             break;
@@ -450,7 +450,7 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
 //                   include_danglers to true on the first bucket you're
 //                   scanning, and false on the rest.
 static Status ScanBCFBucket(const range& bucket, const string& dataset, 
-                            const pair<const char*, size_t>& data,
+                            const KeyValue::Data& data,
                             const bcf_hdr_t* hdr,
                             const range& query,
                             bcf_predicate predicate,
@@ -468,12 +468,12 @@ static Status ScanBCFBucket(const range& bucket, const string& dataset,
     //             https://lemire.me/blog/2012/05/31/data-alignment-for-speed-myth-or-reality/
     //             http://pzemtsov.github.io/2016/11/06/bug-story-alignment-on-x86.html
     #ifndef __x86_64__
-    if (uint64_t(data.first) % sizeof(::capnp::word)) {
+    if (uint64_t(data.data) % sizeof(::capnp::word)) {
          return Status::Failure("BCFBucketReader: input buffer isn't word-aligned");
     }
     #endif
     try {
-        ::capnp::FlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)data.first, data.second / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)data.data, data.size / sizeof(::capnp::word)));
         capnp::BCFBucket::Reader bucket_reader = message.getRoot<capnp::BCFBucket>();
 
         // Scan: begin at a position informed by the 'skip index'
@@ -548,10 +548,10 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
     for (range r = bkExt->begin(); r <= bkExt->end(); r = bkExt->next()) {
         assert(r.overlaps(query));
         string key = body_->rangeHelper->bucket_key(r, dataset);
-        string data;
-        s = body_->db->get(coll, key, data);
+        shared_ptr<KeyValue::Data> data;
+        s = body_->db->get0(coll, key, data);
         if (s.ok()) {
-            S(ScanBCFBucket(r, dataset, make_pair(data.c_str(), data.size()), hdr, query, predicate,
+            S(ScanBCFBucket(r, dataset, *data, hdr, query, predicate,
                             first, accu, records));
         } else if (s != StatusCode::NOT_FOUND) {
             return s;
@@ -629,7 +629,7 @@ class BCFBucketIterator : public RangeBCFIterator {
         string key_dataset;
         for (; s.ok() && it_->valid(); s = it_->next()) {
             string key_prefix;
-            S(body_.rangeHelper->parse_key(it_->key_str(), key_prefix, key_dataset));
+            S(body_.rangeHelper->parse_key(it_->key().str(), key_prefix, key_dataset));
 
             if (key_prefix != bucket_prefix_) {
                 // we've now advanced past the end of the bucket, so there are
