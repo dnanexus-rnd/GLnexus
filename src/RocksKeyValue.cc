@@ -96,10 +96,10 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.compaction_options_universal.min_merge_width = 2;
     opts.compaction_options_universal.max_merge_width = 6;
 
-    // 256 KiB blocks, with a large sharded cache
+    // 1MiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
-    bbto.block_size = 256 * 1024;
+    bbto.block_size = 1024 * 1024;
     bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 8);
 
     // compress all files with Zstandard
