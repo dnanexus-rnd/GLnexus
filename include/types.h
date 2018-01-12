@@ -388,6 +388,9 @@ struct discovered_allele_info {
     // zygosity_by_GQ statsitics are used to estimate allele copy number
     zygosity_by_GQ zGQ;
 
+    /// Optional: the target range (e.g. exon) in which this allele was discovered
+    range in_target = range(-1,-1,-1);
+
     bool operator==(const discovered_allele_info& rhs) const noexcept {
         return is_ref == rhs.is_ref && all_filtered == rhs.all_filtered && topAQ == rhs.topAQ && zGQ == rhs.zGQ;
     }

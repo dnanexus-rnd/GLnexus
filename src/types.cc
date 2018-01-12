@@ -97,6 +97,10 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
             p->second.all_filtered = p->second.all_filtered && ai.all_filtered;
             p->second.topAQ += ai.topAQ;
             p->second.zGQ += ai.zGQ;
+            // we expect in_target to be the same but JIC choose the larger
+            if (ai.in_target.size() > p->second.in_target.size()) {
+                p->second.in_target = ai.in_target;
+            }
         }
     }
 
@@ -197,6 +201,11 @@ Status yaml_of_one_discovered_allele(const allele& allele,
     }
     out << YAML::EndSeq;
 
+    if (ainfo.in_target.rid >= 0) {
+        out << YAML::Key << "in_target" << YAML::Value;
+        S(range_yaml(contigs, ainfo.in_target, out));
+    }
+
     out << YAML::EndMap;
     return Status::OK();
 }
@@ -269,6 +278,11 @@ Status one_discovered_allele_of_yaml(const YAML::Node& yaml,
             VR(r->IsScalar() && r->as<int>() >= 0, "invalid entry in zygosity_by_GQ");
             ai.zGQ.M[i][j] = (unsigned) r->as<int>();
         }
+    }
+
+    const auto n_in_target = yaml["in_target"];
+    if (n_in_target) {
+        S(range_of_yaml(n_in_target, contigs, ai.in_target));
     }
     #undef VR
     #undef V
@@ -354,6 +368,15 @@ static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
         ::capnp::List<uint64_t>::Builder zGQ1 = dai.initZGQ1(zygosity_by_GQ::GQ_BANDS);
         for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
             zGQ1.set(k, val.zGQ.M[k][1]);
+
+        if (val.in_target.rid > -1) {
+            auto it_b = dai.getInTargetOption().initInTarget();
+            it_b.setRid(val.in_target.rid);
+            it_b.setBeg(val.in_target.beg);
+            it_b.setEnd(val.in_target.end);
+        } else {
+            dai.getInTargetOption().setNoInTarget(::capnp::VOID);
+        }
 
         cursor++;
     }
@@ -445,6 +468,14 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
         for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++) {
             dai.zGQ.M[k][0] = zGQ0_pk[k];
             dai.zGQ.M[k][1] = zGQ1_pk[k];
+        }
+
+        const auto ito_r = dai_pk.getInTargetOption();
+        if (ito_r.hasInTarget()) {
+            const auto it_r = ito_r.getInTarget();
+            dai.in_target.rid = it_r.getRid();
+            dai.in_target.beg = it_r.getBeg();
+            dai.in_target.end = it_r.getEnd();
         }
 
         dsals[alle] = dai;
