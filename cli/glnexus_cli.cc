@@ -113,7 +113,7 @@ static int all_steps(const vector<string> &vcf_files,
     for (auto& dsals_i : dsals_by_contig) {
         GLnexus::unifier_stats stats1;
         H("unify sites",
-          GLnexus::cli::utils::unify_sites(console, unifier_cfg, ranges, contigs, dsals_i, sample_count, sites, stats1));
+          GLnexus::cli::utils::unify_sites(console, unifier_cfg, contigs, dsals_i, sample_count, sites, stats1));
         stats += stats1;
     }
     console->info() << "unified to " << sites.size() << " sites cleanly with " << stats.unified_alleles << " ALT alleles. "

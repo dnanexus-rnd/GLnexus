@@ -133,7 +133,6 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
 // output sites is appended to (not cleared!)
 Status unify_sites(std::shared_ptr<spdlog::logger> logger,
                    const unifier_config &unifier_cfg,
-                   const std::vector<range> &ranges,
                    const std::vector<std::pair<std::string,size_t> > &contigs,
                    discovered_alleles &dsals,
                    unsigned sample_count,

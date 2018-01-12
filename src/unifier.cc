@@ -23,6 +23,7 @@ struct minimized_allele_info {
     bool all_filtered = false;
     top_AQ topAQ;
     unsigned copy_number = 0;
+    range in_target = range(-1,-1,-1);
 
     string str() const {
         ostringstream os;
@@ -145,12 +146,17 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
             info.all_filtered = dal.second.all_filtered;
             info.topAQ = dal.second.topAQ;
             info.copy_number = copy_number;
+            info.in_target = dal.second.in_target;
             alts[min_alt] = move(info);
         } else {
             ap->second.originals.insert(dal.first);
             ap->second.all_filtered = ap->second.all_filtered && dal.second.all_filtered;
             ap->second.topAQ += dal.second.topAQ;
             ap->second.copy_number += copy_number;
+            if (!ap->second.in_target.overlaps(min_alt.pos) ||
+                dal.second.in_target.size() > ap->second.in_target.size()) {
+                ap->second.in_target = dal.second.in_target;
+            }
         }
     }
 
@@ -322,7 +328,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
 // all_pruned_alleles is a unique list of the pruned alleles, each with the
 // corresponding reference allele.
 // The input alleles is cleared by side-effect to save memory.
-Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles, const set<range>& target_ranges,
+Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
                        map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>>& ans,
                        vector<pair<minimized_allele,discovered_allele>>& all_pruned_alleles) {
     Status s;
@@ -342,20 +348,14 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles, c
         minimized_alleles alts, pruned;
         S(minimize_alleles(cfg, active_region.second, refs, alts));
 
-        // exclude alleles not overlapping one of the target ranges, if any.
-        // Even if allele discovery was run on the same target ranges, some of
-        // the alleles may no longer overlap them after minimization.
-        if (target_ranges.size()) {
-            for (auto it = alts.begin(); it != alts.end(); ) {
-                range r(-1,-1,-1);
-                s = find_target_range(target_ranges, it->first.pos, r);
-                if (s.ok()) {
-                    ++it;
-                } else if (s == StatusCode::NOT_FOUND) {
-                    alts.erase(it++);
-                } else {
-                    return s;
-                }
+        // exclude alleles not overlapping the discovery target range, if any,
+        // after minimization.
+        for (auto it = alts.begin(); it != alts.end(); ) {
+            auto trg = it->second.in_target;
+            if (trg.rid < 0 || trg.overlaps(it->first.pos)) {
+                ++it;
+            } else {
+                alts.erase(it++);
             }
         }
 
@@ -503,13 +503,20 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         us.qual = std::max(us.qual, p.second.topAQ.V[0]);
     }
 
+    // We expect the in_target of allthe site's alleles to be the same, but anyway
+    // look for the largest.
+    for (const auto& p : alts) {
+        if (p.second.in_target.size() > us.in_target.size()) {
+            us.in_target = p.second.in_target;
+        }
+    }
+
     ans = std::move(us);
     return Status::OK();
 }
 
 Status unified_sites(const unifier_config& cfg,
                      unsigned N, discovered_alleles& alleles,
-                     const set<range>& target_ranges,
                      vector<unified_site>& ans,
                      unifier_stats& stats_out) {
     Status s;
@@ -517,7 +524,7 @@ Status unified_sites(const unifier_config& cfg,
 
     map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>> sites;
     vector<pair<minimized_allele,discovered_allele>> all_pruned_alleles;
-    S(delineate_sites(cfg, alleles, target_ranges, sites, all_pruned_alleles));
+    S(delineate_sites(cfg, alleles, sites, all_pruned_alleles));
     // at this point, alleles has been cleared to save memory usage
 
     for (auto psite = sites.begin(); psite != sites.end(); sites.erase(psite++)) {
@@ -527,9 +534,6 @@ Status unified_sites(const unifier_config& cfg,
         auto pruned_alleles = get<2>(site_alleles);
         unified_site us(pos);
         S(unify_alleles(cfg, N, pos, ref_alleles, alt_alleles, pruned_alleles, us));
-        if (target_ranges.size()) {
-            S(find_target_range(target_ranges, us.pos, us.in_target));
-        }
         ans.push_back(us);
         stats.unified_alleles += alt_alleles.size();
     }
@@ -542,9 +546,7 @@ Status unified_sites(const unifier_config& cfg,
                 S(unify_alleles(cfg, N, pa.first.first.pos, discovered_alleles{pa.second},
                                 minimized_alleles{pa.first}, minimized_alleles(), ms));
                 ms.monoallelic = true;
-                if (target_ranges.size()) {
-                    S(find_target_range(target_ranges, ms.pos, ms.in_target));
-                }
+                ms.in_target = pa.first.second.in_target;
                 ans.push_back(ms);
             }
             stats.lost_alleles++;
