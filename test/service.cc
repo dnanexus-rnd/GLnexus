@@ -74,6 +74,8 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(mals[0].size() == 2);
         REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "A"))->second.zGQ.copy_number() == 6);
         REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "G"))->second.zGQ.copy_number() == 6);
+        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "A"))->second.in_target == range(0, 1000, 1001));
+        REQUIRE(mals[0].find(allele(range(0, 1000, 1001), "G"))->second.in_target == range(0, 1000, 1001));
 
         REQUIRE(mals[1].size() == 4);
         REQUIRE(mals[1].find(allele(range(0, 1001, 1002), "A"))->second.zGQ.copy_number() == 6);
@@ -94,6 +96,8 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(mals[4].size() == 4);
         REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "AG"))->second.zGQ.copy_number() == 3);
         REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "CC"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "AG"))->second.in_target == range(1, 1010, 1012));
+        REQUIRE(mals[4].find(allele(range(1, 1010, 1012), "CC"))->second.in_target == range(1, 1010, 1012));
         REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "AGA"))->second.zGQ.copy_number() == 2);
         REQUIRE(mals[2].find(allele(range(0, 1010, 1013), "CCC"))->second.zGQ.copy_number() == 4);
 
@@ -181,6 +185,7 @@ TEST_CASE("service::discover_alleles gVCF") {
         p = als.find(allele(range(0, 10009463, 10009465), "T"));
         REQUIRE(p != als.end());
         REQUIRE(p->second.zGQ.copy_number() == 1);
+        REQUIRE(p->second.in_target == range(0, 10000000, 10010000));
     }
 
     SECTION("exclusion/detection of bogus alleles") {

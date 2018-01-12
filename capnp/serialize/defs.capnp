@@ -3,6 +3,12 @@
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("GLnexus::capnp");
 
+struct Range {
+    rid @0 :Int64;
+    beg @1 :Int64;
+    end @2 :Int64;
+}
+
 ### discovered alleles
 
 struct DiscoveredAlleleInfo {
@@ -17,12 +23,11 @@ struct DiscoveredAlleleInfo {
      # zygosity_by_GQ statistics are used to estimate allele copy number
     zGQ0 @2 :List(UInt64);
     zGQ1 @3 :List(UInt64);
-}
 
-struct Range {
-    rid @0 :Int64;
-    beg @1 :Int64;
-    end @2 :Int64;
+    inTargetOption : union {
+        noInTarget @5 :Void;
+        inTarget @6 :Range;
+    }
 }
 
 # This is really a mapping from allele to information.

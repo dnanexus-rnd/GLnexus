@@ -60,6 +60,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                     ai.all_filtered = filtered;
                     ai.topAQ = topAQ[i];
                     ai.zGQ = zGQ[i];
+                    ai.in_target = pos;
                     dsals.insert(make_pair(allele(rng, aldna), ai));
                     any_alt = true;
                 }
@@ -75,6 +76,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                     ai.all_filtered = filtered;
                     ai.topAQ = topAQ[0];
                     ai.zGQ = zGQ[0];
+                    ai.in_target = pos;
                     dsals.insert(make_pair(allele(rng, refdna), ai));
                 }
             } else {
