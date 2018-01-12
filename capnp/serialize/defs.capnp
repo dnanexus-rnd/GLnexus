@@ -11,30 +11,26 @@ struct Range {
 
 ### discovered alleles
 
-struct DiscoveredAlleleInfo {
-    isRef @0 :Bool = false;
-
-    # indicates whether all observations of this allele failed some VCF FILTER
-    allFiltered @4 :Bool = false;
-
-    # top_AQ statistics are used to adjudicate allele existence
-    topAQ @1 :List(Int64);
-
-     # zygosity_by_GQ statistics are used to estimate allele copy number
-    zGQ0 @2 :List(UInt64);
-    zGQ1 @3 :List(UInt64);
-
-    inTargetOption : union {
-        noInTarget @5 :Void;
-        inTarget @6 :Range;
-    }
-}
-
-# This is really a mapping from allele to information.
-struct AlleleInfoPair {
+struct DiscoveredAllele {
     range @0 :Range;
     dna @1 :Text;
-    dai @2 :DiscoveredAlleleInfo;
+    isRef @2 :Bool = false;
+
+    # optional: discovery target range in which this allele was found
+    inTargetOption : union {
+        noInTarget @3 :Void;
+        inTarget @4 :Range;
+    }
+
+    # indicates whether all observations of this allele failed some VCF FILTER
+    allFiltered @5 :Bool = false;
+
+    # top_AQ statistics are used to adjudicate allele existence
+    topAQ @6 :List(Int64);
+
+     # zygosity_by_GQ statistics are used to estimate allele copy number
+    zGQ0 @7 :List(UInt64);
+    zGQ1 @8 :List(UInt64);
 }
 
 struct Contig {
@@ -46,7 +42,7 @@ struct Contig {
 struct DiscoveredAlleles {
     sampleCount @0 : UInt64;
     contigs @1 : List(Contig);
-    aips @2 :List(AlleleInfoPair);
+    alleles @2 :List(DiscoveredAllele);
 }
 
 ### unified sites

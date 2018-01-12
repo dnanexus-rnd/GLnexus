@@ -336,46 +336,45 @@ static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
         cursor++;
     }
 
-    // serialize allele-info pairs
-    ::capnp::List<capnp::AlleleInfoPair>::Builder aips_pk = dsals_pk.initAips(dsals.size());
+    // serialize alleles
+    auto alleles_pk = dsals_pk.initAlleles(dsals.size());
     cursor = 0;
     for (auto const &kv : dsals) {
         auto &key = kv.first;
         auto &val = kv.second;
 
-        capnp::AlleleInfoPair::Builder al_pk = aips_pk[cursor];
+        auto al_pk = alleles_pk[cursor];
         capnp::Range::Builder range = al_pk.initRange();
         range.setRid(key.pos.rid);
         range.setBeg(key.pos.beg);
         range.setEnd(key.pos.end);
         al_pk.setDna(key.dna.c_str());
 
-        capnp::DiscoveredAlleleInfo::Builder dai = al_pk.initDai();
-        dai.setIsRef(val.is_ref);
-        dai.setAllFiltered(val.all_filtered);
+        al_pk.setIsRef(val.is_ref);
+        al_pk.setAllFiltered(val.all_filtered);
 
-        ::capnp::List<int64_t>::Builder topAQ = dai.initTopAQ(top_AQ::COUNT);
+        ::capnp::List<int64_t>::Builder topAQ = al_pk.initTopAQ(top_AQ::COUNT);
         for (int k=0; k < top_AQ::COUNT; k++) {
             topAQ.set(k, val.topAQ.V[k]);
         }
 
         // skipping addbuf, it is used for scratch space
 
-        ::capnp::List<uint64_t>::Builder zGQ0 = dai.initZGQ0(zygosity_by_GQ::GQ_BANDS);
+        ::capnp::List<uint64_t>::Builder zGQ0 = al_pk.initZGQ0(zygosity_by_GQ::GQ_BANDS);
         for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
             zGQ0.set(k, val.zGQ.M[k][0]);
 
-        ::capnp::List<uint64_t>::Builder zGQ1 = dai.initZGQ1(zygosity_by_GQ::GQ_BANDS);
+        ::capnp::List<uint64_t>::Builder zGQ1 = al_pk.initZGQ1(zygosity_by_GQ::GQ_BANDS);
         for (int k=0; k < zygosity_by_GQ::GQ_BANDS; k++)
             zGQ1.set(k, val.zGQ.M[k][1]);
 
         if (val.in_target.rid > -1) {
-            auto it_b = dai.getInTargetOption().initInTarget();
+            auto it_b = al_pk.getInTargetOption().initInTarget();
             it_b.setRid(val.in_target.rid);
             it_b.setBeg(val.in_target.beg);
             it_b.setEnd(val.in_target.end);
         } else {
-            dai.getInTargetOption().setNoInTarget(::capnp::VOID);
+            al_pk.getInTargetOption().setNoInTarget(::capnp::VOID);
         }
 
         cursor++;
@@ -434,22 +433,21 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
 
     // Discovered Alleles
     dsals.clear();
-    for (capnp::AlleleInfoPair::Reader aip : dsals_pk.getAips()) {
+    for (auto al : dsals_pk.getAlleles()) {
         // Unpack allele
-        capnp::Range::Reader range_pk = aip.getRange();
+        capnp::Range::Reader range_pk = al.getRange();
         range r(range_pk.getRid(),
                 range_pk.getBeg(),
                 range_pk.getEnd());
-        string dna = aip.getDna();
+        string dna = al.getDna();
         allele alle(r, dna);
 
         // Unpack allele-info
         discovered_allele_info dai;
-        capnp::DiscoveredAlleleInfo::Reader dai_pk = aip.getDai();
-        dai.is_ref = dai_pk.getIsRef();
-        dai.all_filtered = dai_pk.getAllFiltered();
+        dai.is_ref = al.getIsRef();
+        dai.all_filtered = al.getAllFiltered();
 
-        ::capnp::List<int64_t>::Reader topAQ_pk = dai_pk.getTopAQ();
+        ::capnp::List<int64_t>::Reader topAQ_pk = al.getTopAQ();
         if (topAQ_pk.size() != top_AQ::COUNT) {
             return Status::Invalid("Wrong number of elements in topAQ", to_string(topAQ_pk.size()));
         }
@@ -459,8 +457,8 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
         // skipping addbuf, it is used for scratch space
 
         // Unpack Zygosity information
-        ::capnp::List<uint64_t>::Reader zGQ0_pk = dai_pk.getZGQ0();
-        ::capnp::List<uint64_t>::Reader zGQ1_pk = dai_pk.getZGQ1();
+        ::capnp::List<uint64_t>::Reader zGQ0_pk = al.getZGQ0();
+        ::capnp::List<uint64_t>::Reader zGQ1_pk = al.getZGQ1();
         if (zGQ0_pk.size() != zygosity_by_GQ::GQ_BANDS)
             return Status::Invalid("Wrong number of GQ_BANDS", to_string(zGQ0_pk.size()));
         if (zGQ1_pk.size() != zygosity_by_GQ::GQ_BANDS)
@@ -470,7 +468,7 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
             dai.zGQ.M[k][1] = zGQ1_pk[k];
         }
 
-        const auto ito_r = dai_pk.getInTargetOption();
+        const auto ito_r = al.getInTargetOption();
         if (ito_r.hasInTarget()) {
             const auto it_r = ito_r.getInTarget();
             dai.in_target.rid = it_r.getRid();
