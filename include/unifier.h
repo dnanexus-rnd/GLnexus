@@ -38,7 +38,6 @@ struct unifier_stats {
 Status unified_sites(const unifier_config& cfg,
                      unsigned N,
                      /* const */ discovered_alleles& alleles,
-                     const std::set<range>& target_ranges,
                      std::vector<unified_site>& ans,
                      unifier_stats& stats);
 

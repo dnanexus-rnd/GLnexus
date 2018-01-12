@@ -296,11 +296,7 @@ public:
         REQUIRE(s.ok());
 
         unifier_stats stats;
-        set<range> pos_set;
-        if (pos != range(0, 0, 1000000000)) {
-            pos_set.insert(pos);
-        }
-        s = unified_sites(unifier_cfg, N, als, pos_set, sites, stats);
+        s = unified_sites(unifier_cfg, N, als, sites, stats);
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
