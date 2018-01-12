@@ -717,12 +717,12 @@ static Status capnp_write_unified_sites_fd(const vector<const vector<unified_sit
             pos_b.setEnd(site.pos.end);
 
             if (site.in_target.rid > -1) {
-                auto ct_b = site_b.getContainingTargetOption().initContainingTarget();
-                ct_b.setRid(site.in_target.rid);
-                ct_b.setBeg(site.in_target.beg);
-                ct_b.setEnd(site.in_target.end);
+                auto it_b = site_b.getInTargetOption().initInTarget();
+                it_b.setRid(site.in_target.rid);
+                it_b.setBeg(site.in_target.beg);
+                it_b.setEnd(site.in_target.end);
             } else {
-                site_b.getContainingTargetOption().setNoContainingTarget(::capnp::VOID);
+                site_b.getInTargetOption().setNoInTarget(::capnp::VOID);
             }
 
             auto alleles_b = site_b.initAlleles(site.alleles.size());
@@ -801,12 +801,12 @@ static Status _capnp_read_unified_sites_fd(int fd, vector<unified_site>& sites) 
 
         unified_site site(pos);
 
-        const auto cto_r = site_r.getContainingTargetOption();
-        if (cto_r.hasContainingTarget()) {
-            const auto ct_r = cto_r.getContainingTarget();
-            site.in_target.rid = ct_r.getRid();
-            site.in_target.beg = ct_r.getBeg();
-            site.in_target.end = ct_r.getEnd();
+        const auto ito_r = site_r.getInTargetOption();
+        if (ito_r.hasInTarget()) {
+            const auto it_r = ito_r.getInTarget();
+            site.in_target.rid = it_r.getRid();
+            site.in_target.beg = it_r.getBeg();
+            site.in_target.end = it_r.getEnd();
         }
 
         for (const auto& al : site_r.getAlleles()) {
