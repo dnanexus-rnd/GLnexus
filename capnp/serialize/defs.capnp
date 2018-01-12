@@ -59,9 +59,9 @@ struct OriginalAllele {
 
 struct UnifiedSite {
     pos @0 :Range;
-    containingTargetOption :union {
-        noContainingTarget @1 :Void;
-        containingTarget @2 :Range;
+    inTargetOption :union {
+        noInTarget @1 :Void;
+        inTarget @2 :Range;
     }
     alleles @3 :List(Text);
     unification @4 :List(OriginalAllele);
