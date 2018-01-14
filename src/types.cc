@@ -691,64 +691,55 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
 }
 
 // write unified sites list to a file-descriptor, with cap'n proto serialization
-static Status capnp_write_unified_sites_fd(const vector<const vector<unified_site>*>& sitess, int fd) {
+static Status capnp_write_unified_sites_fd(const vector<unified_site> &sites, int fd) {
     ::capnp::MallocMessageBuilder message;
     auto us_b = message.initRoot<capnp::UnifiedSites>();
 
-    size_t total = 0;
-    for (const auto& psites : sitess) {
-        assert(psites != nullptr);
-        total += psites->size();
-    }
-
-    auto sites_b = us_b.initSites(total);
+    auto sites_b = us_b.initSites(sites.size());
     int i = 0;
-    for (const auto& psites : sitess) {
-        for (const auto& site : *psites) {
-            assert(i<total);
-            auto site_b = sites_b[i++];
-            int j;
+    for (const auto& site : sites) {
+        auto site_b = sites_b[i++];
+        int j;
 
-            auto pos_b = site_b.initPos();
-            pos_b.setRid(site.pos.rid);
-            pos_b.setBeg(site.pos.beg);
-            pos_b.setEnd(site.pos.end);
+        auto pos_b = site_b.initPos();
+        pos_b.setRid(site.pos.rid);
+        pos_b.setBeg(site.pos.beg);
+        pos_b.setEnd(site.pos.end);
 
-            if (site.in_target.rid > -1) {
-                auto it_b = site_b.getInTargetOption().initInTarget();
-                it_b.setRid(site.in_target.rid);
-                it_b.setBeg(site.in_target.beg);
-                it_b.setEnd(site.in_target.end);
-            } else {
-                site_b.getInTargetOption().setNoInTarget(::capnp::VOID);
-            }
-
-            auto alleles_b = site_b.initAlleles(site.alleles.size());
-            for (j = 0; j < site.alleles.size(); j++) {
-                alleles_b.set(j, site.alleles[j]);
-            }
-
-            auto unification_b = site_b.initUnification(site.unification.size());
-            j = 0;
-            for (const auto& p : site.unification) {
-                auto oa_b = unification_b[j++];
-                auto oa_pos_b = oa_b.initPos();
-                oa_pos_b.setRid(p.first.pos.rid);
-                oa_pos_b.setBeg(p.first.pos.beg);
-                oa_pos_b.setEnd(p.first.pos.end);
-                oa_b.setDna(p.first.dna);
-                oa_b.setUnifiedAllele(p.second);
-            }
-
-            auto allele_frequencies_b = site_b.initAlleleFrequencies(site.allele_frequencies.size());
-            for (j = 0; j < site.allele_frequencies.size(); j++) {
-                allele_frequencies_b.set(j, site.allele_frequencies[j]);
-            }
-
-            site_b.setLostAlleleFrequency(site.lost_allele_frequency);
-            site_b.setQual(site.qual);
-            site_b.setMonoallelic(site.monoallelic);
+        if (site.in_target.rid > -1) {
+            auto it_b = site_b.getInTargetOption().initInTarget();
+            it_b.setRid(site.in_target.rid);
+            it_b.setBeg(site.in_target.beg);
+            it_b.setEnd(site.in_target.end);
+        } else {
+            site_b.getInTargetOption().setNoInTarget(::capnp::VOID);
         }
+
+        auto alleles_b = site_b.initAlleles(site.alleles.size());
+        for (j = 0; j < site.alleles.size(); j++) {
+            alleles_b.set(j, site.alleles[j]);
+        }
+
+        auto unification_b = site_b.initUnification(site.unification.size());
+        j = 0;
+        for (const auto& p : site.unification) {
+            auto oa_b = unification_b[j++];
+            auto oa_pos_b = oa_b.initPos();
+            oa_pos_b.setRid(p.first.pos.rid);
+            oa_pos_b.setBeg(p.first.pos.beg);
+            oa_pos_b.setEnd(p.first.pos.end);
+            oa_b.setDna(p.first.dna);
+            oa_b.setUnifiedAllele(p.second);
+        }
+
+        auto allele_frequencies_b = site_b.initAlleleFrequencies(site.allele_frequencies.size());
+        for (j = 0; j < site.allele_frequencies.size(); j++) {
+            allele_frequencies_b.set(j, site.allele_frequencies[j]);
+        }
+
+        site_b.setLostAlleleFrequency(site.lost_allele_frequency);
+        site_b.setQual(site.qual);
+        site_b.setMonoallelic(site.monoallelic);
     }
 
     // Capnp throws exceptions on errors, and only in extreme cases.
@@ -757,17 +748,12 @@ static Status capnp_write_unified_sites_fd(const vector<const vector<unified_sit
 }
 
 
-Status capnp_of_unified_sites_fd(const vector<const vector<unified_site>*> &sites, int fd) {
+Status capnp_of_unified_sites_fd(const vector<unified_site> &sites, int fd) {
     try {
         return capnp_write_unified_sites_fd(sites, fd);
     } catch (exception &e) {
-        return Status::IOError("Capnproto error during de-serialization", e.what());
+        return Status::IOError("Capnproto error during serialization", e.what());
     }
-}
-
-Status capnp_of_unified_sites_fd(const vector<unified_site> &sites, int fd) {
-    vector<const vector<unified_site>*> tmp {&sites};
-    return capnp_write_unified_sites_fd(tmp, fd);
 }
 
 Status capnp_of_unified_sites(const vector<unified_site>& sites, const std::string &filename) {
