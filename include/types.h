@@ -533,7 +533,6 @@ Status capnp_of_unified_sites(const std::vector<unified_site> &sites, const std:
 
 // write unified sites capnp to a file descriptor.
 Status capnp_of_unified_sites_fd(const std::vector<unified_site> &sites, int fd);
-Status capnp_of_unified_sites_fd(const std::vector<const std::vector<unified_site>*> &sites, int fd); // the 2D vector is flattened
 
 // read unified sites from a capnp file
 Status unified_sites_of_capnp(const std::string &filename, std::vector<unified_site>& sites);
