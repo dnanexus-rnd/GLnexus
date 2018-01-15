@@ -491,6 +491,7 @@ public:
     }
 
     Status current(std::unique_ptr<KeyValue::Reader>& reader) const override {
+        // TODO: make actual snapshot
         reader = std::make_unique<RocksKeyValue::Reader>(db_);
         return Status::OK();
     }

@@ -128,6 +128,7 @@ Status bcf_raw_read_from_mem(const uint8_t *buf, int start, size_t len, bcf1_t *
     return Status::OK();
 }
 
+/*
 // Calculate the total length of a record, without unpacking it.
 Status bcf_raw_calc_rec_len(const uint8_t *buf, int start, size_t len, uint32_t &ans) {
     BOUNDS_CHECK(start + 32, len, "calculating BCF record length");
@@ -137,6 +138,7 @@ Status bcf_raw_calc_rec_len(const uint8_t *buf, int start, size_t len, uint32_t 
     ans = 32 + (x[0] -24) + x[1];
     return Status::OK();
 }
+*/
 
 // Get the range of the serialized BCF record starting at memory address
 // [buf+start], without deserializing the whole record.

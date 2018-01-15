@@ -256,20 +256,20 @@ public:
 };
 
 // Search the bucket's 'skip index' to find the index of a record in the bucket
-// from which it is safe to begin a scan for records overlapping query.
+// from which it's safe to begin a scan for records overlapping query.
 static int SearchBCFBucketSkipIndex(const capnp::BCFBucket::Reader& bucket, const range& query) {
     auto skips = bucket.getSkips();
     if (skips.size() == 0 || skips[0].getPosBeg() > query.beg) {
         return 0;
     }
-    int i = 0, hi = skips.size(); // invariant: skips[i].getPosBeg() <= query.beg
+    int i = 0, hi = skips.size();
     while (i < hi-1) {
+        assert(skips[i].getPosBeg() <= query.beg); // invariant
         int mid = (i + hi) / 2;
+        assert(mid > i && mid < hi);
         if (skips[mid].getPosBeg() <= query.beg) {
-            assert(mid > i);
             i = mid;
         } else {
-            assert(mid < hi);
             hi = mid;
         }
     }
@@ -280,7 +280,7 @@ static int SearchBCFBucketSkipIndex(const capnp::BCFBucket::Reader& bucket, cons
             break;
         }
     }
-    assert(i == naive);
+    assert(i >= naive);
     #endif
     return skips[i].getRecordIndex();
 }
