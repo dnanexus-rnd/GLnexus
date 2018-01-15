@@ -1453,3 +1453,67 @@ TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
     cout << s.str() << endl;
     REQUIRE(s.str().find("errcode") != string::npos);
 }
+
+TEST_CASE("BCFKeyValueData NA12878 import and query") {
+    vector<pair<string,uint64_t>> contigs;
+    unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open("test/data/NA12878.g.vcf.gz", "r"),
+                                               [](vcfFile* f) { bcf_close(f); });
+    unique_ptr<bcf_hdr_t, void(*)(bcf_hdr_t*)> hdr(bcf_hdr_read(vcf.get()), &bcf_hdr_destroy);
+    int ncontigs = 0;
+    const char **contignames = bcf_hdr_seqnames(hdr.get(), &ncontigs);
+    for (int i = 0; i < ncontigs; i++) {
+        contigs.push_back(make_pair(string(contignames[i]),
+                                    hdr->id[BCF_DT_CTG][i].val->info[0]));
+    }
+    free(contignames);
+
+    KeyValueMem::DB db({});
+    REQUIRE(T::InitializeDB(&db, contigs).ok());
+    unique_ptr<T> data;
+    REQUIRE(T::Open(&db, data).ok());
+    unique_ptr<MetadataCache> cache;
+    REQUIRE(MetadataCache::Start(*data, cache).ok());
+    set<string> samples_imported;
+
+    Status s = data->import_gvcf(*cache, "NA12878", "test/data/NA12878.g.vcf.gz", samples_imported);
+    REQUIRE(s.ok());
+
+    // read out all records on chr17
+    std::vector<std::shared_ptr<bcf1_t> > all_chr17;
+    s = data->dataset_range("NA12878", hdr.get(), range(16, 0, 83257441), nullptr, all_chr17);
+    REQUIRE(s.ok());
+    REQUIRE(all_chr17.size() == 8199);
+
+    // choose random records and make a query for a region around it. ensure we get
+    // the correct results exactly.
+    bool trivial = true;
+    for (int i = 0; i < 1000; i++) {
+        auto qrec = all_chr17[rand() % all_chr17.size()];
+        int lo = max(0, qrec->pos - (rand() % 10));
+        int hi = lo+(rand()%10)+1;
+        range q(16, lo, hi);
+
+        std::vector<std::shared_ptr<bcf1_t> > resultset, truthset;
+        s = data->dataset_range("NA12878", hdr.get(), q, nullptr, resultset);
+        REQUIRE(s.ok());
+
+        for (auto p : all_chr17) {
+            range rp(p);
+            if (rp.overlaps(q)) {
+                truthset.push_back(p);
+            } else if (rp.beg >= q.end) {
+                break;
+            }
+        }
+        REQUIRE(resultset.size() == truthset.size());
+        for (int j = 0; j < resultset.size(); j++) {
+            REQUIRE(resultset[j]->pos == truthset[j]->pos);
+            trivial = false;
+        }
+    }
+    REQUIRE(!trivial);
+
+    // check scan efficiency
+    auto stats = data->getRangeStats();
+    REQUIRE(double(stats->nBCFRecordsInRange) / stats->nBCFRecordsRead >= 0.25);
+}
