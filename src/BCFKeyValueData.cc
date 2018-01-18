@@ -925,7 +925,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     vector<shared_ptr<bcf1_t>> danglers;
     unsigned int danglers_written_to_current_bucket = 0;
     // current bucket
-    range bucket(-1, 0, rangeHelper.interval_len);
+    range bucket(-1, 0, rangeHelper.interval_len), last_range(-1,-1,-1);
     BCFBucketWriter writer;
 
     KeyValue::CollectionHandle coll_bcf;
@@ -937,6 +937,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
         c == 0 && vt->errcode == 0;
         c = bcf_read(vcf, hdr, vt.get())) {
         range vt_rng(vt.get());
+        last_range = vt_rng;
         if (!range_filter.empty()) {
             // Test range filter if applicable. It would be nice to use a
             // tabix index instead.
@@ -992,6 +993,9 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
     if (vt->errcode != 0) {
         ostringstream msg;
         msg << filename << " bcf1_t::errcode = " << vt->errcode;
+        if (last_range.rid >= 0) {
+            msg << "; after " <<  last_range.str(metadata.contigs());
+        }
         return Status::IOError("reading from gVCF file", msg.str());
     }
     if (c != -1) return Status::IOError("reading from gVCF file", filename);
