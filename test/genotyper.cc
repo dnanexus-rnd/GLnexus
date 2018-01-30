@@ -103,6 +103,7 @@ unification:
         REQUIRE(vr.gt[1] == gt[1]); \
         htsvecbox<int32_t> gq; \
         REQUIRE(bcf_get_format_int32(hdr.get(), vr.p.get(), "GQ", &gq.v, &gq.capacity) == 1); \
+        REQUIRE(gq.v[0] == expected_gq); \
     }
 
     SECTION("no revision") {
@@ -113,7 +114,6 @@ unification:
         REVISE_GENOTYPES_CASE(1, 2, 16, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	1/2:0,6,6:12:16:240,46,240,46,0,80");
     }
 
-    // PL with missing values
     SECTION("PL missing values") {
         REVISE_GENOTYPES_CASE(0, 1, 16, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,.,.,.:1,9,1,1");
     }
@@ -130,10 +130,25 @@ unification:
         REVISE_GENOTYPES_CASE(0, 1, 15, "21	1000	.	T	C,G	.	.	.	GT:AD:DP:GQ:PL	0/1:10,5,0:15:45:45,0,240,.,.,.");
     }
 
+    SECTION("homozygous ALT, high-quality") {
+        REVISE_GENOTYPES_CASE(1, 1, 99, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	1/1:0,30,0:30:99:200,180,0,200,246,292");
+        REVISE_GENOTYPES_CASE(2, 2, 99, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	2/2:0,0,30:30:99:240,300,340,200,300,0");
+    }
+
+    SECTION("homozygous ALT, medium-quality") {
+        REVISE_GENOTYPES_CASE(1, 1, 80, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	1/1:0,9,0:9:99:200,100,0,200,246,292");
+        REVISE_GENOTYPES_CASE(2, 2, 60, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	2/2:0,0,9:9:99:240,300,340,100,300,0");
+    }
+
+    SECTION("homozygous ALT, low-quality") {
+        REVISE_GENOTYPES_CASE(0, 1, 4, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	1/1:0,2,0:2:16:100,16,0,200,246,292");
+        REVISE_GENOTYPES_CASE(0, 2, 10, "21	1000	.	T	A,G	.	.	.	GT:AD:DP:GQ:PL	2/2:0,0,3:3:30:140,300,340,30,300,0");
+    }
+
     const char* us_yml2 = 1 + R"(
 range: {ref: "21", beg: 1000, end: 1000}
 alleles: [T, A]
-allele_frequencies: [.nan, 0.99]
+allele_frequencies: [.nan, 0.67]
 lost_allele_frequency: 0.001
 quality: 100
 unification:
@@ -147,5 +162,9 @@ unification:
 
     SECTION("minor REF") {
         REVISE_GENOTYPES_CASE(0, 1, 16, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	0/1:10,2,0:12:16:16,0,240,46,246,292");
+    }
+
+    SECTION("homozygous major ALT, low-quality") {
+        REVISE_GENOTYPES_CASE(1, 1, 14, "21	1000	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL	1/1:0,2,0:2:16:32,16,0,240,46,246");
     }
 }

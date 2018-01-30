@@ -58,7 +58,6 @@ static inline bool is_deletion(const string& ref, const string& alt) {
     ans.allele_mapping.assign(record->n_allele, -1);
     ans.allele_mapping[0] = 0;
     ans.deletion_allele.assign(record->n_allele, false);
-    ans.has_lost_allele = false;
 
     // map the bcf1_t alt alleles according to unification
     // checking for valid dna regex match
@@ -69,8 +68,6 @@ static inline bool is_deletion(const string& ref, const string& alt) {
             auto p = site.unification.find(allele(rng, al));
             if (p != site.unification.end()) {
                 ans.allele_mapping[i] = p->second;
-            } else {
-                ans.has_lost_allele = true;
             }
         }
         if (al.size() < rng.size() && rng.size() == ref_al.size()) {
@@ -85,13 +82,46 @@ static inline bool is_deletion(const string& ref, const string& alt) {
 // Genotyper core
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Revise genotypes which are initially called with lost alleles. Frequently these
-/// are low quality and "round down" to homozygous ref. Mutates record.
-Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const map<int, int>& sample_mapping,
+/// Revise genotypes in a variant record based on population allele frequencies.
+/// With high-coverage sequencing in mind, where we expect the data should
+/// usually overwhelm frequency-based priors, we use a light touch aiming for
+/// two practical refinements of low-quality/depth genotype calls:
+///   1) Low-quality calls of low-quality alleles (that didn't make it through
+///      the unifier) can "round down" (ignored- in a principled way!)
+///   2) Low-quality homozygous calls of rare alleles (e.g. GT=1/1 DP=2 AD=0,2)
+///      shrink to the next most likely heterozygous genotype.
+/// Mutates the vr.p pointer.
+Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
+                        const map<int, int>& sample_mapping,
                         const bcf_hdr_t* hdr, bcf1_t_plus& vr) {
     assert(!vr.is_ref);
-    if (!vr.has_lost_allele) {
-        // below would be a no-op anyway
+    // Speed optimization: our prior on genotypes will be effectively flat
+    // if there are no lost ALT alleles or homozygous-ALT genotypes called, so
+    // exit early in that case. Calls of the <NON_REF> symbolic allele count as
+    // lost.
+    // Strictly speaking, the GQ of the existing called genotype might change
+    // slightly if we did continue, but we judge this not to justify the
+    // calculations/allocations we'd do to get there.
+    bool needs_revision = false;
+    for (const auto& sample : sample_mapping) {
+        assert(sample.first < vr.p->n_sample);
+        auto al1 = vr.gt.v[sample.first*2];
+        if (!bcf_gt_is_missing(al1) && vr.allele_mapping.at(bcf_gt_allele(al1)) == -1) {
+            needs_revision = true;
+            break;
+        }
+        auto al2 = vr.gt.v[sample.first*2+1];
+        if (!bcf_gt_is_missing(al2) && vr.allele_mapping.at(bcf_gt_allele(al2)) == -1) {
+            needs_revision = true;
+            break;
+        }
+        if (!bcf_gt_is_missing(al1) && !bcf_gt_is_missing(al2) &&
+            bcf_gt_allele(al1) > 0 && bcf_gt_allele(al1) == bcf_gt_allele(al2)) {
+            needs_revision = true;
+            break;
+        }
+    }
+    if (!needs_revision) {
         return Status::OK();
     }
 
@@ -116,13 +146,17 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
     }
     assert(gq.capacity >= record->n_sample);
 
-    // construct "prior" over input ALT alleles which penalizes lost ones (otherwise flat)
+    // construct "prior" over genotypes which penalizes lost ALT alleles and
+    // homozygous-ALT genotypes (otherwise flat)
     const float lost_log_prior = log(std::max(us.lost_allele_frequency, cfg.min_assumed_allele_frequency));
-    vector<double> gt_log_prior(diploid::genotypes(record->n_allele), 0.0);
-    for (int i = 0; i < record->n_allele; i++) {
-        if (vr.allele_mapping[i] == -1) {
-            assert(i > 0);
-            gt_log_prior[i] = lost_log_prior;
+    vector<double> gt_log_prior(nGT, 0.0);
+    for (unsigned gt = 0; gt < gt_log_prior.size(); gt++) {
+        auto als = diploid::gt_alleles(gt);
+        if (vr.allele_mapping.at(als.first) == -1 || vr.allele_mapping.at(als.second) == -1) {
+            gt_log_prior[gt] = lost_log_prior;
+        } else if (als.first > 0 && als.first == als.second) {
+            gt_log_prior[gt] = log(std::max(us.allele_frequencies[vr.allele_mapping[als.first]],
+                                            cfg.min_assumed_allele_frequency));
         }
     }
 
@@ -134,11 +168,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, con
         double map_gll = log(0), silver_gll = log(0);
         int map_gt = -1;
         for (int g = 0; g < nGT; g++) {
-            const auto alleles = diploid::gt_alleles(g);
-            // Use the smaller of the priors on the two alleles and not their product.
-            // If we view this as "penalizing" the likelihoods of genotypes which include
-            // lost alleles, one such penalty is sufficient.
-            auto g_ll = sample_gll[g] + std::min(gt_log_prior[alleles.first], gt_log_prior[alleles.second]);
+            auto g_ll = sample_gll[g] + gt_log_prior[g];
             if (g_ll > map_gll) {
                 silver_gll = map_gll;
                 map_gll = g_ll;
