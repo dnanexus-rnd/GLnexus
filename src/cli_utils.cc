@@ -694,6 +694,39 @@ weCall:
               number: basic
               count: 1
               ignore_non_variants: true
+DeepVariant:
+    unifier_config:
+        min_AQ1: 0
+        min_AQ2: 0
+        min_GQ: 0
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [DP, MIN_DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
 )eof";
 
 Status load_config_preset(std::shared_ptr<spdlog::logger> logger,

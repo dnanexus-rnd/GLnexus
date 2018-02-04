@@ -719,9 +719,14 @@ public:
                                           &v_.v, &v_.capacity);
 
             if (nv != record->n_sample) {
-                ostringstream errmsg;
-                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
-                return Status::Invalid("genotyper: gVCF reference depth FORMAT field is missing or malformed", errmsg.str());
+                // Error below disabled to accommodate DeepVariant which currently
+                // doesn't provide MIN_DP (or equivalent) in ref records..
+                //ostringstream errmsg;
+                //errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+                //return Status::Invalid("genotyper: gVCF reference depth FORMAT field is missing or malformed", errmsg.str());
+                v_.v = (int32_t*) realloc(v_.v, n_sample_*sizeof(int32_t));
+                v_.capacity = n_sample_;
+                memset(v_.v, 0, n_sample_*sizeof(int32_t));
             }
         } else {
             // this is a regular VCF record, so look for the AD FORMAT field (or equivalent)
