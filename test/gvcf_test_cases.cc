@@ -764,3 +764,9 @@ TEST_CASE("edge_spanning_deletion3") {
     GVCFTestCase edge_spanning_deletion("edge_spanning_deletion3", v_formats, v_infos);
     edge_spanning_deletion.perform_gvcf_test(range(0, 1001, 1002));
 }
+
+TEST_CASE("DeepVariant") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD"};
+    vector<string> v_infos = {};
+    GVCFTestCase("deepvariant", v_formats, v_infos, false).perform_gvcf_test();
+}
