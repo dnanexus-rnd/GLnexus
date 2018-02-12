@@ -150,16 +150,13 @@ static int all_steps(const vector<string> &vcf_files,
 
 void help(const char* prog) {
     cerr << "usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
-         << "Joint genotype all source gVCF files, and generate a project VCF file" << endl
-         << "on standard out. The source files must be in GVCF format." << endl
+         << "Merge and joint-call input gVCF files, emitting multi-sample BCF on" << endl
+         << "standard output." << endl
          << "Options:" << endl
          << "  --help, -h           print this help message" << endl
-         << "  --config X, -c X     configuration setting" << endl
-         << "  --bed FILE, -b FILE  path to three-column BED file" << endl
-         << "  --list, -l           given files contain lists of gVCF filenames one per line" << endl
-         << "  --bucket_size INT, -x INT  set the bucket size" << endl
-         << "  --debug, -d          create additional file outputs for diagnostics/debugging" << endl
-         << "  --iter_compare, -i   compare different implementations of database iteration" << endl;
+         << "  --bed FILE, -b FILE  three-column BED file of ranges to analyze (required)" << endl
+         << "  --config X, -c X     configuration preset (default: gatk)" << endl
+         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl
 }
 
 // Expected usage:
@@ -188,7 +185,7 @@ int main(int argc, char *argv[]) {
     };
 
     int c;
-    string config_preset = "test";
+    string config_preset = "gatk";
     bool list_of_files = false;
     bool debug = false;
     bool iter_compare = false;

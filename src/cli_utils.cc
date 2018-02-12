@@ -508,7 +508,8 @@ bool check_dir_exists(const string &path) {
 // hard-coded configuration presets for unifier & genotyper. TODO: these
 // should reside in some user-modifiable yml file
 static const char* config_presets_yml = R"eof(
-test:
+gatk:
+    description: Merge and joint-call GATK-style gVCFs
     unifier_config:
         min_AQ1: 70
         min_AQ2: 40
