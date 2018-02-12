@@ -32,7 +32,7 @@
     {
       "name": "config",
       "class": "string",
-      "default": "test"
+      "default": "gatk"
     },
     {
       "name": "bucket_size",

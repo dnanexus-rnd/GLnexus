@@ -1,41 +1,42 @@
 # GLnexus
-**From DNAnexus R&D: a scalable datastore for population genome sequencing, with on-demand joint genotyping.**
+**From DNAnexus R&D: a scalable datastore for gVCF merging and joint variant calling in population sequencing projects.**
 (GL, genotype likelihood)
 
-This is an early-stage R&D project we're developing openly. The code doesn't yet do anything useful! There's a [wiki project roadmap](https://github.com/dnanexus-rnd/GLnexus/wiki), which should be read in the spirit of "plans are worthless, but planning is indispensable."
+### [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Started)
 
-### Build & run tests
+### Build & test (Linux)
 
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
-Install [gcc 5+](http://askubuntu.com/a/581497), [CMake 3.2+](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), and packages: `autoconf` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `libbz2-dev` `python-pyvcf`.
-
-Install version 1.3.2 of [zstd](https://github.com/facebook/zstd) (developing rapidly; older versions commonly found in package repositories may not work):
+The GLnexus build process has a number of dependencies, but produces a standalone, statically-linked executable `glnexus_cli`. The easiest way to build it is to use our Dockerfile to control all the compile-time dependencies, then simply copy the static executable out of the resting Docker container and put it anywhere you like. 
 
 ```
-tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.3.2.tar.gz)
-make -C zstd-* -j8
-sudo make -C zstd-* install
+# Build GLnexus using its Dockerfile.
+# You can set a specific git revision by adding --build-arg=git_revision=xxxx
+curl -s https://raw.githubusercontent.com/dnanexus-rnd/GLnexus/master/Dockerfile \
+    | docker build -t glnexus_tests -
+
+# Run GLnexus unit tests.
+docker run --rm glnexus_tests
+
+# Copy the static GLnexus executable to the current working directory.
+docker run --rm -v $(pwd):/io glnexus_tests cp glnexus_cli /io
+
+# Run it to see its usage message.
+./glnexus_cli
 ```
 
-Then:
+**To build GLnexus without Docker**, make sure you have [gcc 5+](http://askubuntu.com/a/581497), [CMake 3.2+](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), and all the dependencies indicated in the [Dockerfile](https://github.com/dnanexus-rnd/GLnexus/blob/master/Dockerfile). 
+
+Then,
 
 ```
-cmake -Dtest=ON . && make && ./unit_tests
+git clone --recursive https://github.com/dnanexus-rnd/GLnexus.git
+cd GLnexus
+cmake -Dtest=ON . && make -j4 && ./unit_tests
 ```
 
-Other dependencies fetched automatically:
-* [htslib](https://github.com/samtools/htslib)
-* [rocksdb](https://github.com/facebook/rocksdb)
-* [yaml-cpp](https://github.com/jbeder/yaml-cpp)
-* [Capnproto](https://github.com/sandstorm-io/capnproto)
-* [CTPL](https://github.com/vit-vit/CTPL)
-* [fcmm](https://github.com/giacomodrago/fcmm)
-* [Catch](https://github.com/philsquared/Catch) test framework
-
-### Developer documentation
-
-Evolving developer documentation can be found on the [project github page](http://dnanexus-rnd.github.io/GLnexus/index.html).
+You will also find `./glnexus_cli` here.
 
 ### Coding conventions
 
@@ -47,6 +48,15 @@ Evolving developer documentation can be found on the [project github page](http:
 * Avoid public constructors with nontrivial bodies; prefer static initializer function returning `Status`
 * Avoid elaborate templated class hierarchies
 
+### Libraries used 
+* [htslib](https://github.com/samtools/htslib)
+* [rocksdb](https://github.com/facebook/rocksdb)
+* [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+* [Capnproto](https://github.com/sandstorm-io/capnproto)
+* [CTPL](https://github.com/vit-vit/CTPL)
+* [fcmm](https://github.com/giacomodrago/fcmm)
+* [zstd](https://github.com/facebook/zstd)
+* [Catch](https://github.com/philsquared/Catch) test framework
 
 ### Performance profiling
 
