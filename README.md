@@ -4,34 +4,38 @@
 
 This is an early-stage R&D project we're developing openly. The code doesn't yet do anything useful! There's a [wiki project roadmap](https://github.com/dnanexus-rnd/GLnexus/wiki), which should be read in the spirit of "plans are worthless, but planning is indispensable."
 
-### Build & run tests (Linux)
-
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
-Install [gcc 5+](http://askubuntu.com/a/581497), [CMake 3.2+](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), and packages: `autoconf` `libjemalloc-dev` `libboost-dev` `libzip-dev` `libsnappy-dev` `libbz2-dev` `python-pyvcf`.
+### Build & test (Linux)
 
-Install an up-to-date version of [zstd](https://github.com/facebook/zstd). Zstd is developing rapidly, and the version in your OS package repository might be too old.
-
-```
-tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.3.2.tar.gz)
-make -C zstd-* -j8
-sudo make -C zstd-* install
-```
-
-Then:
+The GLnexus build process has a number of dependencies, but produces a standalone, statically-linked executable `glnexus_cli`. The easiest way to build it is to use our Dockerfile to control all the compile-time dependencies, then simply copy the static executable out of the resting Docker container and put it anywhere you like. 
 
 ```
+# Build GLnexus using its Dockerfile.
+# You can set a specific git revision by adding --build-arg=git_revision=xxxx
+curl -s https://raw.githubusercontent.com/dnanexus-rnd/GLnexus/master/Dockerfile | docker build -t glnexus_tests -
+
+# Run GLnexus unit tests.
+docker run --rm glnexus_tests
+
+# Copy the static GLnexus executable to the current working directory.
+docker run --rm -v $(pwd):/io glnexus_tests cp glnexus_cli /io
+
+# Run it to see its usage message.
+./glnexus_cli
+```
+
+**To build GLnexus without Docker**, make sure you have [gcc 5+](http://askubuntu.com/a/581497), [CMake 3.2+](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04), and all the dependencies indicated in the [Dockerfile](https://github.com/dnanexus-rnd/GLnexus/blob/master/Dockerfile). 
+
+Then,
+
+```
+git clone --recursive https://github.com/dnanexus-rnd/GLnexus.git
+cd GLnexus
 cmake -Dtest=ON . && make -j4 && ./unit_tests
 ```
 
-Other dependencies should be fetched automatically:
-* [htslib](https://github.com/samtools/htslib)
-* [rocksdb](https://github.com/facebook/rocksdb)
-* [yaml-cpp](https://github.com/jbeder/yaml-cpp)
-* [Capnproto](https://github.com/sandstorm-io/capnproto)
-* [CTPL](https://github.com/vit-vit/CTPL)
-* [fcmm](https://github.com/giacomodrago/fcmm)
-* [Catch](https://github.com/philsquared/Catch) test framework
+You will also find `./glnexus_cli` here.
 
 ### Coding conventions
 
@@ -43,6 +47,15 @@ Other dependencies should be fetched automatically:
 * Avoid public constructors with nontrivial bodies; prefer static initializer function returning `Status`
 * Avoid elaborate templated class hierarchies
 
+### Libraries used 
+* [htslib](https://github.com/samtools/htslib)
+* [rocksdb](https://github.com/facebook/rocksdb)
+* [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+* [Capnproto](https://github.com/sandstorm-io/capnproto)
+* [CTPL](https://github.com/vit-vit/CTPL)
+* [fcmm](https://github.com/giacomodrago/fcmm)
+* [zstd](https://github.com/facebook/zstd)
+* [Catch](https://github.com/philsquared/Catch) test framework
 
 ### Performance profiling
 
