@@ -14,7 +14,7 @@ The GLnexus build process has a number of dependencies, but produces a standalon
 # Build GLnexus using its Dockerfile.
 # You can set a specific git revision by adding --build-arg=git_revision=xxxx
 curl -s https://raw.githubusercontent.com/dnanexus-rnd/GLnexus/master/Dockerfile \
-    | docker build -t glnexus_tests -
+    | docker build --no-cache -t glnexus_tests -
 
 # Run GLnexus unit tests.
 docker run --rm glnexus_tests
