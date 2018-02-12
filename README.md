@@ -1,19 +1,20 @@
 # GLnexus
-**From DNAnexus R&D: a scalable datastore for gVCF merging and joint variant calling in population genome sequencing projects.**
+**From DNAnexus R&D: a scalable datastore for gVCF merging and joint variant calling in population sequencing projects.**
 (GL, genotype likelihood)
 
-This is an early-stage R&D project we're developing openly. The code doesn't yet do anything useful! There's a [wiki project roadmap](https://github.com/dnanexus-rnd/GLnexus/wiki), which should be read in the spirit of "plans are worthless, but planning is indispensable."
-
-<a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
+### [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Started)
 
 ### Build & test (Linux)
+
+<a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
 The GLnexus build process has a number of dependencies, but produces a standalone, statically-linked executable `glnexus_cli`. The easiest way to build it is to use our Dockerfile to control all the compile-time dependencies, then simply copy the static executable out of the resting Docker container and put it anywhere you like. 
 
 ```
 # Build GLnexus using its Dockerfile.
 # You can set a specific git revision by adding --build-arg=git_revision=xxxx
-curl -s https://raw.githubusercontent.com/dnanexus-rnd/GLnexus/master/Dockerfile | docker build -t glnexus_tests -
+curl -s https://raw.githubusercontent.com/dnanexus-rnd/GLnexus/master/Dockerfile \
+    | docker build -t glnexus_tests -
 
 # Run GLnexus unit tests.
 docker run --rm glnexus_tests
