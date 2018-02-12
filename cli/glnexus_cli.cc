@@ -156,7 +156,7 @@ void help(const char* prog) {
          << "  --help, -h           print this help message" << endl
          << "  --bed FILE, -b FILE  three-column BED file of ranges to analyze (required)" << endl
          << "  --config X, -c X     configuration preset (default: gatk)" << endl
-         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl
+         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl;
 }
 
 // Expected usage:
