@@ -115,9 +115,6 @@ protected:
                 }
                 assert(mapped_al1 < n_allele_out && mapped_al2 < n_allele_out);
                 if (mapped_al1 < 0 || mapped_al2 < 0) {
-                    // TODO: arguably PL should be censored if the max-likelihood entry (0) does
-                    // not map into the output vector. They may be open to misinterpretation
-                    // otherwise.
                     return -1;
                 }
                 int mapped_j = diploid::alleles_gt(mapped_al1, mapped_al2);
@@ -209,7 +206,7 @@ protected:
         }
         return Status::OK();
     }
-    Status combine_format_data(vector<T>& ans) {
+    virtual Status combine_format_data(vector<T>& ans) {
         Status s;
         ans.clear();
 
@@ -410,6 +407,54 @@ protected:
                 }
             }
         }
+        return Status::OK();
+    }
+};
+
+// Special-case logic for the genotype likelihoods (PL) field:
+// It censors the output in the event the max-likelihood PL (0) cannot be
+// lifted over, as other values would be subject to misinterpretation, being
+// relative to that max-likelihood one.
+class PLFieldHelper : public NumericFormatFieldHelper<int32_t> {
+public:
+    PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
+        : NumericFormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+        assert(field_info.name == "PL");
+    }
+
+protected:
+    Status combine_format_data(vector<int32_t>& ans) override {
+        Status s;
+        ans.clear();
+
+        assert(format_v.size() == n_samples * count);
+
+        // for each sample, if we don't have at least one entry equal to zero,
+        // then censor all. Also, censor if we have a zero but no other values,
+        // since this uninformative anyway.
+        for (int i = 0; i < n_samples; i++) {
+            int zeroes = 0, nonzeroes = 0;
+            for (int j = 0; j < count; j++) {
+                const auto& v = format_v[i*count+j];
+                if (v.size() == 1) {
+                    if (v[0] == 0) {
+                        zeroes++;
+                    } else {
+                        nonzeroes++;
+                    }
+                }
+            }
+
+            for (int j = 0; j < count; j++) {
+                if (zeroes == 0 || (zeroes == 1 && nonzeroes == 0)) {
+                    ans.push_back(bcf_int32_missing);
+                } else {
+                    const auto& v = format_v[i*count+j];
+                    ans.push_back(v.size() == 1 ? v[0] : bcf_int32_missing);
+                }
+            }
+        }
+
         return Status::OK();
     }
 };
@@ -636,6 +681,11 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
                 return Status::Invalid("genotyper misconfiguration: FT format field should have type=string, number=basic, count=1");
             }
             format_helpers.push_back(unique_ptr<FormatFieldHelper>(new FilterFormatFieldHelper(format_field_info, samples.size(), count)));
+        } else if (format_field_info.name == "PL") {
+            if (format_field_info.type != RetainedFieldType::INT || format_field_info.number != RetainedFieldNumber::GENOTYPE || format_field_info.combi_method != FieldCombinationMethod::MISSING) {
+                return Status::Invalid("genotyper misconfiguration: PL format field should have type=int, number=genotype, combi_method=missing");
+            }
+            format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper(format_field_info, samples.size(), count)));
         } else switch (format_field_info.type) {
             case RetainedFieldType::INT:
             {
