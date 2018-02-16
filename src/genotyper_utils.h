@@ -430,22 +430,27 @@ protected:
         assert(format_v.size() == n_samples * count);
 
         // for each sample, if we don't have at least one entry equal to zero,
-        // then censor all.
+        // then censor all. Also, censor if we have a zero but no other values,
+        // since this uninformative anyway.
         for (int i = 0; i < n_samples; i++) {
-            bool found_zero = false;
+            int zeroes = 0, nonzeroes = 0;
             for (int j = 0; j < count; j++) {
                 const auto& v = format_v[i*count+j];
-                if (v.size() == 1 && v[0] == 0) {
-                    found_zero = true;
+                if (v.size() == 1) {
+                    if (v[0] == 0) {
+                        zeroes++;
+                    } else {
+                        nonzeroes++;
+                    }
                 }
             }
 
             for (int j = 0; j < count; j++) {
-                if (found_zero) {
+                if (zeroes == 0 || (zeroes == 1 && nonzeroes == 0)) {
+                    ans.push_back(bcf_int32_missing);
+                } else {
                     const auto& v = format_v[i*count+j];
                     ans.push_back(v.size() == 1 ? v[0] : bcf_int32_missing);
-                } else {
-                    ans.push_back(bcf_int32_missing);
                 }
             }
         }

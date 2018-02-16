@@ -70,6 +70,7 @@ input:
         chr21	9418226	.	C	<*>	0	.	END=9418259	GT:GQ:MIN_DP:PL	0/0:50:90:0,294,2939
         chr21	9418260	.	A	T,<*>	36.1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:35:91:0,91,0:1,0:36,40,0,990,990,990
         chr21	9418261	.	G	<*>	0	.	END=9418296	GT:GQ:MIN_DP:PL	0/0:50:79:0,276,2759
+        chr21	11000367	.	G	<*>	0	.	END=11000385	GT:GQ:MIN_DP:PL	0/0:50:79:0,276,2759
 
 unifier_config:
     min_AQ1: 0
@@ -189,10 +190,10 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12877	NA12878
-      chr21	9412193	.	C	T	18	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:0,.,.:30:30,0:..	0/1:19:18,0,40:75:52,23:..
-      chr21	9412269	.	A	T	28	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:0,.,.:32:32,0:..	0/1:28:28,0,36:81:57,24:..
-      chr21	9412358	.	TA	T	35	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:0,.,.:21:21,0:..	0/1:35:35,0,44:69:40,28:..
+      chr21	9412193	.	C	T	18	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:.:30:30,0:..	0/1:19:18,0,40:75:52,23:..
+      chr21	9412269	.	A	T	28	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:.:32:32,0:..	0/1:28:28,0,36:81:57,24:..
+      chr21	9412358	.	TA	T	35	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:.:21:21,0:..	0/1:35:35,0,44:69:40,28:..
       chr21	9412435	.	T	A	23	.	.	GT:GQ:PL:DP:AD:RNC	0/1:24:23,0,37:44:22,22:..	0/0:14:0,13,42:103:89,14:..
       chr21	9412441	.	TATA	T	31	.	.	GT:GQ:PL:DP:AD:RNC	0/1:26:31,0,27:47:25,22:..	0/1:27:27,0,46:98:69,29:..
       chr21	9418260	.	A	T,C	43	.	.	GT:GQ:PL:DP:AD:RNC	1/1:35:36,40,0,.,.,.:91:0,91,0:..	1/2:38:45,48,42,48,0,43:135:0,106,29:..
-      chr21	11000381	.	AG	A,AA	2	.	.	GT:GQ:PL:DP:AD:RNC	./.:.:.:.:.:MM	./.:.:.:20:.:OO
+      chr21	11000381	.	AG	A,AA	2	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:.:79:79,0,0:..	./.:.:.:20:.:OO
