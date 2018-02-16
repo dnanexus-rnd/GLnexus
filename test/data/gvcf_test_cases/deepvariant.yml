@@ -34,6 +34,9 @@ input:
         chr21	9412436	.	G	<*>	0	.	END=9412440	GT:GQ:MIN_DP:PL	0/0:50:96:0,288,2879
         chr21	9412441	.	TATA	T,<*>	27.1	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:27:98:69,29,0:0.295918,0:27,0,46,990,990,990
         chr21	9412445	.	A	<*>	0	.	END=9412502	GT:GQ:MIN_DP:PL	0/0:50:68:0,210,2099
+        chr21	9418226	.	C	<*>	0	.	END=9418259	GT:GQ:MIN_DP:PL	0/0:50:130:0,300,2999
+        chr21	9418260	.	A	C,T,<*>	45.1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/2:38:135:0,29,106,0:0.214815,0.785185,0:45,48,43,48,0,42,990,990,990,990
+        chr21	9418261	.	G	<*>	0	.	END=9418296	GT:GQ:MIN_DP:PL	0/0:50:122:0,300,2999
     - NA12877.gvcf: |
         NA12877
         chr21	9412001	.	A	<*>	0	.	END=9412144	GT:GQ:MIN_DP:PL	0/0:50:23:0,84,839
@@ -59,6 +62,9 @@ input:
         chr21	9412436	.	G	<*>	0	.	END=9412440	GT:GQ:MIN_DP:PL	0/0:50:45:0,135,1349
         chr21	9412441	.	TATA	T,<*>	31.5	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:26:47:25,22,0:0.468085,0:31,0,27,990,990,990
         chr21	9412445	.	A	<*>	0	.	END=9412502	GT:GQ:MIN_DP:PL	0/0:50:25:0,75,749
+        chr21	9418226	.	C	<*>	0	.	END=9418259	GT:GQ:MIN_DP:PL	0/0:50:90:0,294,2939
+        chr21	9418260	.	A	T,<*>	36.1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:35:91:0,91,0:1,0:36,40,0,990,990,990
+        chr21	9418261	.	G	<*>	0	.	END=9418296	GT:GQ:MIN_DP:PL	0/0:50:79:0,276,2759
 
 unifier_config:
     min_AQ1: 0
@@ -77,6 +83,14 @@ genotyper_config:
       number: basic
       combi_method: min
       count: 1
+      ignore_non_variants: true
+    - orig_names: [PL]
+      name: PL
+      description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+      type: int
+      number: genotype
+      combi_method: missing
+      count: 0
       ignore_non_variants: true
     - orig_names: [PL]
       name: PL
@@ -143,6 +157,17 @@ truth_unified_sites:
       - range: {beg: 9412441, end: 9412444}
         dna: T
         to: 1
+  - range: {ref: chr21, beg: 9418260, end: 9418260}
+    alleles: [A, T, C]
+    allele_frequencies: [.nan, 0.75, 0.25]
+    quality: 43
+    unification:
+      - range: {beg: 9418260, end: 9418260}
+        dna: T
+        to: 1
+      - range: {beg: 9418260, end: 9418260}
+        dna: C
+        to: 2
 
 truth_output_vcf:
   - truth.vcf: |
@@ -161,3 +186,4 @@ truth_output_vcf:
       chr21	9412358	.	TA	T	35	.	.	GT:GQ:PL:DP:AD:RNC	0/0:50:0,.,.:21:21,0:..	0/1:35:35,0,44:69:40,28:..
       chr21	9412435	.	T	A	23	.	.	GT:GQ:PL:DP:AD:RNC	0/1:24:23,0,37:44:22,22:..	0/0:14:0,13,42:103:89,14:..
       chr21	9412441	.	TATA	T	31	.	.	GT:GQ:PL:DP:AD:RNC	0/1:26:31,0,27:47:25,22:..	0/1:27:27,0,46:98:69,29:..
+      chr21	9418260	.	A	T,C	43	.	.	GT:GQ:PL:DP:AD:RNC	1/1:35:36,40,0,.,.,.:91:0,91,0:..	1/2:38:45,48,42,48,0,43:135:0,106,29:..
