@@ -65,8 +65,10 @@ TEST_CASE("cli") {
         GLnexus::unifier_config unifier_cfg;
         GLnexus::genotyper_config genotyper_cfg;
         string config_preset = "gatk";
-        s = cli::utils::load_config_preset(console, config_preset, unifier_cfg, genotyper_cfg);
+        string config_crc32c;
+        s = cli::utils::load_config(console, config_preset, unifier_cfg, genotyper_cfg, config_crc32c);
         REQUIRE(s.ok());
+        REQUIRE(config_crc32c == "2160093042");
         unifier_cfg.min_AQ1 = 0;
         unifier_cfg.min_AQ2 = 0;
 
