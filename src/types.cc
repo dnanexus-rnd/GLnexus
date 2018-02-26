@@ -897,7 +897,7 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     if (n_max_alleles_per_site) {
         V(n_max_alleles_per_site.IsScalar(), "invalid max_alleles_per_site");
         int max_alleles_per_site = n_max_alleles_per_site.as<int>();
-        V(max_alleles_per_site > 0, "invalid max_alleles_per_site");
+        V(max_alleles_per_site >= 0, "invalid max_alleles_per_site");
         ans.max_alleles_per_site = (size_t) max_alleles_per_site;
     }
 
