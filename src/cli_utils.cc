@@ -605,6 +605,7 @@ xAtlas:
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
         required_dp: 0
+        allow_partial_data: true
         revise_genotypes: false
         # TODO: ref_dp_format=DPX[0] would be more precise
         ref_dp_format: DP

@@ -708,8 +708,9 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
     return Status::OK();
 }
 
-Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_header, const map<int,int>& sample_mapping,
-                            const unified_site& site, vector<unique_ptr<FormatFieldHelper>>& format_helpers,
+Status update_format_fields(const genotyper_config& cfg, const string& dataset, const bcf_hdr_t* dataset_header,
+                            const map<int,int>& sample_mapping, const unified_site& site,
+                            vector<unique_ptr<FormatFieldHelper>>& format_helpers,
                             const vector<shared_ptr<bcf1_t_plus>>& all_records,
                             const vector<shared_ptr<bcf1_t_plus>>& variant_records) {
     Status s;
@@ -717,7 +718,7 @@ Status update_format_fields(const string& dataset, const bcf_hdr_t* dataset_head
     // Update format helpers
     for (auto& format_helper : format_helpers) {
         const vector<shared_ptr<bcf1_t_plus>> *records_to_use = nullptr;
-        if (format_helper->field_info.ignore_non_variants && !variant_records.empty()) {
+        if ((cfg.allow_partial_data || format_helper->field_info.ignore_non_variants) && !variant_records.empty()) {
             // Only care about variant records, loop through variant_records
             records_to_use = &variant_records;
         } else {

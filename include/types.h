@@ -740,6 +740,13 @@ struct genotyper_config {
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
 
+    /// By default we require gVCF coverage of every position of a unified site
+    /// in order to make a call, otherwise we no-call with RNC=PartialData.
+    /// If true, then partial coverage (with either a variant or reference record)
+    /// suffices to make the corresponding call. Also, disables use of reference
+    /// records flanking a gVCF variant record when calculating FORMAT fields.
+    bool allow_partial_data = false;
+
     /// FORMAT field to consult for per-allele depth in VCF records
     std::string allele_dp_format = "AD";
 

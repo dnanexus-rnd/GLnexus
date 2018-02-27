@@ -262,10 +262,11 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 
     // check the records span the site, otherwise we need to produce
     // PartialData no-calls
-    if (!site.pos.spanned_by(record_rngs)) {
-        if (!record_rngs.empty()) {
-            rnc = NoCallReason::PartialData;
-        }
+    if (record_rngs.empty()) {
+        return Status::OK(); // MissingData
+    }
+    if (!cfg.allow_partial_data && !site.pos.spanned_by(record_rngs)) {
+        rnc = NoCallReason::PartialData;
         return Status::OK();
     }
 
@@ -669,8 +670,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
 
         // Update FORMAT fields for this dataset.
-        S(update_format_fields(dataset, dataset_header.get(), sample_mapping, site, format_helpers,
-                               all_records, variant_records));
+        S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
+                               format_helpers, all_records, variant_records));
         // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
         // we must censor the FORMAT fields as potentially unreliable/misleading.
         for (const auto& p : sample_mapping) {

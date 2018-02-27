@@ -1,5 +1,8 @@
 readme: |
-  Basic test of loading xAtlas GVCF dialect
+  xAtlas GVCF dialect
+  allow_partial_data=true and we include an example of a deletion with only
+  partial reference coverage, as well as an example where the flanking
+  reference records are not used calculating the FORMAT fields.
 
 input:
   header : |-
@@ -52,6 +55,8 @@ input:
         1	69155	.	T	.	.	PASS	END=69214;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:1:1:.:0,32,82:0,0,0,0:1,4,1.83333,0.806051:1,4,1.83333,0.806051
         1	69215	.	T	TA	15	read_end_ratio	P=0.971431	GT:VR:RR:DP:GQ:PL	0/1:2:5:5:.:9,0,125
         1	69216	.	G	.	.	PASS	END=69259;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:5:5:.:0,45,208:0,0,0,0:5,7,6.22727,0.522233:5,7,6.22727,0.522233
+        1	1087454	.	TAA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
+        1	1087554	.	TAA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
     - xAtlasTester.gvcf: |
         xAtlasTester
         1	15890	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
@@ -61,6 +66,9 @@ input:
         1	15989	.	AG	A	40	PASS	P=0.999904	GT:VR:RR:DP:GQ:PL	1/1:25:1:26:.:659,47,0
         1	15990	.	G	.	.	VRFromDeletion	END=15990;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	1/1:25:1:26:.:659,47,0:25,25,25,0:1,1,1,0:26,26,26,0
         1	69215	.	T	TA	3	PASS	P=0.526272	GT:VR:RR:DP:GQ:PL	0/0:2:8:8:.:0,0,202
+        1	1087454	.	TA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
+        1	1087554	.	TA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
+        1	1087556	.	G	.	.	PASS	END=1087656;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
 
 unifier_config:
     drop_filtered: true
@@ -68,6 +76,7 @@ unifier_config:
 genotyper_config:
     required_dp: 0
     revise_genotypes: false
+    allow_partial_data: true
     # TODO: ref_dp_format=DPX[0] would be more precise
     ref_dp_format: DP
     liftover_fields:
@@ -208,6 +217,54 @@ truth_discovered_alleles:
       all_filtered: true
       top_AQ: [9]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087454, end: 1087455}
+      dna: 'TA'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [125]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087454, end: 1087455}
+      dna: 'T'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087454, end: 1087456}
+      dna: 'TAA'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [125]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087454, end: 1087456}
+      dna: 'T'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087554, end: 1087555}
+      dna: 'TA'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [125]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087554, end: 1087555}
+      dna: 'T'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087554, end: 1087556}
+      dna: 'TAA'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [125]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1087554, end: 1087556}
+      dna: 'T'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
@@ -253,6 +310,28 @@ truth_unified_sites:
         - range: {beg: 15989, end: 15990}
           dna: A
           to: 1
+    - range: {ref: 1, beg: 1087454, end: 1087456}
+      alleles: [TAA, TA, T]
+      allele_frequencies: [.nan, 0.25, 0.25]
+      quality: 9
+      unification:
+        - range: {beg: 1087454, end: 1087455}
+          dna: T
+          to: 1
+        - range: {beg: 1087454, end: 1087456}
+          dna: T
+          to: 2
+    - range: {ref: 1, beg: 1087554, end: 1087556}
+      alleles: [TAA, TA, T]
+      allele_frequencies: [.nan, 0.25, 0.25]
+      quality: 9
+      unification:
+        - range: {beg: 1087554, end: 1087555}
+          dna: T
+          to: 1
+        - range: {beg: 1087554, end: 1087556}
+          dna: T
+          to: 2
 
 
 truth_output_vcf:
@@ -274,3 +353,5 @@ truth_output_vcf:
       1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..
       1	15987	.	M	C	716	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:716,75,0:26:0:26:.:..
       1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..
+      1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..
+      1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..

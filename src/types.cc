@@ -1140,6 +1140,7 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "revise_genotypes" << YAML::Value << revise_genotypes;
     ans << YAML::Key << "min_assumed_allele_frequency" << YAML::Value << min_assumed_allele_frequency;
     ans << YAML::Key << "required_dp" << YAML::Value << required_dp;
+    ans << YAML::Key << "allow_partial_data" << YAML::Value << allow_partial_data;
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
     ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
     ans << YAML::Key << "output_residuals" << YAML::Value << output_residuals;
@@ -1188,6 +1189,12 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     if (n_required_dp) {
         V(n_required_dp.IsScalar() && n_required_dp.as<int>() >= 0, "invalid required_dp");
         ans.required_dp = n_required_dp.as<int>();
+    }
+
+    const auto n_allow_partial_data = yaml["allow_partial_data"];
+    if (n_allow_partial_data) {
+        V(n_allow_partial_data.IsScalar(), "invalid allow_partial_data");
+        ans.allow_partial_data = n_allow_partial_data.as<bool>();
     }
 
     const auto n_allele_dp_format = yaml["allele_dp_format"];
