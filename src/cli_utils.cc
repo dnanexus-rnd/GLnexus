@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "crc32c.h"
 #include "service.h"
 #include "compare_queries.h"
 
@@ -738,22 +739,17 @@ DeepVariant:
               count: 0
 )eof";
 
-Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
-                          const std::string& name,
-                          unifier_config& unifier_cfg,
-                          genotyper_config& genotyper_cfg) {
+Status load_config(std::shared_ptr<spdlog::logger> logger,
+                   const YAML::Node& config,
+                   unifier_config& unifier_cfg,
+                   genotyper_config& genotyper_cfg,
+                   std::string& config_crc32c) {
     Status s;
-    logger->info() << "Loading config " << name;
-    YAML::Node presets = YAML::Load(config_presets_yml);
-    if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
-        return Status::NotFound("unknown configuration preset", name);
+    if (config["unifier_config"]) {
+        S(unifier_config::of_yaml(config["unifier_config"], unifier_cfg));
     }
-    YAML::Node preset = presets[name];
-    if (preset["unifier_config"]) {
-        S(unifier_config::of_yaml(preset["unifier_config"], unifier_cfg));
-    }
-    if (preset["genotyper_config"]) {
-        S(genotyper_config::of_yaml(preset["genotyper_config"], genotyper_cfg));
+    if (config["genotyper_config"]) {
+        S(genotyper_config::of_yaml(config["genotyper_config"], genotyper_cfg));
     }
     YAML::Emitter em;
     em << YAML::BeginMap
@@ -762,10 +758,40 @@ Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
     em << YAML::Key << "genotyper_config" << YAML::Value;
     S(genotyper_cfg.yaml(em));
     em << YAML::EndMap;
-    logger->info() << "config:\n" << em.c_str();
+    std::string config_text = em.c_str();
+    logger->info() << "config:\n" << config_text;
+
+    config_crc32c = std::to_string(rocksdb::crc32c::Value(config_text.c_str(), config_text.size()));
+    logger->info() << "config CRC32C = " << config_crc32c;
     return Status::OK();
 }
 
+Status load_config(std::shared_ptr<spdlog::logger> logger,
+                   const std::string& name,
+                   unifier_config& unifier_cfg,
+                   genotyper_config& genotyper_cfg,
+                   std::string& config_crc32c) {
+    Status s;
+    if (name.size() > 4 && name.substr(name.size() - 4) == ".yml") {
+        try {
+            logger->info() << "Loading config YAML file " << name;
+            YAML::Node config = YAML::LoadFile(name);
+            if (!config || !config.IsMap()) {
+                return Status::IOError("loading configuration YAML file", name);
+            }
+            return load_config(logger, config, unifier_cfg, genotyper_cfg, config_crc32c);
+        } catch (YAML::Exception& exn) {
+            return Status::IOError("loading configuration YAML file", name);
+        }
+    } else {
+        logger->info() << "Loading config preset " << name;
+        YAML::Node presets = YAML::Load(config_presets_yml);
+        if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
+            return Status::NotFound("unknown configuration preset", name);
+        }
+        return load_config(logger, presets[name], unifier_cfg, genotyper_cfg, config_crc32c);
+    }
+}
 
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {
     static unique_ptr<RocksKeyValue::prefix_spec> p;

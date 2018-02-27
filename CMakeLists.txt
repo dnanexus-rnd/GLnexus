@@ -98,6 +98,8 @@ ExternalProject_Add(rocksdb
 ExternalProject_Get_Property(rocksdb source_dir)
 set(ROCKSDB_INCLUDE_DIR ${source_dir}/include)
 include_directories(${ROCKSDB_INCLUDE_DIR})
+set(ROCKSDB_UTIL_DIR ${source_dir}/util)
+include_directories(${ROCKSDB_UTIL_DIR})
 ExternalProject_Get_Property(rocksdb binary_dir)
 add_library(librocksdb STATIC IMPORTED)
 set(LIBROCKSDB_A ${binary_dir}/librocksdb.a)

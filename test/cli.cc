@@ -62,11 +62,30 @@ TEST_CASE("cli") {
         s = cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename);
         REQUIRE(s.ok());
 
+        // load_config: once from hardcoded preset, then from file
         GLnexus::unifier_config unifier_cfg;
         GLnexus::genotyper_config genotyper_cfg;
         string config_preset = "gatk";
-        s = cli::utils::load_config_preset(console, config_preset, unifier_cfg, genotyper_cfg);
+        string config_crc32c, config_crc32c2;
+        s = cli::utils::load_config(console, config_preset, unifier_cfg, genotyper_cfg, config_crc32c);
         REQUIRE(s.ok());
+        REQUIRE(config_crc32c == "2160093042");
+
+        YAML::Emitter em;
+        em << YAML::BeginMap
+        << YAML::Key << "unifier_config" << YAML::Value;
+        REQUIRE(unifier_cfg.yaml(em).ok());
+        em << YAML::Key << "genotyper_config" << YAML::Value;
+        REQUIRE(genotyper_cfg.yaml(em).ok());
+        em << YAML::EndMap;
+        ofstream outfile(DB_DIR + "/config.yml");
+        outfile << em.c_str();
+        outfile.close();
+        s = cli::utils::load_config(console, DB_DIR + "/config.yml", unifier_cfg, genotyper_cfg, config_crc32c2);
+        REQUIRE(s.ok());
+        REQUIRE(config_crc32c == config_crc32c2);
+
+
         unifier_cfg.min_AQ1 = 0;
         unifier_cfg.min_AQ2 = 0;
 

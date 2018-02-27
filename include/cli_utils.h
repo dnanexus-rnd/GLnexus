@@ -89,11 +89,14 @@ bool check_file_exists(const std::string &path);
 // Check if a directory exists
 bool check_dir_exists(const std::string &path);
 
-// Load a named configuration for the unifier and genotyper
-Status load_config_preset(std::shared_ptr<spdlog::logger> logger,
-                          const std::string& name,
-                          unifier_config& unifier_cfg,
-                          genotyper_config& genotyper_cfg);
+// Load configuration for the unifier and genotyper
+// If name ends in ".yml" then the YAML file is parsed
+// Otherwise name selects a hardcoded configuration preset.
+Status load_config(std::shared_ptr<spdlog::logger> logger,
+                   const std::string& name,
+                   unifier_config& unifier_cfg,
+                   genotyper_config& genotyper_cfg,
+                   std::string& config_crc32c);
 
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec();
 

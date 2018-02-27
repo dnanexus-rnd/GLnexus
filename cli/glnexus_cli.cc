@@ -31,7 +31,7 @@ GLnexus::Status s;
 // return 0 on success, 1 on failure.
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
-                     const string &config_preset,
+                     const string &config_name,
                      int nr_threads,
                      bool debug,
                      bool iter_compare,
@@ -39,6 +39,7 @@ static int all_steps(const vector<string> &vcf_files,
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
+    string cfg_crc32c;
 
     if (vcf_files.empty()) {
         console->error() << "No source GVCF files specified";
@@ -46,7 +47,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     H("load unifier/genotyper configuration",
-        GLnexus::cli::utils::load_config_preset(console, config_preset, unifier_cfg, genotyper_cfg));
+        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_crc32c));
 
     // initilize empty database
     string dbpath("GLnexus.DB");
@@ -134,7 +135,7 @@ static int all_steps(const vector<string> &vcf_files,
 
     // genotype
     genotyper_cfg.output_residuals = debug;
-    vector<string> hdr_lines = { ("##GLnexusConfigPreset="+config_preset) };
+    vector<string> hdr_lines = { ("##GLnexusConfig="+config_name), ("##GLnexusConfigCRC32C="+cfg_crc32c) };
     auto DX_JOB_ID = std::getenv("DX_JOB_ID");
     if (DX_JOB_ID) {
         // if running in DNAnexus, record job ID in header
@@ -155,7 +156,7 @@ void help(const char* prog) {
          << "Options:" << endl
          << "  --help, -h           print this help message" << endl
          << "  --bed FILE, -b FILE  three-column BED file of ranges to analyze (required)" << endl
-         << "  --config X, -c X     configuration preset (default: gatk)" << endl
+         << "  --config X, -c X     configuration preset name or .yml filename (default: gatk)" << endl
          << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl;
 }
 
@@ -185,7 +186,7 @@ int main(int argc, char *argv[]) {
     };
 
     int c;
-    string config_preset = "gatk";
+    string config_name = "gatk";
     bool list_of_files = false;
     bool debug = false;
     bool iter_compare = false;
@@ -209,7 +210,7 @@ int main(int argc, char *argv[]) {
                 break;
 
             case 'c':
-                config_preset = string(optarg);
+                config_name = string(optarg);
                 break;
 
             case 'd':
@@ -264,5 +265,5 @@ int main(int argc, char *argv[]) {
         vcf_files = vcf_files_precursor;
     }
 
-    return all_steps(vcf_files, bedfilename, config_preset, nr_threads, debug, iter_compare, bucket_size);
+    return all_steps(vcf_files, bedfilename, config_name, nr_threads, debug, iter_compare, bucket_size);
 }
