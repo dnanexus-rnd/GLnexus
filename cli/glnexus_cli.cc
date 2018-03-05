@@ -258,7 +258,7 @@ int main(int argc, char *argv[]) {
                 vcf_files.push_back(gvcf);
             }
             if (infile.bad() || !infile.eof()) {
-                H("reading input file list", GLnexus::Status::IOError("reading", bedfilename));
+                H("read input file list", GLnexus::Status::IOError("reading", fn));
             }
         }
     } else {
