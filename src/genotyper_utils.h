@@ -415,6 +415,8 @@ protected:
 // It censors the output in the event the max-likelihood PL (0) cannot be
 // lifted over, as other values would be subject to misinterpretation, being
 // relative to that max-likelihood one.
+// Also censors any time there are multiple variant records, since we can't
+// combine PLs soundly.
 class PLFieldHelper : public NumericFormatFieldHelper<int32_t> {
 public:
     PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
@@ -434,6 +436,7 @@ protected:
         // since this uninformative anyway.
         for (int i = 0; i < n_samples; i++) {
             int zeroes = 0, nonzeroes = 0;
+            bool multi = false;
             for (int j = 0; j < count; j++) {
                 const auto& v = format_v[i*count+j];
                 if (v.size() == 1) {
@@ -442,11 +445,13 @@ protected:
                     } else {
                         nonzeroes++;
                     }
+                } else if (v.size() > 1) {
+                    multi = true;
                 }
             }
 
             for (int j = 0; j < count; j++) {
-                if (zeroes == 0 || (zeroes == 1 && nonzeroes == 0)) {
+                if (multi || zeroes == 0 || (zeroes == 1 && nonzeroes == 0)) {
                     ans.push_back(bcf_int32_missing);
                 } else {
                     const auto& v = format_v[i*count+j];

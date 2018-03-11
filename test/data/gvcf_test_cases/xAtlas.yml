@@ -69,6 +69,8 @@ input:
         1	1087454	.	TA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
         1	1087554	.	TA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
         1	1087556	.	G	.	.	PASS	END=1087656;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
+        1	131211614	.	AG	A	10	PASS	P=0.905149	GT:VR:RR:DP:GQ:PL	0/1:6:14:21:.:85,0,344
+        1	131211615	.	GGA	G	2	low_qual	P=0.366185	GT:VR:RR:DP:GQ:PL	0/0:2:16:19:.:0,24,432
 
 unifier_config:
     drop_filtered: true
@@ -114,7 +116,7 @@ genotyper_config:
           name: VR
           description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
           type: int
-          combi_method: min
+          combi_method: max
           number: basic
           count: 1
         - orig_names: [FILTER]
@@ -265,6 +267,18 @@ truth_discovered_alleles:
       all_filtered: false
       top_AQ: [9]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 131211614, end: 131211615}
+      dna: 'AG'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [344]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 131211614, end: 131211615}
+      dna: 'A'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [85]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
@@ -332,7 +346,14 @@ truth_unified_sites:
         - range: {beg: 1087554, end: 1087556}
           dna: T
           to: 2
-
+    - range: {ref: 1, beg: 131211614, end: 131211615}
+      alleles: [AG, A]
+      allele_frequencies: [.nan, 0.25]
+      quality: 85
+      unification:
+        - range: {beg: 131211614, end: 131211615}
+          dna: A
+          to: 1
 
 truth_output_vcf:
   - truth.vcf: |
@@ -355,3 +376,4 @@ truth_output_vcf:
       1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..
       1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..
       1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..
+      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:.:19:14:6:low_qual:..
