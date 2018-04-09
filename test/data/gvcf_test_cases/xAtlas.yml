@@ -71,6 +71,10 @@ input:
         1	1087556	.	G	.	.	PASS	END=1087656;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	131211614	.	AG	A	10	PASS	P=0.905149	GT:VR:RR:DP:GQ:PL	0/1:6:14:21:.:85,0,344
         1	131211615	.	GGA	G	2	low_qual	P=0.366185	GT:VR:RR:DP:GQ:PL	0/0:2:16:19:.:0,24,432
+    - Third.gvcf: |
+        ythird
+    - Fourth.gvcf: |
+        zfourth
 
 unifier_config:
     drop_filtered: true
@@ -283,7 +287,7 @@ truth_discovered_alleles:
 truth_unified_sites:
     - range: {ref: 1, beg: 15956, end: 15956}
       alleles: [G, A]
-      allele_frequencies: [.nan, 0.25]
+      allele_frequencies: [.nan, 0.125]
       quality: 257
       unification:
         - range: {beg: 15956, end: 15956}
@@ -291,7 +295,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: 1, beg: 15983, end: 15983}
       alleles: [C, T, G]
-      allele_frequencies: [.nan, 0.5, 0.25]
+      allele_frequencies: [.nan, 0.25, 0.125]
       quality: 257
       unification:
         - range: {beg: 15983, end: 15983}
@@ -302,7 +306,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: 1, beg: 15985, end: 15985}
       alleles: [A, T]
-      allele_frequencies: [.nan, 0.5]
+      allele_frequencies: [.nan, 0.25]
       quality: 257
       unification:
         - range: {beg: 15985, end: 15985}
@@ -310,7 +314,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: 1, beg: 15987, end: 15987}
       alleles: [M, C]
-      allele_frequencies: [.nan, 0.5]
+      allele_frequencies: [.nan, 0.25]
       quality: 716
       unification:
         - range: {beg: 15987, end: 15987}
@@ -318,7 +322,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: 1, beg: 15989, end: 15990}
       alleles: [AG, A]
-      allele_frequencies: [.nan, 0.5]
+      allele_frequencies: [.nan, 0.25]
       quality: 659
       unification:
         - range: {beg: 15989, end: 15990}
@@ -326,7 +330,7 @@ truth_unified_sites:
           to: 1
     - range: {ref: 1, beg: 1087454, end: 1087456}
       alleles: [TAA, TA, T]
-      allele_frequencies: [.nan, 0.25, 0.25]
+      allele_frequencies: [.nan, 0.125, 0.125]
       quality: 9
       unification:
         - range: {beg: 1087454, end: 1087455}
@@ -337,7 +341,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: 1, beg: 1087554, end: 1087556}
       alleles: [TAA, TA, T]
-      allele_frequencies: [.nan, 0.25, 0.25]
+      allele_frequencies: [.nan, 0.125, 0.125]
       quality: 9
       unification:
         - range: {beg: 1087554, end: 1087555}
@@ -348,7 +352,7 @@ truth_unified_sites:
           to: 2
     - range: {ref: 1, beg: 131211614, end: 131211615}
       alleles: [AG, A]
-      allele_frequencies: [.nan, 0.25]
+      allele_frequencies: [.nan, 0.125]
       quality: 85
       unification:
         - range: {beg: 131211614, end: 131211615}
@@ -368,12 +372,12 @@ truth_output_vcf:
       ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
       ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=21,length=48129895>
-      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002 xAtlasTester
-      1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/0:.:0,42,177:4:4:0:.:..
-      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:20:8:12:.:..	1/1:.:257,172,0,.,.,.:20:1:19:.:..
-      1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..
-      1	15987	.	M	C	716	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:716,75,0:26:0:26:.:..
-      1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..
-      1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..
-      1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..
-      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:.:19:14:6:low_qual:..
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002	xAtlasTester	ythird	zfourth
+      1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/0:.:0,42,177:4:4:0:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:20:8:12:.:..	1/1:.:257,172,0,.,.,.:20:1:19:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	15987	.	M	C	716	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:716,75,0:26:0:26:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:.:19:14:6:low_qual:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM

@@ -35,6 +35,17 @@ struct minimized_allele_info {
         os << "Copy number: " << copy_number << endl;
         return os.str();
     }
+
+    void operator+=(const minimized_allele_info& rhs) {
+        originals.insert(rhs.originals.begin(), rhs.originals.end());
+        all_filtered = all_filtered && rhs.all_filtered;
+        topAQ += rhs.topAQ;
+        copy_number += rhs.copy_number;
+        if (!in_target.overlaps(rhs.in_target) ||
+            in_target.size() < rhs.in_target.size()) {
+            in_target = rhs.in_target;
+        }
+    }
 };
 using minimized_alleles = map<allele,minimized_allele_info>;
 using minimized_allele = pair<allele,minimized_allele_info>;
@@ -139,24 +150,17 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
 
         // add it to alts, combining originals, copy_number, and topAQ with any
         // previously observed occurrences of the same minimized alt allele.
+        minimized_allele_info info;
+        info.originals.insert(dal.first);
+        info.all_filtered = dal.second.all_filtered;
+        info.topAQ = dal.second.topAQ;
+        info.copy_number = copy_number;
+        info.in_target = dal.second.in_target;
         auto ap = alts.find(min_alt);
         if (ap == alts.end()) {
-            minimized_allele_info info;
-            info.originals.insert(dal.first);
-            info.all_filtered = dal.second.all_filtered;
-            info.topAQ = dal.second.topAQ;
-            info.copy_number = copy_number;
-            info.in_target = dal.second.in_target;
-            alts[min_alt] = move(info);
+            alts[min_alt] = info;
         } else {
-            ap->second.originals.insert(dal.first);
-            ap->second.all_filtered = ap->second.all_filtered && dal.second.all_filtered;
-            ap->second.topAQ += dal.second.topAQ;
-            ap->second.copy_number += copy_number;
-            if (!ap->second.in_target.overlaps(min_alt.pos) ||
-                dal.second.in_target.size() > ap->second.in_target.size()) {
-                ap->second.in_target = dal.second.in_target;
-            }
+            ap->second += info;
         }
     }
 
@@ -439,6 +443,29 @@ Status pad_alt_allele(const allele& ref, allele& alt) {
     return Status::OK();
 }
 
+// Given the alleles at one site, detect equivalent alt alleles with slightly
+// different positions (i.e. at least one version isn't left-aligned) and
+// collapse them. This effectively realigns indels, but only in the limited
+// case where delineate_sites put them together in the first place.
+Status unify_nonaligned_alts(const allele& ref, const minimized_alleles& alts, minimized_alleles& aligned_alts) {
+    Status s;
+    aligned_alts.clear();
+    for (const auto& p : alts) {
+        UNPAIR(p, alt, alt_info);
+        allele unified_alt(alt);
+        S(pad_alt_allele(ref, unified_alt));
+        assert(unified_alt.pos == ref.pos);
+
+        auto q = aligned_alts.find(unified_alt);
+        if (q == aligned_alts.end()) {
+            aligned_alts[unified_alt] = alt_info;
+        } else {
+            q->second += alt_info;
+        }
+    }
+    return Status::OK();
+}
+
 /// Unify the alleles at one site.
 Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
                      const discovered_alleles& refs, const minimized_alleles& alts,
@@ -449,12 +476,16 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     allele ref(pos, "A");
     S(unify_ref(pos, refs, ref));
 
+    // detect equivalent alt alleles at different positions, and collapse them
+    minimized_alleles aligned_alts;
+    S(unify_nonaligned_alts(ref, alts, aligned_alts));
+
     // For presentation in the unified site, sort the alt alleles by
     // decreasing copy number count (+ some tiebreakers). Note, this may be a
     // different sort order than used in prune_allele earlier.
-    assert(alts.size() > 0);
-    assert(cfg.max_alleles_per_site < 2 || alts.size() < cfg.max_alleles_per_site);
-    vector<minimized_allele> valts(alts.begin(), alts.end());
+    assert(aligned_alts.size() > 0);
+    assert(cfg.max_alleles_per_site < 2 || aligned_alts.size() < cfg.max_alleles_per_site);
+    vector<minimized_allele> valts(aligned_alts.begin(), aligned_alts.end());
     sort(valts.begin(), valts.end(), minimized_allele_common_lt);
 
     // fill out the unification
