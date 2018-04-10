@@ -635,7 +635,6 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
         const auto n_urange = (*p)["range"];
         VR(n_urange, "missing 'range' field in unification entry");
         S(range_of_yaml(n_urange, contigs, urange, ans.pos.rid));
-        VR(ans.pos.overlaps(urange), "unification entry range does not overlap site range");
 
         const auto n_udna = (*p)["dna"];
         VR(n_udna && n_udna.IsScalar(), "missing/invalid 'dna' field in unification entry");

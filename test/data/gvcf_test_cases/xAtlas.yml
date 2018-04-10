@@ -58,6 +58,7 @@ input:
         1	1087454	.	TAA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
         1	1087554	.	TAA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
         1	1689669	.	C	CGGCCCT	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
+        1	1689769	.	C	CC	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
     - xAtlasTester.gvcf: |
         xAtlasTester
         1	15890	.	G	.	.	PASS	END=15982;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
@@ -78,6 +79,8 @@ input:
         1	1689669	.	CGGCCCT	C	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
     - Fourth.gvcf: |
         zfourth
+        1	1689700	.	G	.	.	PASS	END=1689769;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
+        1	1689770	.	C	CC	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
 
 unifier_config:
     drop_filtered: true
@@ -310,6 +313,30 @@ truth_discovered_alleles:
       all_filtered: false
       top_AQ: [85]
       zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1689769, end: 1689769}
+      dna: 'C'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1689769, end: 1689769}
+      dna: 'CC'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [85]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1689770, end: 1689770}
+      dna: 'C'
+      is_ref: true
+      all_filtered: false
+      top_AQ: [9]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
+    - range: {ref: "1", beg: 1689770, end: 1689770}
+      dna: 'CC'
+      is_ref: false
+      all_filtered: false
+      top_AQ: [85]
+      zygosity_by_GQ: [[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
     - range: {ref: "1", beg: 131211614, end: 131211615}
       dna: 'AG'
       is_ref: true
@@ -411,6 +438,18 @@ truth_unified_sites:
         - range: {beg: 1689669, end: 1689675}
           dna: C
           to: 2
+    - range: {ref: 1, beg: 1689769, end: 1689769}
+      in_target: {ref: 1, beg: 1, end: 1000000000}
+      alleles: [C, CC]
+      allele_frequencies: [.nan, 0.25]
+      quality: 85
+      unification:
+        - range: {beg: 1689769, end: 1689769}
+          dna: CC
+          to: 1
+        - range: {beg: 1689770, end: 1689770}
+          dna: CC
+          to: 1
 
 truth_output_vcf:
   - truth.vcf: |
@@ -433,5 +472,6 @@ truth_output_vcf:
       1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
       1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
       1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:.:19:14:6:low_qual:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
       1	1689669	.	CGGCCCT	CGGCCCTGGCCCT,C	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:85,0,9,.,.,.:6:2:4:.:..	0/1:.:85,0,9,.,.,.:6:2:4:.:..	0/2:.:85,.,.,0,.,9:6:2:4:.:..	./.:.:.:.:.:.:.:MM
+      1	1689769	.	C	CC	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:85,0,9:6:2:4:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM	0/1:.:85,0,9:6:2:4:.:..
+      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:.:19:14:6:low_qual:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
