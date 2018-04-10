@@ -1,9 +1,11 @@
 #include <iostream>
 #include <map>
+#include <chrono>
 #include "BCFKeyValueData.h"
 #include "BCFSerialize.h"
 #include "compare_queries.h"
 #include "catch.hpp"
+#include "ctpl_stl.h"
 using namespace std;
 using namespace GLnexus;
 
@@ -1478,40 +1480,93 @@ TEST_CASE("BCFKeyValueData NA12878 import and query") {
     Status s = data->import_gvcf(*cache, "NA12878", "test/data/NA12878.g.vcf.gz", samples_imported);
     REQUIRE(s.ok());
 
+    ctpl::thread_pool threadpool;
+    threadpool.resize(thread::hardware_concurrency());
+
     // read out all records on chr17
-    std::vector<std::shared_ptr<bcf1_t> > all_chr17;
-    s = data->dataset_range("NA12878", hdr.get(), range(16, 0, 83257441), nullptr, all_chr17);
+    auto t1 = std::chrono::system_clock::now();
+    string all_samples;
+    s = data->all_samples_sampleset(all_samples);
     REQUIRE(s.ok());
+    std::shared_ptr<const std::set<std::string>> psamples, pdatasets;
+    std::vector<std::unique_ptr<RangeBCFIterator>> iterators;
+    s = data->sampleset_range(*cache, all_samples, range(16, 0, 83257441),
+                              [](const bcf_hdr_t*, bcf1_t*, bool &retval) { retval=true; return Status::OK(); },
+                              psamples, pdatasets, iterators);
+    REQUIRE(s.ok());
+
+    vector<future<Status>> statuses;
+    vector<vector<shared_ptr<bcf1_t>>> all_chr17s(iterators.size());
+    for (int i = 0; i < iterators.size(); i++) {
+        auto fut = threadpool.push([&, i](int tid) {
+            string NA12878;
+            shared_ptr<const bcf_hdr_t> hdr;
+            return iterators[i]->next(NA12878, hdr, all_chr17s[i]);
+        });
+        statuses.push_back(move(fut));
+    }
+
+    std::vector<std::shared_ptr<bcf1_t> > all_chr17;
+    for (int i = 0; i < iterators.size(); i++) {
+        REQUIRE(statuses[i].get().ok());
+        all_chr17.insert(all_chr17.end(), all_chr17s[i].begin(), all_chr17s[i].end());
+    }
     REQUIRE(all_chr17.size() == 8199);
+
+    auto t2 = std::chrono::system_clock::now();
+    //cout << "time to read all = " << std::chrono::duration<double>(t2-t1).count() << "s" << endl;
 
     // choose random records and make a query for a region around it. ensure we get
     // the correct results exactly.
-    bool trivial = true;
-    for (int i = 0; i < 1000; i++) {
-        auto qrec = all_chr17[rand() % all_chr17.size()];
-        int lo = max(0, qrec->pos - (rand() % 10));
-        int hi = lo+(rand()%10)+1;
-        range q(16, lo, hi);
+    std::atomic<bool> trivial(true);
+    statuses.clear();
+    for (size_t i = 0; i < 2500; i++) {
+        auto fut = threadpool.push([&, i](int tid){
+            Status ls;
+            auto qrec = all_chr17[rand() % all_chr17.size()];
+            int lo = max(0, qrec->pos - (rand() % 10));
+            int hi = lo+(rand()%10)+1;
+            range q(16, lo, hi);
 
-        std::vector<std::shared_ptr<bcf1_t> > resultset, truthset;
-        s = data->dataset_range("NA12878", hdr.get(), q, nullptr, resultset);
-        REQUIRE(s.ok());
-
-        for (auto p : all_chr17) {
-            range rp(p);
-            if (rp.overlaps(q)) {
-                truthset.push_back(p);
-            } else if (rp.beg >= q.end) {
-                break;
+            std::vector<std::shared_ptr<bcf1_t> > resultset, truthset;
+            ls = data->dataset_range("NA12878", hdr.get(), q, nullptr, resultset);
+            if (ls.bad()) {
+                return ls;
             }
-        }
-        REQUIRE(resultset.size() == truthset.size());
-        for (int j = 0; j < resultset.size(); j++) {
-            REQUIRE(resultset[j]->pos == truthset[j]->pos);
-            trivial = false;
-        }
+
+            for (auto p : all_chr17) {
+                range rp(p);
+                if (rp.overlaps(q)) {
+                    truthset.push_back(p);
+                } else if (rp.beg >= q.end) {
+                    break;
+                }
+            }
+            if (resultset.size() != truthset.size()) {
+                return Status::Failure("result and truth sets had different sizes");
+            }
+            for (int j = 0; j < resultset.size(); j++) {
+                if(resultset[j]->pos != truthset[j]->pos) {
+                    return Status::Failure("result and truth sets differed");
+                }
+                trivial = false;
+            }
+            if (i && i % 500 == 0) {
+                cout << i << "..." << endl;
+            }
+            return Status::OK();
+        });
+        statuses.push_back(move(fut));
+    }
+
+    for (auto& fut : statuses) {
+        Status s_i(fut.get());
+        REQUIRE(s_i.ok());
     }
     REQUIRE(!trivial);
+
+    auto t3 = std::chrono::system_clock::now();
+    //cout << "query time = " << std::chrono::duration<double>(t3-t2).count() << "s" << endl;
 
     // check scan efficiency
     auto stats = data->getRangeStats();
