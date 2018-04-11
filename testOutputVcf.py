@@ -136,7 +136,7 @@ def compare_vcf_row(i_row, t_row, info_fs, format_fs):
     assert(range(i_row) == range(t_row))
 
     # Expect comparison for identical samples
-    assert([x.sample for x in i_row.samples] == [x.sample for x in t_row.samples])
+    assert [x.sample for x in i_row.samples] == [x.sample for x in t_row.samples], (str(i_row.samples) + ' / ' + str(t_row.samples))
     if (i_row.REF != t_row.REF):
         WARNING("Found differing ref! {0} {1}".format(i_row.REF, t_row.REF))
         return (i_row, t_row)

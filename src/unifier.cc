@@ -35,6 +35,17 @@ struct minimized_allele_info {
         os << "Copy number: " << copy_number << endl;
         return os.str();
     }
+
+    void operator+=(const minimized_allele_info& rhs) {
+        originals.insert(rhs.originals.begin(), rhs.originals.end());
+        all_filtered = all_filtered && rhs.all_filtered;
+        topAQ += rhs.topAQ;
+        copy_number += rhs.copy_number;
+        if (!in_target.overlaps(rhs.in_target) ||
+            in_target.size() < rhs.in_target.size()) {
+            in_target = rhs.in_target;
+        }
+    }
 };
 using minimized_alleles = map<allele,minimized_allele_info>;
 using minimized_allele = pair<allele,minimized_allele_info>;
@@ -139,24 +150,17 @@ Status minimize_alleles(const unifier_config& cfg, const discovered_alleles& src
 
         // add it to alts, combining originals, copy_number, and topAQ with any
         // previously observed occurrences of the same minimized alt allele.
+        minimized_allele_info info;
+        info.originals.insert(dal.first);
+        info.all_filtered = dal.second.all_filtered;
+        info.topAQ = dal.second.topAQ;
+        info.copy_number = copy_number;
+        info.in_target = dal.second.in_target;
         auto ap = alts.find(min_alt);
         if (ap == alts.end()) {
-            minimized_allele_info info;
-            info.originals.insert(dal.first);
-            info.all_filtered = dal.second.all_filtered;
-            info.topAQ = dal.second.topAQ;
-            info.copy_number = copy_number;
-            info.in_target = dal.second.in_target;
-            alts[min_alt] = move(info);
+            alts[min_alt] = info;
         } else {
-            ap->second.originals.insert(dal.first);
-            ap->second.all_filtered = ap->second.all_filtered && dal.second.all_filtered;
-            ap->second.topAQ += dal.second.topAQ;
-            ap->second.copy_number += copy_number;
-            if (!ap->second.in_target.overlaps(min_alt.pos) ||
-                dal.second.in_target.size() > ap->second.in_target.size()) {
-                ap->second.in_target = dal.second.in_target;
-            }
+            ap->second += info;
         }
     }
 
@@ -189,9 +193,9 @@ Status find_target_range(const std::set<range>& ranges, const range& pos, range&
 
 
 // Partition alleles into non-overlapping "active regions" where all the
-// alleles in an active region are transitively connected through overlap.
-// (However, individual pairs of alleles within an active region might be non-
-// overlapping.)
+// alleles in an active region are transitively connected through overlap
+// or adjacency. (However, individual pairs of alleles within an active
+// region might be separated.)
 // The input is cleared by side-effect to save memory.
 template<class discovered_or_minimized_alleles>
 auto partition(discovered_or_minimized_alleles& alleles) {
@@ -202,7 +206,8 @@ auto partition(discovered_or_minimized_alleles& alleles) {
 
     for (auto pit = alleles.begin(); pit != alleles.end(); alleles.erase(pit++)) {
         const auto& it = *pit;
-        if (!rng.overlaps(it.first.pos)) {
+        assert(rng <= it.first.pos);
+        if (rng.rid != it.first.pos.rid || rng.end < it.first.pos.beg) {
             if (rng.rid != -1) {
                 assert(!als.empty());
                 ans[rng] = als;
@@ -211,7 +216,7 @@ auto partition(discovered_or_minimized_alleles& alleles) {
             als.clear();
         }
 
-        assert(rng.overlaps(it.first.pos));
+        assert(rng.end >= it.first.pos.beg);
         assert(rng <= it.first.pos);
         rng.end = max(rng.end, it.first.pos.end);
         assert(it.first.pos.within(rng));
@@ -238,9 +243,8 @@ bool check_copy_number(const unifier_config& cfg, const minimized_allele& al) {
     return al.second.copy_number >= cfg.min_allele_copy_number;
 }
 
-// Given a cluster of related/overlapping ALT alleles, decompose it into
-// "sites" by heuristically pruning rare or lengthy alleles to avoid excessive
-// collapsing
+// Given an active region, decompose it into "sites" by heuristically pruning
+// rare or lengthy alleles to avoid excessive collapsing
 auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, minimized_alleles& pruned) {
     vector<minimized_allele> valleles;
     valleles.reserve(alleles.size());
@@ -266,6 +270,7 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     }
 
     // sort the alt alleles by decreasing copy number (+ some tiebreakers)
+    // or possibly by increasing range size, according to configuration
     sort(valleles.begin(), valleles.end(), minimized_allele_lt(cfg.preference));
 
     // Build the sites by considering each alt allele in that order, and
@@ -320,6 +325,77 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     return sites;
 }
 
+// Given reference alleles covering pos, reconstruct the reference allele for
+// pos exactly.
+Status unify_ref(const range& pos, const discovered_alleles& refs, allele& ref) {
+    ref.pos = pos;
+    ref.dna.assign(pos.size(), char(0));
+
+    for (const auto& ref1 : refs) {
+        UNPAIR(ref1, al, info);
+        assert(pos.overlaps(al.pos));
+        assert(info.is_ref);
+        assert(al.pos.size() == al.dna.size());
+        for (int i = 0, j = (al.pos.beg-pos.beg); i < al.dna.size(); i++, j++) {
+            if (j >= 0 && j < ref.dna.size()) {
+                if (ref.dna[j] && ref.dna[j] != al.dna[i]) {
+                    return Status::Invalid("detected inconsistent REF alleles", al.pos.str());
+                }
+                ref.dna[j] = al.dna[i];
+            }
+        }
+    }
+    if (any_of(ref.dna.begin(), ref.dna.end(), [] (const char c) { return c == 0; })) {
+        return Status::Invalid("Incomplete REF allele coverage in unification (this should not happen!)", pos.str());
+    }
+
+    return Status::OK();
+}
+
+// Given an ALT allele and a unified REF allele containing it, pad the ALT
+// allele as needed with reference bases so that it covers exactly the
+// same range as the ref allele.
+Status pad_alt_allele(const allele& ref, allele& alt) {
+    if (!ref.pos.contains(alt.pos)) return Status::Invalid("BUG: unified REF allele doesn't contain all ALT alleles");
+    size_t l = alt.pos.beg - ref.pos.beg;
+    size_t r = ref.pos.end - alt.pos.end;
+
+    alt.pos = ref.pos;
+    alt.dna = ref.dna.substr(0, l) + alt.dna + ref.dna.substr(ref.dna.size()-r, r);
+    return Status::OK();
+}
+
+// Given minimized alleles in an active region, detect equivalent ALT alleles
+// with different positions (i.e. indels with some non-left-aligned
+// representation) and collapse them together. This effectively realigns the
+// indels, but only in the limited case where they fall in the same active
+// region as so far defined. A non-left-aligned indel could be distant from
+// its left-aligned position e.g. in lengthy tandem repeats, and this will
+// not deal with those.
+Status unify_nonaligned_alts(const allele& ref, const minimized_alleles& alts,
+                             minimized_alleles& aligned_alts) {
+    Status s;
+    map<allele,minimized_allele> unified_alts;
+    for (const auto& p : alts) {
+        UNPAIR(p, alt, alt_info);
+        allele unified_alt(alt);
+        S(pad_alt_allele(ref, unified_alt));
+        assert(unified_alt.pos == ref.pos);
+
+        auto q = unified_alts.find(unified_alt);
+        if (q == unified_alts.end()) {
+            unified_alts.insert(make_pair(unified_alt,p));
+        } else {
+            q->second.second += alt_info;
+        }
+    }
+    aligned_alts.clear();
+    for (const auto& p : unified_alts) {
+        aligned_alts.insert(move(p.second));
+    }
+    return Status::OK();
+}
+
 // Delineate sites given all discovered alleles, potentially pruning some as
 // described above. The result maps the range of each site to a tuple of the
 // discovered REF alleles, the minimized ALT alleles, and any pruned alleles
@@ -344,9 +420,9 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
         const auto& active_region = *par;
 
         // minimize the alt alleles
-        map<range,discovered_allele> refs;
+        map<range,discovered_allele> refs_by_range;
         minimized_alleles alts, pruned;
-        S(minimize_alleles(cfg, active_region.second, refs, alts));
+        S(minimize_alleles(cfg, active_region.second, refs_by_range, alts));
 
         // exclude alleles not overlapping the discovery target range, if any,
         // after minimization.
@@ -359,6 +435,19 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
             }
         }
 
+        // reconstruct the active region's reference allele
+        discovered_alleles refs;
+        for (const auto& p : refs_by_range) {
+            refs.insert(p.second);
+        }
+        allele active_region_ref(active_region.first,"A");
+        S(unify_ref(active_region.first, refs, active_region_ref));
+
+        // detect equivalent alt alleles at different positions, and collapse them
+        minimized_alleles aligned_alts;
+        S(unify_nonaligned_alts(active_region_ref, alts, aligned_alts));
+        alts = move(aligned_alts);
+
         // prune alt alleles as necessary to yield sites
         const auto sites = prune_alleles(cfg, alts, pruned);
 
@@ -366,8 +455,8 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
             // find the ref alleles overlapping this site
             discovered_alleles site_refs;
             for (const auto& ref : refs) {
-                if (ref.first.overlaps(site.first)) {
-                    site_refs.insert(ref.second);
+                if (ref.first.pos.overlaps(site.first)) {
+                    site_refs.insert(ref);
                 }
             }
 
@@ -386,8 +475,8 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
         for (const auto& pa : pruned) {
             discovered_allele *longest_original_ref = nullptr;
             for (const auto& al : pa.second.originals) {
-                const auto r = refs.find(al.pos);
-                if (r == refs.end()) {
+                const auto r = refs_by_range.find(al.pos);
+                if (r == refs_by_range.end()) {
                     return Status::Invalid("delineate_sites: missing REF allele for ", al.pos.str());
                 }
                 if (!longest_original_ref || longest_original_ref->first.dna.size() < r->second.first.dna.size()) {
@@ -398,44 +487,6 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
             all_pruned_alleles.push_back(make_pair(pa, *longest_original_ref));
         }
     }
-    return Status::OK();
-}
-
-// Given the alleles at a site, collapse the discovered REF alleles to get one
-// reference allele covering the site's range.
-Status unify_ref(const range& pos, const discovered_alleles& refs, allele& ref) {
-    ref.pos = pos;
-    ref.dna.assign(pos.size(), char(0));
-
-    for (const auto& ref1 : refs) {
-        UNPAIR(ref1, al, info);
-        assert(pos.overlaps(al.pos));
-        assert(al.pos.size() == al.dna.size());
-        for (int i = 0, j = (al.pos.beg-pos.beg); i < al.dna.size(); i++, j++) {
-            if (j >= 0 && j < ref.dna.size()) {
-                if (ref.dna[j] && ref.dna[j] != al.dna[i]) {
-                    return Status::Invalid("detected inconsistent REF alleles", al.pos.str());
-                }
-                ref.dna[j] = al.dna[i];
-            }
-        }
-    }
-    if (any_of(ref.dna.begin(), ref.dna.end(), [] (const char c) { return c == 0; })) {
-        return Status::Invalid("Incomplete REF allele coverage in unification (this should not happen!)", pos.str());
-    }
-
-    return Status::OK();
-}
-
-// Given the unified REF allele and an ALT allele in the same site, pad the
-// ALT allele with reference bases so that it covers exactly the site's range.
-Status pad_alt_allele(const allele& ref, allele& alt) {
-    if (!ref.pos.contains(alt.pos)) return Status::Invalid("BUG: unified REF allele doesn't contain all ALT alleles");
-    size_t l = alt.pos.beg - ref.pos.beg;
-    size_t r = ref.pos.end - alt.pos.end;
-
-    alt.pos = ref.pos;
-    alt.dna = ref.dna.substr(0, l) + alt.dna + ref.dna.substr(ref.dna.size()-r, r);
     return Status::OK();
 }
 

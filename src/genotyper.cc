@@ -45,7 +45,7 @@ static inline bool is_deletion(const string& ref, const string& alt) {
  Status preprocess_record(const unified_site& site, const bcf_hdr_t* hdr, const shared_ptr<bcf1_t>& record,
                           bcf1_t_plus& ans) {
     range rng(record);
-    assert(rng.overlaps(site.pos));
+    assert(rng.rid == site.pos.rid);
 
     ans.p = record;
 
@@ -250,14 +250,28 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 
     Status s;
 
-    // collect the ranges covered by the records
+    // Keep records not overlapping the site only if they actually have an ALT
+    // allele that's in the unification (a non-aligned indel). Also, collect
+    // ranges
     vector<range> record_rngs;
-    record_rngs.reserve(records.size());
+    vector<shared_ptr<bcf1_t>> relevant_records;
     for (const auto& record: records) {
-        range record_rng(record.get());
-        assert(record_rng.overlaps(site.pos));
-        record_rngs.push_back(record_rng);
         assert(bcf_nsamples == record->n_sample);
+        range record_rng(record.get());
+        bool keep = record_rng.overlaps(site.pos);
+        for (int i = 1; !keep && i < record->n_allele; i++) {
+            string al(record->d.allele[i]);
+            if (is_dna(al)) {
+                auto p = site.unification.find(allele(record_rng, al));
+                if (p != site.unification.end()) {
+                    keep = true;
+                }
+            }
+        }
+        if (keep) {
+            record_rngs.push_back(record_rng);
+            relevant_records.push_back(record);
+        }
     }
 
     // check the records span the site, otherwise we need to produce
@@ -271,7 +285,7 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
     }
 
     vector<shared_ptr<bcf1_t_plus>> ref_records;
-    for (const auto& record : records) {
+    for (const auto& record : relevant_records) {
         auto rp = make_shared<bcf1_t_plus>();
         S(preprocess_record(site, hdr, record, *rp));
         if (rp->is_ref) {
@@ -589,9 +603,18 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     vector<unique_ptr<FormatFieldHelper>> format_helpers;
     S(setup_format_helpers(format_helpers, cfg, site, samples));
 
+    // query database for pertinent records across the samples -- the range
+    // encompassing all the original alleles
+    range query_range(site.pos);
+    for (const auto& p : site.unification) {
+        const range& pr = p.first.pos;
+        assert(pr.rid == query_range.rid);
+        query_range.beg = min(query_range.beg, pr.beg);
+        query_range.end = max(query_range.end, pr.end);
+    }
     shared_ptr<const set<string>> samples2, datasets;
     vector<unique_ptr<RangeBCFIterator>> iterators;
-    S(data.sampleset_range(cache, sampleset, site.pos, nullptr,
+    S(data.sampleset_range(cache, sampleset, query_range, nullptr,
                            samples2, datasets, iterators));
     assert(samples.size() == samples2->size());
 
