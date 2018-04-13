@@ -348,8 +348,14 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     S(update_min_ref_depth(dataset, dataset_header, bcf_nsamples, sample_mapping,
                            records_00, depth, min_ref_depth));
 
-    bcf1_t_plus* record = nullptr;
-    int half_call = -1; // -1: full call, 0: half-call of left allele, 1: half-call of right allele
+    bcf1_t_plus *record = nullptr, *record2 = nullptr;
+    int call_mode = -1; // -1: full diploid call from record
+                        //  0: half-call from 'left' allele of record
+                        //  1: half-call from 'right' allele of record
+    int call_mode2 = 0; // when record2 != nullptr,
+                        // -1: do not use record2
+                        //  0: half-call from 'left' allele of record2
+                        //  1: half-call from 'right' allele of record2
 
     if (records_non00.size() == 0) {
         // no variation represented in this dataset; make homozygous ref calls
@@ -379,15 +385,15 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // UnphasedVariants. We may improve upon this especially if there is phasing
         // info.
         //
-        // If all of the records call only one ALT allele, generate a half-call from
-        // the highest-quality such record. This at least recovers some of the
-        // information when the GVCF has two overlapping 0/X records for one sample
-        // (we'd rather it present one record heterozygous for two ALTs). We may try
-        // to combine them in some cases in the future.
+        // If there are exactly two non-0/0 records each calling one recognized ALT
+        // allele, combine these into one heterozygous call.
         //
-        // Otherwise: punt with OverlappingVariants
+        // Otherwise if all the non-0/0 records call only ALT allele, generate a half
+        // call from the highest-quality record calling a recognized ALT allele.
+        //
+        // Otherwise, bail with OverlappingVariants.
 
-        bool can_half_call = true;
+        bool bail = false;
         range intersection(records_non00[0]->p);
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
@@ -395,19 +401,31 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             intersection.beg = max(record_rng.beg, intersection.beg);
             intersection.end = min(record_rng.end, intersection.end);
 
-            for (int i = 0; can_half_call && i < bcf_nsamples; i++) {
+            for (int i = 0; !bail && i < bcf_nsamples; i++) {
                 assert(a_record->gt.capacity > 2*i);
                 int al1 = bcf_gt_is_missing(a_record->gt[2*i]) ? -1 : bcf_gt_allele(a_record->gt[2*i]),
                     al2 = bcf_gt_is_missing(a_record->gt[2*i+1]) ? -1 : bcf_gt_allele(a_record->gt[2*i+1]);
                 if (al1 > 0 && al2 > 0) {
-                    can_half_call = false;
-                } else if ((!record || record->p->qual < a_record->p->qual)) {
-                    if (al1 > 0 && a_record->allele_mapping[al1] > 0) {
-                        half_call = 0;
-                        record = a_record.get();
-                    } else if (al2 > 0 && a_record->allele_mapping[al2] > 0) {
-                        half_call = 1;
-                        record = a_record.get();
+                    // record calls multiple ALT alleles; we're going to bail
+                    bail = true;
+                } else {
+                    // if we've already seen two 0/X records, we're only going
+                    // to half-call
+                    call_mode2 = record && record2 ? -1 : call_mode2;
+                    if ((!record || record->p->qual < a_record->p->qual)) {
+                        // below, remember which 'side' of record to use, and
+                        // demote any previous record to record2.
+                        if (al1 > 0 && a_record->allele_mapping[al1] > 0) {
+                            record2 = record;
+                            call_mode2 = call_mode2 == -1 ? -1 : call_mode;
+                            call_mode = 0;
+                            record = a_record.get();
+                        } else if (al2 > 0 && a_record->allele_mapping[al2] > 0) {
+                            record2 = record;
+                            call_mode2 = call_mode2 == -1 ? -1 : call_mode;
+                            call_mode = 1;
+                            record = a_record.get();
+                        }
                     }
                 }
             }
@@ -422,7 +440,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             return Status::OK();
         }
 
-        if (!record || !can_half_call) {
+        if (!record || bail) {
             for (int i = 0; i < bcf_nsamples; i++) {
                 genotypes[sample_mapping.at(i)*2].RNC =
                     genotypes[sample_mapping.at(i)*2+1].RNC =
@@ -450,48 +468,44 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         assert(ij.second < min_ref_depth.size());
 
         // TODO: are depth and allele_mapping checks inside-out????
-        #define fill_allele(ofs)                                                  \
-            if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
-                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                       \
-                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);                    \
-                assert(al >= 0 && al < record->p->n_allele);                      \
+        #define fill_allele(rec,in_ofs,out_ofs)                                   \
+            assert(rec);                                                          \
+            if (gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&                  \
+                !bcf_gt_is_missing(gt[2*ij.first+(in_ofs)])) {                    \
+                auto al = bcf_gt_allele(gt[2*ij.first+(in_ofs)]);                 \
+                assert(al >= 0 && al < rec->p->n_allele);                         \
                 int rd = min_ref_depth[ij.second];                                \
                 if (depth.get(ij.first, al) >= cfg.required_dp                    \
                     && (rd < 0 || rd >= cfg.required_dp)) {                       \
-                    if (record->allele_mapping[al] >= 0) {                        \
-                        genotypes[2*ij.second+(ofs)] =                            \
-                            one_call(bcf_gt_unphased(record->allele_mapping[al]), \
+                    if (rec->allele_mapping[al] >= 0) {                           \
+                        genotypes[2*ij.second+(out_ofs)] =                        \
+                            one_call(bcf_gt_unphased(rec->allele_mapping[al]),    \
                                      NoCallReason::N_A);                          \
                     } else {                                                      \
-                        genotypes[2*ij.second+(ofs)].RNC =                        \
-                            record->deletion_allele[al]                           \
+                        genotypes[2*ij.second+(out_ofs)].RNC =                    \
+                            rec->deletion_allele[al]                              \
                                 ? NoCallReason::LostDeletion                      \
                                 : NoCallReason::LostAllele;                       \
                     }                                                             \
                 } else {                                                          \
-                    genotypes[2*ij.second+(ofs)].RNC =                            \
+                    genotypes[2*ij.second+(out_ofs)].RNC =                        \
                         NoCallReason::InsufficientDepth;                          \
                 }                                                                 \
             }
 
-        switch (half_call) {
-            case 0: {
+
+        if (call_mode == -1) {
+            fill_allele(record,0,0)
+            fill_allele(record,1,1)
+        } else {
+            assert(call_mode == 0 || call_mode == 1);
+            fill_allele(record,call_mode,0)
+            if (!record2 || call_mode2 == -1) {
                 genotypes[2*ij.second+1].RNC = NoCallReason::OverlappingVariants;
-                fill_allele(0)
-                break;
+            } else {
+                assert(call_mode2 == 0 || call_mode2 == 1);
+                fill_allele(record2,call_mode2,1);
             }
-            case 1: {
-                genotypes[2*ij.second].RNC = NoCallReason::OverlappingVariants;
-                fill_allele(1)
-                break;
-            }
-            case -1: {
-                fill_allele(0)
-                fill_allele(1)
-                break;
-            }
-            default:
-                assert(false);
         }
     }
 
