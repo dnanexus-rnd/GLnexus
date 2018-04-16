@@ -349,13 +349,15 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                            records_00, depth, min_ref_depth));
 
     bcf1_t_plus *record = nullptr, *record2 = nullptr;
-    int call_mode = -1; // -1: full diploid call from record
-                        //  0: half-call from 'left' allele of record
-                        //  1: half-call from 'right' allele of record
-    int call_mode2 = 0; // when record2 != nullptr,
-                        // -1: do not use record2
-                        //  0: half-call from 'left' allele of record2
-                        //  1: half-call from 'right' allele of record2
+
+    int call_mode = -1;  // -1: no-call, record is null
+                         //  0: call the 'left' allele of record
+                         //  1: call the 'right' allele of record
+                         //  2: full diploid call from record; record2 is null
+
+    int call_mode2 = -1; // -1: do not use record2
+                         //  0: call the 'left' allele of record2
+                         //  1: call the 'right' allele of record2
 
     if (records_non00.size() == 0) {
         // no variation represented in this dataset; make homozygous ref calls
@@ -377,6 +379,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     } else if (records_non00.size() == 1)  {
         // simple common case: one variant record overlapping the unified site
         record = records_non00[0].get();
+        call_mode = 2;
     } else {
         // complex situation: multiple non-0/0 records overlapping the unified site.
         //
@@ -452,6 +455,8 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
     // Now, translating genotypes from one variant BCF record.
     assert(record != nullptr);
+    assert(call_mode >= 0);
+    assert(call_mode2 == -1 || record2 != nullptr);
 
     // get the genotype calls
     htsvecbox<int> gt;
@@ -494,18 +499,28 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             }
 
 
-        if (call_mode == -1) {
-            fill_allele(record,0,0)
-            fill_allele(record,1,1)
-        } else {
-            assert(call_mode == 0 || call_mode == 1);
-            fill_allele(record,call_mode,0)
-            if (!record2 || call_mode2 == -1) {
-                genotypes[2*ij.second+1].RNC = NoCallReason::OverlappingVariants;
-            } else {
-                assert(call_mode2 == 0 || call_mode2 == 1);
-                fill_allele(record2,call_mode2,1);
-            }
+        switch (call_mode) {
+            case 2:
+                fill_allele(record,0,0)
+                fill_allele(record,1,1)
+                break;
+            case 0:
+            case 1:
+                fill_allele(record,call_mode,0)
+                switch (call_mode2) {
+                    case -1:
+                        genotypes[2*ij.second+1].RNC = NoCallReason::OverlappingVariants;
+                        break;
+                    case 0:
+                    case 1:
+                        fill_allele(record2,call_mode2,1);
+                        break;
+                    default:
+                        return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
+                }
+                break;
+            default:
+                return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
         }
     }
 
