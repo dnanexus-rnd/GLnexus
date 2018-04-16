@@ -406,9 +406,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
             for (int i = 0; !bail && i < bcf_nsamples; i++) {
                 assert(a_record->gt.capacity > 2*i);
-                int al1 = bcf_gt_is_missing(a_record->gt[2*i]) ? -1 : bcf_gt_allele(a_record->gt[2*i]),
-                    al2 = bcf_gt_is_missing(a_record->gt[2*i+1]) ? -1 : bcf_gt_allele(a_record->gt[2*i+1]);
-                if (al1 > 0 && al2 > 0) {
+                int al0 = bcf_gt_is_missing(a_record->gt[2*i]) ? -1 : bcf_gt_allele(a_record->gt[2*i]),
+                    al1 = bcf_gt_is_missing(a_record->gt[2*i+1]) ? -1 : bcf_gt_allele(a_record->gt[2*i+1]);
+                if (al0 > 0 && al1 > 0) {
                     // record calls multiple ALT alleles; we're going to bail
                     bail = true;
                 } else {
@@ -416,17 +416,20 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                     // to half-call
                     call_mode2 = record && record2 ? -1 : call_mode2;
                     if ((!record || record->p->qual < a_record->p->qual)) {
-                        // below, remember which 'side' of record to use, and
+                        // remember which call from record's genotype to use,
+                        // and demote any previous record to record2.
                         // demote any previous record to record2.
-                        if (al1 > 0 && a_record->allele_mapping[al1] > 0) {
-                            record2 = record;
-                            call_mode2 = call_mode2 == -1 ? -1 : call_mode;
-                            call_mode = 0;
-                            record = a_record.get();
-                        } else if (al2 > 0 && a_record->allele_mapping[al2] > 0) {
-                            record2 = record;
-                            call_mode2 = call_mode2 == -1 ? -1 : call_mode;
-                            call_mode = 1;
+                        bool use0 = al0 > 0 && a_record->allele_mapping[al0] > 0;
+                        bool use1 = al1 > 0 && a_record->allele_mapping[al1] > 0;
+                        if (use0 || use1) {
+                            if (use0 == use1) {
+                                return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
+                            }
+                            if (record2 == nullptr || call_mode2 != -1) {
+                                record2 = record;
+                                call_mode2 = call_mode;
+                            }
+                            call_mode = use0 ? 0 : 1;
                             record = a_record.get();
                         }
                     }
@@ -473,7 +476,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         assert(ij.second < min_ref_depth.size());
 
         // TODO: are depth and allele_mapping checks inside-out????
-        #define fill_allele(rec,in_ofs,out_ofs)                                   \
+        #define fill_allele(rec,gt,depth,in_ofs,out_ofs)                          \
             assert(rec);                                                          \
             if (gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&                  \
                 !bcf_gt_is_missing(gt[2*ij.first+(in_ofs)])) {                    \
@@ -501,19 +504,30 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
         switch (call_mode) {
             case 2:
-                fill_allele(record,0,0)
-                fill_allele(record,1,1)
+                fill_allele(record,gt,depth,0,0)
+                fill_allele(record,gt,depth,1,1)
                 break;
             case 0:
             case 1:
-                fill_allele(record,call_mode,0)
+                fill_allele(record,gt,depth,call_mode,0)
                 switch (call_mode2) {
                     case -1:
                         genotypes[2*ij.second+1].RNC = NoCallReason::OverlappingVariants;
                         break;
                     case 0:
                     case 1:
-                        fill_allele(record2,call_mode2,1);
+                        {
+                            htsvecbox<int> gt2;
+                            nGT = bcf_get_genotypes(dataset_header, record2->p.get(), &gt2.v, &gt2.capacity);
+                            if (!gt2.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes",to_string(__LINE__));
+                            assert(record2->p->n_sample == bcf_hdr_nsamples(dataset_header));
+
+                            AlleleDepthHelper depth2(cfg);
+                            S(depth2.Load(dataset, dataset_header, record2->p.get()));
+
+                            fill_allele(record2,gt2,depth2,call_mode2,1);
+                            assert(genotypes[2*ij.second+1].RNC != NoCallReason::MissingData);
+                        }
                         break;
                     default:
                         return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
@@ -522,6 +536,9 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             default:
                 return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
         }
+
+        assert(genotypes[2*ij.second].RNC != NoCallReason::MissingData);
+        assert(genotypes[2*ij.second+1].RNC != NoCallReason::MissingData);
     }
 
     return Status::OK();
