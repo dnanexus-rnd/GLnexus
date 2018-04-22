@@ -547,7 +547,7 @@ gatk:
               name: SB
               description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
               type: int
-              combi_method: max
+              combi_method: missing
               number: basic
               count: 4
 gatk_unfiltered:
@@ -596,7 +596,7 @@ gatk_unfiltered:
               name: SB
               description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
               type: int
-              combi_method: max
+              combi_method: missing
               number: basic
               count: 4
 xAtlas:

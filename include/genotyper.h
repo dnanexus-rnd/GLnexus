@@ -39,12 +39,13 @@ enum class NoCallReason {
 struct one_call {
     int32_t allele = bcf_gt_missing; /// or bcf_gt_allele(some_allele)
     NoCallReason RNC = NoCallReason::MissingData;
+    bool half_call = false;
 
     one_call() = default;
     one_call(int32_t allele_, NoCallReason RNC_) : allele(allele_), RNC(RNC_) {}
 
     bool operator==(const one_call& rhs) const noexcept {
-        return allele == rhs.allele && RNC == rhs.RNC;
+        return allele == rhs.allele && RNC == rhs.RNC && half_call == rhs.half_call;
     }
 
     bool operator < (const one_call& rhs) const noexcept {
