@@ -391,50 +391,48 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // If there are exactly two non-0/0 records each calling one recognized ALT
         // allele, combine these into one heterozygous call.
         //
-        // Otherwise if all the non-0/0 records call only ALT allele, generate a half
+        // Otherwise if all the non-0/0 records call one ALT allele, generate a half
         // call from the highest-quality record calling a recognized ALT allele.
         //
         // Otherwise, bail with OverlappingVariants.
 
-        bool bail = false;
         range intersection(records_non00[0]->p);
+        vector<tuple<float,shared_ptr<bcf1_t_plus>,bool>> usable_half_calls;
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
             assert(record_rng.rid == intersection.rid);
             intersection.beg = max(record_rng.beg, intersection.beg);
             intersection.end = min(record_rng.end, intersection.end);
 
-            for (int i = 0; !bail && i < bcf_nsamples; i++) {
-                assert(a_record->gt.capacity > 2*i);
-                int al0 = bcf_gt_is_missing(a_record->gt[2*i]) ? -1 : bcf_gt_allele(a_record->gt[2*i]),
-                    al1 = bcf_gt_is_missing(a_record->gt[2*i+1]) ? -1 : bcf_gt_allele(a_record->gt[2*i+1]);
-                if (al0 > 0 && al1 > 0) {
-                    // record calls multiple ALT alleles; we're going to bail
-                    bail = true;
-                } else {
-                    // if we've already seen two 0/X records, we're only going
-                    // to half-call
-                    call_mode2 = record && record2 ? -1 : call_mode2;
-                    if ((!record || record->p->qual < a_record->p->qual)) {
-                        // remember which call from record's genotype to use,
-                        // and demote any previous record to record2.
-                        // demote any previous record to record2.
-                        bool use0 = al0 > 0 && a_record->allele_mapping[al0] > 0;
-                        bool use1 = al1 > 0 && a_record->allele_mapping[al1] > 0;
-                        if (use0 || use1) {
-                            if (use0 == use1) {
-                                return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
-                            }
-                            if (record2 == nullptr || call_mode2 != -1) {
-                                record2 = record;
-                                call_mode2 = call_mode;
-                            }
-                            call_mode = use0 ? 0 : 1;
-                            record = a_record.get();
-                        }
-                    }
+            assert(a_record->gt.capacity >= 2);
+            int al0 = bcf_gt_is_missing(a_record->gt[0]) ? -1 : bcf_gt_allele(a_record->gt[0]),
+                al1 = bcf_gt_is_missing(a_record->gt[1]) ? -1 : bcf_gt_allele(a_record->gt[1]);
+            if (al0 > 0 && al1 > 0) {
+                // record calls multiple ALT alleles; we're going to bail with
+                // OverlappingVariants
+                usable_half_calls.clear();
+                break;
+            } else {
+                bool usable0 = al0 > 0 && a_record->allele_mapping[al0] > 0;
+                bool usable1 = al1 > 0 && a_record->allele_mapping[al1] > 0;
+                if (usable0) {
+                    assert(!usable1);
+                    usable_half_calls.push_back(make_tuple(-1.0f*a_record->p->qual,a_record,false));
+                }
+                if (usable1) {
+                    assert(!usable0);
+                    usable_half_calls.push_back(make_tuple(-1.0f*a_record->p->qual,a_record,true));
                 }
             }
+        }
+
+        if (usable_half_calls.empty()) {
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC =
+                        NoCallReason::OverlappingVariants;
+            }
+            return Status::OK();
         }
 
         if (intersection.beg >= intersection.end) {
@@ -446,13 +444,14 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             return Status::OK();
         }
 
-        if (!record || bail) {
-            for (int i = 0; i < bcf_nsamples; i++) {
-                genotypes[sample_mapping.at(i)*2].RNC =
-                    genotypes[sample_mapping.at(i)*2+1].RNC =
-                        NoCallReason::OverlappingVariants;
-            }
-            return Status::OK();
+        // sorts usable half-call records by decreasing qual
+        sort(usable_half_calls.begin(), usable_half_calls.end());
+
+        record = get<1>(usable_half_calls[0]).get();
+        call_mode = get<2>(usable_half_calls[0]) ? 1 : 0;
+        if (usable_half_calls.size() == 2) {
+            record2 = get<1>(usable_half_calls[1]).get();
+            call_mode2 = get<2>(usable_half_calls[1]) ? 1 : 0;
         }
     }
 
@@ -460,27 +459,21 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
     assert(record != nullptr);
     assert(call_mode >= 0);
     assert(call_mode2 == -1 || record2 != nullptr);
-
-    // get the genotype calls
-    htsvecbox<int> gt;
-    int nGT = bcf_get_genotypes(dataset_header, record->p.get(), &gt.v, &gt.capacity);
-    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
-    if (!gt.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
     assert(record->p->n_sample == bcf_hdr_nsamples(dataset_header));
 
     S(depth.Load(dataset, dataset_header, record->p.get()));
 
     // for each shared sample, record the genotype call.
     for (const auto& ij : sample_mapping) {
-        assert(2*ij.first < nGT);
+        assert(ij.first < record->p->n_sample);
         assert(ij.second < min_ref_depth.size());
 
         // TODO: are depth and allele_mapping checks inside-out????
-        #define fill_allele(rec,gt,depth,in_ofs,out_ofs)                          \
+        #define fill_allele(rec,depth,in_ofs,out_ofs)                          \
             assert(rec);                                                          \
-            if (gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&                  \
-                !bcf_gt_is_missing(gt[2*ij.first+(in_ofs)])) {                    \
-                auto al = bcf_gt_allele(gt[2*ij.first+(in_ofs)]);                 \
+            if (rec->gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&                  \
+                !bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {                    \
+                auto al = bcf_gt_allele(rec->gt[2*ij.first+(in_ofs)]);                 \
                 assert(al >= 0 && al < rec->p->n_allele);                         \
                 int rd = min_ref_depth[ij.second];                                \
                 if (depth.get(ij.first, al) >= cfg.required_dp                    \
@@ -504,12 +497,13 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
 
         switch (call_mode) {
             case 2:
-                fill_allele(record,gt,depth,0,0)
-                fill_allele(record,gt,depth,1,1)
+                fill_allele(record,depth,0,0)
+                fill_allele(record,depth,1,1)
                 break;
             case 0:
             case 1:
-                fill_allele(record,gt,depth,call_mode,0)
+                fill_allele(record,depth,call_mode,0)
+                genotypes[2*ij.second].half_call = true;
                 switch (call_mode2) {
                     case -1:
                         genotypes[2*ij.second+1].RNC = NoCallReason::OverlappingVariants;
@@ -517,24 +511,20 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                     case 0:
                     case 1:
                         {
-                            htsvecbox<int> gt2;
-                            nGT = bcf_get_genotypes(dataset_header, record2->p.get(), &gt2.v, &gt2.capacity);
-                            if (!gt2.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes",to_string(__LINE__));
-                            assert(record2->p->n_sample == bcf_hdr_nsamples(dataset_header));
-
                             AlleleDepthHelper depth2(cfg);
                             S(depth2.Load(dataset, dataset_header, record2->p.get()));
 
-                            fill_allele(record2,gt2,depth2,call_mode2,1);
+                            fill_allele(record2,depth2,call_mode2,1);
                             assert(genotypes[2*ij.second+1].RNC != NoCallReason::MissingData);
+                            genotypes[2*ij.second+1].half_call = true;
                         }
                         break;
                     default:
-                        return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
+                        assert(false);
                 }
                 break;
             default:
-                return Status::Failure("translate_genotypes logic bug", std::to_string(__LINE__));
+                assert(false);
         }
 
         assert(genotypes[2*ij.second].RNC != NoCallReason::MissingData);
@@ -592,24 +582,19 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
 
     // Now, translating genotypes from one variant BCF record.
 
-    // get the genotype calls
-    htsvecbox<int> gt;
-    int nGT = bcf_get_genotypes(dataset_header, record->p.get(), &gt.v, &gt.capacity);
-    int n_bcf_samples = bcf_hdr_nsamples(dataset_header);
-    if (!gt.v || nGT != 2*n_bcf_samples) return Status::Failure("genotyper::translate_genotypes bcf_get_genotypes");
     assert(record->p->n_sample == bcf_hdr_nsamples(dataset_header));
 
     S(depth.Load(dataset, dataset_header, record->p.get()));
 
     // for each shared sample, record the genotype call.
     for (const auto& ij : sample_mapping) {
-        assert(2*ij.first < nGT);
+        assert(ij.first < record->p->n_sample);
         assert(ij.second < min_ref_depth.size());
 
         #define fill_monoallelic(ofs)                                             \
-            if (gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
-                !bcf_gt_is_missing(gt[2*ij.first+(ofs)])) {                       \
-                auto al = bcf_gt_allele(gt[2*ij.first+(ofs)]);                    \
+            if (record->gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
+                !bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {                       \
+                auto al = bcf_gt_allele(record->gt[2*ij.first+(ofs)]);                    \
                 assert(al >= 0 && al < record->p->n_allele);                      \
                 if (record->allele_mapping[al] > 0) {                             \
                     if (depth.get(ij.first, al) >= cfg.required_dp) {             \
@@ -746,20 +731,24 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         for (const auto& p : sample_mapping) {
             auto rnc1 = genotypes[p.second*2].RNC;
             auto rnc2 = genotypes[p.second*2+1].RNC;
+            bool half_call = site.monoallelic || genotypes[p.second*2].half_call || genotypes[p.second*2+1].half_call;
 
             if (rnc1 == NoCallReason::MissingData || rnc1 == NoCallReason::PartialData) {
                 assert(rnc1 == rnc2);
                 for (const auto& fh : format_helpers) {
                     S(fh->censor(p.second, false));
                 }
-            } else if (site.monoallelic ||
-                       rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
+            } else if (rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
                        rnc1 == NoCallReason::OverlappingVariants || rnc2 == NoCallReason::OverlappingVariants) {
-                const bool half_call = site.monoallelic || ((genotypes[p.second*2].RNC == NoCallReason::N_A) != (genotypes[p.second*2+1].RNC == NoCallReason::N_A));
-
                 for (const auto& fh : format_helpers) {
-                    if (fh->field_info.name != "DP") {
+                    if (fh->field_info.name != "DP") { // whitelist
                         S(fh->censor(p.second, half_call));
+                    }
+                }
+            } else if (half_call) {
+                for (const auto& fh : format_helpers) {
+                    if (fh->field_info.name != "DP" && fh->field_info.name != "GQ") {
+                        S(fh->censor(p.second, true));
                     }
                 }
             }
