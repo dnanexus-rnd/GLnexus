@@ -469,11 +469,11 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         assert(ij.second < min_ref_depth.size());
 
         // TODO: are depth and allele_mapping checks inside-out????
-        #define fill_allele(rec,depth,in_ofs,out_ofs)                          \
+        #define fill_allele(rec,depth,in_ofs,out_ofs)                             \
             assert(rec);                                                          \
-            if (rec->gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&                  \
-                !bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {                    \
-                auto al = bcf_gt_allele(rec->gt[2*ij.first+(in_ofs)]);                 \
+            if (rec->gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&             \
+                !bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {               \
+                auto al = bcf_gt_allele(rec->gt[2*ij.first+(in_ofs)]);            \
                 assert(al >= 0 && al < rec->p->n_allele);                         \
                 int rd = min_ref_depth[ij.second];                                \
                 if (depth.get(ij.first, al) >= cfg.required_dp                    \
