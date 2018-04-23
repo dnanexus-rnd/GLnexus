@@ -963,6 +963,15 @@ Status retained_format_field::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "name" << YAML::Value << name;
     ans << YAML::Key << "description" << YAML::Value << description;
 
+    if (from != RetainedFieldFrom::FORMAT) {
+        ans << YAML::Key << "from" << YAML::Value;
+        if (from == RetainedFieldFrom::INFO) {
+            ans << "info";
+        } else {
+            return Status::Invalid("retained_format_field::yaml: invalid from");
+        }
+    }
+
     ans << YAML::Key << "type" << YAML::Value;
     if (type == RetainedFieldType::INT) {
         ans << "int";
@@ -1047,6 +1056,18 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
     V(n_description && (n_description.Scalar().size() > 0), "missing description");
     description = n_description.Scalar();
 
+    RetainedFieldFrom from = RetainedFieldFrom::FORMAT;
+    const auto n_from = yaml["from"];
+    if (n_from) {
+        V(n_from.IsScalar(), "missing from");
+        string s_from = n_from.Scalar();
+        if (s_from == "info") {
+            from = RetainedFieldFrom::INFO;
+        } else {
+            V(s_from == "format", "invalid from");
+        }
+    }
+
     RetainedFieldType type;
     const auto n_type = yaml["type"];
     V(n_type && n_type.IsScalar(), "missing type");
@@ -1126,7 +1147,7 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         }
     }
 
-    ans.reset(new retained_format_field(orig_names, name, type, combi_method, number, count, default_type, ignore_non_variants));
+    ans.reset(new retained_format_field(orig_names, name, from, type, combi_method, number, count, default_type, ignore_non_variants));
     ans->description = description;
     #undef V
     return Status::OK();

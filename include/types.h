@@ -639,6 +639,11 @@ enum class GLnexusOutputFormat {
     VCF,
 };
 
+enum class RetainedFieldFrom {
+    FORMAT,
+    INFO
+};
+
 enum class RetainedFieldType {
     INT,
     FLOAT,
@@ -694,6 +699,9 @@ struct retained_format_field {
     // description of format field to be inserted into header
     std::string description;
 
+    // source this field from input gVCF FORMAT (default) or INFO
+    RetainedFieldFrom from;
+
     // Value type of retained field (int, float)
     RetainedFieldType type;
 
@@ -717,10 +725,10 @@ struct retained_format_field {
     bool ignore_non_variants;
 
     // Constructor
-    retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldType type_,
+    retained_format_field(std::vector<std::string> orig_names_, std::string name_, RetainedFieldFrom from_, RetainedFieldType type_,
         FieldCombinationMethod combi_method_, RetainedFieldNumber number_, int count_=0,
         DefaultValueFiller default_type_=DefaultValueFiller::MISSING, bool ignore_non_variants_=false)
-        : orig_names(orig_names_), name(name_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_)
+        : orig_names(orig_names_), name(name_), from(from_), type(type_), number(number_), count(count_), default_type(default_type_), combi_method(combi_method_), ignore_non_variants(ignore_non_variants_)
         {}
 
     Status yaml(YAML::Emitter &out) const;
