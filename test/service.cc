@@ -165,7 +165,7 @@ TEST_CASE("service::discover_alleles") {
 TEST_CASE("service::discover_alleles gVCF") {
     unique_ptr<VCFData> data;
     Status s = VCFData::Open({"NA12878D_HiSeqX.21.10009462-10009469.gvcf", "NA12878D_HiSeqX.21.10009462-10009469.bogus.gvcf"}, data);
-    cout << s.str() << endl;
+    //cout << s.str() << endl;
     REQUIRE(s.ok());
     unique_ptr<Service> svc;
     s = Service::Start(service_config(), *data, *data, svc);
@@ -464,7 +464,7 @@ TEST_CASE("genotyper placeholder") {
         vector<unified_site> sites;
         unifier_stats stats;
         s = unified_sites(unifier_config(), N, als, sites, stats);
-        cout << s.str() << endl;
+        //cout << s.str() << endl;
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));

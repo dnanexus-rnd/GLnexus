@@ -341,7 +341,7 @@ unification:
 
         unified_site us(range(-1,-1,-1));
         Status s = unified_site::of_yaml(n, contigs, us);
-        cout << s.str() << endl;
+        //cout << s.str() << endl;
         REQUIRE(s.ok());
         VERIFY_SNP(us);
     }

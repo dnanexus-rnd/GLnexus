@@ -425,7 +425,7 @@ static void importGVCF(T *data,
         assert(s.ok());
     else
         assert(s.bad());
-    cout << "imported " << filename << endl;;
+    //cout << "imported " << filename << endl;;
 }
 
 // Query a named dataset. This should work once the data is in the DB;

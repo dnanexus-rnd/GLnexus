@@ -31,10 +31,10 @@ script:
   - cmake --version
   - gcc --version
   # Build and run unit tests
-  - cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests
+  - cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
   - |
       if [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then
-        valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests
+        valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes
       fi
 
 env:

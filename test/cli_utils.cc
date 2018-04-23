@@ -4,12 +4,13 @@
 #include <memory>
 #include "cli_utils.h"
 #include "catch.hpp"
+#include "spdlog/sinks/null_sink.h"
 
 using namespace std;
 using namespace GLnexus;
 using namespace GLnexus::cli;
 
-static auto console = spdlog::stderr_logger_mt("cli_utils_test");
+static auto console = spdlog::create<spdlog::sinks::null_sink_st>("test_cli_utils_null");
 
 // create a yaml file in the right format
 static void capnp_file_of_discovered_alleles(const string &filename,

@@ -6,11 +6,12 @@
 #include "BCFSerialize.h"
 #include "cli_utils.h"
 #include "catch.hpp"
+#include "spdlog/sinks/null_sink.h"
 
 using namespace std;
 using namespace GLnexus;
 
-static auto console = spdlog::stderr_logger_mt("cli_test");
+static auto console = spdlog::create<spdlog::sinks::null_sink_st>("test_cli_null");
 static int nr_threads = 2;
 static string DB_DIR = "/tmp/cli";
 static string DB_PATH = DB_DIR + "/DB";
@@ -55,7 +56,6 @@ TEST_CASE("cli") {
         discovered_alleles dsals;
         unsigned sample_count;
         s = cli::utils::discover_alleles(console, nr_threads, DB_PATH, ranges, contigs, dsals, sample_count);
-        cout << s.str() << endl;
         REQUIRE(s.ok());
 
         string filename = DB_DIR + "/dsals.yml";
@@ -123,5 +123,9 @@ TEST_CASE("cli") {
         REQUIRE(contigs[2].second == 1000);
         REQUIRE(contigs[3].first == "4");
         REQUIRE(contigs[3].second == 4000);
+    }
+
+    SECTION("describe config presets") {
+        cout << cli::utils::describe_config_presets();
     }
 }
