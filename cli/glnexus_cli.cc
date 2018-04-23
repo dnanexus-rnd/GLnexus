@@ -150,14 +150,16 @@ static int all_steps(const vector<string> &vcf_files,
 
 
 void help(const char* prog) {
-    cerr << "usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
+    cout << "Usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
          << "Merge and joint-call input gVCF files, emitting multi-sample BCF on" << endl
-         << "standard output." << endl
+         << "standard output." << endl << endl
          << "Options:" << endl
          << "  --help, -h           print this help message" << endl
          << "  --bed FILE, -b FILE  three-column BED file of ranges to analyze (required)" << endl
          << "  --config X, -c X     configuration preset name or .yml filename (default: gatk)" << endl
-         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl;
+         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl
+         << endl << "Configuration presets:" << endl;
+    cout << GLnexus::cli::utils::describe_config_presets() << endl;
 }
 
 // Expected usage:

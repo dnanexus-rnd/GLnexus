@@ -12,6 +12,7 @@
 #include "crc32c.h"
 #include "service.h"
 #include "compare_queries.h"
+#include "spdlog/sinks/null_sink.h"
 
 #include "BCFKeyValueData.h"
 
@@ -800,6 +801,30 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
         }
         return load_config(logger, presets[name], unifier_cfg, genotyper_cfg, config_crc32c);
     }
+}
+
+std::string describe_config_presets() {
+    ostringstream os;
+    os << setw(16) << "Name" << setw(16) << "CRC32C" << "\tDescription" << endl;
+    YAML::Node presets = YAML::Load(config_presets_yml);
+    assert(presets && presets.IsMap());
+    for (YAML::const_iterator it = presets.begin(); it != presets.end(); ++it) {
+        unifier_config uc;
+        genotyper_config gc;
+        std::string config_crc32c;
+        auto logger = spdlog::create<spdlog::sinks::null_sink_st>("null");
+        Status s = load_config(logger, it->second, uc, gc, config_crc32c);
+        spdlog::drop("null");
+        if (s.ok()) {
+            os << setw(16) << it->first.as<string>();
+            os << setw(16) << config_crc32c;
+            if (it->second["description"]) {
+                os << "\t" << it->second["description"].Scalar();
+            }
+            os << endl;
+        }
+    }
+    return os.str();
 }
 
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec() {

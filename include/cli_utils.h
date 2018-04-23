@@ -98,6 +98,8 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    genotyper_config& genotyper_cfg,
                    std::string& config_crc32c);
 
+std::string describe_config_presets();
+
 RocksKeyValue::prefix_spec* GLnexus_prefix_spec();
 
 // Initialize a database. Fills in the contigs.
