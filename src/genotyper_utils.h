@@ -173,6 +173,17 @@ protected:
         return ans;
     }
 
+    int bcf_get_info_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, int32_t** v) {
+        int ans = bcf_get_info_int32(dataset_header, record, field_name, &iv_.v, &iv_.capacity);
+        *v = iv_.v;
+        return ans;
+    }
+    int bcf_get_info_wrapper(const bcf_hdr_t* dataset_header, bcf1_t* record, const char* field_name, float** v) {
+        int ans = bcf_get_info_float(dataset_header, record, field_name, &fv_.v, &fv_.capacity);
+        *v = fv_.v;
+        return ans;
+    }
+
     Status get_missing_value(int32_t& val) {
         assert(field_info.type == RetainedFieldType::INT);
         val = bcf_int32_missing;
@@ -286,7 +297,18 @@ public:
             T *v = nullptr;
 
             // rv is the number of values written
-            int rv = bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v);
+            int rv = -1;
+
+            switch (field_info.from) {
+                case RetainedFieldFrom::FORMAT:
+                    rv = bcf_get_format_wrapper(dataset_header, record, field_name.c_str(), &v);
+                    break;
+                case RetainedFieldFrom::INFO:
+                    rv = bcf_get_info_wrapper(dataset_header, record, field_name.c_str(), &v);
+                    break;
+                default:
+                    assert(false);
+            }
 
             // raise error if there's a failed get due to type mismatch
             if (rv == -2) {

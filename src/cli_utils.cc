@@ -698,6 +698,15 @@ weCall:
               combi_method: min
               default_type: zero
               count: 0
+            - orig_names: [SBPV]
+              name: SBPV
+              description: '##FORMAT=<ID=SBPV,Number=A,Type=Float,Description="Strand bias P-value; probability that the fraction of forward reads (VCF) amongst reads supporting alt allele (VC) is more extreme than expected assuming a beta-binomial distribution.">'
+              from: info
+              type: float
+              number: alt
+              count: 0
+              combi_method: missing
+              ignore_non_variants: true
             - orig_names: [FILTER]
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
