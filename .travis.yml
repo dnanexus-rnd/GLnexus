@@ -31,10 +31,12 @@ script:
   - cmake --version
   - gcc --version
   # Build and run unit tests
-  - cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
   - |
-      if [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then
-        valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes
+      if [ "$TRAVIS_BUILD_TYPE" != "Valgrind" ]; then
+        cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
+      else
+        export ROCKSDB_VALGRIND_RUN=1;
+        cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release . && make -j $(nproc) && valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes
       fi
 
 env:
@@ -50,6 +52,7 @@ matrix:
   include:
     - env: TRAVIS_BUILD_TYPE=Debug
     - env: TRAVIS_BUILD_TYPE=Coverage
+    - env: TRAVIS_BUILD_TYPE=Valgrind
     - env: TRAVIS_BUILD_TYPE=Release
     # NB: some warnings we set to errors are detected only in Release mode (with
     # compiler optimizations on). http://stackoverflow.com/q/11061970
