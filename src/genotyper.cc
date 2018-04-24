@@ -313,6 +313,9 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 /// appropriate calls (currently by translation of the input hard-calls).
 /// Updates genotypes and may modify min_ref_depth.
 ///
+/// variant_records_used will be filled to the variant records from which
+/// the call(s) were actually made, if any.
+///
 /// FIXME: not coded to deal with multi-sample gVCFs properly.
 static Status translate_genotypes(const genotyper_config& cfg, const unified_site& site,
                                   const string& dataset, const bcf_hdr_t* dataset_header,
@@ -320,9 +323,11 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                                   const vector<shared_ptr<bcf1_t_plus>>& variant_records,
                                   AlleleDepthHelper& depth,
                                   vector<int>& min_ref_depth,
-                                  vector<one_call>& genotypes) {
+                                  vector<one_call>& genotypes,
+                                  vector<shared_ptr<bcf1_t_plus>>& variant_records_used) {
     assert(genotypes.size() == 2*min_ref_depth.size());
     assert(!site.monoallelic);
+    variant_records_used.clear();
     Status s;
 
     // Scan the variant records to pull out those with 0/0 genotype calls
@@ -380,6 +385,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // simple common case: one variant record overlapping the unified site
         record = records_non00[0].get();
         call_mode = 2;
+        variant_records_used.push_back(records_non00[0]);
     } else {
         // complex situation: multiple non-0/0 records overlapping the unified site.
         //
@@ -447,10 +453,14 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // sorts usable half-call records by decreasing qual
         sort(usable_half_calls.begin(), usable_half_calls.end());
 
-        record = get<1>(usable_half_calls[0]).get();
+        auto& r1 = get<1>(usable_half_calls[0]);
+        record = r1.get();
+        variant_records_used.push_back(r1);
         call_mode = get<2>(usable_half_calls[0]) ? 1 : 0;
         if (usable_half_calls.size() == 2) {
-            record2 = get<1>(usable_half_calls[1]).get();
+            auto& r2 = get<1>(usable_half_calls[1]);
+            record2 = r2.get();
+            variant_records_used.push_back(r2);
             call_mode2 = get<2>(usable_half_calls[1]) ? 1 : 0;
         }
     }
@@ -542,10 +552,12 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
                                     const vector<shared_ptr<bcf1_t_plus>>& variant_records,
                                     AlleleDepthHelper& depth,
                                     vector<int>& min_ref_depth,
-                                    vector<one_call>& genotypes) {
+                                    vector<one_call>& genotypes,
+                                    vector<shared_ptr<bcf1_t_plus>>& variant_records_used) {
     assert(genotypes.size() == 2*min_ref_depth.size());
     assert(site.monoallelic);
     assert(site.alleles.size() == 2);
+    variant_records_used.clear();
     Status s;
     bcf1_t_plus* record = nullptr;
 
@@ -557,6 +569,7 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
             if (a_record->allele_mapping[al] == 1) {
                 if (record == nullptr) {
                     record = a_record.get();
+                    variant_records_used.push_back(a_record);
                 } else {
                     // uh, overlapping records with the same allele!?
                     for (int i = 0; i < bcf_nsamples; i++) {
@@ -592,9 +605,9 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
         assert(ij.second < min_ref_depth.size());
 
         #define fill_monoallelic(ofs)                                             \
-            if (record->gt[2*ij.first+ofs] != bcf_int32_vector_end &&                     \
-                !bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {                       \
-                auto al = bcf_gt_allele(record->gt[2*ij.first+(ofs)]);                    \
+            if (record->gt[2*ij.first+ofs] != bcf_int32_vector_end &&             \
+                !bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {               \
+                auto al = bcf_gt_allele(record->gt[2*ij.first+(ofs)]);            \
                 assert(al >= 0 && al < record->p->n_allele);                      \
                 if (record->allele_mapping[al] > 0) {                             \
                     if (depth.get(ij.first, al) >= cfg.required_dp) {             \
@@ -696,10 +709,13 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 sample_mapping[i] = p->second;
             }
         }
+        if (sample_mapping.empty()) {
+            continue;
+        }
 
         // pre-process the records
         vector<int> min_ref_depth(samples.size(), -1);
-        vector<shared_ptr<bcf1_t_plus>> all_records, variant_records;
+        vector<shared_ptr<bcf1_t_plus>> all_records, variant_records, variant_records_used;
         NoCallReason rnc = NoCallReason::MissingData;
         S(prepare_dataset_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                   sample_mapping, records, adh, rnc, min_ref_depth,
@@ -716,16 +732,16 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             // make genotype calls for the samples in this dataset
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                   sample_mapping, variant_records, adh, min_ref_depth,
-                                  genotypes));
+                                  genotypes, variant_records_used));
         } else {
             S(translate_monoallelic(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
                                     sample_mapping, variant_records, adh, min_ref_depth,
-                                    genotypes));
+                                    genotypes, variant_records_used));
         }
 
         // Update FORMAT fields for this dataset.
         S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
-                               format_helpers, all_records, variant_records));
+                               format_helpers, all_records, variant_records_used));
         // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
         // we must censor the FORMAT fields as potentially unreliable/misleading.
         for (const auto& p : sample_mapping) {
@@ -784,7 +800,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     // Clean up emission order of alleles
     for(size_t i=0; i < samples.size(); i++) {
-        if (genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing ||
+        if ((genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing) ||
             genotypes[2*i].allele > genotypes[2*i+1].allele) {
             swap(genotypes[2*i], genotypes[2*i+1]);
         }
