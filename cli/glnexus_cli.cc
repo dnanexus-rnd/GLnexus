@@ -23,7 +23,7 @@ GLnexus::Status s;
 #define H(desc,expr) \
     s = expr; \
     if (s.bad()) { \
-        console->error() << "Failed to " << desc << ": " << s.str(); \
+        console->error("Failed to {}: {}", desc, s.str()); \
         return 1; \
     }
 
@@ -42,7 +42,7 @@ static int all_steps(const vector<string> &vcf_files,
     string cfg_crc32c;
 
     if (vcf_files.empty()) {
-        console->error() << "No source GVCF files specified";
+        console->error("No source GVCF files specified");
         return 1;
     }
 
@@ -88,13 +88,12 @@ static int all_steps(const vector<string> &vcf_files,
       GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
-        console->info() << "Writing discovered alleles as YAML to " << filename;
+        console->info("Writing discovered alleles as YAML to {}", filename);
         H("serialize discovered alleles to a file",
           GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
 
         string filename_cflat("/tmp/dsals.cflat");
-        console->info() << "Writing discovered alleles in serialized capnproto to " << filename
-                        << ", verifying that it is readable";
+        console->info("Writing discovered alleles in serialized capnproto to {}, verifying that it is readable", filename);
         H("Verify that the cflat file is readable",
           GLnexus::capnp_discover_alleles_verify(sample_count, contigs, dsals, filename_cflat));
     }
@@ -117,18 +116,18 @@ static int all_steps(const vector<string> &vcf_files,
           GLnexus::cli::utils::unify_sites(console, unifier_cfg, contigs, dsals_i, sample_count, sites, stats1));
         stats += stats1;
     }
-    console->info() << "unified to " << sites.size() << " sites cleanly with " << stats.unified_alleles << " ALT alleles. "
-                    << stats.lost_alleles << " ALT alleles were " << (unifier_cfg.monoallelic_sites_for_lost_alleles ? "additionally included in monoallelic sites" : "lost due to failure to unify")
-                    << " and " << stats.filtered_alleles << " were filtered out on quality thresholds.";
+    console->info("unified to {} sites cleanly with {} ALT alleles. {} ALT alleles were {} and {} were filtered out on quality thresholds.",
+                  sites.size(), stats.unified_alleles, stats.lost_alleles,
+                  (unifier_cfg.monoallelic_sites_for_lost_alleles ? "additionally included in monoallelic sites" : "lost due to failure to unify"),
+                  stats.filtered_alleles);
     if (debug) {
         string filename("/tmp/sites.yml");
-        console->info() << "Writing unified sites as YAML to " << filename;
+        console->info("Writing unified sites as YAML to {}", filename);
         H("write unified sites to file",
           GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
 
         string filename_cflat("/tmp/sites.cflat");
-        console->info() << "Writing unified sites in serialized capnproto to " << filename
-                        << ", verifying that it is readable";
+        console->info("Writing unified sites in serialized capnproto to {}, verifying that it is readable", filename);;
         H("Verify that the cflat file is readable",
           GLnexus::capnp_unified_sites_verify(sites, filename_cflat));
     }
@@ -169,7 +168,7 @@ int main(int argc, char *argv[]) {
     GLnexus::Status s;
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%t] %+");
-    console->info() << "glnexus_cli " << GIT_REVISION;
+    console->info("glnexus_cli {}", GIT_REVISION);
 
     if (argc < 2) {
         help(argv[0]);

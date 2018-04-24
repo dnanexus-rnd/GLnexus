@@ -111,7 +111,7 @@ Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
         }
         if (query.end > contigs[query.rid].second) {
             query.end = contigs[query.rid].second;
-            logger->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+            logger->warn("Truncated query range at end of contig: {}", query.str(contigs));
         }
     }
 
@@ -442,10 +442,10 @@ Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
 
             Status s = discovered_alleles_of_capnp(dsal_file, N2, contigs2, dsals2);
             if (!s.ok()) {
-                logger->info() << "Error loading alleles from " << dsal_file;
+                logger->info("Error loading alleles from {}",dsal_file);
                 return s;
             }
-            logger->info() << "loaded " << dsals2.size() << " alleles from " << dsal_file << ", N = " << N2;
+            logger->info("loaded {} alleles from {}, N = {}", dsals2.size(), dsal_file, N2);
 
             lock_guard<mutex> lock(mu);
             if (contigs.empty()) {
@@ -778,10 +778,10 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
     S(genotyper_cfg.yaml(em));
     em << YAML::EndMap;
     std::string config_text = em.c_str();
-    logger->info() << "config:\n" << config_text;
+    logger->info("config:\n{}", config_text);
 
     config_crc32c = std::to_string(rocksdb::crc32c::Value(config_text.c_str(), config_text.size()));
-    logger->info() << "config CRC32C = " << config_crc32c;
+    logger->info("config CRC32C = {}", config_crc32c);
     return Status::OK();
 }
 
@@ -793,7 +793,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
     Status s;
     if (name.size() > 4 && name.substr(name.size() - 4) == ".yml") {
         try {
-            logger->info() << "Loading config YAML file " << name;
+            logger->info("Loading config YAML file {}", name);
             YAML::Node config = YAML::LoadFile(name);
             if (!config || !config.IsMap()) {
                 return Status::IOError("loading configuration YAML file", name);
@@ -803,7 +803,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
             return Status::IOError("loading configuration YAML file", name);
         }
     } else {
-        logger->info() << "Loading config preset " << name;
+        logger->info("Loading config preset {}", name);
         YAML::Node presets = YAML::Load(config_presets_yml);
         if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
             return Status::NotFound("unknown configuration preset", name);
@@ -852,7 +852,7 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
                vector<pair<string,size_t>> &contigs,
                size_t bucket_size) {
     Status s;
-    logger->info() << "init database, exemplar_vcf=" << exemplar_gvcf;
+    logger->info("init database, exemplar_vcf={}", exemplar_gvcf);
     if (check_dir_exists(dbpath)) {
         return Status::IOError("Database directory already exists", dbpath);
     }
@@ -884,15 +884,15 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
     S(BCFKeyValueData::InitializeDB(db.get(), contigs, bucket_size));
 
     // report success
-    logger->info() << "Initialized GLnexus database in " << dbpath;
-    logger->info() << "bucket size: " << bucket_size;
+    logger->info("Initialized GLnexus database in {}", dbpath);
+    logger->info("bucket size: {}", bucket_size);
 
     stringstream ss;
     ss << "contigs:";
     for (const auto& contig : contigs) {
         ss << " " << contig.first;
     }
-    logger->info() << ss.str();
+    logger->info(ss.str());
     S(db->flush());
     db.reset();
 
@@ -904,7 +904,7 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
                       const string &dbpath,
                       std::vector<std::pair<std::string,size_t> > &contigs) {
     Status s;
-    logger->info() << "db_get_contigs " << dbpath;
+    logger->info("db_get_contigs {}", dbpath);
 
     unique_ptr<KeyValue::DB> db;
 
@@ -948,9 +948,9 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         for (const auto& rng : ranges) {
             ss << " " << rng.str(contigs);
         }
-        logger->info() << "Beginning bulk load of records overlapping:" << ss.str();
+        logger->info("Beginning bulk load of records overlapping: {}", ss.str());
     } else {
-        logger->info() << "Beginning bulk load with no range filter.";
+        logger->info("Beginning bulk load with no range filter.");
     }
 
     ctpl::thread_pool threadpool(nr_threads);
@@ -983,17 +983,17 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                 Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
                 if (ls.ok()) {
                     if (delete_gvcf_after_load && unlink(gvcf.c_str())) {
-                        logger->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
+                        logger->warn("Loaded {}  successfully, but failed deleting it afterwards.", gvcf);
                     }
                     lock_guard<mutex> lock(mu);
                     if (rslt.records == 0) {
-                        logger->warn() << "No data loaded from " << gvcf << " after range and other filters.";
+                        logger->warn("No data loaded from {} after range and other filters.", gvcf);
                     }
                     stats += rslt;
                     datasets_loaded.insert(dataset);
                     size_t n = datasets_loaded.size();
                     if (n % 100 == 0) {
-                        logger->info() << n << " (" << dataset << ")...";
+                        logger->info("{} ({})...", n, dataset);
                     }
                 }
                 return ls;
@@ -1012,15 +1012,9 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     }
 
     // report results
-    logger->info() << "Loaded " << datasets_loaded.size() << " datasets with "
-                    << stats.samples.size() << " samples; "
-                    << stats.bytes << " bytes in "
-                    << stats.records << " BCF records ("
-                    << stats.duplicate_records << " duplicate) in "
-                    << stats.buckets << " buckets. "
-                    << "Bucket max " << stats.max_bytes << " bytes, max "
-                    << stats.max_records << " records. "
-                    << stats.skipped_records << " BCF records skipped due to caller-specific exceptions.";
+    logger->info("Loaded {} datasets with {} samples; {} bytes in {} BCF records ({} duplicate) in {} buckets. Bucket max {} bytes, max {} records. {} BCF records skipped due to caller-specific exceptions.",
+                 stats.samples.size(), stats.bytes, stats.records, stats.duplicate_records, stats.buckets,
+                 stats.max_bytes, stats.max_records, stats.skipped_records);
 
     // call all_samples_sampleset to create the sample set including
     // the newly loaded ones. By doing this now we make it possible
@@ -1029,19 +1023,19 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     // database to be used)
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "Created sample set " << sampleset;
+    logger->info("Created sample set {}", sampleset);
 
     if (failures.size()) {
         for (const auto& p : failures) {
-            logger->error() << p.first << " " << p.second.str();
+            logger->error("{} {}", p.first, p.second.str());
         }
         return Status::Failure("FAILED to load ", failures.size() + " datasets:");
     }
 
-    logger->info() << "Flushing and compacting database...";
+    logger->info("Flushing and compacting database...");
     S(db->flush());
     db.reset();
-    logger->info() << "Bulk load complete!";
+    logger->info("Bulk load complete!");
     return Status::OK();
 }
 
@@ -1070,9 +1064,9 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
 
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "found sample set " << sampleset;
+    logger->info("found sample set {}", sampleset);
 
-    logger->info() << "discovering alleles in " << ranges.size() << " range(s)";
+    logger->info("discovering alleles in {} range(s)", ranges.size());
     vector<discovered_alleles> valleles;
     S(svc->discover_alleles(sampleset, ranges, sample_count, valleles));
 
@@ -1080,7 +1074,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
         S(merge_discovered_alleles(*it, dsals));
         it->clear(); // free some memory
     }
-    logger->info() << "discovered " << dsals.size() << " alleles";
+    logger->info("discovered {} alleles", dsals.size());
     return Status::OK();
 }
 
@@ -1118,7 +1112,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
                 const vector<string>& extra_header_lines,
                 const string &output_filename) {
     Status s;
-    logger->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
+    logger->info("Lifting over {} fields.", genotyper_cfg.liftover_fields.size());
 
     // open the database in read-only mode
     unique_ptr<KeyValue::DB> db;
@@ -1139,18 +1133,18 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
 
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "found sample set " << sampleset;
+    logger->info("found sample set {}", sampleset);
 
     S(svc->genotype_sites(genotyper_cfg, sampleset, sites, output_filename));
-    logger->info() << "genotyping complete!";
+    logger->info("genotyping complete!");
 
     auto stalls_ms = svc->threads_stalled_ms();
     if (stalls_ms) {
-        logger->info() << "worker threads were cumulatively stalled for " << stalls_ms << "ms";
+        logger->info("worker threads were cumulatively stalled for {}ms", stalls_ms);
     }
 
     std::shared_ptr<StatsRangeQuery> statsRq = data->getRangeStats();
-    logger->info() << statsRq->str();
+    logger->info(statsRq->str());
 
     return Status::OK();
 }
@@ -1170,7 +1164,7 @@ Status compare_db_itertion_algorithms(std::shared_ptr<spdlog::logger> logger,
     S(MetadataCache::Start(*data, metadata));
 
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "using sample set " << sampleset;
+    logger->info("using sample set {}", sampleset);
 
     // get samples and datasets
     shared_ptr<const set<string>> samples, datasets;
