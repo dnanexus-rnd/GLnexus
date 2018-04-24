@@ -50,7 +50,7 @@ ExternalProject_Add(htslib
     CONFIGURE_COMMAND ""
     PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -gdwarf -O3 -DNDEBUG -march=ivybridge/" Makefile
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "make -n && make -j8"
+    BUILD_COMMAND bash -c "make -n && make -j$(nproc)"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
@@ -91,7 +91,7 @@ ExternalProject_Add(rocksdb
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export USE_SSE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42' && make -n static_lib && make -j8 static_lib"
+    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export USE_SSE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42' && make -n static_lib && make -j$(nproc) static_lib"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
@@ -109,11 +109,11 @@ set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
 # After build, double-check external/src/yaml-cpp-stamp/yaml-cpp-build-out.log
 # to make sure CFLAGS were set as expected
 ExternalProject_Add(yaml-cpp
-    URL https://github.com/jbeder/yaml-cpp/archive/005a6a19ee0af3e284637abe9ecea5501993fc4c.zip
+    URL https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.2.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-march=ivybridge .
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "make -n && make -j8"
+    BUILD_COMMAND bash -c "make -j$(nproc)"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
@@ -170,7 +170,7 @@ ExternalProject_Add(capnp
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/external
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make -j4 check
+    BUILD_COMMAND bash -c "make -j$(nproc) check"
     INSTALL_COMMAND make install
     LOG_DOWNLOAD ON
   )
