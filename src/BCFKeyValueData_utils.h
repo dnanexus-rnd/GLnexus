@@ -280,7 +280,7 @@ static int SearchBCFBucketSkipIndex(const capnp::BCFBucket::Reader& bucket, cons
             break;
         }
     }
-    assert(i >= naive);
+    assert(i == naive);
     #endif
     return skips[i].getRecordIndex();
 }
