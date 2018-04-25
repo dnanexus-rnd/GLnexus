@@ -34,7 +34,7 @@ TEST_CASE("unifier max_alleles_per_site") {
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 6);
-        REQUIRE(sites[0].alleles[5] == "GC");
+        REQUIRE(sites[0].alleles[5].dna == "GC");
         REQUIRE(sites[0].in_target == range(0,90,110));
     }
 
@@ -45,7 +45,7 @@ TEST_CASE("unifier max_alleles_per_site") {
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 5);
-        REQUIRE(sites[0].alleles[4] == "TA");
+        REQUIRE(sites[0].alleles[4].dna == "TA");
     }
 
     SECTION("4") {
@@ -55,7 +55,7 @@ TEST_CASE("unifier max_alleles_per_site") {
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 4);
-        REQUIRE(sites[0].alleles[3] == "CA");
+        REQUIRE(sites[0].alleles[3].dna == "CA");
     }
 
     SECTION("3") {
@@ -65,7 +65,7 @@ TEST_CASE("unifier max_alleles_per_site") {
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 3);
-        REQUIRE(sites[0].alleles[2] == "GG");
+        REQUIRE(sites[0].alleles[2].dna == "GG");
     }
 
     SECTION("2") {
@@ -75,6 +75,6 @@ TEST_CASE("unifier max_alleles_per_site") {
         REQUIRE(s.ok());
         REQUIRE(sites.size() == 1);
         REQUIRE(sites[0].alleles.size() == 2);
-        REQUIRE(sites[0].alleles[1] == "G");
+        REQUIRE(sites[0].alleles[1].dna == "G");
     }
 }

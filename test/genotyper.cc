@@ -43,17 +43,18 @@ liftover_fields:
 
     const char* us_yml = 1 + R"(
 range: {ref: "21", beg: 1000, end: 1000}
-alleles: [T, A, G]
-allele_frequencies: [.nan, 0.01, 0.00001]
+alleles:
+- dna: T
+  quality: 99
+- dna: A
+  quality: 88
+  frequency: 0.01
+- dna: G
+  quality: 77
+  frequency: 0.00001
 lost_allele_frequency: 0.001
 quality: 100
-unification:
-- range: {beg: 1000, end: 1000}
-  dna: A
-  to: 1
-- range: {beg: 1000, end: 1000}
-  dna: G
-  to: 2
+unification: []
 )";
     yaml = YAML::Load(us_yml);
     unified_site us(range(-1,-1,-1));
@@ -147,8 +148,10 @@ unification:
 
     const char* us_yml2 = 1 + R"(
 range: {ref: "21", beg: 1000, end: 1000}
-alleles: [T, A]
-allele_frequencies: [.nan, 0.67]
+alleles:
+- dna: T
+- dna: A
+  frequency: 0.67
 lost_allele_frequency: 0.001
 quality: 100
 unification:

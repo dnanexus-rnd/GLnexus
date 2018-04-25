@@ -9,28 +9,32 @@ struct Range {
     end @2 :Int64;
 }
 
+struct Allele {
+    pos @0 :Range;
+    dna @1 :Text;
+}
+
 ### discovered alleles
 
 struct DiscoveredAllele {
-    range @0 :Range;
-    dna @1 :Text;
-    isRef @2 :Bool = false;
+    allele @0 :Allele;
+    isRef @1 :Bool = false;
 
     # optional: discovery target range in which this allele was found
     inTargetOption : union {
-        noInTarget @3 :Void;
-        inTarget @4 :Range;
+        noInTarget @2 :Void;
+        inTarget @3 :Range;
     }
 
     # indicates whether all observations of this allele failed some VCF FILTER
-    allFiltered @5 :Bool = false;
+    allFiltered @4 :Bool = false;
 
     # top_AQ statistics are used to adjudicate allele existence
-    topAQ @6 :List(Int64);
+    topAQ @5 :List(Int64);
 
      # zygosity_by_GQ statistics are used to estimate allele copy number
-    zGQ0 @7 :List(UInt64);
-    zGQ1 @8 :List(UInt64);
+    zGQ0 @6 :List(UInt64);
+    zGQ1 @7 :List(UInt64);
 }
 
 struct Contig {
@@ -47,10 +51,16 @@ struct DiscoveredAlleles {
 
 ### unified sites
 
-struct OriginalAllele {
-    pos @0 :Range;
-    dna @1 :Text;
-    unifiedAllele @2 :Int64;
+struct UnifiedAllele {
+    dna @0 :Text;
+    normalized @1 :Allele;
+    quality @2 :Int64;
+    frequency @3 :Float32;
+}
+
+struct UnificationEntry {
+    representation @0 :Allele;
+    unifiedAllele @1 :Int64;
 }
 
 struct UnifiedSite {
@@ -59,12 +69,11 @@ struct UnifiedSite {
         noInTarget @1 :Void;
         inTarget @2 :Range;
     }
-    alleles @3 :List(Text);
-    unification @4 :List(OriginalAllele);
-    alleleFrequencies @5 :List(Float32);
-    lostAlleleFrequency @6 :Float32;
-    qual @7 :Int64;
-    monoallelic @8 :Bool;
+    alleles @3 :List(UnifiedAllele);
+    unification @4 :List(UnificationEntry);
+    lostAlleleFrequency @5 :Float32;
+    qual @6 :Int64;
+    monoallelic @7 :Bool;
 }
 
 struct UnifiedSites {

@@ -141,113 +141,112 @@ genotyper_config:
           ignore_non_variants: true
 
 truth_unified_sites:
-    - range: {ref: 1, beg: 15956, end: 15956}
-      alleles: [G, A]
-      allele_frequencies: [.nan, 0.125]
+- range: {ref: 1, beg: 15956, end: 15956}
+  alleles:
+    - dna: G
+    - dna: A
       quality: 257
-      unification:
-        - range: {beg: 15956, end: 15956}
-          dna: A
-          to: 1
-    - range: {ref: 1, beg: 15983, end: 15983}
-      alleles: [C, T, G]
-      allele_frequencies: [.nan, 0.25, 0.125]
+      frequency: 0.125
+  quality: 257
+- range: {ref: 1, beg: 15983, end: 15983}
+  alleles:
+    - dna: C
+    - dna: T
       quality: 257
-      unification:
-        - range: {beg: 15983, end: 15983}
-          dna: T
-          to: 1
-        - range: {beg: 15983, end: 15983}
-          dna: G
-          to: 2
-    - range: {ref: 1, beg: 15985, end: 15985}
-      alleles: [A, T]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+    - dna: G
       quality: 257
-      unification:
-        - range: {beg: 15985, end: 15985}
-          dna: T
-          to: 1
-    - range: {ref: 1, beg: 15987, end: 15987}
-      alleles: [M, C]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.125
+  quality: 257
+- range: {ref: 1, beg: 15985, end: 15985}
+  alleles:
+    - dna: A
+    - dna: T
+      quality: 257
+      frequency: 0.25
+  quality: 257
+- range: {ref: 1, beg: 15987, end: 15987}
+  alleles:
+    - dna: M
+    - dna: C
       quality: 716
-      unification:
-        - range: {beg: 15987, end: 15987}
-          dna: C
-          to: 1
-    - range: {ref: 1, beg: 15989, end: 15990}
-      alleles: [AG, A]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 716
+- range: {ref: 1, beg: 15989, end: 15990}
+  alleles:
+    - dna: AG
+    - dna: A
       quality: 659
-      unification:
-        - range: {beg: 15989, end: 15990}
-          dna: A
-          to: 1
-    - range: {ref: 1, beg: 1087454, end: 1087456}
-      alleles: [TAA, TA, T]
-      allele_frequencies: [.nan, 0.125, 0.125]
+      frequency: 0.25
+  quality: 659
+- range: {ref: 1, beg: 1087454, end: 1087456}
+  alleles:
+    - dna: TAA
+    - dna: TA
+      normalized:
+        range: {beg: 1087454, end: 1087455}
+        dna: T
       quality: 9
-      unification:
-        - range: {beg: 1087454, end: 1087455}
-          dna: T
-          to: 1
-        - range: {beg: 1087454, end: 1087456}
-          dna: T
-          to: 2
-    - range: {ref: 1, beg: 1087554, end: 1087556}
-      alleles: [TAA, TA, T]
-      allele_frequencies: [.nan, 0.125, 0.125]
+      frequency: 0.125
+    - dna: T
       quality: 9
-      unification:
-        - range: {beg: 1087554, end: 1087555}
-          dna: T
-          to: 1
-        - range: {beg: 1087554, end: 1087556}
-          dna: T
-          to: 2
-    - range: {ref: 1, beg: 1099704, end: 1099706}
-      alleles: [GGA, G]
-      allele_frequencies: [.nan, 0.125]
+      frequency: 0.125
+  quality: 9
+- range: {ref: 1, beg: 1087554, end: 1087556}
+  alleles:
+    - dna: TAA
+    - dna: TA
+      normalized:
+        range: {beg: 1087554, end: 1087555}
+        dna: T
+      quality: 9
+      frequency: 0.125
+    - dna: T
+      quality: 9
+      frequency: 0.125
+  quality: 9
+- range: {ref: 1, beg: 1099704, end: 1099706}
+  alleles:
+    - dna: GGA
+    - dna: G
       quality: 828
-      unification:
-        - range: {beg: 1099704, end: 1099706}
-          dna: G
-          to: 1
-    - range: {ref: 1, beg: 131211614, end: 131211615}
-      alleles: [AG, A]
-      allele_frequencies: [.nan, 0.125]
+      frequency: 0.125
+  quality: 828
+- range: {ref: 1, beg: 1689669, end: 1689675}
+  alleles:
+    - dna: CGGCCCT
+    - dna: CGGCCCTGGCCCT
+      normalized:
+        range: {beg: 1689669, end: 1689669}
+        dna: CGGCCCT
       quality: 85
-      unification:
-        - range: {beg: 131211614, end: 131211615}
-          dna: A
-          to: 1
-    - range: {ref: 1, beg: 1689669, end: 1689675}
-      alleles: [CGGCCCT, CGGCCCTGGCCCT, C]
-      allele_frequencies: [.nan, 0.25, 0.125]
+      frequency: 0.25
+    - dna: C
       quality: 85
-      unification:
-        - range: {beg: 1689669, end: 1689669}
-          dna: CGGCCCT
-          to: 1
-        - range: {beg: 1689675, end: 1689675}
-          dna: TGGCCCT
-          to: 1
-        - range: {beg: 1689669, end: 1689675}
-          dna: C
-          to: 2
-    - range: {ref: 1, beg: 1689769, end: 1689769}
-      in_target: {ref: 1, beg: 1, end: 1000000000}
-      alleles: [C, CC]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.125
+  quality: 85
+  unification:
+    - range: {beg: 1689675, end: 1689675}
+      dna: TGGCCCT
+      to: 1
+- range: {ref: 1, beg: 1689769, end: 1689769}
+  alleles:
+    - dna: C
+    - dna: CC
       quality: 85
-      unification:
-        - range: {beg: 1689769, end: 1689769}
-          dna: CC
-          to: 1
-        - range: {beg: 1689770, end: 1689770}
-          dna: CC
-          to: 1
+      frequency: 0.25
+  quality: 85
+  unification:
+    - range: {beg: 1689770, end: 1689770}
+      dna: CC
+      to: 1
+- range: {ref: 1, beg: 131211614, end: 131211615}
+  alleles:
+    - dna: AG
+    - dna: A
+      quality: 85
+      frequency: 0.125
+  quality: 85
 
 truth_output_vcf:
   - truth.vcf: |

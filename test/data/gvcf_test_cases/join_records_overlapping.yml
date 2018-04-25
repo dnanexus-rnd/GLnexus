@@ -45,31 +45,35 @@ input:
         A	917971	.	C	A,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	1/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
 
 truth_unified_sites:
-    - range: {ref: A, beg: 907970, end: 907971}
-      alleles: [AC, AA, A]
-      allele_frequencies: [.nan, 0.375, 0.125]
+- range: {ref: A, beg: 907970, end: 907971}
+  alleles:
+    - dna: AC
+    - dna: AA
+      normalized:
+        range: {beg: 907971, end: 907971}
+        dna: A
       quality: 757
-      unification:
-        - range: {beg: 907971, end: 907971}
-          dna: A
-          to: 1
-        - range: {beg: 907970, end: 907971}
-          dna: A
-          to: 2
-    - range: {ref: A, beg: 917970, end: 917971}
-      alleles: [AC, AA, A, G]
-      allele_frequencies: [.nan, 0.375, 0.25, 0.125]
+      frequency: 0.375
+    - dna: A
+      quality: 4
+      frequency: 0.125
+  quality: 757
+- range: {ref: A, beg: 917970, end: 917971}
+  alleles:
+    - dna: AC
+    - dna: AA
+      normalized:
+        range: {beg: 917971, end: 917971}
+        dna: A
       quality: 505
-      unification:
-        - range: {beg: 917971, end: 917971}
-          dna: A
-          to: 1
-        - range: {beg: 917970, end: 917971}
-          dna: A
-          to: 2
-        - range: {beg: 917970, end: 917971}
-          dna: G
-          to: 3
+      frequency: 0.375
+    - dna: A
+      quality: 4
+      frequency: 0.25
+    - dna: G
+      quality: 496
+      frequency: 0.125
+  quality: 505
 
 truth_output_vcf:
   - truth.vcf: |

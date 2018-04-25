@@ -40,20 +40,26 @@ input:
         17	15643382	rs11429009	A	AC,<NON_REF>	354.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:48,22,0:70:99:392,0,1494,537,1560,2096:42,6,17,5
         17	15643383	.	A	<NON_REF>	.	.	END=15643383	GT:DP:GQ:MIN_DP:PL	0/0:82:0:82:0,0,784
 truth_unified_sites:
-    - range: {ref: 17, beg: 15643381, end: 15643382}
-      alleles: [CA, C, CAC, CAA]
-      allele_frequencies: [.nan, 0.25, 0.125, 0.125]
+- range: {ref: 17, beg: 15643381, end: 15643382}
+  alleles:
+    - dna: CA
+    - dna: C
       quality: 1085
-      unification:
-      - range: {beg: 15643381, end: 15643382}
-        dna: C
-        to: 1
-      - range: {beg: 15643382, end: 15643382}
+      frequency: 0.25
+    - dna: CAC
+      normalized:
+        range: {beg: 15643382, end: 15643382}
         dna: AC
-        to: 2
-      - range: {beg: 15643381, end: 15643382}
-        dna: CAA
-        to: 3
+      quality: 392
+      frequency: 0.125
+    - dna: CAA
+      normalized:
+        range: {beg: 15643381, end: 15643381}
+        dna: CA
+      quality: 63
+      frequency: 0.125
+  quality: 1085
+
 truth_output_vcf:
   - truth.vcf: |
       ##fileformat=VCFv4.2

@@ -456,6 +456,25 @@ Status capnp_discover_alleles_verify(unsigned int sample_count,
                                      const discovered_alleles &dsals,
                                      const std::string &filename);
 
+struct unified_allele {
+    std::string dna;
+    allele normalized;
+    int quality = 0;
+    float frequency = NAN;
+
+    unified_allele(const range& pos, const std::string& dna_) : dna(dna_), normalized(pos, dna_) {}
+    bool operator==(const unified_allele& rhs) const noexcept {
+        // nan-tolerant comparison of frequency
+        if (dna != rhs.dna || normalized != rhs.normalized || quality != rhs.quality) {
+            return false;
+        }
+        return frequency != frequency || frequency == rhs.frequency;
+    }
+
+    bool operator<(const unified_allele& rhs) const noexcept {
+        return dna < rhs.dna || normalized < rhs.normalized || quality < rhs.quality || frequency < rhs.frequency;
+    }
+};
 
 struct unified_site {
     range pos;
@@ -464,20 +483,15 @@ struct unified_site {
     range in_target;
 
 
-    /// Alleles at the position.
-
-    /// Each allele is a string over [ACTGN]+. The first allele is the
-    /// reference. The order of the remaining alleles is arbitrary.
-    std::vector<std::string> alleles;
+    /// Alleles at the position. The first is the reference and the order of
+    /// the others is arbitrary.
+    std::vector<unified_allele> alleles;
 
 
-    /// Mapping of overlapping alleles (reference begin, reference end, allele
-    /// DNA) onto the unified alleles (by index).
+    /// Mapping of different possible representations of the alleles onto the
+    /// unified allele index.
     std::map<allele,int> unification;
 
-    /// Estimated frequencies of the alleles. Presently, the first entry, corresponding
-    /// to the reference allele, is left undefined (to be fixed in the future).
-    std::vector<float> allele_frequencies;
     /// Total frequency of alleles overlapping the site but were 'lost' by the unifier
     /// for whatever reason.
     float lost_allele_frequency = 0.0f;
@@ -490,36 +504,24 @@ struct unified_site {
     bool monoallelic = false;
 
     bool operator==(const unified_site& rhs) const noexcept {
-        if (!(pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification
-              && allele_frequencies.size() == rhs.allele_frequencies.size()
-              && lost_allele_frequency == rhs.lost_allele_frequency
-              && qual == rhs.qual
-              && monoallelic == rhs.monoallelic)) {
-            return false;
-        }
-        // nan-tolerant comparison of allele_frequencies
-        for (unsigned i = 0; i < allele_frequencies.size(); i++) {
-            if (allele_frequencies[i] == allele_frequencies[i]) {
-                if (allele_frequencies[i] != rhs.allele_frequencies[i]) {
-                    return false;
-                }
-            } else {
-                if (rhs.allele_frequencies[i] == rhs.allele_frequencies[i]) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return pos == rhs.pos && alleles == rhs.alleles && unification == rhs.unification &&
+               lost_allele_frequency == rhs.lost_allele_frequency &&
+               qual == rhs.qual && monoallelic == rhs.monoallelic;
     }
-    bool operator<(const unified_site& rhs) const noexcept{
+
+    bool operator<(const unified_site& rhs) const noexcept {
         if (pos != rhs.pos) return pos < rhs.pos;
         if (monoallelic != rhs.monoallelic) return !monoallelic;
         if (alleles != rhs.alleles) return alleles < rhs.alleles;
-        if (unification != rhs.unification) return unification < rhs.unification;
-        return allele_frequencies < rhs.allele_frequencies;
+        return unification < rhs.unification;
     }
 
     unified_site(const range& pos_) noexcept : pos(pos_), in_target(-1,-1,-1) {}
+
+    // populate the site's unification map with the 'obvious' entries
+    // (identical to the unified allele and its normalized representation)
+    // so that these don't have to be written out every time it's serialized
+    void fill_implicit_unification();
 
     Status yaml(const std::vector<std::pair<std::string,size_t> >& contigs,
                 YAML::Emitter& out) const;

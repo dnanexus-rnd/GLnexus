@@ -233,66 +233,60 @@ TEST_CASE("unified_sites") {
 
         REQUIRE(sites[0].pos == range(0,1000,1001));
         REQUIRE(sites[0].alleles.size() == 2);
-        REQUIRE(sites[0].alleles[0] == "A");
-        REQUIRE(sites[0].alleles[1] == "G");
+        REQUIRE(sites[0].alleles[0].dna == "A");
+        REQUIRE(sites[0].alleles[1].dna == "G");
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("A"))] == 0);
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("G"))] == 1);
-        REQUIRE(sites[0].allele_frequencies.size() == 2);
-        REQUIRE(sites[0].allele_frequencies[0] != sites[0].allele_frequencies[0]);
-        REQUIRE(sites[0].allele_frequencies[1] == 0.666667f);
+        REQUIRE(sites[0].alleles[0].frequency != sites[0].alleles[0].frequency);
+        REQUIRE(sites[0].alleles[1].frequency == 0.666667f);
 
         REQUIRE(sites[1].pos == range(0,1001,1002));
         REQUIRE(sites[1].alleles.size() == 3);
-        REQUIRE(sites[1].alleles[0] == "C");
-        REQUIRE(sites[1].alleles[1] == "G");
-        REQUIRE(sites[1].alleles[2] == "T");
+        REQUIRE(sites[1].alleles[0].dna == "C");
+        REQUIRE(sites[1].alleles[1].dna == "G");
+        REQUIRE(sites[1].alleles[2].dna == "T");
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("C"))] == 0);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 1);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 2);
-        REQUIRE(sites[1].allele_frequencies.size() == 3);
-        REQUIRE(sites[1].allele_frequencies[0] != sites[1].allele_frequencies[0]);
-        REQUIRE(sites[1].allele_frequencies[1] == 0.333334f);
-        REQUIRE(sites[1].allele_frequencies[2] == 0.333334f);
+        REQUIRE(sites[1].alleles[0].frequency != sites[1].alleles[0].frequency);
+        REQUIRE(sites[1].alleles[1].frequency == 0.333334f);
+        REQUIRE(sites[1].alleles[2].frequency == 0.333334f);
 
         REQUIRE(sites[2].pos == range(0,1010,1012));
         REQUIRE(sites[2].alleles.size() == 2);
-        REQUIRE(sites[2].alleles[0] == "CC");
-        REQUIRE(sites[2].alleles[1] == "AG");
+        REQUIRE(sites[2].alleles[0].dna == "CC");
+        REQUIRE(sites[2].alleles[1].dna == "AG");
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("CC"))] == 0);
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("AG"))] == 1);
-        REQUIRE(sites[2].allele_frequencies.size() == 2);
-        REQUIRE(sites[2].allele_frequencies[0] != sites[2].allele_frequencies[0]);
-        REQUIRE(sites[2].allele_frequencies[1] == 0.5f);
+        REQUIRE(sites[2].alleles[0].frequency != sites[2].alleles[0].frequency);
+        REQUIRE(sites[2].alleles[1].frequency == 0.5f);
 
         REQUIRE(sites[3].pos == range(0,1100,1101));
         REQUIRE(sites[3].alleles.size() == 2);
-        REQUIRE(sites[3].alleles[0] == "C");
-        REQUIRE(sites[3].alleles[1] == "A");
+        REQUIRE(sites[3].alleles[0].dna == "C");
+        REQUIRE(sites[3].alleles[1].dna == "A");
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("C"))] == 0);
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("A"))] == 1);
-        REQUIRE(sites[3].allele_frequencies.size() == 2);
-        REQUIRE(sites[3].allele_frequencies[0] != sites[3].allele_frequencies[0]);
-        REQUIRE(sites[3].allele_frequencies[1] == 0.5f);
+        REQUIRE(sites[3].alleles[0].frequency != sites[3].alleles[0].frequency);
+        REQUIRE(sites[3].alleles[1].frequency == 0.5f);
 
         REQUIRE(sites[4].pos == range(0,1102,1103));
         REQUIRE(sites[4].alleles.size() == 2);
-        REQUIRE(sites[4].alleles[0] == "C");
-        REQUIRE(sites[4].alleles[1] == "G");
+        REQUIRE(sites[4].alleles[0].dna == "C");
+        REQUIRE(sites[4].alleles[1].dna == "G");
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("C"))] == 0);
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("G"))] == 1);
-        REQUIRE(sites[4].allele_frequencies.size() == 2);
-        REQUIRE(sites[4].allele_frequencies[0] != sites[4].allele_frequencies[0]);
-        REQUIRE(sites[4].allele_frequencies[1] == 0.5f);
+        REQUIRE(sites[4].alleles[0].frequency != sites[4].alleles[0].frequency);
+        REQUIRE(sites[4].alleles[1].frequency == 0.5f);
 
         REQUIRE(sites[5].pos == range(0,1200,1201));
         REQUIRE(sites[5].alleles.size() == 2);
-        REQUIRE(sites[5].alleles[0] == "C");
-        REQUIRE(sites[5].alleles[1] == "A");
+        REQUIRE(sites[5].alleles[0].dna == "C");
+        REQUIRE(sites[5].alleles[1].dna == "A");
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("C"))] == 0);
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("A"))] == 1);
-        REQUIRE(sites[5].allele_frequencies.size() == 2);
-        REQUIRE(sites[5].allele_frequencies[0] != sites[5].allele_frequencies[0]);
-        REQUIRE(sites[5].allele_frequencies[1] == 0.5f);
+        REQUIRE(sites[5].alleles[0].frequency != sites[5].alleles[0].frequency);
+        REQUIRE(sites[5].alleles[1].frequency == 0.5f);
     }
 
     SECTION("2 trios") {
@@ -312,73 +306,67 @@ TEST_CASE("unified_sites") {
 
         REQUIRE(sites[0].pos == range(0,1000,1001));
         REQUIRE(sites[0].alleles.size() == 2);
-        REQUIRE(sites[0].alleles[0] == "A");
-        REQUIRE(sites[0].alleles[1] == "G");
+        REQUIRE(sites[0].alleles[0].dna == "A");
+        REQUIRE(sites[0].alleles[1].dna == "G");
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("A"))] == 0);
         REQUIRE(sites[0].unification[allele(range(0,1000,1001),string("G"))] == 1);
-        REQUIRE(sites[0].allele_frequencies.size() == 2);
-        REQUIRE(sites[0].allele_frequencies[0] != sites[0].allele_frequencies[0]);
-        REQUIRE(sites[0].allele_frequencies[1] == 0.5f);
+        REQUIRE(sites[0].alleles[0].frequency != sites[0].alleles[0].frequency);
+        REQUIRE(sites[0].alleles[1].frequency == 0.5f);
 
         REQUIRE(sites[1].pos == range(0,1001,1002));
         REQUIRE(sites[1].alleles.size() == 4);
-        REQUIRE(sites[1].alleles[0] == "C");
-        REQUIRE(sites[1].alleles[1] == "A");
-        REQUIRE(sites[1].alleles[2] == "G");
-        REQUIRE(sites[1].alleles[3] == "T");
+        REQUIRE(sites[1].alleles[0].dna == "C");
+        REQUIRE(sites[1].alleles[1].dna == "A");
+        REQUIRE(sites[1].alleles[2].dna == "G");
+        REQUIRE(sites[1].alleles[3].dna == "T");
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("C"))] == 0);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("A"))] == 1);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 2);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 3);
-        REQUIRE(sites[1].allele_frequencies.size() == 4);
-        REQUIRE(sites[1].allele_frequencies[0] != sites[1].allele_frequencies[0]);
-        REQUIRE(sites[1].allele_frequencies[1] == 0.5f);
-        REQUIRE(sites[1].allele_frequencies[2] == 0.166667f);
-        REQUIRE(sites[1].allele_frequencies[3] == 0.166667f);
+        REQUIRE(sites[1].alleles[0].frequency != sites[1].alleles[0].frequency);
+        REQUIRE(sites[1].alleles[1].frequency == 0.5f);
+        REQUIRE(sites[1].alleles[2].frequency == 0.166667f);
+        REQUIRE(sites[1].alleles[3].frequency == 0.166667f);
 
         REQUIRE(sites[2].pos == range(0,1010,1013));
         REQUIRE(sites[2].alleles.size() == 3);
-        REQUIRE(sites[2].alleles[0] == "CCC");
-        REQUIRE(sites[2].alleles[1] == "AGC");
-        REQUIRE(sites[2].alleles[2] == "AGA");
+        REQUIRE(sites[2].alleles[0].dna == "CCC");
+        REQUIRE(sites[2].alleles[1].dna == "AGC");
+        REQUIRE(sites[2].alleles[2].dna == "AGA");
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("CC"))] == 0);
         REQUIRE(sites[2].unification[allele(range(0,1010,1013),string("CCC"))] == 0);
         REQUIRE(sites[2].unification[allele(range(0,1010,1012),string("AG"))] == 1);
         REQUIRE(sites[2].unification[allele(range(0,1010,1013),string("AGA"))] == 2);
-        REQUIRE(sites[2].allele_frequencies.size() == 3);
-        REQUIRE(sites[2].allele_frequencies[0] != sites[2].allele_frequencies[0]);
-        REQUIRE(sites[2].allele_frequencies[1] == 0.25f);
-        REQUIRE(sites[2].allele_frequencies[2] == 0.166667f);
+        REQUIRE(sites[2].alleles[0].frequency != sites[2].alleles[0].frequency);
+        REQUIRE(sites[2].alleles[1].frequency == 0.25f);
+        REQUIRE(sites[2].alleles[2].frequency == 0.166667f);
 
         REQUIRE(sites[3].pos == range(0,1100,1101));
         REQUIRE(sites[3].alleles.size() == 2);
-        REQUIRE(sites[3].alleles[0] == "C");
-        REQUIRE(sites[3].alleles[1] == "A");
+        REQUIRE(sites[3].alleles[0].dna == "C");
+        REQUIRE(sites[3].alleles[1].dna == "A");
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("C"))] == 0);
         REQUIRE(sites[3].unification[allele(range(0,1100,1101),string("A"))] == 1);
-        REQUIRE(sites[3].allele_frequencies.size() == 2);
-        REQUIRE(sites[3].allele_frequencies[0] != sites[3].allele_frequencies[0]);
-        REQUIRE(sites[3].allele_frequencies[1] == 0.25f);
+        REQUIRE(sites[3].alleles[0].frequency != sites[3].alleles[0].frequency);
+        REQUIRE(sites[3].alleles[1].frequency == 0.25f);
 
         REQUIRE(sites[4].pos == range(0,1102,1103));
         REQUIRE(sites[4].alleles.size() == 2);
-        REQUIRE(sites[4].alleles[0] == "C");
-        REQUIRE(sites[4].alleles[1] == "G");
+        REQUIRE(sites[4].alleles[0].dna == "C");
+        REQUIRE(sites[4].alleles[1].dna == "G");
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("C"))] == 0);
         REQUIRE(sites[4].unification[allele(range(0,1102,1103),string("G"))] == 1);
-        REQUIRE(sites[4].allele_frequencies.size() == 2);
-        REQUIRE(sites[4].allele_frequencies[0] != sites[4].allele_frequencies[0]);
-        REQUIRE(sites[4].allele_frequencies[1] == 0.25f);
+        REQUIRE(sites[4].alleles[0].frequency != sites[4].alleles[0].frequency);
+        REQUIRE(sites[4].alleles[1].frequency == 0.25f);
 
         REQUIRE(sites[5].pos == range(0,1200,1201));
         REQUIRE(sites[5].alleles.size() == 2);
-        REQUIRE(sites[5].alleles[0] == "C");
-        REQUIRE(sites[5].alleles[1] == "A");
+        REQUIRE(sites[5].alleles[0].dna == "C");
+        REQUIRE(sites[5].alleles[1].dna == "A");
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("C"))] == 0);
         REQUIRE(sites[5].unification[allele(range(0,1200,1201),string("A"))] == 1);
-        REQUIRE(sites[5].allele_frequencies.size() == 2);
-        REQUIRE(sites[5].allele_frequencies[0] != sites[5].allele_frequencies[0]);
-        REQUIRE(sites[5].allele_frequencies[1] == 0.25f);
+        REQUIRE(sites[5].alleles[0].frequency != sites[5].alleles[0].frequency);
+        REQUIRE(sites[5].alleles[1].frequency == 0.25f);
 
         // An allele from trio2 that would collapse sites[3] and sites[4] was
         // pruned.
@@ -489,32 +477,32 @@ TEST_CASE("gVCF genotyper") {
         vector<unified_site> sites;
 
         unified_site us(range(0,10009461,10009462));
-        us.alleles.push_back("T");
-        us.alleles.push_back("A");
         us.unification[allele(range(0,10009461,10009462),"T")] = 0;
         us.unification[allele(range(0,10009461,10009462),"A")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009461,10009462),"T"));
+        us.alleles.push_back(unified_allele(range(0,10009461,10009462),"A"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         us.pos = range(0,10009462,10009463);
         us.alleles.clear();
-        us.alleles.push_back("C");
-        us.alleles.push_back("G");
         us.unification.clear();
         us.unification[allele(range(0,10009462,10009463),"C")] = 0;
         us.unification[allele(range(0,10009462,10009463),"G")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009462,10009463),"C"));
+        us.alleles.push_back(unified_allele(range(0,10009462,10009463),"G"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         // this site spans two gVCF records and will not be called by the current algorithm.
         us.pos = range(0,10009465,10009467);
         us.alleles.clear();
-        us.alleles.push_back("AA");
-        us.alleles.push_back("GT");
         us.unification.clear();
         us.unification[allele(range(0,10009465,10009467),"AA")] = 0;
         us.unification[allele(range(0,10009465,10009467),"GT")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009465,10009467),"AA"));
+        us.alleles.push_back(unified_allele(range(0,10009465,10009467),"GT"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         s = svc->genotype_sites(genotyper_config(), string("NA12878D_HiSeqX.21.10009462-10009469"), sites, tfn);
@@ -525,31 +513,31 @@ TEST_CASE("gVCF genotyper") {
         vector<unified_site> sites;
 
         unified_site us(range(0,10009463,10009465));
-        us.alleles.push_back("TA");
-        us.alleles.push_back("T");
         us.unification[allele(range(0,10009463,10009465),"TA")] = 0;
         us.unification[allele(range(0,10009463,10009465),"T")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009463,10009465),"TA"));
+        us.alleles.push_back(unified_allele(range(0,10009463,10009465),"T"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         us.pos = range(0,10009465,10009466);
         us.alleles.clear();
-        us.alleles.push_back("A");
-        us.alleles.push_back("G");
         us.unification.clear();
         us.unification[allele(range(0,10009465,10009466),"A")] = 0;
         us.unification[allele(range(0,10009465,10009466),"G")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009465,10009466),"A"));
+        us.alleles.push_back(unified_allele(range(0,10009465,10009466),"G"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         us.pos = range(0,10009466,10009467);
         us.alleles.clear();
-        us.alleles.push_back("A");
-        us.alleles.push_back("C");
         us.unification.clear();
         us.unification[allele(range(0,10009466,10009467),"A")] = 0;
         us.unification[allele(range(0,10009466,10009467),"C")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009466,10009467),"A"));
+        us.alleles.push_back(unified_allele(range(0,10009466,10009467),"C"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         genotyper_config cfg;
@@ -564,11 +552,11 @@ TEST_CASE("gVCF genotyper") {
         vector<unified_site> sites;
 
         unified_site us(range(0,10009463,10009465));
-        us.alleles.push_back("TA");
-        us.alleles.push_back("T");
         us.unification[allele(range(0,10009463,10009465),"TA")] = 0;
         us.unification[allele(range(0,10009463,10009465),"T")] = 1;
-        us.allele_frequencies = { NAN, 0.1 };
+        us.alleles.push_back(unified_allele(range(0,10009463,10009465),"TA"));
+        us.alleles.push_back(unified_allele(range(0,10009463,10009465),"T"));
+        us.alleles[1].frequency = 0.1;
         sites.push_back(us);
 
         genotyper_config cfg;

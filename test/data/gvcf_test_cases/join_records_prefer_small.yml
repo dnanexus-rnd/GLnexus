@@ -35,24 +35,22 @@ unifier_config:
   preference: small
 
 truth_unified_sites:
-    - range: {ref: A, beg: 1000, end: 1000}
-      alleles: [T, A]
-      allele_frequencies: [.nan, 0.125]
-      lost_allele_frequency: 0.25
+- range: {ref: A, beg: 1000, end: 1000}
+  alleles:
+    - dna: T
+    - dna: A
       quality: 232
-      unification:
-        - range: {beg: 1000, end: 1000}
-          dna: A
-          to: 1
-    - range: {ref: A, beg: 1002, end: 1002}
-      alleles: [C, G]
-      allele_frequencies: [.nan, 0.125]
-      lost_allele_frequency: 0.25
+      frequency: 0.125
+  lost_allele_frequency: 0.25
+  quality: 232
+- range: {ref: A, beg: 1002, end: 1002}
+  alleles:
+    - dna: C
+    - dna: G
       quality: 232
-      unification:
-        - range: {beg: 1002, end: 1002}
-          dna: G
-          to: 1
+      frequency: 0.125
+  lost_allele_frequency: 0.25
+  quality: 232
 
 truth_output_vcf:
   - truth.vcf: |

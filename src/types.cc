@@ -344,11 +344,12 @@ static Status capnp_write_discovered_alleles_fd(unsigned int sample_count,
         auto &val = kv.second;
 
         auto al_pk = alleles_pk[cursor];
-        capnp::Range::Builder range = al_pk.initRange();
+        auto al = al_pk.initAllele();
+        capnp::Range::Builder range = al.initPos();
         range.setRid(key.pos.rid);
         range.setBeg(key.pos.beg);
         range.setEnd(key.pos.end);
-        al_pk.setDna(key.dna.c_str());
+        al.setDna(key.dna.c_str());
 
         al_pk.setIsRef(val.is_ref);
         al_pk.setAllFiltered(val.all_filtered);
@@ -435,11 +436,12 @@ static Status _capnp_read_discovered_alleles_fd(int fd,
     dsals.clear();
     for (auto al : dsals_pk.getAlleles()) {
         // Unpack allele
-        capnp::Range::Reader range_pk = al.getRange();
+        capnp::Allele::Reader al_pk = al.getAllele();
+        capnp::Range::Reader range_pk = al_pk.getPos();
         range r(range_pk.getRid(),
                 range_pk.getBeg(),
                 range_pk.getEnd());
-        string dna = al.getDna();
+        string dna = al_pk.getDna();
         allele alle(r, dna);
 
         // Unpack allele-info
@@ -545,20 +547,26 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
     }
 
     ans << YAML::Key << "alleles";
-    ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    ans << YAML::Value << YAML::BeginSeq;
     for (const auto& allele : alleles) {
-        ans << allele;
-    }
-    ans << YAML::EndSeq;
-
-    ans << YAML::Key << "allele_frequencies";
-    ans << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (auto f : allele_frequencies) {
-        if (f == f)
-            ans << f;
-        else
-            // working around yaml-cpp issue: it emits "nan", not ".nan"
-            ans << ".nan";
+        ans << YAML::BeginMap;
+        ans << YAML::Key << "dna" << YAML::Value << allele.dna;
+        if (allele.normalized != GLnexus::allele(pos, allele.dna)) {
+            ans << YAML::Key << "normalized" << YAML::Value
+                << YAML::BeginMap << YAML::Key << "range" << YAML::Value;
+            S(range_yaml(contigs, allele.normalized.pos, ans, true));
+            ans << YAML::Key << "dna" << YAML::Value << allele.normalized.dna
+                << YAML::EndMap;
+        }
+        if (allele.quality) {
+            ans << YAML::Key << "quality"
+                << YAML::Value << allele.quality;
+        }
+        auto f = allele.frequency;
+        if (f == f) {
+            ans << YAML::Key << "frequency" << YAML::Value << f;
+        }
+        ans << YAML::EndMap;
     }
     ans << YAML::EndSeq;
 
@@ -573,30 +581,50 @@ Status unified_site::yaml(const std::vector<std::pair<std::string,size_t> >& con
         ans << YAML::Key << "monoallelic" << YAML::Value << true;
     }
 
-    ans << YAML::Key << "unification";
-    ans << YAML::Value << YAML::BeginSeq;
-    // sort unification entries by to, then by range, then by dna
-    vector<pair<allele,int>> u(unification.begin(), unification.end());
-    sort(u.begin(), u.end(),
-         [] (const pair<allele,int>& p1, const pair<allele,int>& p2) {
-            if (p1.second != p2.second) return p1.second < p2.second;
-            if (p1.first.pos != p2.first.pos) return p1.first.pos < p2.first.pos;
-            return p1.first.dna < p2.first.dna;
-         });
-    for (const auto& p : u) {
-        ans << YAML::BeginMap;
-        ans << YAML::Key << "range" << YAML::Value;
-        S(range_yaml(contigs, p.first.pos, ans, true));
-        ans << YAML::Key << "dna";
-        ans << YAML::Value << p.first.dna;
-        ans << YAML::Key << "to";
-        ans << YAML::Value << p.second;
-        ans << YAML::EndMap;
+    // copy unification without implicit entries
+    map<allele,int> unification2;
+    for (const auto& p : unification) {
+        const auto& al = alleles.at(p.second);
+        if (p.first != allele(pos, al.dna) && p.first != al.normalized) {
+            unification2.insert(p);
+        }
     }
-    ans << YAML::EndSeq;
+    if (unification2.size()) {
+        // sort unification entries by to, then by range, then by dna
+        vector<pair<allele,int>> u(unification2.begin(), unification2.end());
+        sort(u.begin(), u.end(),
+            [] (const pair<allele,int>& p1, const pair<allele,int>& p2) {
+                if (p1.second != p2.second) return p1.second < p2.second;
+                if (p1.first.pos != p2.first.pos) return p1.first.pos < p2.first.pos;
+                return p1.first.dna < p2.first.dna;
+            });
+        ans << YAML::Key << "unification";
+        ans << YAML::Value << YAML::BeginSeq;
+        for (const auto& p : u) {
+            const auto& allele = alleles.at(p.second);
+            if (p.first != GLnexus::allele(pos, allele.dna) && p.first != allele.normalized) {
+                ans << YAML::BeginMap;
+                ans << YAML::Key << "range" << YAML::Value;
+                S(range_yaml(contigs, p.first.pos, ans, true));
+                ans << YAML::Key << "dna";
+                ans << YAML::Value << p.first.dna;
+                ans << YAML::Key << "to";
+                ans << YAML::Value << p.second;
+                ans << YAML::EndMap;
+            }
+        }
+        ans << YAML::EndSeq;
+    }
 
     ans << YAML::EndMap;
     return Status::OK();
+}
+
+void unified_site::fill_implicit_unification() {
+    for (int i = 0; i < alleles.size(); i++) {
+        unification[allele(pos, alleles[i].dna)] = i;
+        unification[alleles[i].normalized] = i;
+    }
 }
 
 Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,size_t> >& contigs,
@@ -620,51 +648,64 @@ Status unified_site::of_yaml(const YAML::Node& yaml, const vector<pair<string,si
     const auto n_alleles = yaml["alleles"];
     VR(n_alleles && n_alleles.IsSequence(), "missing 'alleles' field");
     for (YAML::const_iterator al = n_alleles.begin(); al != n_alleles.end(); ++al) {
-        V(al->IsScalar(), "invalid allele");
-        ans.alleles.push_back(al->Scalar());
+        VR(al->IsMap(), "invalid allele");
+        auto allele = *al;
+        VR(allele["dna"] && allele["dna"].IsScalar(), "missing/invalid allele dna");
+        unified_allele ua(ans.pos, allele["dna"].Scalar());
+
+        if(allele["normalized"]) {
+            VR(allele["normalized"].IsMap() && allele["normalized"]["range"], "invalid normalized allele field");
+            S(range_of_yaml(allele["normalized"]["range"], contigs, ua.normalized.pos, ans.pos.rid));
+            VR(allele["normalized"]["dna"] && allele["normalized"]["dna"].IsScalar(), "invalid normalized allele dna");
+            ua.normalized.dna = allele["normalized"]["dna"].Scalar();
+        }
+
+        const auto n_quality = allele["quality"];
+        if (n_quality) {
+            VR(n_quality && n_quality.IsScalar(), "invalid 'quality' field in allele info");
+            ua.quality = n_quality.as<int>();
+        }
+
+        const auto n_frequency = allele["frequency"];
+        if (n_frequency) {
+            VR(n_frequency.IsScalar(), "invalid 'frequency' field in allele info");
+            ua.frequency = n_frequency.as<float>();
+            VR(ua.frequency >= 0.0 && ua.frequency <= 1.0, "invalid 'frequency' field in allele info");
+        }
+
+        ans.alleles.push_back(ua);
     }
     VR(ans.alleles.size() >= 2, "not enough alleles");
 
     ans.unification.clear();
+    ans.fill_implicit_unification();
     const auto n_unification = yaml["unification"];
-    VR(n_unification && n_unification.IsSequence(), "missing 'unification' field");
-    for (YAML::const_iterator p = n_unification.begin(); p != n_unification.end(); ++p) {
-        VR(p->IsMap(), "invalid unification entry");
+    if (n_unification) {
+        VR(n_unification.IsSequence(), "missing 'unification' field");
+        for (YAML::const_iterator p = n_unification.begin(); p != n_unification.end(); ++p) {
+            VR(p->IsMap(), "invalid unification entry");
 
-        range urange(-1,-1,-1);
-        const auto n_urange = (*p)["range"];
-        VR(n_urange, "missing 'range' field in unification entry");
-        S(range_of_yaml(n_urange, contigs, urange, ans.pos.rid));
-        VR(ans.pos.rid == urange.rid, "unification entry is on different contig than site");
+            range urange(-1,-1,-1);
+            const auto n_urange = (*p)["range"];
+            VR(n_urange, "missing 'range' field in unification entry");
+            S(range_of_yaml(n_urange, contigs, urange, ans.pos.rid));
+            VR(ans.pos.rid == urange.rid, "unification entry is on different contig than site");
 
-        const auto n_udna = (*p)["dna"];
-        VR(n_udna && n_udna.IsScalar(), "missing/invalid 'dna' field in unification entry");
-        const string& dna = n_udna.Scalar();
-        VR(dna.size() > 0, "empty 'dna' in unification entry");
+            const auto n_udna = (*p)["dna"];
+            VR(n_udna && n_udna.IsScalar(), "missing/invalid 'dna' field in unification entry");
+            const string& dna = n_udna.Scalar();
+            VR(dna.size() > 0, "empty 'dna' in unification entry");
 
-        const auto n_uto = (*p)["to"];
-        VR(n_uto && n_uto.IsScalar(), "missing/invalid 'to' field in unification entry");
-        int to = n_uto.as<int>();
-        VR(to >= 0 && to < ans.alleles.size(), "invalid 'to' field in unification entry");
+            const auto n_uto = (*p)["to"];
+            VR(n_uto && n_uto.IsScalar(), "missing/invalid 'to' field in unification entry");
+            int to = n_uto.as<int>();
+            VR(to >= 0 && to < ans.alleles.size(), "invalid 'to' field in unification entry");
 
-        allele al(urange,dna);
-        VR(ans.unification.find(al) == ans.unification.end(), "duplicate unification entries");
-        ans.unification[al] = to;
-    }
-    VR(ans.unification.size() >= 1, "not enough unification entries");
-
-    ans.allele_frequencies.clear();
-    const auto n_obs = yaml["allele_frequencies"];
-    VR(n_obs && n_obs.IsSequence(), "missing 'allele_frequencies' field");
-    for (YAML::const_iterator freq = n_obs.begin(); freq != n_obs.end(); ++freq) {
-        VR(freq->IsScalar(), "invalid allele_frequencies");
-        float freqf = freq->as<float>();
-        if (freqf == freqf) {
-            VR(freqf >= 0.0 && freqf <= 1.0, "invalid allele_frequencies");
+            allele al(urange,dna);
+            VR(ans.unification.find(al) == ans.unification.end() || ans.unification[al] == to, "inconsistent unification entries");
+            ans.unification[al] = to;
         }
-        ans.allele_frequencies.push_back(freqf);
     }
-    VR(ans.allele_frequencies.size() == ans.alleles.size(), "allele_frequencies list has wrong length");
 
     ans.lost_allele_frequency = 0.0f;
     const auto n_laf = yaml["lost_allele_frequency"];
@@ -699,7 +740,6 @@ static Status capnp_write_unified_sites_fd(const vector<unified_site> &sites, in
     int i = 0;
     for (const auto& site : sites) {
         auto site_b = sites_b[i++];
-        int j;
 
         auto pos_b = site_b.initPos();
         pos_b.setRid(site.pos.rid);
@@ -715,26 +755,47 @@ static Status capnp_write_unified_sites_fd(const vector<unified_site> &sites, in
             site_b.getInTargetOption().setNoInTarget(::capnp::VOID);
         }
 
-        auto alleles_b = site_b.initAlleles(site.alleles.size());
-        for (j = 0; j < site.alleles.size(); j++) {
-            alleles_b.set(j, site.alleles[j]);
-        }
-
-        auto unification_b = site_b.initUnification(site.unification.size());
-        j = 0;
+        // copy unification without implicit entries
+        map<allele,int> unification;
         for (const auto& p : site.unification) {
-            auto oa_b = unification_b[j++];
-            auto oa_pos_b = oa_b.initPos();
-            oa_pos_b.setRid(p.first.pos.rid);
-            oa_pos_b.setBeg(p.first.pos.beg);
-            oa_pos_b.setEnd(p.first.pos.end);
-            oa_b.setDna(p.first.dna);
-            oa_b.setUnifiedAllele(p.second);
+            const auto& al = site.alleles.at(p.second);
+            if (p.first != allele(site.pos, al.dna) && p.first != al.normalized) {
+                unification.insert(p);
+            }
+        }
+        if (unification.size()) {
+            auto unification_b = site_b.initUnification(unification.size());
+            int j = 0;
+            for (const auto& p : unification) {
+                auto oa_b = unification_b[j++];
+                auto repr_b = oa_b.initRepresentation();
+                auto repr_pos_b = repr_b.initPos();
+                repr_pos_b.setRid(p.first.pos.rid);
+                repr_pos_b.setBeg(p.first.pos.beg);
+                repr_pos_b.setEnd(p.first.pos.end);
+                repr_b.setDna(p.first.dna);
+                oa_b.setUnifiedAllele(p.second);
+            }
         }
 
-        auto allele_frequencies_b = site_b.initAlleleFrequencies(site.allele_frequencies.size());
-        for (j = 0; j < site.allele_frequencies.size(); j++) {
-            allele_frequencies_b.set(j, site.allele_frequencies[j]);
+        auto alleles_b = site_b.initAlleles(site.alleles.size());
+        int j = 0;
+        for (const auto& info : site.alleles) {
+            auto info_b = alleles_b[j++];
+
+            info_b.setDna(info.dna);
+
+            if (info.normalized != allele(site.pos, info.dna)) {
+                auto normalized_b = info_b.initNormalized();
+                auto normalized_pos_b = normalized_b.initPos();
+                normalized_pos_b.setRid(info.normalized.pos.rid);
+                normalized_pos_b.setBeg(info.normalized.pos.beg);
+                normalized_pos_b.setEnd(info.normalized.pos.end);
+                normalized_b.setDna(info.normalized.dna);
+            }
+
+            info_b.setQuality(info.quality);
+            info_b.setFrequency(info.frequency);
         }
 
         site_b.setLostAlleleFrequency(site.lost_allele_frequency);
@@ -789,26 +850,43 @@ static Status _capnp_read_unified_sites_fd(int fd, vector<unified_site>& sites) 
         if (ito_r.hasInTarget()) {
             const auto it_r = ito_r.getInTarget();
             site.in_target.rid = it_r.getRid();
+            assert(site.in_target.rid == pos.rid);
             site.in_target.beg = it_r.getBeg();
             site.in_target.end = it_r.getEnd();
         }
 
-        for (const auto& al : site_r.getAlleles()) {
-            site.alleles.push_back(string(al));
+        for (const auto al_r : site_r.getAlleles()) {
+            string dna = al_r.getDna();
+            unified_allele ua(pos, dna);
+
+            if (al_r.hasNormalized()) {
+                const auto norm_r = al_r.getNormalized();
+                ua.normalized.pos.rid = norm_r.getPos().getRid();
+                assert(ua.normalized.pos.rid == pos.rid);
+                ua.normalized.pos.beg = norm_r.getPos().getBeg();
+                ua.normalized.pos.end = norm_r.getPos().getEnd();
+                ua.normalized.dna = norm_r.getDna();
+                assert(ua.normalized.dna.size());
+            }
+
+            ua.quality = al_r.getQuality();
+            ua.frequency = al_r.getFrequency();
+
+            site.alleles.push_back(ua);
         }
+        assert(site.alleles.size() >= 2);
 
-        for (const auto oa_r : site_r.getUnification()) {
-            range oa_pos(-1,-1,-1);
-            auto oa_pos_r = oa_r.getPos();
-            oa_pos.rid = oa_pos_r.getRid();
-            oa_pos.beg = oa_pos_r.getBeg();
-            oa_pos.end = oa_pos_r.getEnd();
-
-            site.unification[allele(oa_pos, oa_r.getDna())] = oa_r.getUnifiedAllele();
-        }
-
-        for (const auto x : site_r.getAlleleFrequencies()) {
-            site.allele_frequencies.push_back(x);
+        site.fill_implicit_unification();
+        if (site_r.hasUnification()) {
+            for (const auto u_r : site_r.getUnification()) {
+                auto pos_r = u_r.getRepresentation().getPos();
+                allele repr(range(pos_r.getRid(), pos_r.getBeg(), pos_r.getEnd()),
+                            u_r.getRepresentation().getDna());
+                assert(repr.pos.rid == pos.rid);
+                assert(repr.dna.size());
+                site.unification[repr] = u_r.getUnifiedAllele();
+                assert(site.unification[repr] >= 0 && site.unification[repr] < site.alleles.size());
+            }
         }
 
         site.lost_allele_frequency = site_r.getLostAlleleFrequency();

@@ -155,7 +155,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
         if (vr.allele_mapping.at(als.first) == -1 || vr.allele_mapping.at(als.second) == -1) {
             gt_log_prior[gt] = lost_log_prior;
         } else if (als.first > 0 && als.first == als.second) {
-            gt_log_prior[gt] = log(std::max(us.allele_frequencies[vr.allele_mapping[als.first]],
+            gt_log_prior[gt] = log(std::max(us.alleles[vr.allele_mapping[als.first]].frequency,
                                             cfg.min_assumed_allele_frequency));
         }
     }
@@ -815,7 +815,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // alleles
     vector<const char*> c_alleles;
     for (const auto& allele : site.alleles) {
-        c_alleles.push_back(allele.c_str());
+        c_alleles.push_back(allele.dna.c_str());
     }
     if (bcf_update_alleles(hdr, ans.get(), c_alleles.data(), c_alleles.size()) != 0) {
         return Status::Failure("bcf_update_alleles");

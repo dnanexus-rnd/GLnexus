@@ -232,37 +232,28 @@ alleles: yyy
 
     const char* snp = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
-alleles: [A, G]
-allele_frequencies: [.nan, 0.51]
+alleles:
+- dna: A
+- dna: G
+  frequency: 0.51
 quality: 317
-unification:
-  - range: {ref: '17', beg: 100, end: 100}
-    dna: A
-    to: 0
-  - range: {ref: '17', beg: 100, end: 100}
-    dna: G
-    to: 1
+unification: []
 )";
 
 
     const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
-alleles: [AG, AC, C]
-allele_frequencies: [.nan, 0.50, 0.1]
+alleles:
+- dna: AG
+- dna: AC
+  frequency: 0.50
+- dna: C
+  frequency: 0.1
 quality: 317
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
-    dna: AG
-    to: 0
-  - range: {ref: '17', beg: 1000, end: 1001}
-    dna: AC
-    to: 1
-  - range: {ref: '17', beg: 1000, end: 1001}
     dna: C
     to: 2
-  - range: {ref: '17', beg: 1001, end: 1001}
-    dna: C
-    to: 1
 )";
 
     SECTION("yaml_of_unified_sites") {

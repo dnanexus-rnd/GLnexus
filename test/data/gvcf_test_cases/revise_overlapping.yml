@@ -45,14 +45,13 @@ unifier_config:
 
 truth_unified_sites:
     - range: {ref: A, beg: 907971, end: 907971}
-      alleles: [C, A]
-      allele_frequencies: [.nan, 0.375]
+      alleles:
+      - dna: C
+      - dna: A
+        quality: 757
+        frequency: 0.375
       lost_allele_frequency: 0.125
       quality: 757
-      unification:
-        - range: {beg: 907971, end: 907971}
-          dna: A
-          to: 1
 
 genotyper_config:
     revise_genotypes: true

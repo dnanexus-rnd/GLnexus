@@ -68,14 +68,13 @@ genotyper_config:
       count: 4
 
 truth_unified_sites:
-    - range: {ref: "A", beg: 1000, end: 1000}
-      alleles: [C, CG]
-      allele_frequencies: [.nan, 0.5]
+- range: {ref: A, beg: 1000, end: 1000}
+  alleles:
+    - dna: C
+    - dna: CG
       quality: 35
-      unification:
-        - range: {beg: 1000, end: 1000}
-          dna: CG
-          to: 1
+      frequency: 0.5
+  quality: 35
 
 truth_output_vcf:
   - truth.vcf: |

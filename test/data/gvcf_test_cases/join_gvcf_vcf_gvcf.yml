@@ -48,20 +48,19 @@ input:
         A	998	.	G	<NON_REF>	.	.	END=1038	GT:DP:GQ:MIN_DP:PL	0/0:25:57:24:0,57,855
 
 truth_unified_sites:
-    - range: {ref: "A", beg: 999, end: 1001}
-      alleles: [ATG, ATCG, A]
-      allele_frequencies: [.nan, 0.25, 0.125]
+- range: {ref: A, beg: 999, end: 1001}
+  alleles:
+    - dna: ATG
+    - dna: ATCG
+      normalized:
+        range: {beg: 1000, end: 1000}
+        dna: TC
       quality: 317
-      unification:
-        - range: {beg: 1000, end: 1000}
-          dna: TC
-          to: 1
-        - range: {beg: 999, end: 1001}
-          dna: ATCG
-          to: 1
-        - range: {beg: 999, end: 1001}
-          dna: A
-          to: 2
+      frequency: 0.25
+    - dna: A
+      quality: 169
+      frequency: 0.125
+  quality: 317
 
 truth_output_vcf:
   - truth.vcf: |

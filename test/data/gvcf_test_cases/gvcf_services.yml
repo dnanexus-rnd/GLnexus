@@ -37,38 +37,34 @@ input:
         21	10009466	.	AA	GT,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
 
 truth_unified_sites:
-    - range: {ref: "21", beg: 10009462, end: 10009462}
-      alleles: [T, A]
-      allele_frequencies: [.nan, 0.25]
+- range: {ref: 21, beg: 10009462, end: 10009462}
+  alleles:
+    - dna: T
+    - dna: A
       quality: 16
-      unification:
-        - range: {beg: 10009462, end: 10009462}
-          dna: A
-          to: 1
-    - range: {ref: "21", beg: 10009463, end: 10009463}
-      alleles: [C, G]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 16
+- range: {ref: 21, beg: 10009463, end: 10009463}
+  alleles:
+    - dna: C
+    - dna: G
       quality: 16
-      unification:
-        - range: {beg: 10009463, end: 10009463}
-          dna: G
-          to: 1
-    - range: {ref: "21", beg: 10009464, end: 10009465}
-      alleles: [TA, T]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 16
+- range: {ref: 21, beg: 10009464, end: 10009465}
+  alleles:
+    - dna: TA
+    - dna: T
       quality: 16
-      unification:
-        - range: {beg: 10009464, end: 10009465}
-          dna: T
-          to: 1
-    - range: {ref: "21", beg: 10009466, end: 10009467}
-      alleles: [AA, GT]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 16
+- range: {ref: 21, beg: 10009466, end: 10009467}
+  alleles:
+    - dna: AA
+    - dna: GT
       quality: 16
-      unification:
-        - range: {beg: 10009466, end: 10009467}
-          dna: GT
-          to: 1
+      frequency: 0.25
+  quality: 16
 
 truth_output_vcf:
   - truth.vcf: |

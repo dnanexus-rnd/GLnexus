@@ -159,49 +159,45 @@ truth_discovered_alleles:
       zygosity_by_GQ: [[1,0],[0,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
 
 truth_unified_sites:
-    - range: {ref: "21", beg: 10009461, end: 10009461}
-      alleles: [T, A]
-      allele_frequencies: [.nan, 0.25]
+- range: {ref: 21, beg: 10009461, end: 10009461}
+  alleles:
+    - dna: T
+    - dna: A
       quality: 20
-      unification:
-        - range: {beg: 10009461, end: 10009461}
-          dna: A
-          to: 1
-    - range: {ref: "21", beg: 10009465, end: 10009465}
-      alleles: [A, C]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 20
+- range: {ref: 21, beg: 10009465, end: 10009465}
+  alleles:
+    - dna: A
+    - dna: C
       quality: 12
-      unification:
-        - range: {beg: 10009464, end: 10009465}
-          dna: TC
-          to: 1
-        - range: {beg: 10009465, end: 10009465}
-          dna: C
-          to: 1
-    - range: {ref: 21, beg: 10009466, end: 10009466}
-      alleles: [T, A]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 12
+  unification:
+    - range: {beg: 10009464, end: 10009465}
+      dna: TC
+      to: 1
+- range: {ref: 21, beg: 10009466, end: 10009466}
+  alleles:
+    - dna: T
+    - dna: A
       quality: 16
-      unification:
-        - range: {beg: 10009466, end: 10009466}
-          dna: A
-          to: 1
-    - range: {ref: 21, beg: 10009467, end: 10009467}
-      alleles: [T, A]
-      allele_frequencies: [.nan, 0.25]
+      frequency: 0.25
+  quality: 16
+- range: {ref: 21, beg: 10009467, end: 10009467}
+  alleles:
+    - dna: T
+    - dna: A
       quality: 46
-      unification:
-        - range: {beg: 10009467, end: 10009467}
-          dna: A
-          to: 1
-    - range: {ref: "21", beg: 10009468, end: 10009468}
-      alleles: [T, A]
-      allele_frequencies: [.nan, 0.5]
+      frequency: 0.25
+  quality: 46
+- range: {ref: 21, beg: 10009468, end: 10009468}
+  alleles:
+    - dna: T
+    - dna: A
       quality: 6
-      unification:
-        - range: {beg: 10009468, end: 10009468}
-          dna: A
-          to: 1
+      frequency: 0.5
+  quality: 6
 
 
 truth_output_vcf:

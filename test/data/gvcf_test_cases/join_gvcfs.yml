@@ -43,14 +43,13 @@ input:
         A	1000	rs374290353	TTC	T,<NON_REF>	315.53	.	.	GT:AD:DP:GQ:PL:SB	0/1:103,15,0:118:99:232,0,3603,542,3649,4191:64,39,11,4
 
 truth_unified_sites:
-    - range: {ref: "A", beg: 1000, end: 1002}
-      alleles: [TTC, T]
-      allele_frequencies: [.nan, 0.375]
+- range: {ref: A, beg: 1000, end: 1002}
+  alleles:
+    - dna: TTC
+    - dna: T
       quality: 232
-      unification:
-        - range: {beg: 1000, end: 1002}
-          dna: T
-          to: 1
+      frequency: 0.375
+  quality: 232
 
 truth_output_vcf:
   - truth.vcf: |
