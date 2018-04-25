@@ -46,13 +46,12 @@ truth_discovered_alleles:
 
 truth_unified_sites:
     - range: {ref: A, beg: 36643700, end: 36643703}
-      alleles: [GAGA, G]
-      allele_frequencies: [.nan, 0.5]
+      alleles:
+      - dna: GAGA
+      - dna: G
+        quality: 1890
+        frequency: 0.5
       quality: 1890
-      unification:
-        - range: {beg: 36643700, end: 36643703}
-          dna: G
-          to: 1
 
 truth_output_vcf:
   - truth.vcf: |

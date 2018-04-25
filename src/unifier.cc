@@ -510,11 +510,10 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
 
     // fill out the unification
     unified_site us(pos);
-    us.alleles.push_back(ref.dna);
     // We don't attempt to specify the ref allele frequency for now; we don't quite
     // have enough information because the copy numbers in discovered_alleles omit
     // nearly all homozygous ref genotypes.
-    us.allele_frequencies.push_back(NAN);
+    us.alleles.push_back(unified_allele(ref.pos, ref.dna));
     for (int i = 1; i <= valts.size(); i++) {
         const minimized_allele& p = valts[i-1];
         UNPAIR(p, alt, alt_info);
@@ -522,15 +521,18 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         allele unified_alt(alt);
         S(pad_alt_allele(ref, unified_alt));
         assert(unified_alt.pos == ref.pos);
-
-        us.alleles.push_back(unified_alt.dna);
-        // TODO: configurable ploidy setting
+        unified_allele ua(unified_alt.pos, unified_alt.dna);
+        ua.normalized = alt;
+        ua.quality = alt_info.topAQ.V[0];
         float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
-        us.allele_frequencies.push_back(ceilf(freq*1e6f)/1e6f);
+        ua.frequency = ceilf(freq*1e6f)/1e6f;
+        us.alleles.push_back(ua);
+
         for (const auto& original : alt_info.originals) {
             us.unification[original] = i;
         }
     }
+    us.fill_implicit_unification();
 
     // Sum frequency of pruned alleles. In general this may be an overestimate when
     // some of those alleles co-occur in cis; we accept this possible error for now.

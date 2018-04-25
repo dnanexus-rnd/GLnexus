@@ -276,8 +276,11 @@ TEST_CASE("unified_site::of_yaml") {
 
     const char* snp = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
-alleles: [A, G]
-allele_frequencies: [.nan, 0.01]
+alleles:
+- dna: A
+- dna: G
+  quality: 88
+  frequency: 0.01
 lost_allele_frequency: 0.001
 quality: 100
 unification:
@@ -293,21 +296,33 @@ unification:
     #define VERIFY_SNP(us) \
         REQUIRE((us).pos == range(1, 99, 100)); \
         REQUIRE((us).alleles.size() == 2);      \
-        REQUIRE((us).alleles[0] == "A");        \
-        REQUIRE((us).alleles[1] == "G");        \
+        REQUIRE((us).alleles[0].dna == "A");        \
+        REQUIRE((us).alleles[1].dna == "G");        \
         REQUIRE((us).unification.size() == 2);  \
         REQUIRE((us).unification[allele(range(1, 99, 100), "A")] == 0); \
         REQUIRE((us).unification[allele(range(1, 99, 100), "G")] == 1); \
-        REQUIRE((us).allele_frequencies.size() == 2); \
-        REQUIRE((us).allele_frequencies[0] != (us).allele_frequencies[0]); \
-        REQUIRE((us).allele_frequencies[1] == 0.01f); \
+        REQUIRE((us).alleles[0].normalized == allele(range(1, 99, 100), "A")); \
+        REQUIRE((us).alleles[0].frequency != (us).alleles[0].frequency); \
+        REQUIRE((us).alleles[0].quality == 0); \
+        REQUIRE((us).alleles[1].normalized == allele(range(1, 99, 100), "G")); \
+        REQUIRE((us).alleles[1].frequency == 0.01f); \
+        REQUIRE((us).alleles[1].quality == 88); \
         REQUIRE((us).qual == 100)
 
 
     const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
-alleles: [AG, AC, C]
-allele_frequencies: [.nan, 0.05, 0.001]
+alleles:
+  - dna: AG
+  - dna: AC
+    normalized:
+      range: {ref: '17', beg: 1001, end: 1001}
+      dna: C
+    quality: 99
+    frequency: 0.05
+  - dna: C
+    quality: 88
+    frequency: 0.001
 quality: 100
 unification:
   - range: {ref: '17', beg: 1000, end: 1001}
@@ -316,20 +331,22 @@ unification:
   - range: {ref: '17', beg: 1000, end: 1001}
     dna: AC
     to: 1
-  - range: {ref: '17', beg: 1000, end: 1001}
-    dna: C
-    to: 2
   - range: {ref: '17', beg: 1001, end: 1001}
     dna: C
     to: 1
+  - range: {ref: '17', beg: 1000, end: 1001}
+    dna: C
+    to: 2
 )";
 
     #define VERIFY_DEL(us) \
         REQUIRE((us).pos == range(1, 999, 1001)); \
         REQUIRE((us).alleles.size() == 3);      \
-        REQUIRE((us).alleles[0] == "AG");       \
-        REQUIRE((us).alleles[1] == "AC");       \
-        REQUIRE((us).alleles[2] == "C");        \
+        REQUIRE((us).alleles[0].dna == "AG");       \
+        REQUIRE((us).alleles[1].dna == "AC");       \
+        REQUIRE((us).alleles[1].normalized.pos == range(1, 1000, 1001));       \
+        REQUIRE((us).alleles[1].normalized.dna == "C");       \
+        REQUIRE((us).alleles[2].dna == "C");        \
         REQUIRE((us).unification.size() == 4);  \
         REQUIRE((us).unification[allele(range(1, 999, 1001), "AG")] == 0); \
         REQUIRE((us).unification[allele(range(1, 999, 1001), "AC")] == 1); \
@@ -351,6 +368,7 @@ unification:
 
         unified_site us(range(-1,-1,-1));
         Status s = unified_site::of_yaml(n, contigs, us);
+        //cout << s.str() << endl;
         REQUIRE(s.ok());
         VERIFY_DEL(us);
     }
@@ -368,33 +386,42 @@ unification:
         REQUIRE(GLnexus::capnp_unified_sites_verify({us, us2}, "/tmp/unified_sites.capnp").ok());
     }
 
-    SECTION("optional ref") {
-        const char* snp_opt = 1 + R"(
-range: {ref: '17', beg: 100, end: 100}
-alleles: [A, G]
-allele_frequencies: [.nan, 0.01]
+    SECTION("implicits") {
+        const char* del2 = 1 + R"(
+range: {ref: '17', beg: 1000, end: 1001}
+alleles:
+  - dna: AG
+  - dna: AC
+    normalized:
+      range: {beg: 1001, end: 1001}
+      dna: C
+    quality: 99
+    frequency: 0.05
+  - dna: C
+    quality: 88
+    frequency: 0.001
 quality: 100
 unification:
-  - range: {beg: 100, end: 100}
-    dna: A
-    to: 0
-  - range: {beg: 100, end: 100}
-    dna: G
+  - range: {beg: 1001, end: 1001}
+    dna: C
     to: 1
 )";
-        YAML::Node n = YAML::Load(snp_opt);
+        YAML::Node n = YAML::Load(del2);
 
         unified_site us(range(-1,-1,-1));
         Status s = unified_site::of_yaml(n, contigs, us);
         REQUIRE(s.ok());
-        VERIFY_SNP(us);
+        VERIFY_DEL(us);
     }
 
     SECTION("bogus range") {
         const char* snp_bogus = 1 + R"(
 range: {ref: 'bogus', beg: 100, end: 100}
-alleles: [A, G]
-allele_frequencies: [.nan, 0.01]
+alleles:
+- dna: A
+- dna: G
+  quality: 88
+  frequency: 0.01
 quality: 100
 unification:
   - range: {beg: 100, end: 100}
@@ -407,12 +434,15 @@ unification:
         YAML::Node n = YAML::Load(snp_bogus);
 
         unified_site us(range(-1,-1,-1));
-        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).str().find("unknown contig") != string::npos);
 
         snp_bogus = 1 + R"(
 range: 12345
-alleles: [A, G]
-allele_frequencies: [.nan, 0.01]
+alleles:
+- dna: A
+- dna: G
+  quality: 88
+  frequency: 0.01
 quality: 100
 unification:
   - range: {beg: 100, end: 100}
@@ -429,8 +459,8 @@ unification:
     SECTION("bogus alleles") {
         const char* snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
-alleles: [A]
-allele_frequencies: [.nan, 0.01]
+alleles:
+- dna: A
 quality: 100
 unification:
   - range: {beg: 100, end: 100}
@@ -440,14 +470,17 @@ unification:
         YAML::Node n = YAML::Load(snp_bogus);
 
         unified_site us(range(-1,-1,-1));
-        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).str().find("not enough alleles") != string::npos);
     }
 
     SECTION("bogus unification") {
         const char* snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
-alleles: [A, G]
-allele_frequencies: [.nan, 0.01]
+alleles:
+- dna: A
+- dna: G
+  quality: 88
+  frequency: 0.01
 quality: 100
 unification:
   - range: {ref: 'bogus', beg: 100, end: 100}
@@ -460,17 +493,48 @@ unification:
         YAML::Node n = YAML::Load(snp_bogus);
 
         unified_site us(range(-1,-1,-1));
-        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).str().find("unknown contig") != string::npos);
 
         snp_bogus = 1 + R"(
 range: {ref: '17', beg: 100, end: 100}
-alleles: [A, G]
-allele_frequencies: [.nan, 0.01]
+alleles:
+- dna: A
+- dna: G
+  quality: 88
+  frequency: 0.01
 quality: 100
 unification:
+- range: {beg: 100, end: 100}
+  dna: G
+  to: 0
 )";
         n = YAML::Load(snp_bogus);
-        REQUIRE(unified_site::of_yaml(n, contigs, us).bad());
+        REQUIRE(unified_site::of_yaml(n, contigs, us).str().find("inconsistent") != string::npos);
+    }
+
+    SECTION("bogus alllele info") {
+        const char* snp_bogus = 1 + R"(
+range: {ref: '17', beg: 100, end: 100}
+alleles:
+- dna: A
+- dna: G
+  normalized:
+    range: {ref: '17', beg: 100, end: 100}
+  quality: 88
+  frequency: 0.01
+quality: 100
+unification:
+  - range: {beg: 100, end: 100}
+    dna: A
+    to: 0
+  - range: {beg: 100, end: 100}
+    dna: G
+    to: 1
+)";
+        YAML::Node n = YAML::Load(snp_bogus);
+
+        unified_site us(range(-1,-1,-1));
+        REQUIRE(unified_site::of_yaml(n, contigs, us).str().find("invalid normalized") != string::npos);
     }
 }
 
@@ -483,21 +547,30 @@ TEST_CASE("unified_site::yaml") {
         const char* del = 1 + R"(
 range: {ref: '17', beg: 1000, end: 1001}
 in_target: {ref: '17', beg: 1, end: 10000}
-alleles: [AG, AC, C]
-allele_frequencies: [.nan, 0.05, 0.001]
+alleles:
+  - dna: AG
+  - dna: AC
+    normalized:
+      range: {beg: 1001, end: 1001}
+      dna: C
+    quality: 99
+    frequency: 0.05
+  - dna: C
+    quality: 88
+    frequency: 0.001
 quality: 100
 monoallelic: false
 unification:
-  - range: {ref: '17', beg: 1000, end: 1001}
+  - range: {beg: 1000, end: 1001}
     dna: AG
     to: 0
-  - range: {ref: '17', beg: 1000, end: 1001}
+  - range: {beg: 1000, end: 1001}
     dna: AC
     to: 1
-  - range: {ref: '17', beg: 1000, end: 1001}
+  - range: {beg: 1000, end: 1001}
     dna: C
     to: 2
-  - range: {ref: '17', beg: 1001, end: 1001}
+  - range: {beg: 1001, end: 1001}
     dna: C
     to: 1
 )";

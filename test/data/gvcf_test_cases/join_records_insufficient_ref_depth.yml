@@ -43,8 +43,17 @@ genotyper_config:
 
 truth_unified_sites:
     - range: {ref: "A", beg: 1000, end: 1002}
-      alleles: [TTC, T, TAC]
-      allele_frequencies: [.nan, 0.25, 0.125]
+      alleles:
+      - dna: TTC
+      - dna: T
+        quality: 232
+        frequency: 0.25
+      - dna: TAC
+        normalized:
+          range: {beg: 1001, end: 1001}
+          dna: A
+        quality: 232
+        frequency: 0.125
       quality: 232
       unification:
         - range: {beg: 1000, end: 1002}

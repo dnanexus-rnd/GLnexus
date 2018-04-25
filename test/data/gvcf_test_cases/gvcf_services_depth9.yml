@@ -38,14 +38,13 @@ genotyper_config:
   required_dp: 10
 
 truth_unified_sites:
-    - range: {ref: "21", beg: 10009464, end: 10009465}
-      alleles: [TA, T]
-      allele_frequencies: [.nan, 0.25]
+- range: {ref: 21, beg: 10009464, end: 10009465}
+  alleles:
+    - dna: TA
+    - dna: T
       quality: 16
-      unification:
-        - range: {beg: 10009464, end: 10009465}
-          dna: T
-          to: 1
+      frequency: 0.25
+  quality: 16
 
 truth_output_vcf:
   - truth.vcf: |

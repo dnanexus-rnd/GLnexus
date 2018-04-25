@@ -133,44 +133,46 @@ genotyper_config:
           ignore_non_variants: true
 
 truth_unified_sites:
-  - range: {ref: 12, beg: 111803962, end: 111803962}
-    alleles: [G, A]
-    allele_frequencies: [.nan, 0.333334]
-    quality: 770
-    unification:
-      - range: {beg: 111803962, end: 111803962}
-        dna: A
-        to: 1
-  - range: {ref: 12, beg: 112080563, end: 112080567}
-    alleles: [AACAC, A]
-    allele_frequencies: [.nan, 0.333334]
-    quality: 165
-    unification:
-      - range: {beg: 112080563, end: 112080567}
-        dna: A
-        to: 1
-  - range: {ref: 12, beg: 116271389, end: 116271391}
-    alleles: [CTT, C, CT]
-    allele_frequencies: [.nan, 0.166667, 0.166667]
-    quality: 538
-    unification:
-      - range: {beg: 116271389, end: 116271391}
+- range: {ref: 12, beg: 111803962, end: 111803962}
+  alleles:
+    - dna: G
+    - dna: A
+      quality: 770
+      frequency: 0.333334
+  quality: 770
+- range: {ref: 12, beg: 112080563, end: 112080567}
+  alleles:
+    - dna: AACAC
+    - dna: A
+      quality: 165
+      frequency: 0.333334
+  quality: 165
+- range: {ref: 12, beg: 116271389, end: 116271391}
+  alleles:
+    - dna: CTT
+    - dna: C
+      quality: 538
+      frequency: 0.166667
+    - dna: CT
+      normalized:
+        range: {beg: 116271389, end: 116271390}
         dna: C
-        to: 1
-      - range: {beg: 116271389, end: 116271390}
-        dna: C
-        to: 2
-  - range: {ref: 12, beg: 116271420, end: 116271422}
-    alleles: [TAC, T, TAG]
-    allele_frequencies: [.nan, 0.166667, 0.166667]
-    quality: 668
-    unification:
-      - range: {beg: 116271420, end: 116271422}
-        dna: T
-        to: 1
-      - range: {beg: 116271422, end: 116271422}
+      quality: 454
+      frequency: 0.166667
+  quality: 538
+- range: {ref: 12, beg: 116271420, end: 116271422}
+  alleles:
+    - dna: TAC
+    - dna: T
+      quality: 668
+      frequency: 0.166667
+    - dna: TAG
+      normalized:
+        range: {beg: 116271422, end: 116271422}
         dna: G
-        to: 2
+      quality: 301
+      frequency: 0.166667
+  quality: 668
 
 truth_output_vcf:
   - truth.vcf: |

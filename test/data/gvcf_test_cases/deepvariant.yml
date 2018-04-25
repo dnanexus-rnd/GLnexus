@@ -115,68 +115,64 @@ genotyper_config:
       count: 0
 
 truth_unified_sites:
-  - range: {ref: chr21, beg: 9412193, end: 9412193}
-    alleles: [C, T]
-    allele_frequencies: [.nan, 0.25]
-    quality: 18
-    unification:
-      - range: {beg: 9412193, end: 9412193}
-        dna: T
-        to: 1
-  - range: {ref: chr21, beg: 9412269, end: 9412269}
-    alleles: [A, T]
-    allele_frequencies: [.nan, 0.25]
-    quality: 28
-    unification:
-      - range: {beg: 9412269, end: 9412269}
-        dna: T
-        to: 1
-  - range: {ref: chr21, beg: 9412358, end: 9412359}
-    alleles: [TA, T]
-    allele_frequencies: [.nan, 0.25]
-    quality: 35
-    unification:
-      - range: {beg: 9412358, end: 9412359}
-        dna: T
-        to: 1
-  - range: {ref: chr21, beg: 9412435, end: 9412435}
-    alleles: [T, A]
-    allele_frequencies: [.nan, 0.25]
-    quality: 23
-    unification:
-      - range: {beg: 9412435, end: 9412435}
+- range: {ref: chr21, beg: 9412193, end: 9412193}
+  alleles:
+    - dna: C
+    - dna: T
+      quality: 18
+      frequency: 0.25
+  quality: 18
+- range: {ref: chr21, beg: 9412269, end: 9412269}
+  alleles:
+    - dna: A
+    - dna: T
+      quality: 28
+      frequency: 0.25
+  quality: 28
+- range: {ref: chr21, beg: 9412358, end: 9412359}
+  alleles:
+    - dna: TA
+    - dna: T
+      quality: 35
+      frequency: 0.25
+  quality: 35
+- range: {ref: chr21, beg: 9412435, end: 9412435}
+  alleles:
+    - dna: T
+    - dna: A
+      quality: 23
+      frequency: 0.25
+  quality: 23
+- range: {ref: chr21, beg: 9412441, end: 9412444}
+  alleles:
+    - dna: TATA
+    - dna: T
+      quality: 31
+      frequency: 0.5
+  quality: 31
+- range: {ref: chr21, beg: 9418260, end: 9418260}
+  alleles:
+    - dna: A
+    - dna: T
+      quality: 43
+      frequency: 0.75
+    - dna: C
+      quality: 42
+      frequency: 0.25
+  quality: 43
+- range: {ref: chr21, beg: 11000381, end: 11000382}
+  alleles:
+    - dna: AG
+    - dna: A
+      quality: 2
+      frequency: 0.5
+    - dna: AA
+      normalized:
+        range: {beg: 11000382, end: 11000382}
         dna: A
-        to: 1
-  - range: {ref: chr21, beg: 9412441, end: 9412444}
-    alleles: [TATA, T]
-    allele_frequencies: [.nan, 0.5]
-    quality: 31
-    unification:
-      - range: {beg: 9412441, end: 9412444}
-        dna: T
-        to: 1
-  - range: {ref: chr21, beg: 9418260, end: 9418260}
-    alleles: [A, T, C]
-    allele_frequencies: [.nan, 0.75, 0.25]
-    quality: 43
-    unification:
-      - range: {beg: 9418260, end: 9418260}
-        dna: T
-        to: 1
-      - range: {beg: 9418260, end: 9418260}
-        dna: C
-        to: 2
-  - range: {ref: chr21, beg: 11000381, end: 11000382}
-    alleles: [AG, A, AA]
-    allele_frequencies: [.nan, 0.5, 0.5]
-    quality: 2
-    unification:
-      - range: {beg: 11000381, end: 11000382}
-        dna: A
-        to: 1
-      - range: {beg: 11000382, end: 11000382}
-        dna: A
-        to: 2
+      quality: 1
+      frequency: 0.5
+  quality: 2
 
 truth_output_vcf:
   - truth.vcf: |

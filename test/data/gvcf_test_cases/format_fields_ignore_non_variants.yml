@@ -74,17 +74,18 @@ genotyper_config:
       count: 0
 
 truth_unified_sites:
-    - range: {ref: "A", beg: 1000, end: 1001}
-      alleles: [GA, GAA, T]
-      allele_frequencies: [.nan, 0.333334, 0.166667]
+- range: {ref: A, beg: 1000, end: 1001}
+  alleles:
+    - dna: GA
+    - dna: GAA
+      normalized:
+        range: {beg: 1000, end: 1000}
+        dna: GA
+      frequency: 0.333334
+    - dna: T
       quality: 35
-      unification:
-        - range: {beg: 1000, end: 1000}
-          dna: GA
-          to: 1
-        - range: {beg: 1000, end: 1001}
-          dna: T
-          to: 2
+      frequency: 0.166667
+  quality: 35
 
 truth_output_vcf:
   - truth.vcf: |

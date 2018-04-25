@@ -41,23 +41,35 @@ input:
         A	1000	.	TAAA	T,TAAAA,<NON_REF>	530.87	.	.	GT:AD:DP:GQ:PL:SB	2/2:4,2,34,0:40:15:568,711,2775,15,142,0,581,805,97,662:1,3,24,10
 
 truth_unified_sites:
-    - range: {ref: "A", beg: 1000, end: 1001}
-      alleles: [TA, TAA, TAAA, T]
-      allele_frequencies: [.nan, 0.5, 0.125, 0.125]
+- range: {ref: A, beg: 1000, end: 1001}
+  alleles:
+    - dna: TA
+    - dna: TAA
+      normalized:
+        range: {beg: 1000, end: 1000}
+        dna: TA
       quality: 568
-      unification:
-        - range: {beg: 1000, end: 1002}
-          dna: TAAA
-          to: 1
-        - range: {beg: 1000, end: 1003}
-          dna: TAAAA
-          to: 1
-        - range: {beg: 1000, end: 1001}
-          dna: TAAA
-          to: 2
-        - range: {beg: 1000, end: 1002}
-          dna: TA
-          to: 3
+      frequency: 0.5
+    - dna: TAAA
+      normalized:
+        range: {beg: 1000, end: 1000}
+        dna: TAA
+      quality: 41
+      frequency: 0.125
+    - dna: T
+      quality: 5
+      frequency: 0.125
+  quality: 568
+  unification:
+    - range: {beg: 1000, end: 1002}
+      dna: TAAA
+      to: 1
+    - range: {beg: 1000, end: 1003}
+      dna: TAAAA
+      to: 1
+    - range: {beg: 1000, end: 1002}
+      dna: TA
+      to: 3
 
 truth_output_vcf:
   - truth.vcf: |
