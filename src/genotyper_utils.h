@@ -502,6 +502,7 @@ protected:
             } else if (format_one.empty() || field_info.combi_method == FieldCombinationMethod::MISSING) {
                 ans.push_back(".");
             } else if (field_info.combi_method == FieldCombinationMethod::SEMICOLON) {
+                return Status::NotImplemented("genotyper StringFormatFieldHelper::combine_format_data SEMICOLON"); /*
                 ostringstream oss;
                 bool first = true;
                 for (auto& s : format_one) {
@@ -511,7 +512,7 @@ protected:
                     oss << s;
                     first = false;
                 }
-                ans.push_back(oss.str());
+                ans.push_back(oss.str());*/
             } else {
                 return Status::Invalid("genotyper misconfiguration: unsupported combi_method for string format field.", field_info.name);
             }
@@ -545,7 +546,8 @@ public:
                            bcf1_t* record, const map<int, int>& sample_mapping,
                            const vector<int>& allele_mapping, const int n_allele_out,
                            const vector<string>& field_names, int n_val_per_sample) override {
-
+        return Status::NotImplemented("genotyper StringFormatFieldHelper::add_record_data");
+        /*
         bool found = false;
         if (n_val_per_sample < 0) {
             n_val_per_sample = expected_n_val_per_sample(record);
@@ -602,7 +604,7 @@ public:
             }
         }
 
-        return found ? Status::OK() : Status::NotFound();
+        return found ? Status::OK() : Status::NotFound();*/
     }
 
     Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) override {
