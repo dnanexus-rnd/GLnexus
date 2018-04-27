@@ -81,7 +81,7 @@ truth_unified_sites:
       normalized:
         range: {beg: 1000, end: 1000}
         dna: GA
-      frequency: 0.333334
+      frequency: 0.333333
     - dna: T
       quality: 35
       frequency: 0.166667
