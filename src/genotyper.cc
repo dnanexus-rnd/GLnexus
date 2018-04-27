@@ -821,6 +821,20 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         return Status::Failure("bcf_update_alleles");
     }
 
+    // AQ
+    vector<int32_t> aq;
+    bool any_aq = false;
+    for (int i = 1; i < site.alleles.size(); i++) {
+        auto q = site.alleles[i].quality;
+        aq.push_back(q);
+        if (q) {
+            any_aq = true;
+        }
+    }
+    if (any_aq && bcf_update_info_int32(hdr, ans.get(), "AQ", aq.data(), aq.size()) != 0) {
+        return Status::Failure("bcf_update_info_int32 AQ");
+    }
+
     // GT
     vector<int32_t> gt;
     for (const auto& c : genotypes) {
