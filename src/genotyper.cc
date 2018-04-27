@@ -821,7 +821,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         return Status::Failure("bcf_update_alleles");
     }
 
-    // ANR
+    // populate ID column with a normalized representation of each ALT
     ostringstream anr;
     for (int i = 1; i < site.alleles.size(); i++) {
         const auto& norm = site.alleles[i].normalized;
@@ -829,15 +829,15 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             return Status::Failure("logic error: unified allele normalized representation isn't contained within site", site.pos.str());
         }
         if (i > 1) {
-            anr << ",";
+            anr << ";";
         }
         anr << bcf_seqname(hdr, ans.get())
             << "_" << (norm.pos.beg+1)
             << "_" << site.alleles[0].dna.substr(norm.pos.beg - site.pos.beg, norm.pos.size())
             << "_" << norm.dna;
     }
-    if (bcf_update_info_string(hdr, ans.get(), "ANR", anr.str().c_str())) {
-        return Status::Failure("bcf_update_info_string ANR");
+    if (bcf_update_id(hdr, ans.get(), anr.str().c_str())) {
+        return Status::Failure("bcf_update_id", anr.str());
     }
 
     // AF
