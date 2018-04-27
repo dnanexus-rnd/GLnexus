@@ -15,6 +15,7 @@
 #include <regex>
 #include <atomic>
 #include <algorithm>
+#include <math.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
