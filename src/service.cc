@@ -191,6 +191,7 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
                                  const vector<string>& extra_header_lines,
                                  shared_ptr<bcf_hdr_t>& ans) {
     vector<string> hdr_lines;
+    hdr_lines.push_back("##INFO=<ID=ANR,Number=A,Type=String,Description=\"Allele Normalized Representation encoding each alternate allele's parsimonious CHROM_POS_REF_ALT\">");
     hdr_lines.push_back("##INFO=<ID=AQ,Number=A,Type=Integer,Description=\"Allele Quality score reflecting evidence from all samples (Phred scale)\">");
     hdr_lines.push_back("##FILTER=<ID=MONOALLELIC,Description=\"Site represents one ALT allele in a region with multiple variants that could not be unified into non-overlapping multi-allelic sites\">");
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
