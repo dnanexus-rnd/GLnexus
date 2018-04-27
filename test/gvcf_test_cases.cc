@@ -223,6 +223,16 @@ public:
             s = discovered_alleles_of_yaml(n_dsals, contigs, truth_dsals);
             REQUIRE(s.ok());
             string tmpfile = "/tmp/discover_alleles_capnp_check";
+
+            // test YAML roundtrip
+            YAML::Emitter yaml_w;
+            REQUIRE(yaml_of_discovered_alleles(truth_dsals, contigs, yaml_w).ok());
+            YAML::Node yaml_r = YAML::Load(yaml_w.c_str());
+            discovered_alleles dsals2;
+            REQUIRE(discovered_alleles_of_yaml(yaml_r, contigs, dsals2).ok());
+            REQUIRE(truth_dsals == dsals2);
+
+            // test capnp roundtrip
             REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
         }
 
@@ -231,6 +241,18 @@ public:
             const auto n_unified_sites = yaml["truth_unified_sites"];
             REQUIRE(n_unified_sites);
             S(parse_unified_sites(n_unified_sites, contigs));
+
+            // test YAML roundtrip
+            for (const auto& us : truth_sites) {
+                YAML::Emitter yaml_w;
+                REQUIRE(us.yaml(contigs, yaml_w).ok());
+                YAML::Node yaml_r = YAML::Load(yaml_w.c_str());
+                unified_site us2(range(-1, -1, -1));
+                REQUIRE(unified_site::of_yaml(yaml_r, contigs, us2).ok());
+                REQUIRE(us == us2);
+            }
+
+            // test capnp roundtrip
             REQUIRE(GLnexus::capnp_unified_sites_verify(truth_sites, "/tmp/unified_sites_capnp_check").ok());
         }
 
