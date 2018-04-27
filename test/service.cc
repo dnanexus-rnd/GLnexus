@@ -249,8 +249,8 @@ TEST_CASE("unified_sites") {
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("G"))] == 1);
         REQUIRE(sites[1].unification[allele(range(0,1001,1002),string("T"))] == 2);
         REQUIRE(sites[1].alleles[0].frequency != sites[1].alleles[0].frequency);
-        REQUIRE(sites[1].alleles[1].frequency == 0.333334f);
-        REQUIRE(sites[1].alleles[2].frequency == 0.333334f);
+        REQUIRE(sites[1].alleles[1].frequency == 0.333333f);
+        REQUIRE(sites[1].alleles[2].frequency == 0.333333f);
 
         REQUIRE(sites[2].pos == range(0,1010,1012));
         REQUIRE(sites[2].alleles.size() == 2);

@@ -525,7 +525,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         ua.normalized = alt;
         ua.quality = alt_info.topAQ.V[0];
         float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
-        ua.frequency = ceilf(freq*1e6f)/1e6f;
+        ua.frequency = roundf(std::max(1.0f,freq*1e6f))/1e6f;
         us.alleles.push_back(ua);
 
         for (const auto& original : alt_info.originals) {
