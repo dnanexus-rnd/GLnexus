@@ -1035,7 +1035,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         for (const auto& p : failures) {
             logger->error() << p.first << " " << p.second.str();
         }
-        return Status::Failure("FAILED to load ", failures.size() + " datasets:");
+        return Status::Failure("One or more gVCF inputs failed validation or database loading; check log for details.");
     }
 
     logger->info() << "Flushing and compacting database...";

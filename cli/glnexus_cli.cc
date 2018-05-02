@@ -24,6 +24,13 @@ GLnexus::Status s;
     s = expr; \
     if (s.bad()) { \
         console->error() << "Failed to " << desc << ": " << s.str(); \
+        if (getenv("DX_JOB_ID")) { \
+            ofstream joberrorjson("/home/dnanexus/job_error.json"); \
+            joberrorjson << "{\"error\": {\"type\": \"AppError\", \"message\": \""; \
+            joberrorjson << "Failed to " << desc << ": " << s.str(); \
+            joberrorjson << "\"}}"; \
+            joberrorjson.close(); \
+        } \
         return 1; \
     }
 
