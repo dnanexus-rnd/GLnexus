@@ -604,6 +604,7 @@ xAtlas:
     unifier_config:
         drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 150
     genotyper_config:
         required_dp: 0
         allow_partial_data: true
