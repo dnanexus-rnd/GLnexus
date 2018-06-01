@@ -113,8 +113,6 @@ TEST_CASE("discovered_alleles_of_yaml") {
         Status s = discovered_alleles_of_yaml(n, contigs, dal);
         REQUIRE(s.ok());
         VERIFY_DA(dal);
-        string tmpfile = "/tmp/discover_alleles_capnp_check";
-        REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, dal, tmpfile).ok());
     }
 
     SECTION("bogus range") {
@@ -264,8 +262,6 @@ TEST_CASE("yaml_of_discovered_alleles") {
         discovered_alleles dal2;
         REQUIRE(discovered_alleles_of_yaml(n, contigs, dal2).ok());
         REQUIRE(dal == dal2);
-        string tmpfile = "/tmp/discover_alleles_capnp_check";
-        REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, dal, tmpfile).ok());
     }
 }
 
@@ -383,7 +379,6 @@ unification:
         s = unified_site::of_yaml(ns[1], contigs, us2);
         REQUIRE(s.ok());
         VERIFY_DEL(us2);
-        REQUIRE(GLnexus::capnp_unified_sites_verify({us, us2}, "/tmp/unified_sites.capnp").ok());
     }
 
     SECTION("implicits") {
@@ -584,8 +579,6 @@ unification:
         unified_site us2(range(-1,-1,-1));
         REQUIRE(unified_site::of_yaml(n, contigs, us2).ok());
         REQUIRE(us == us2);
-
-        REQUIRE(GLnexus::capnp_unified_sites_verify({us}, "/tmp/unified_sites.capnp").ok());
     }
 }
 

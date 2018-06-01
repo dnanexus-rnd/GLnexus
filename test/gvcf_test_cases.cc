@@ -222,7 +222,7 @@ public:
             REQUIRE(n_dsals);
             s = discovered_alleles_of_yaml(n_dsals, contigs, truth_dsals);
             REQUIRE(s.ok());
-            string tmpfile = "/tmp/discover_alleles_capnp_check";
+            // string tmpfile = "/tmp/discover_alleles_capnp_check";
 
             // test YAML roundtrip
             YAML::Emitter yaml_w;
@@ -233,7 +233,7 @@ public:
             REQUIRE(truth_dsals == dsals2);
 
             // test capnp roundtrip
-            REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
+            // REQUIRE(GLnexus::capnp_discover_alleles_verify(1, contigs, truth_dsals, tmpfile).ok());
         }
 
         // parse truth unified_sites if test_usites is set to true
@@ -253,7 +253,7 @@ public:
             }
 
             // test capnp roundtrip
-            REQUIRE(GLnexus::capnp_unified_sites_verify(truth_sites, "/tmp/unified_sites_capnp_check").ok());
+            // REQUIRE(GLnexus::capnp_unified_sites_verify(truth_sites, "/tmp/unified_sites_capnp_check").ok());
         }
 
         // write truth gvcf if test_genotypes is set to true
@@ -270,8 +270,8 @@ public:
         Status s = svc->discover_alleles(sampleset, pos, N, als);
 
         // verify that the discovered-alleles structure can be serialized correctly with cap'n proto
-        string dbg_filename("/tmp/allele_verify.cflat");
-        REQUIRE(capnp_discover_alleles_verify(N, contigs, als, dbg_filename).ok());
+        // string dbg_filename("/tmp/allele_verify.cflat");
+        // REQUIRE(capnp_discover_alleles_verify(N, contigs, als, dbg_filename).ok());
 
         return s;
     }
