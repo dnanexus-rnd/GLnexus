@@ -11,6 +11,11 @@ using namespace GLnexus;
 
 #define test_contigs {{"A", 0},}
 
+#pragma weak GVCFTestCaseRootDir
+extern "C" const char* GVCFTestCaseRootDir() {
+     return "test/data/gvcf_test_cases/";
+}
+
 #pragma weak discovered_alleles_roundtrip
 extern "C" Status discovered_alleles_roundtrip(unsigned int sample_count,
                                                const vector<pair<string,size_t>>& contigs,
@@ -51,9 +56,6 @@ extern "C" Status unified_sites_roundtrip(const vector<pair<string,size_t>>& con
 /// with the expected unified_sites and joint genotype output.
 class GVCFTestCase {
     #define V(pred,msg) if (!(pred)) return Status::Invalid("GVCFTestCase::load_yml: ", msg);
-
-    // Root of folder in which GVCFTestCases input files
-    const string INPUT_ROOT_DIR = "test/data/gvcf_test_cases/";
 
     // Name of temp dir to store output
     const string TEMP_DIR = "/tmp/GLnexus/";
@@ -213,7 +215,7 @@ public:
     Status load_yml() {
         Status s;
 
-        string path = INPUT_ROOT_DIR + name + ".yml";
+        string path = string(GVCFTestCaseRootDir()) + name + ".yml";
         YAML::Node yaml = YAML::LoadFile(path);
         V(yaml.IsMap(), "not a map at top level");
 
