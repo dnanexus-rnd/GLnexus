@@ -12,24 +12,6 @@ using namespace GLnexus::cli;
 
 static auto console = spdlog::create<spdlog::sinks::null_sink_st>("test_cli_utils_null");
 
-// create a yaml file in the right format
-static void capnp_file_of_discovered_alleles(const string &filename,
-                                             unsigned int sample_count,
-                                             const vector<pair<string,size_t>> &contigs,
-                                             const char* buf) {
-    YAML::Node node = YAML::Load(buf);
-    discovered_alleles dals;
-    Status s = discovered_alleles_of_yaml(node, contigs, dals);
-    REQUIRE(s.ok());
-
-    // A sanity check
-    REQUIRE(GLnexus::capnp_discover_alleles_verify(sample_count, contigs, dals, filename).ok());
-    std::remove(filename.c_str());
-
-    s = capnp_of_discovered_alleles(sample_count, contigs, dals, filename);
-    REQUIRE(s.ok());
-}
-
 TEST_CASE("cli_utils") {
     unsigned N;
     vector<pair<string,size_t>> contigs;
@@ -359,114 +341,6 @@ unification:
             REQUIRE(s.bad());
         }
 
-    }
-
-
-    SECTION("merging discovered allele files, special case, only one file") {
-        string tmp_file_name1 = "/tmp/xxx_1.yml";
-        capnp_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
-
-        vector<string> filenames;
-        filenames.push_back(tmp_file_name1);
-
-        vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals2;
-        Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs2, dsals2);
-        REQUIRE(s.ok());
-        REQUIRE(N == 1);
-        REQUIRE(contigs2.size() == contigs.size());
-    }
-
-    SECTION("merging discovered allele files, 2 files") {
-        // create two files, with different ranges
-        string tmp_file_name1 = "/tmp/xxx_1.yml";
-        capnp_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
-
-        string tmp_file_name2 = "/tmp/xxx_2.yml";
-        capnp_file_of_discovered_alleles(tmp_file_name2, 2, contigs, da_yaml2);
-
-        vector<string> filenames;
-        filenames.push_back(tmp_file_name1);
-        filenames.push_back(tmp_file_name2);
-
-        vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs2, dsals);
-        REQUIRE(s.ok());
-        REQUIRE(N == 3);
-        REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(dsals.size() == 4);
-    }
-
-    SECTION("merging discovered allele files, 3 files") {
-        vector<string> filenames;
-        const char* yamls[] = {da_yaml1, da_yaml2, da_yaml3};
-        const char* i_filenames[3] = {"/tmp/xxx_1.yml", "/tmp/xxx_2.yml", "/tmp/xxx_3.yml"};
-        for (int i=0; i < 3; i++) {
-            string fname = string(i_filenames[i]);
-            capnp_file_of_discovered_alleles(fname, 1, contigs, yamls[i]);
-            filenames.push_back(fname);
-        }
-
-        vector<pair<string,size_t>> contigs2;
-        discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs2, dsals);
-        REQUIRE(s.ok());
-        REQUIRE(N == 3);
-        REQUIRE(contigs2.size() == contigs.size());
-        REQUIRE(dsals.size() == 5);
-
-        discovered_alleles da1, da2, da3;
-        YAML::Node node = YAML::Load(da_yaml1);
-        s = discovered_alleles_of_yaml(node, contigs, da1); REQUIRE(s.ok());
-        node = YAML::Load(da_yaml2);
-        s = discovered_alleles_of_yaml(node, contigs, da2); REQUIRE(s.ok());
-        node = YAML::Load(da_yaml3);
-        s = discovered_alleles_of_yaml(node, contigs, da3); REQUIRE(s.ok());
-
-        vector<pair<allele,discovered_allele_info>> vdsals(dsals.begin(), dsals.end());
-        vector<pair<allele,discovered_allele_info>> vda(da1.begin(), da1.end());
-        REQUIRE(vdsals[0].first == vda[0].first);
-        REQUIRE(vdsals[0].second.str() == vda[0].second.str());
-        REQUIRE(vdsals[2].first == vda[1].first);
-        REQUIRE(vdsals[2].second.str() == vda[1].second.str());
-        vda.assign(da2.begin(), da2.end());
-        REQUIRE(vdsals[3].first == vda[0].first);
-        REQUIRE(vdsals[3].second.str() == vda[0].second.str());
-        REQUIRE(vdsals[4].first == vda[1].first);
-        REQUIRE(vdsals[4].second.zGQ.copy_number() == 50);
-        vda.assign(da3.begin(), da3.end());
-        REQUIRE(vdsals[1].first == vda[0].first);
-        REQUIRE(vdsals[1].second.str() == vda[0].second.str());
-    }
-
-    SECTION("merging discovered allele files, error, no files provided") {
-        vector<string> filenames;
-        discovered_alleles dsals;
-
-        Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs, dsals);
-        REQUIRE(s.bad());
-    }
-
-    SECTION("merging discovered allele files, error 2") {
-        // create two files, with different ranges
-        string tmp_file_name1 = "/tmp/xxx_1.yml";
-        capnp_file_of_discovered_alleles(tmp_file_name1, 1, contigs, da_yaml1);
-
-        vector<pair<string,size_t>> contigs2;
-        contigs2.push_back(make_pair("16",550000));
-        contigs2.push_back(make_pair("17",8811991));
-        string tmp_file_name2 = "/tmp/xxx_2.yml";
-        capnp_file_of_discovered_alleles(tmp_file_name2, 1, contigs2, da_yaml2);
-
-        vector<string> filenames;
-        filenames.push_back(tmp_file_name1);
-        filenames.push_back(tmp_file_name2);
-
-        vector<pair<string,size_t>> contigs3;
-        discovered_alleles dsals;
-        Status s = utils::merge_discovered_allele_files(console, 0, filenames, N, contigs3, dsals);
-        REQUIRE(s.bad());
     }
 }
 

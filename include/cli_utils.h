@@ -75,14 +75,6 @@ Status unified_sites_of_yaml_stream(std::istream &is,
                                     const std::vector<std::pair<std::string,size_t> > &contigs,
                                     std::vector<unified_site> &sites);
 
-// Merge a bunch of discovered-allele files, all in capnp format.
-// N is summed across the files, and the contigs must be the same in all.
-Status merge_discovered_allele_files(std::shared_ptr<spdlog::logger> logger,
-                                     size_t nr_threads,
-                                     const std::vector<std::string> &filenames,
-                                     unsigned& N, std::vector<std::pair<std::string,size_t>> &contigs,
-                                     discovered_alleles& dsals);
-
 // Check if a file exists
 bool check_file_exists(const std::string &path);
 
