@@ -13,7 +13,7 @@ using namespace GLnexus;
 
 #pragma weak GVCFTestCaseRootDir
 extern "C" const char* GVCFTestCaseRootDir() {
-     return "test/data/gvcf_test_cases/";
+     return ".";
 }
 
 #pragma weak discovered_alleles_roundtrip
@@ -215,7 +215,7 @@ public:
     Status load_yml() {
         Status s;
 
-        string path = string(GVCFTestCaseRootDir()) + name + ".yml";
+        string path = string(GVCFTestCaseRootDir()) + "/test/data/gvcf_test_cases/" + name + ".yml";
         YAML::Node yaml = YAML::LoadFile(path);
         V(yaml.IsMap(), "not a map at top level");
 
@@ -401,7 +401,7 @@ public:
 
         string diff_out_path = temp_dir_path +  "output.diff";
 
-        string diff_cmd = "python testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
+        string diff_cmd = "python " + string(GVCFTestCaseRootDir()) +  "/testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
         diff_cmd += " --quiet";
         if (!validated_formats.empty()) {
             diff_cmd += " --formats ";
