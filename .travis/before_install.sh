@@ -12,6 +12,6 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 \
 sudo apt-get -qq install -y libboost1.55-dev
 
 # Install zstd
-tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.2.0.tar.gz)
+tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.3.4.tar.gz)
 make -C zstd-* -j8
 sudo make -C zstd-* install

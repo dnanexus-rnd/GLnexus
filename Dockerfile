@@ -17,7 +17,7 @@ RUN apt-get -qq update && \
 # Install Zstandard, which is a rapidly-evolving project -- the versions in the apt
 # repositories are too old.
 WORKDIR /build
-RUN bash -c "tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.3.2.tar.gz) && make -C zstd-* -j4 && make -C zstd-* install"
+RUN bash -c "tar zxf <(curl -L https://github.com/facebook/zstd/archive/v1.3.4.tar.gz) && make -C zstd-* -j4 && make -C zstd-* install"
 
 # clone GLnexus repo on the desired git revision
 RUN git clone https://github.com/dnanexus-rnd/GLnexus.git
