@@ -2,6 +2,8 @@
 **From DNAnexus R&D: a scalable datastore for gVCF merging and joint variant calling in population sequencing projects.**
 (GL, genotype likelihood)
 
+### [bioRxiv preprint](http://dx.doi.org/10.1101/343970)
+
 ### [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Started)
 
 ### Build & test (Linux)
