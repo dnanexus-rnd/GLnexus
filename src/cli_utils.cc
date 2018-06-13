@@ -586,13 +586,13 @@ xAtlas:
               ignore_non_variants: true
 weCall:
     unifier_config:
-        min_AQ1: 60
+        min_AQ1: 30
         min_AQ2: 30
         min_GQ: 30
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
-        required_dp: 0
-        revise_genotypes: false
+        required_dp: 1
+        revise_genotypes: true
         liftover_fields:
             - orig_names: [GQ]
               name: GQ
