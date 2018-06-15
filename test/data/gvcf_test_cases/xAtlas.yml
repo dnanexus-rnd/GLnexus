@@ -14,7 +14,7 @@ input:
     ##command=/stornext/snfs5/next-gen/scratch/farek/dev/xatlas_dev/xatlas -r /stornext/snfs5/next-gen/Illumina/bwa_references/h/hs37d5/hs37d5.fa -i HG002.bam -p HG002 -s HG002 -gz
     ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
     ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
-    ##FORMAT=<ID=PL,Number=3,Type=Integer,Description="Genotype Likelihood">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype Likelihood">
     ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
     ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">
     ##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">
@@ -22,6 +22,7 @@ input:
     ##FORMAT=<ID=RRX,Number=4,Type=Float,Description="Minimum, maximum, average, and standard deviation of RR values within this non-variant block">
     ##FORMAT=<ID=VRX,Number=4,Type=Float,Description="Minimum, maximum, average, and standard deviation of VR values within this non-variant block">
     ##FILTER=<ID=low_snpqual,Description="SNP posterior probability is less than 0.50">
+    ##FILTER=<ID=low_qual,Description="Indel logistic regression P-value is less than 0.5">
     ##FILTER=<ID=low_VariantReads,Description="Variant read depth is less than 2">
     ##FILTER=<ID=low_VariantRatio,Description="Variant read ratio is less than 0.25">
     ##FILTER=<ID=low_coverage,Description="Total coverage is less than 6">
@@ -109,6 +110,15 @@ genotyper_config:
           number: genotype
           combi_method: missing
           count: 0
+          ignore_non_variants: true
+        - orig_names: [P]
+          name: P
+          description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
+          from: info
+          type: float
+          number: basic
+          count: 1
+          combi_method: missing
           ignore_non_variants: true
         - orig_names: [DP]
           name: DP
@@ -255,6 +265,7 @@ truth_output_vcf:
       ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
       ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
       ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype Likelihood">
+      ##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">
       ##FORMAT=<ID=RNC,Number=2,Type=Character,Description="Reason for No Call in GT: . = N/A, M = Missing data, L = Lost/unrepresentable allele">
       ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
       ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">
@@ -262,14 +273,14 @@ truth_output_vcf:
       ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002	xAtlasTester	ythird	zfourth
-      1	15956	.	G	A	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/0:.:0,42,177:4:4:0:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:20:8:12:.:..	1/1:.:257,172,0,.,.,.:20:1:19:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	15985	.	A	T	257	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:257,0,172:20:8:12:.:..	0/1:.:257,0,172:4:0:4:low_coverage:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	15987	.	M	C	716	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:716,75,0:26:0:26:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	15989	.	AG	A	659	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	1/1:.:659,47,0:26:1:25:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:8:5:2:.:..	0/1:.:9,0,125,.,.,.:8:5:2:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	1099704	.	GGA	G	828	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:828,0,2005:142:83:43:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
-      1	1689669	.	CGGCCCT	CGGCCCTGGCCCT,C	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:85,0,9,.,.,.:6:2:4:.:..	0/1:.:85,0,9,.,.,.:6:2:4:.:..	0/2:.:85,.,.,0,.,9:6:2:4:.:..	./.:.:.:.:.:.:.:MM
-      1	1689769	.	C	CC	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	0/1:.:85,0,9:6:2:4:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM	0/1:.:85,0,9:6:2:4:.:..
-      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:MM	0/1:.:85,0,344:21:14:6:.:..	./.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:MM
+      1	15956	.	G	A	257	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/0:.:0,42,177:.:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:0.999774:20:8:12:.:..	1/1:.:257,172,0,.,.,.:0.999774:20:1:19:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15985	.	A	T	257	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/1:.:257,0,172:0.999774:4:0:4:low_coverage:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15987	.	M	C	716	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:.:716,75,0:0.999968:26:0:26:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15989	.	AG	A	659	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:.:659,47,0:0.999904:26:1:25:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1087454	.	TAA	TA,T	9	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:0.848623:8:5:2:.:..	0/1:.:9,0,125,.,.,.:0.848623:8:5:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1087554	.	TAA	TA,T	9	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:9,.,.,0,.,125:0.848623:8:5:2:.:..	0/1:.:9,0,125,.,.,.:0.848623:8:5:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1099704	.	GGA	G	828	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:828,0,2005:0.994071:142:83:43:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1689669	.	CGGCCCT	CGGCCCTGGCCCT,C	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/2:.:85,.,.,0,.,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM
+      1	1689769	.	C	CC	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,9:0.999618:6:2:4:.:..
+      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,344:0.905149:21:14:6:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM

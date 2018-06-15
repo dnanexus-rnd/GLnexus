@@ -554,6 +554,15 @@ xAtlas:
               combi_method: missing
               count: 0
               ignore_non_variants: true
+            - orig_names: [P]
+              name: P
+              description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
+              from: info
+              type: float
+              number: basic
+              count: 1
+              combi_method: missing
+              ignore_non_variants: true
             - orig_names: [DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
