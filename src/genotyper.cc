@@ -185,7 +185,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
         const auto revised_alleles = diploid::gt_alleles(map_gt);
         vr.gt.v[sample.first*2] = bcf_gt_unphased(revised_alleles.first);
         vr.gt.v[sample.first*2+1] = bcf_gt_unphased(revised_alleles.second);
-        gq.v[sample.first] = std::min(99, (int) round(10.0*(map_gll - silver_gll)/log(10.0)));
+        gq.v[sample.first] = (int) round(std::min(double(99), 10.0*(map_gll - silver_gll)/log(10.0)));
     }
 
     // write GT and GQ back into record

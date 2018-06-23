@@ -97,12 +97,10 @@ GLnexus::Status bcf_get_genotype_log_likelihoods(const bcf_hdr_t* header, bcf1_t
     if (bcf_get_format_int32(header, record, "PL", &igl.v, &igl.capacity) == record->n_sample*nGT) {
         for (unsigned ik = 0; ik < record->n_sample*nGT; ik++) {
             auto x = igl[ik];
-            if (x == bcf_int32_missing || x == bcf_int32_vector_end) {
+            if (x == bcf_int32_missing || x == bcf_int32_vector_end || x < 0) {
                 gll[ik] = LOG0;
-            } else if (x >= 0) {
-                gll[ik] = double(igl[ik])/(-10.0*LOG10_E);
             } else {
-                return Status::Invalid("bcf_get_genotype_log_likelihoods: negative PL entry");
+                gll[ik] = double(igl[ik])/(-10.0*LOG10_E);
             }
         }
         return Status::OK();

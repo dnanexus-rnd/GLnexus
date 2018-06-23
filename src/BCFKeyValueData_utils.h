@@ -402,11 +402,6 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
             // the exception when bcf->n_allele == 1 accommodates xAtlas
             return Status::Invalid("gVCF record doesn't have expected # of PL entries", filename + " " + range(bcf).str(contigs));
         }
-        for (int i = 0; i < nPL; i++) {
-            if (pl[i] < 0) {
-                return Status::Invalid("negative PL entry in gVCF record", filename + " " + range(bcf).str(contigs));
-            }
-        }
     }
 /*
     htsvecbox<float> gl;
