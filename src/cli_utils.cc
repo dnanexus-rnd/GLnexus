@@ -478,7 +478,7 @@ gatk:
               number: basic
               count: 4
 gatk_unfiltered:
-    description: Merge GATK-style gVCFs with no filtering or genotype revision. Without any allele quality thresholds, large-cohort pVCFs may contain excessive false positive sites.
+    description: Merge GATK-style gVCFs with no filtering or genotype revision.
     unifier_config:
         min_AQ1: 0
         min_AQ2: 0
@@ -528,9 +528,76 @@ gatk_unfiltered:
               count: 4
 xAtlas:
     unifier_config:
+        min_AQ1: 60
+        min_AQ2: 40
         drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 150
+    genotyper_config:
+        required_dp: 0
+        allow_partial_data: true
+        revise_genotypes: true
+        # TODO: ref_dp_format=DPX[0] would be more precise
+        ref_dp_format: DP
+        liftover_fields:
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
+            - orig_names: [P]
+              name: P
+              description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
+              from: info
+              type: float
+              number: basic
+              count: 1
+              combi_method: missing
+              ignore_non_variants: true
+            - orig_names: [DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [RR]
+              name: RR
+              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [VR]
+              name: VR
+              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [FILTER]
+              name: FT
+              description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
+              type: string
+              combi_method: missing
+              number: basic
+              count: 1
+              ignore_non_variants: true
+xAtlas_unfiltered:
+    unifier_config:
+        monoallelic_sites_for_lost_alleles: true
     genotyper_config:
         required_dp: 0
         allow_partial_data: true
