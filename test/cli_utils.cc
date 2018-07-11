@@ -565,5 +565,5 @@ TEST_CASE("iter_compare") {
 
     int n_iter = 50;
     s = cli::utils::compare_db_itertion_algorithms(console, dbpath, n_iter);
-    console->info() << "Passed " << n_iter << " iterator comparison tests";
+    console->info("Passed {} iterator comparison tests", n_iter);
 }
