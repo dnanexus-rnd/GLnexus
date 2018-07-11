@@ -87,7 +87,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     // universal compaction, 1GiB memtable budget
     opts.OptimizeUniversalStyleCompaction(1<<30);
     opts.num_levels = 4;
-    opts.target_file_size_base = 10 * size_t(1<<30);
+    opts.target_file_size_base = 4 * size_t(1<<30);
     opts.level0_file_num_compaction_trigger = 4;
 
     opts.compaction_options_universal.compression_size_percent = -1;
@@ -106,9 +106,8 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length,
     opts.compression_per_level.clear();
     opts.compression = rocksdb::kZSTD;
     opts.compression_opts.level = 2;
-    opts.compression_opts.max_dict_bytes = bbto.block_size * 4;
-    // TODO when released: https://github.com/facebook/rocksdb/commit/24ad4306001e0e9ec13ec29f11e50b4a7b070bf4
-    // opts.compression_opts.zstd_max_train_bytes = opts.compression_opts.max_dict_bytes;
+    // compression 'training' not likely to be worthwhile for our 1MB blocks
+    // opts.compression_opts.zstd_max_train_bytes = opts.compression_opts.max_dict_bytes = bbto.block_size * 4;
 
     if (prefix_length) {
         // prefix-based hash indexing for this column family
