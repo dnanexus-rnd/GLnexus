@@ -39,7 +39,7 @@ GLnexus::Status s;
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
                      const string &config_name,
-                     int nr_threads,
+                     size_t mem_budget, size_t nr_threads,
                      bool debug,
                      bool iter_compare,
                      size_t bucket_size) {
@@ -76,7 +76,7 @@ static int all_steps(const vector<string> &vcf_files,
         // use an empty range filter
         vector<GLnexus::range> ranges;
         H("bulk load into DB",
-          GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, false));
+          GLnexus::cli::utils::db_bulk_load(console, mem_budget, nr_threads, vcf_files, dbpath, ranges, contigs, false));
     }
 
     if (iter_compare) {
@@ -92,7 +92,7 @@ static int all_steps(const vector<string> &vcf_files,
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
     H("discover alleles",
-      GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
+      GLnexus::cli::utils::discover_alleles(console, mem_budget, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
         console->info("Writing discovered alleles as YAML to {}", filename);
@@ -139,7 +139,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
     string outfile("-");
     H("Genotyping",
-      GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, hdr_lines, outfile));
+      GLnexus::cli::utils::genotype(console, mem_budget, nr_threads, dbpath, genotyper_cfg, sites, hdr_lines, outfile));
 
     return 0;
 }
@@ -150,10 +150,12 @@ void help(const char* prog) {
          << "Merge and joint-call input gVCF files, emitting multi-sample BCF on" << endl
          << "standard output." << endl << endl
          << "Options:" << endl
-         << "  --help, -h           print this help message" << endl
-         << "  --bed FILE, -b FILE  three-column BED file of ranges to analyze (required)" << endl
-         << "  --config X, -c X     configuration preset name or .yml filename (default: gatk)" << endl
-         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl
+         << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (required)" << endl
+         << "  --config X, -c X      configuration preset name or .yml filename (default: gatk)" << endl
+         << "  --list, -l            given files contain lists of gVCF filenames, one per line" << endl
+         << "  --mem-gbytes X, -m X  memory budget, in gbytes (default: most of system memory)" << endl
+         << "  --threads X, -t X     thread budget (default: all hardware threads)" << endl
+         << "  --help, -h            print this help message" << endl
          << endl << "Configuration presets:" << endl;
     cout << GLnexus::cli::utils::describe_config_presets() << endl;
 }
@@ -177,6 +179,8 @@ int main(int argc, char *argv[]) {
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
         {"list", no_argument, 0, 'l'},
+        {"mem-gbytes", required_argument, 0, 'm'},
+        {"threads", required_argument, 0, 't'},
         {"bucket_size", required_argument, 0, 'x'},
         {"debug", no_argument, 0, 'd'},
         {"iter_compare", no_argument, 0, 'i'},
@@ -189,10 +193,10 @@ int main(int argc, char *argv[]) {
     bool debug = false;
     bool iter_compare = false;
     string bedfilename;
-    int nr_threads = std::thread::hardware_concurrency();
+    size_t mem_budget = 0, nr_threads = 0;
     size_t bucket_size = GLnexus::BCFKeyValueData::default_bucket_size;
 
-    while (-1 != (c = getopt_long(argc, argv, "hb:dIx:",
+    while (-1 != (c = getopt_long(argc, argv, "hb:dIx:m:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -233,6 +237,23 @@ int main(int argc, char *argv[]) {
                 }
                 break;
 
+            case 'm':
+                mem_budget = strtoull(optarg, nullptr, 10);
+                if (mem_budget == 0 || mem_budget > 16*1024) {
+                    cerr << "invalid --mem-gbytes" << endl;
+                    return 1;
+                }
+                mem_budget <<= 30;
+                break;
+
+            case 't':
+                nr_threads = strtoull(optarg, nullptr, 10);
+                if (nr_threads == 0 || nr_threads > 1024) {
+                    cerr << "invalid --threads" << endl;
+                    return 1;
+                }
+                break;
+
             default:
                 abort ();
         }
@@ -263,5 +284,5 @@ int main(int argc, char *argv[]) {
         vcf_files = vcf_files_precursor;
     }
 
-    return all_steps(vcf_files, bedfilename, config_name, nr_threads, debug, iter_compare, bucket_size);
+    return all_steps(vcf_files, bedfilename, config_name, mem_budget, nr_threads, debug, iter_compare, bucket_size);
 }

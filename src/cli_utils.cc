@@ -850,7 +850,7 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
 }
 
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
-                    size_t nr_threads,
+                    size_t mem_budget, size_t nr_threads,
                     const vector<string> &gvcfs,
                     const string &dbpath,
                     const vector<range> &ranges_i,
@@ -866,6 +866,8 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     RocksKeyValue::config cfg;
     cfg.mode = RocksKeyValue::OpenMode::BULK_LOAD;
     cfg.pfx = GLnexus_prefix_spec();
+    cfg.mem_budget = mem_budget;
+    cfg.thread_budget = nr_threads/2;
     unique_ptr<KeyValue::DB> db;
     S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
@@ -885,7 +887,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         logger->info("Beginning bulk load with no range filter.");
     }
 
-    ctpl::thread_pool threadpool(nr_threads);
+    ctpl::thread_pool threadpool(nr_threads || std::thread::hardware_concurrency());
     vector<future<Status>> statuses;
     set<string> datasets_loaded;
     BCFKeyValueData::import_result stats;
@@ -973,7 +975,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
 }
 
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
-                        size_t nr_threads,
+                        size_t mem_budget, size_t nr_threads,
                         const string &dbpath,
                         const vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
@@ -988,12 +990,14 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     RocksKeyValue::config cfg;
     cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
     cfg.pfx = GLnexus_prefix_spec();
+    cfg.mem_budget = mem_budget;
+    cfg.thread_budget = nr_threads;
     S(RocksKeyValue::Open(dbpath, cfg, db));
     S(BCFKeyValueData::Open(db.get(), data));
 
     // start service, discover alleles
     service_config svccfg;
-    svccfg.threads = nr_threads;
+    svccfg.threads = nr_threads || std::thread::hardware_concurrency();
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
 
@@ -1040,7 +1044,7 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
 
 
 Status genotype(std::shared_ptr<spdlog::logger> logger,
-                size_t nr_threads,
+                size_t mem_budget, size_t nr_threads,
                 const string &dbpath,
                 const genotyper_config &genotyper_cfg,
                 const vector<unified_site> &sites,
@@ -1053,6 +1057,8 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     RocksKeyValue::config cfg;
     cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
     cfg.pfx = GLnexus_prefix_spec();
+    cfg.mem_budget = mem_budget;
+    cfg.thread_budget = nr_threads;
     unique_ptr<KeyValue::DB> db;
     S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
@@ -1063,7 +1069,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
 
     // start service, discover alleles, unify sites, genotype sites
     service_config svccfg;
-    svccfg.threads = nr_threads;
+    svccfg.threads = nr_threads || std::thread::hardware_concurrency();
     svccfg.extra_header_lines = extra_header_lines;
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
