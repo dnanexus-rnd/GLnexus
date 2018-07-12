@@ -48,12 +48,13 @@ static const std::string createRandomDBFileName()
 TEST_CASE("RocksDB open/initialize states") {
     // attempt to open a non-existent database
     string dbPath = createRandomDBFileName();
+    RocksKeyValue::config opt;
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Open(dbPath, db);
+    Status s = RocksKeyValue::Open(dbPath, opt, db);
     REQUIRE(s.bad());
 
     // create the database
-    s = RocksKeyValue::Initialize(dbPath, db);
+    s = RocksKeyValue::Initialize(dbPath, opt, db);
     REQUIRE(s.ok());
     REQUIRE((bool)db);
     unique_ptr<T> data;
@@ -72,12 +73,13 @@ TEST_CASE("RocksDB open/initialize states") {
     db.reset();
 
     // attempt to initialize an already-existing database
-    s = RocksKeyValue::Initialize(dbPath, db);
+    s = RocksKeyValue::Initialize(dbPath, opt, db);
     REQUIRE(s.bad());
     db.reset();
 
     // open read-only
-    s = RocksKeyValue::Open(dbPath, db, nullptr, RocksKeyValue::OpenMode::READ_ONLY);
+    opt.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    s = RocksKeyValue::Open(dbPath, opt, db);
     REQUIRE(s.ok());
     REQUIRE(db->collection("test",coll).ok());
     v.clear();
@@ -94,7 +96,8 @@ TEST_CASE("RocksDB open/initialize states") {
     db.reset();
 
     // open in "bulk load" mode
-    s = RocksKeyValue::Open(dbPath, db, nullptr, RocksKeyValue::OpenMode::BULK_LOAD);
+    opt.mode = RocksKeyValue::OpenMode::BULK_LOAD;
+    s = RocksKeyValue::Open(dbPath, opt, db);
     REQUIRE(s.ok());
     REQUIRE(db->collection("test",coll).ok());
     v.clear();
@@ -109,15 +112,16 @@ TEST_CASE("RocksDB open/initialize states") {
 
 TEST_CASE("RocksDB initialization") {
     std::string dbPath = createRandomDBFileName();
+    RocksKeyValue::config opt;
     std::unique_ptr<KeyValue::DB> db;
-    Status s = RocksKeyValue::Initialize(dbPath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, opt, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 1000000), make_pair<string,uint64_t>("22", 1000001)};
     REQUIRE(T::InitializeDB(db.get(), contigs).ok());
     db.reset();
 
-    s = RocksKeyValue::Open(dbPath, db);
+    s = RocksKeyValue::Open(dbPath, opt, db);
     REQUIRE(s.ok());
 
     unique_ptr<T> data;
@@ -189,9 +193,10 @@ TEST_CASE("RocksDB initialization") {
 }
 
 TEST_CASE("RocksDB::import_gvcf") {
+    RocksKeyValue::config opt;
     std::unique_ptr<KeyValue::DB> db;
     std::string dbPath = createRandomDBFileName();
-    Status s = RocksKeyValue::Initialize(dbPath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, opt, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
@@ -218,7 +223,7 @@ TEST_CASE("RocksDB::import_gvcf") {
 TEST_CASE("RocksDB::import_gvcf incompatible") {
     std::unique_ptr<KeyValue::DB> db;
     std::string dbPath = createRandomDBFileName();
-    Status s = RocksKeyValue::Initialize(dbPath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, RocksKeyValue::config(), db);
     REQUIRE(s.ok());
 
     auto contigs = { make_pair<string,uint64_t>("21", 1000000),
@@ -241,7 +246,7 @@ TEST_CASE("RocksDB::import_gvcf incompatible") {
 TEST_CASE("RocksDB BCF retrieval") {
     std::unique_ptr<KeyValue::DB> db;
     std::string dbPath = createRandomDBFileName();
-    Status s = RocksKeyValue::Initialize(dbPath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, RocksKeyValue::config(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
@@ -342,9 +347,11 @@ TEST_CASE("RocksDB BCF retrieval") {
 
 TEST_CASE("RocksKeyValue prefix mode") {
     RocksKeyValue::prefix_spec prefix_spec("bcf", BCFKeyValueDataPrefixLength());
+    RocksKeyValue::config opt;
+    opt.pfx = &prefix_spec;
     std::unique_ptr<KeyValue::DB> db;
     std::string dbPath = createRandomDBFileName();
-    Status s = RocksKeyValue::Initialize(dbPath, db, &prefix_spec);
+    Status s = RocksKeyValue::Initialize(dbPath, opt, db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
@@ -502,7 +509,7 @@ static void printDBSamples(T *data) {
 TEST_CASE("Multi-threading") {
     std::unique_ptr<KeyValue::DB> db;
     std::string dbPath = createRandomDBFileName();
-    Status s = RocksKeyValue::Initialize(dbPath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, RocksKeyValue::config(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 48129895)};
@@ -588,7 +595,7 @@ TEST_CASE("Concurrent import/query") {
     // setup
     std::unique_ptr<KeyValue::DB> db;
     std::string dbPath = createRandomDBFileName();
-    Status s = RocksKeyValue::Initialize(dbPath, db);
+    Status s = RocksKeyValue::Initialize(dbPath, RocksKeyValue::config(), db);
     REQUIRE(s.ok());
 
     auto contigs = {make_pair<string,uint64_t>("21", 48129895)};

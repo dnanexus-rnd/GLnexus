@@ -806,8 +806,10 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
     free(contignames);
 
     // create and initialize the database
+    RocksKeyValue::config cfg;
+    cfg.pfx = GLnexus_prefix_spec();
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Initialize(dbpath, db, GLnexus_prefix_spec()));
+    S(RocksKeyValue::Initialize(dbpath, cfg, db));
     S(BCFKeyValueData::InitializeDB(db.get(), contigs, bucket_size));
 
     // report success
@@ -833,10 +835,11 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
     Status s;
     logger->info("db_get_contigs {}", dbpath);
 
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
     unique_ptr<KeyValue::DB> db;
-
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     {
         unique_ptr<BCFKeyValueData> data;
         S(BCFKeyValueData::Open(db.get(), data));
@@ -860,9 +863,11 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         ranges.insert(r);
 
     // open the database
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::BULK_LOAD;
+    cfg.pfx = GLnexus_prefix_spec();
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::BULK_LOAD));
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
     S(BCFKeyValueData::Open(db.get(), data));
 
@@ -980,8 +985,10 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     dsals.clear();
 
     // open the database in read-only mode
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     S(BCFKeyValueData::Open(db.get(), data));
 
     // start service, discover alleles
@@ -1043,9 +1050,11 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     logger->info("Lifting over {} fields", genotyper_cfg.liftover_fields.size());
 
     // open the database in read-only mode
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                                   RocksKeyValue::OpenMode::READ_ONLY));
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
     S(BCFKeyValueData::Open(db.get(), data));
 
@@ -1081,16 +1090,20 @@ Status compare_db_itertion_algorithms(std::shared_ptr<spdlog::logger> logger,
                                       const std::string &dbpath,
                                       int n_iter) {
     Status s;
+
     unique_ptr<KeyValue::DB> db;
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
+    S(RocksKeyValue::Open(dbpath, cfg, db));
+
     unique_ptr<BCFKeyValueData> data;
-    string sampleset;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
     S(BCFKeyValueData::Open(db.get(), data));
 
     unique_ptr<MetadataCache> metadata;
     S(MetadataCache::Start(*data, metadata));
 
+    string sampleset;
     S(data->all_samples_sampleset(sampleset));
     logger->info("using sample set {}", sampleset);
 
