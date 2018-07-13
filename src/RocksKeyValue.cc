@@ -81,8 +81,19 @@ static Status convertStatus(const rocksdb::Status &s)
     }
 }
 
+std::shared_ptr<rocksdb::Cache> NewBlockCache(OpenMode mode, size_t mem_budget) {
+    mem_budget = std::max(mem_budget, size_t(2<<30));
+    mem_budget = std::min(mem_budget, totalRAM());
+    if (mode != OpenMode::BULK_LOAD) {
+        return rocksdb::NewLRUCache(mem_budget / 2, 8);
+    } else {
+        return rocksdb::NewLRUCache(mem_budget / 10, 6);
+    }
+}
+
 // Reference for RocksDB tuning: https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
 void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_budget,
+                              std::shared_ptr<rocksdb::Cache> block_cache,
                               rocksdb::ColumnFamilyOptions& opts) {
     // universal compaction, 1GiB memtable budget
     opts.OptimizeUniversalStyleCompaction(1<<30);
@@ -100,7 +111,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
     rocksdb::BlockBasedTableOptions bbto;
     bbto.format_version = 2;
     bbto.block_size = 1024 * 1024;
-    bbto.block_cache = rocksdb::NewLRUCache(totalRAM() / 2, 8);
+    bbto.block_cache = block_cache;
 
     // compress all files with Zstandard
     opts.compression_per_level.clear();
@@ -127,12 +138,9 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
         // Increase memtable size (and shrink block cache to compensate)
-        mem_budget = std::max(mem_budget, size_t(1<<30));
-        mem_budget = std::min(mem_budget, totalRAM());
         opts.write_buffer_size = mem_budget / 6;
         opts.max_write_buffer_number = 4;
         opts.min_write_buffer_number_to_merge = 1;
-        bbto.block_cache = rocksdb::NewLRUCache(mem_budget / 10, 6);
 
         // Never slowdown ingest since we'll wait for compaction to converge
         // at the end of the bulk load operation
@@ -148,8 +156,9 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
     }
 }
 
-void ApplyDBOptions(OpenMode mode, size_t mem_budget, size_t thread_budget, rocksdb::Options& opts) {
-    ApplyColumnFamilyOptions(mode, 0, mem_budget, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
+void ApplyDBOptions(OpenMode mode, size_t mem_budget, size_t thread_budget,
+                    std::shared_ptr<rocksdb::Cache> block_cache, rocksdb::Options& opts) {
+    ApplyColumnFamilyOptions(mode, 0, mem_budget, block_cache, static_cast<rocksdb::ColumnFamilyOptions&>(opts));
 
     if (mode == OpenMode::READ_ONLY) {
         // override db_log_dir when we're read-only, so that the RocksDB dir
@@ -325,15 +334,16 @@ private:
     prefix_spec prefix_spec_;
     size_t mem_budget_ = 0;
     rocksdb::WriteOptions write_options_, batch_write_options_;
+    std::shared_ptr<rocksdb::Cache> block_cache_;
 
     // No copying allowed
     DB(const DB&);
     void operator=(const DB&);
 
     DB(rocksdb::DB *db, std::map<const std::string, rocksdb::ColumnFamilyHandle*>& coll2handle,
-       OpenMode mode, prefix_spec* pfx, size_t mem_budget)
+       OpenMode mode, prefix_spec* pfx, size_t mem_budget, std::shared_ptr<rocksdb::Cache> block_cache)
         : db_(db), coll2handle_(std::move(coll2handle)),
-          mode_(mode), mem_budget_(mem_budget) {
+          mode_(mode), mem_budget_(mem_budget), block_cache_(block_cache) {
             if (pfx) {
                 prefix_spec_ = *pfx;
             }
@@ -352,8 +362,9 @@ public:
         if (opt.mode != OpenMode::NORMAL && opt.mode != OpenMode::BULK_LOAD) {
             return Status::Invalid("RocksKeyValue::Initialize: invalid open mode");
         }
+        auto block_cache = NewBlockCache(opt.mode, opt.mem_budget);
         rocksdb::Options options;
-        ApplyDBOptions(opt.mode, opt.mem_budget, opt.thread_budget, options);
+        ApplyDBOptions(opt.mode, opt.mem_budget, opt.thread_budget, block_cache, options);
         options.create_if_missing = true;
         options.error_if_exists = true;
 
@@ -365,7 +376,7 @@ public:
         assert(rawdb != nullptr);
 
         std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle;
-        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, opt.mem_budget));
+        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, opt.mem_budget, block_cache));
         if (!db) {
             delete rawdb;
             return Status::Failure();
@@ -376,8 +387,9 @@ public:
     static Status Open(const std::string& dbPath, const config& opt,
                        std::unique_ptr<KeyValue::DB> &db) {
         // prepare options
+        auto block_cache = NewBlockCache(opt.mode, opt.mem_budget);
         rocksdb::Options options;
-        ApplyDBOptions(opt.mode, opt.mem_budget, opt.thread_budget, options);
+        ApplyDBOptions(opt.mode, opt.mem_budget, opt.thread_budget, block_cache, options);
         options.create_if_missing = false;
 
         // detect the database's column families
@@ -393,7 +405,7 @@ public:
             if (opt.pfx && nm == opt.pfx->first) {
                 effective_pfx = opt.pfx->second;
             }
-            ApplyColumnFamilyOptions(opt.mode, effective_pfx, opt.mem_budget, colopts);
+            ApplyColumnFamilyOptions(opt.mode, effective_pfx, opt.mem_budget, block_cache, colopts);
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
             cfd.options = colopts;
@@ -421,7 +433,7 @@ public:
         for (size_t i = 0; i < column_families.size(); i++) {
             coll2handle[column_family_names[i]] = column_family_handles[i];
         }
-        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, opt.mem_budget));
+        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, opt.mem_budget, block_cache));
         if (!db) {
             for (auto h : column_family_handles) {
                 delete h;
@@ -483,7 +495,7 @@ public:
         if (name == prefix_spec_.first) {
             pfx = prefix_spec_.second;
         }
-        ApplyColumnFamilyOptions(mode_, pfx, mem_budget_, colopts);
+        ApplyColumnFamilyOptions(mode_, pfx, mem_budget_, block_cache_, colopts);
         rocksdb::ColumnFamilyHandle *handle;
         rocksdb::Status s = db_->CreateColumnFamily(colopts, name, &handle);
         if (!s.ok()) {
