@@ -17,11 +17,6 @@ namespace RocksKeyValue {
 /// [prefix_spec].
 using prefix_spec = std::pair<std::string, size_t>;
 
-/// Initialize a new database. The parent directory must exist. Fails if the
-/// path already exists.
-Status Initialize(const std::string& dbpath, std::unique_ptr<KeyValue::DB>& db,
-                  prefix_spec* pfx = nullptr);
-
 /// Database open mode
 enum class OpenMode {
     /// Online, read-write operations
@@ -38,9 +33,19 @@ enum class OpenMode {
     BULK_LOAD
 };
 
+struct config {
+    prefix_spec *pfx = nullptr;
+    OpenMode mode = OpenMode::NORMAL;
+    size_t mem_budget = 0;
+    size_t thread_budget = 0;
+};
+
+/// Initialize a new database. The parent directory must exist. Fails if the
+/// path already exists.
+Status Initialize(const std::string& dbpath, const config& cfg, std::unique_ptr<KeyValue::DB>& db);
+
 /// Open an existing database.
-Status Open(const std::string& dbPath, std::unique_ptr<KeyValue::DB>& db,
-            prefix_spec* pfx = nullptr, OpenMode mode=OpenMode::NORMAL);
+Status Open(const std::string& dbPath, const config& cfg, std::unique_ptr<KeyValue::DB>& db);
 
 // Delete an existing database.
 Status destroy(const std::string dbPath);
