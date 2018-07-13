@@ -19,9 +19,23 @@
 // This file has utilities employed by the glnexus applet.
 using namespace std;
 
+extern "C"
+{
+  // weak symbol: resolved at runtime by the linker if we are using jemalloc, nullptr otherwise
+  int mallctl(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) __attribute__((weak));
+}
+
 namespace GLnexus {
 namespace cli {
 namespace utils {
+
+bool detect_jemalloc(std::shared_ptr<spdlog::logger> logger) {
+    if (!mallctl) {
+        logger->warn("jemalloc absent, which will impede performance with high thread counts. See https://github.com/dnanexus-rnd/GLnexus/wiki/Performance");
+        return false;
+    }
+    return true;
+}
 
 // Parse a range like chr1:1000-2000. The item can also just be the name of a
 // contig, in which case it gets mapped to the contig's full length.
