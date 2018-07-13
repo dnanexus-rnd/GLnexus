@@ -81,12 +81,15 @@ static Status convertStatus(const rocksdb::Status &s)
     }
 }
 
+// Create RocksDB block cache to be shared among all collections in one database
 std::shared_ptr<rocksdb::Cache> NewBlockCache(OpenMode mode, size_t mem_budget) {
     mem_budget = std::max(mem_budget, size_t(2<<30));
     mem_budget = std::min(mem_budget, totalRAM());
     if (mode != OpenMode::BULK_LOAD) {
         return rocksdb::NewLRUCache(mem_budget / 2, 8);
     } else {
+        // In bulk-load mode we use a lot of memory for write buffers, so
+        // provision a smaller block cache to compensate.
         return rocksdb::NewLRUCache(mem_budget / 10, 6);
     }
 }
@@ -137,7 +140,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         // a good tradeoff for bulk loading.
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
-        // Increase memtable size (and shrink block cache to compensate)
+        // Increase memtable size
         opts.write_buffer_size = mem_budget / 6;
         opts.max_write_buffer_number = 4;
         opts.min_write_buffer_number_to_merge = 1;
