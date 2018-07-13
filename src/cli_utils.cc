@@ -19,9 +19,31 @@
 // This file has utilities employed by the glnexus applet.
 using namespace std;
 
+// a dummy weak function meant to be overridden by jemalloc at runtime. If this
+// version executes, then we know jemalloc has not been loaded.
+bool weak_mallctl_executed = false;
+#pragma weak mallctl
+extern "C" int mallctl(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
+    weak_mallctl_executed = true;
+    return -1;
+}
+
 namespace GLnexus {
 namespace cli {
 namespace utils {
+
+bool detect_jemalloc(std::shared_ptr<spdlog::logger> logger) {
+    weak_mallctl_executed = false;
+    char* v = nullptr;
+    size_t sz = sizeof(char*);
+    mallctl("version", &v, &sz, nullptr, 0);
+    if (!weak_mallctl_executed) {
+        logger->info("detected jemalloc {}", v);
+        return true;
+    }
+    logger->warn("jemalloc has not been loaded, which will impede performance with high thread counts. Try running with LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so");
+    return false;
+}
 
 // Parse a range like chr1:1000-2000. The item can also just be the name of a
 // contig, in which case it gets mapped to the contig's full length.

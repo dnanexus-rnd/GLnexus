@@ -14,6 +14,8 @@ namespace GLnexus {
 namespace cli {
 namespace utils {
 
+bool detect_jemalloc(std::shared_ptr<spdlog::logger> logger);
+
 // contig, in which case it gets mapped to the contig's full length.
 bool parse_range(const std::vector<std::pair<std::string,size_t> >& contigs,
                  const std::string& range_txt, range& ans);
