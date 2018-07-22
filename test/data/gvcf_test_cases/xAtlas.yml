@@ -94,22 +94,6 @@ genotyper_config:
     # TODO: ref_dp_format=DPX[0] would be more precise
     ref_dp_format: DP
     liftover_fields:
-        - orig_names: [GQ]
-          name: GQ
-          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-          type: int
-          number: basic
-          combi_method: min
-          count: 1
-          ignore_non_variants: true
-        - orig_names: [PL]
-          name: PL
-          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
-          type: int
-          number: genotype
-          combi_method: missing
-          count: 0
-          ignore_non_variants: true
         - orig_names: [DP]
           name: DP
           description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
@@ -131,6 +115,22 @@ genotyper_config:
           combi_method: max
           number: basic
           count: 1
+        - orig_names: [GQ]
+          name: GQ
+          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+          type: int
+          number: basic
+          combi_method: min
+          count: 1
+          ignore_non_variants: true
+        - orig_names: [PL]
+          name: PL
+          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+          type: int
+          number: genotype
+          combi_method: missing
+          count: 0
+          ignore_non_variants: true
         - orig_names: [FILTER]
           name: FT
           description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'

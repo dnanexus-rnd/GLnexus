@@ -83,22 +83,6 @@ genotyper_config:
     required_dp: 0
     revise_genotypes: false
     liftover_fields:
-        - orig_names: [GQ]
-          name: GQ
-          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-          type: int
-          number: basic
-          combi_method: min
-          count: 1
-          ignore_non_variants: true
-        - orig_names: [PL]
-          name: PL
-          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
-          type: int
-          number: genotype
-          combi_method: missing
-          count: 0
-          ignore_non_variants: true
         - orig_names: [MIN_DP, DP]
           name: DP
           description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
@@ -122,6 +106,22 @@ genotyper_config:
           number: alt
           count: 0
           combi_method: missing
+          ignore_non_variants: true
+        - orig_names: [GQ]
+          name: GQ
+          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+          type: int
+          number: basic
+          combi_method: min
+          count: 1
+          ignore_non_variants: true
+        - orig_names: [PL]
+          name: PL
+          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+          type: int
+          number: genotype
+          combi_method: missing
+          count: 0
           ignore_non_variants: true
         - orig_names: [FILTER]
           name: FT

@@ -40,7 +40,7 @@ static size_t totalRAM() {
     if (!memoized) {
         memoized = (size_t)sysconf( _SC_PHYS_PAGES ) * (size_t)sysconf( _SC_PAGESIZE );
         if (!memoized) {
-            memoized = 4<<30;
+            memoized = size_t(4)<<30;
         }
     }
     return memoized;
