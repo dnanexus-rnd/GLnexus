@@ -72,3 +72,14 @@ after_success:
 # After a failure, print the backtrace from any core dump
 after_failure:
   - for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/test core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done
+
+deploy:
+  provider: releases
+  api_key:
+    secure: OXrWL2sImjEpPDpFnKhhdpccklYauXAGtErJHjVMc8VJtjsHt4xhsIpPUytdnOH0sbdno8PLEy0Tb3C4Ff5Xq82WU7B5TrYdRzEvq14i/Y+eiqDOUfI7ttvCJwQHjvD01/B/1qFLV9Mz1lR/dkR7NXr+e7GNEStjq1OeiyXYb6WSkFomW73yiNb084h/6wetRGx/o3Jnrcs56vBQyq3GpQc18GpDiBskZoEf9Z1SJXwfcRXKTsUJC6M95ZaRktBS09eVrr0c9zRW4meg4+Hb5dQlNItD8TUSt4Qz5Ilyzwvo7TpWtAKatVgU0xd8K+EDuFebwUOP3HbAje8m3kIbppkqvved5tfDEjw3vOaCUimoYCx2W6JXlhxct42VbesBexnZt0zLvxhR4bGv3p0Dckf1XgL2cK+IUie1VNcewHMCUGlwQBLDdcr2i8SLmWvYyyrp/k1d2KailmLCnwQbl3/eAtyGOEQtEamt3Fshd8Qs9806tw9ZfgKjNex3ELTEFHCWAatcsgANcP6QZfxl6kqKVTIbid0WjhW6270bAs5+Bu/bo8Tx2xWoWwZNXllyYg2fxVurcdyZQ5DCmyyMQIA5+fWq8RIbmkqpV+LhDHZKgeKimwzKYb2rLr6IYLXTh99LuotLGojQSXnq/qGukYuFjC4azAjaP3ca63wNwUU=
+  file: glnexus_cli
+  skip_cleanup: true
+  on:
+    repo: dnanexus-rnd/GLnexus
+    tags: true
+    condition: "$TRAVIS_BUILD_TYPE == Release"
