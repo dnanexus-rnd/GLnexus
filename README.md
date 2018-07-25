@@ -1,12 +1,20 @@
 # GLnexus
-**From DNAnexus R&D: a scalable datastore for gVCF merging and joint variant calling in population sequencing projects.**
+**From DNAnexus R&D: scalable gVCF merging and joint variant calling for population sequencing projects.**
 (GL, genotype likelihood)
 
 ### [bioRxiv preprint](http://dx.doi.org/10.1101/343970)
 
+In our [manuscript](http://dx.doi.org/10.1101/343970) with collaborators at [Regeneron Genetics Center](https://www.regeneron.com/genetics-center) and [Baylor College of Medicine](https://www.hgsc.bcm.edu/), we detail the design of GLnexus and scientific validation using up to 240,000 human exomes and 22,600 genomes. Compared to the DNAnexus cloud-native deployment used for such large projects, this open-source version produces identical scientific results but lacks some of the scalability and production-oriented features.
+
 ### [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Started)
 
-### Build & test (Linux)
+The [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Started) wiki page has a tutorial for first-time users.
+
+### [Prebuilt executables](https://github.com/dnanexus-rnd/GLnexus/releases)
+
+For each tagged revision, the [Releases](https://github.com/dnanexus-rnd/GLnexus/releases) page has a static executable suitable for most Linux x86-64 hosts; just download it and `chmod +x glnexus_cli`.
+
+### Build & test
 
 <a href="https://travis-ci.org/dnanexus-rnd/GLnexus"><img src="https://travis-ci.org/dnanexus-rnd/GLnexus.svg?branch=master"/></a> [![Coverage Status](https://coveralls.io/repos/dnanexus-rnd/GLnexus/badge.svg?branch=master&service=github)](https://coveralls.io/github/dnanexus-rnd/GLnexus?branch=master)
 
@@ -35,7 +43,7 @@ Then,
 ```
 git clone --recursive https://github.com/dnanexus-rnd/GLnexus.git
 cd GLnexus
-cmake -Dtest=ON . && make -j4 && ./unit_tests
+cmake -Dtest=ON . && make -j$(nproc) && ./unit_tests
 ```
 
 You will also find `./glnexus_cli` here.
@@ -61,6 +69,8 @@ You will also find `./glnexus_cli` here.
 * [Catch](https://github.com/philsquared/Catch) test framework
 
 ### Performance profiling
+
+The [Performance](https://github.com/dnanexus-rnd/GLnexus/wiki/Performance) wiki page has practical advice for deploying GLnexus on a powerful server.
 
 The code has some hooks for performance profiling using
 [`perf`](https://en.wikipedia.org/wiki/Perf_(Linux)) and
