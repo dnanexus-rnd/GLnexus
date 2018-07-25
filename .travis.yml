@@ -34,6 +34,24 @@ script:
   - |
       if [ "$TRAVIS_BUILD_TYPE" != "Valgrind" ]; then
         cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
+        # test that we can dynamically link jemalloc into glnexus_cli, and its
+        # built-in warning about whether jemalloc is present
+        exit_code=0
+        MALLOC_CONF='bogus:true' LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so ./glnexus_cli -h 2>&1 | grep 'Invalid conf pair'
+        if [ "$exit_code" -ne 0 ]; then
+          echo "couldn't confirm jemalloc dynamic linking"
+          exit 1
+        fi
+        ./glnexus_cli -h 2>&1 | grep 'jemalloc absent' || exit_code=$?
+        if [ "$exit_code" -ne 0 ]; then
+          echo "false-negative jemalloc warning"
+          exit 1
+        fi
+        LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so ./glnexus_cli -h 2>&1 | grep 'jemalloc absent' || exit_code=$?
+        if [ "$exit_code" -eq 0 ]; then
+          echo "false-positive jemalloc warning"
+          exit 1
+        fi
       else
         export ROCKSDB_VALGRIND_RUN=1;
         cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release . && make -j $(nproc) && valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes
