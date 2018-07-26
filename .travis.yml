@@ -2,44 +2,34 @@ language: cpp
 sudo: yes
 dist: trusty
 
-# https://github.com/travis-ci/travis-ci/issues/4681
-# compiler:
-#   - gcc
-
-# Get requisite Ubuntu packages
-addons:
+adons:
   apt:
     packages:
       - libjemalloc-dev
-      - libsnappy-dev
-      - liblzma-dev
-      - libc6-dbg
-      - gdb
-      - cmake
-      - valgrind
-
-before_install:
-  - ulimit -c unlimited -S # enable core dump
-  - .travis/before_install.sh
-
-install:
-  - export PATH=$HOME/.local/bin:$PATH
-  - sudo pip install -r requirements.txt
 
 script:
-  # Report version of CMake and GCC
-  - cmake --version
-  - gcc --version
   # Build and run unit tests
   - |
       set -ex -o pipefail
-      if [ "$TRAVIS_BUILD_TYPE" != "Valgrind" ]; then
-        cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
-        test/jemalloc_warning.sh
-      else
-        export ROCKSDB_VALGRIND_RUN=1;
-        cmake -Dtest=ON -DCMAKE_BUILD_TYPE=Release . && make -j $(nproc) && valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes
+      # use the Dockerfile to build the glnexus_tests container
+      effective_build_type=$TRAVIS_BUILD_TYPE
+      if [ "$effective_build_type" == "Valgrind" ]; then
+        effective_build_type="Release"
       fi
+      docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type Dockerfile
+      # Run the tests
+      if [ "$TRAVIS_BUILD_TYPE" == "Valgrind" ]; then
+        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 glnexus_tests bash -ex -o pipefail "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
+      elif [ "$TRAVIS_BULID_TYPE" == "Coverage" ]; then
+        docker run --rm glnexus_tests bash -ex -o pipefail "ctest -V && sudo apt-get install -y python-pip && sudo pip install -U cpp-coveralls && coveralls --include src --include include --gcov-options '\-lp'"
+      else
+        docker run --rm glnexus_tests
+        # copy glnexus_cli out for further testing and possible release
+        docker run --rm -v $(pwd):/io glnexus_tests cp glnexus_cli /io
+        test/jemalloc_linking.sh
+      fi
+      # launch medium tests from the medium-tests branch only
+      if [ "$TRAVIS_BRANCH" == "medium-tests" ] && [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then bash test/launch_medium_tests.sh; fi
 
 env:
   global:
@@ -58,22 +48,6 @@ matrix:
     - env: TRAVIS_BUILD_TYPE=Release
     # NB: some warnings we set to errors are detected only in Release mode (with
     # compiler optimizations on). http://stackoverflow.com/q/11061970
-
-after_success:
-  # report the coverage (regardless of branch)
-  - |
-      if [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
-        sudo pip install -U cpp-coveralls
-        coveralls --include src --include include --gcov-options '\-lp'
-      fi
-  # update doxygen from Release builds on the master branch only
-  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then chmod u+x .travis/update_doxygen.sh; .travis/after_success.sh; fi
-  # launch medium tests from Release builds of the medium-tests branch only
-  - if [ "$TRAVIS_BRANCH" == "medium-tests" ] && [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then bash .travis/launch_medium_tests.sh; fi
-
-# After a failure, print the backtrace from any core dump
-after_failure:
-  - for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/test core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done
 
 deploy:
   provider: releases

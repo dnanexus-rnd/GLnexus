@@ -39,6 +39,9 @@ CMakeFiles/
 /Makefile
 cmake_install.cmake
 external/
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
 
 # cscope
 cscope*
