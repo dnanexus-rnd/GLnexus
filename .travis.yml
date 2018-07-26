@@ -10,7 +10,7 @@ dist: trusty
 addons:
   apt:
     packages:
-      - libjemalloc1
+      - libjemalloc-dev
       - libsnappy-dev
       - liblzma-dev
       - libc6-dbg
