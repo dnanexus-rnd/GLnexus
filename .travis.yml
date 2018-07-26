@@ -32,6 +32,7 @@ script:
   - gcc --version
   # Build and run unit tests
   - |
+      set -ex -o pipefail
       if [ "$TRAVIS_BUILD_TYPE" != "Valgrind" ]; then
         cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
         # test that we can dynamically link jemalloc into glnexus_cli, and its
