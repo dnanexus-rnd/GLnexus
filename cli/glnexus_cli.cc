@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
             case 'h':
             case '?':
                 help(argv[0]);
-                exit(1);
+                exit(0);
                 break;
 
             case 'i':
