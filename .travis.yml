@@ -37,7 +37,7 @@ script:
         cmake -Dtest=ON "-DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE" . && make -j $(nproc) && ./unit_tests -d yes
         # test that we can dynamically link jemalloc into glnexus_cli, and its
         # built-in warning about whether jemalloc is present
-        ls -l /usr/lib/x86_64-linux-gnu/libjemalloc.so*
+        find / -name "libjemalloc.so*"
         exit_code=0
         MALLOC_CONF=bogus:true LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so ./glnexus_cli -h 2>&1 | grep 'Invalid conf pair' || exit_code=$?
         if [ "$exit_code" -ne 0 ]; then
