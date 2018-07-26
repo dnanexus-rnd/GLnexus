@@ -1,7 +1,6 @@
 #!/bin/bash
 # test that we can dynamically link jemalloc into glnexus_cli, and its
 # built-in warning about whether jemalloc is present
-#find /usr -name "libjemalloc.so*"
 set -ex -o pipefail
 
 HERE=$(dirname "$0")
@@ -25,3 +24,4 @@ if [ "$exit_code" -eq 0 ]; then
     echo "false-positive jemalloc warning"
     exit 1
 fi
+echo "jemalloc warning test OK"
