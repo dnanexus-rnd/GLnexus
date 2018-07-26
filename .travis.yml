@@ -16,7 +16,7 @@ script:
       if [ "$effective_build_type" == "Valgrind" ]; then
         effective_build_type="Release"
       fi
-      docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type Dockerfile
+      cat Dockerfile | docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type -
       # Run the tests
       if [ "$TRAVIS_BUILD_TYPE" == "Valgrind" ]; then
         docker run --rm -e ROCKSDB_VALGRIND_RUN=1 glnexus_tests bash -ex -o pipefail "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
