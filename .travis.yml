@@ -21,9 +21,9 @@ script:
       docker run --rm -v $(pwd):/io glnexus_tests cp -r /build/ /io
       # Run the tests
       if [ "$TRAVIS_BUILD_TYPE" == "Valgrind" ]; then
-        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v build/:/build glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
+        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v $(pwd)/build:/build glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
       else
-        docker run --rm -v build/:/build glnexus_tests
+        docker run --rm -v $(pwd)/build:/build glnexus_tests
         build/GLnexus/glnexus_cli -h
         build/GLnexus/test/jemalloc_linking.sh
         if [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
