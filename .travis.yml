@@ -24,11 +24,12 @@ script:
         docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v $(pwd)/build:/build glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
       else
         docker run --rm -v $(pwd)/build:/build glnexus_tests
-        build/GLnexus/glnexus_cli -h
-        build/GLnexus/test/jemalloc_linking.sh
         if [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
-          pip install -U cpp-coveralls
+          sudo pip install -U cpp-coveralls
           pushd build/GLnexus && coveralls --include src --include include --gcov-options '\-lp' && popd
+        else
+          build/GLnexus/glnexus_cli -h
+          build/GLnexus/test/jemalloc_linking.sh
         fi
       fi
       # launch medium tests from the medium-tests branch only
