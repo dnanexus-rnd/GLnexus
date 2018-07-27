@@ -2,10 +2,10 @@ language: cpp
 sudo: yes
 dist: trusty
 
-adons:
+addons:
   apt:
     packages:
-      - libjemalloc-dev
+- libjemalloc-dev
 
 script:
   # Build and run unit tests
