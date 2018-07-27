@@ -11,23 +11,25 @@ script:
   # Build and run unit tests
   - |
       set -ex -o pipefail
+      mkdir build
+      cd build
       # use the Dockerfile to build the glnexus_tests container
       effective_build_type=$TRAVIS_BUILD_TYPE
       if [ "$effective_build_type" == "Valgrind" ]; then
         effective_build_type="Release"
       fi
-      cat Dockerfile | docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type -
+      cat Dockerfile | docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type -v $(pwd):/build -
       # Run the tests
       if [ "$TRAVIS_BUILD_TYPE" == "Valgrind" ]; then
-        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
-      elif [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
-        docker run --rm glnexus_tests bash -ex -o pipefail -c "ctest -V && apt-get install -y python-pip && pip install -U cpp-coveralls && coveralls --include src --include include --gcov-options '\-lp'"
+        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v $(pwd):/build glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
       else
-        docker run --rm glnexus_tests
-        # copy glnexus_cli out for further testing and possible release
-        docker run --rm -v $(pwd):/io glnexus_tests cp glnexus_cli /io
+        docker run --rm -v $(pwd):/build glnexus_tests
         ./glnexus_cli -h
-        test/jemalloc_linking.sh
+        ./test/jemalloc_linking.sh
+        if [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
+          pip install -U cpp-coveralls
+          coveralls --include src --include include --gcov-options '\-lp'
+        fi
       fi
       # launch medium tests from the medium-tests branch only
       if [ "$TRAVIS_BRANCH" == "medium-tests" ] && [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then bash test/launch_medium_tests.sh; fi
@@ -54,7 +56,7 @@ deploy:
   provider: releases
   api_key:
     secure: OXrWL2sImjEpPDpFnKhhdpccklYauXAGtErJHjVMc8VJtjsHt4xhsIpPUytdnOH0sbdno8PLEy0Tb3C4Ff5Xq82WU7B5TrYdRzEvq14i/Y+eiqDOUfI7ttvCJwQHjvD01/B/1qFLV9Mz1lR/dkR7NXr+e7GNEStjq1OeiyXYb6WSkFomW73yiNb084h/6wetRGx/o3Jnrcs56vBQyq3GpQc18GpDiBskZoEf9Z1SJXwfcRXKTsUJC6M95ZaRktBS09eVrr0c9zRW4meg4+Hb5dQlNItD8TUSt4Qz5Ilyzwvo7TpWtAKatVgU0xd8K+EDuFebwUOP3HbAje8m3kIbppkqvved5tfDEjw3vOaCUimoYCx2W6JXlhxct42VbesBexnZt0zLvxhR4bGv3p0Dckf1XgL2cK+IUie1VNcewHMCUGlwQBLDdcr2i8SLmWvYyyrp/k1d2KailmLCnwQbl3/eAtyGOEQtEamt3Fshd8Qs9806tw9ZfgKjNex3ELTEFHCWAatcsgANcP6QZfxl6kqKVTIbid0WjhW6270bAs5+Bu/bo8Tx2xWoWwZNXllyYg2fxVurcdyZQ5DCmyyMQIA5+fWq8RIbmkqpV+LhDHZKgeKimwzKYb2rLr6IYLXTh99LuotLGojQSXnq/qGukYuFjC4azAjaP3ca63wNwUU=
-  file: glnexus_cli
+  file: build/glnexus_cli
   skip_cleanup: true
   on:
     repo: dnanexus-rnd/GLnexus
