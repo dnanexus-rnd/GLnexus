@@ -1456,6 +1456,10 @@ TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
 }
 
 TEST_CASE("BCFKeyValueData NA12878 import and query") {
+    if (getenv("ROCKSDB_VALGRIND_RUN")) {
+        // this test is too slow under valgrind
+        return;
+    }
     vector<pair<string,uint64_t>> contigs;
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open("test/data/NA12878.g.vcf.gz", "r"),
                                                [](vcfFile* f) { bcf_close(f); });
@@ -1519,7 +1523,7 @@ TEST_CASE("BCFKeyValueData NA12878 import and query") {
     // the correct results exactly.
     std::atomic<bool> trivial(true);
     statuses.clear();
-    for (size_t i = 0; i < (getenv("ROCKSDB_VALGRIND_RUN") ? 100 : 2500); i++) {
+    for (size_t i = 0; i < 2500; i++) {
         auto fut = threadpool.push([&, i](int tid){
             Status ls;
             auto qrec = all_chr17[rand() % all_chr17.size()];
