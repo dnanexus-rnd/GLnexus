@@ -26,7 +26,7 @@ script:
         docker run --rm glnexus_tests
         # copy glnexus_cli out for further testing and possible release
         docker run --rm -v $(pwd):/io glnexus_tests cp glnexus_cli /io
-        glnexus_cli -h
+        ./glnexus_cli -h
         test/jemalloc_linking.sh
       fi
       # launch medium tests from the medium-tests branch only
