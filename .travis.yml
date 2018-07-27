@@ -5,7 +5,7 @@ dist: trusty
 addons:
   apt:
     packages:
-- libjemalloc-dev
+      - libjemalloc-dev
 
 script:
   # Build and run unit tests
