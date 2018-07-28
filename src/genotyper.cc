@@ -8,6 +8,10 @@ using namespace std;
 
 #include "genotyper_utils.h"
 
+// Prevent dependency on unnecessarily new version of glibc/libm
+// https://stackoverflow.com/a/5977518
+__asm__(".symver logf,logf@GLIBC_2.2.5");
+
 namespace GLnexus {
 
 // Helper: determine if all genotypes in the record are 0/0

@@ -1456,6 +1456,10 @@ TEST_CASE("BCFKeyValueData::import_gvcf input validation") {
 }
 
 TEST_CASE("BCFKeyValueData NA12878 import and query") {
+    if (getenv("ROCKSDB_VALGRIND_RUN")) {
+        // this test is too slow under valgrind
+        return;
+    }
     vector<pair<string,uint64_t>> contigs;
     unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open("test/data/NA12878.g.vcf.gz", "r"),
                                                [](vcfFile* f) { bcf_close(f); });

@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 include(ExternalProject)
 
-# Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(test "Build all tests." OFF) # Makes boolean 'test' available.
-
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
@@ -235,39 +232,37 @@ install(TARGETS glnexus_cli DESTINATION bin)
 ################################
 # Testing
 ################################
-if (test)
 
-  ExternalProject_Add(catch
-    URL https://github.com/philsquared/Catch/archive/v1.8.2.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    LOG_DOWNLOAD ON
-    )
-  ExternalProject_Get_Property(catch source_dir)
-  include_directories(${source_dir}/single_include)
+ExternalProject_Add(catch
+  URL https://github.com/philsquared/Catch/archive/v1.8.2.zip
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  )
+ExternalProject_Get_Property(catch source_dir)
+include_directories(${source_dir}/single_include)
 
-  ##############
-  # Unit Tests
-  ##############
-  add_executable(unit_tests
-                 src/diploid.cc test/diploid.cc
-                 test/unit_tests.cc
-                 test/htslib_behaviors.cc
-                 test/rocks_behaviors.cc
-                 test/types.cc
-                 test/genotyper.cc
-                 test/service.cc
-                 test/gvcf_test_cases.cc
-                 test/BCFKeyValueData.cc
-                 test/rocks_integration.cc
-                 test/unifier.cc
-                 test/cli_utils.cc
-                 test/cli.cc)
-  add_dependencies(unit_tests catch)
-  add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
+add_executable(unit_tests
+                src/diploid.cc test/diploid.cc
+                test/unit_tests.cc
+                test/htslib_behaviors.cc
+                test/rocks_behaviors.cc
+                test/types.cc
+                test/genotyper.cc
+                test/service.cc
+                test/gvcf_test_cases.cc
+                test/BCFKeyValueData.cc
+                test/rocks_integration.cc
+                test/unifier.cc
+                test/cli_utils.cc
+                test/cli.cc)
+add_dependencies(unit_tests catch)
+add_dependencies(unit_tests libglnexus)
+target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
 
-  add_test(unit_tests unit_tests)
-endif()
+include(CTest)
+add_test(NAME unit_tests COMMAND ./unit_tests -d yes)
+add_test(NAME jemalloc_warning COMMAND test/jemalloc_linking.sh)
+

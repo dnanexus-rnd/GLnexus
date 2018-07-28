@@ -43,7 +43,7 @@ Then,
 ```
 git clone --recursive https://github.com/dnanexus-rnd/GLnexus.git
 cd GLnexus
-cmake -Dtest=ON . && make -j$(nproc) && ./unit_tests
+cmake -Dtest=ON . && make -j$(nproc) && ctest -V
 ```
 
 You will also find `./glnexus_cli` here.
