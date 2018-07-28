@@ -16,9 +16,9 @@ RUN apt-get -qq update && \
      python-pyvcf
 
 # clone GLnexus repo on the desired git revision
-WORKDIR /build
+WORKDIR /
 RUN git clone https://github.com/dnanexus-rnd/GLnexus.git
-WORKDIR /build/GLnexus
+WORKDIR /GLnexus
 RUN git fetch --tags origin && git checkout "$git_revision" && git submodule update --init --recursive
 
 # compile GLnexus

@@ -17,19 +17,20 @@ script:
         effective_build_type="Release"
       fi
       cat Dockerfile | docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type -
-      # copy the /build folder out of the image to mount for subsequent use
-      docker run --rm -v $(pwd):/io glnexus_tests cp -r /build/ /io
+      # copy the /GLnexus folder out of the image to mount for subsequent use
+      docker run --rm -v /:/io glnexus_tests cp -r /GLnexus/ /io
       # Run the tests
       if [ "$TRAVIS_BUILD_TYPE" == "Valgrind" ]; then
-        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v $(pwd)/build:/build glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
+        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v /GLnexus:/GLnexus glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
       else
-        docker run --rm -v $(pwd)/build:/build glnexus_tests
+        docker run --rm -v /GLnexus:/GLnexus glnexus_tests
+        sudo chown -R $USER /GLnexus
         if [ "$TRAVIS_BUILD_TYPE" == "Coverage" ]; then
           sudo pip install -U cpp-coveralls
-          pushd build/GLnexus && sudo -E coveralls --include src --include include --gcov-options '\-lp' && popd
+          pushd /GLnexus && coveralls --include src --include include --gcov-options '\-lp' && popd
         else
-          build/GLnexus/glnexus_cli -h
-          build/GLnexus/test/jemalloc_linking.sh
+          /GLnexus/glnexus_cli -h
+          /GLnexus/test/jemalloc_linking.sh
         fi
       fi
       # launch medium tests from the medium-tests branch only
@@ -57,7 +58,7 @@ deploy:
   provider: releases
   api_key:
     secure: OXrWL2sImjEpPDpFnKhhdpccklYauXAGtErJHjVMc8VJtjsHt4xhsIpPUytdnOH0sbdno8PLEy0Tb3C4Ff5Xq82WU7B5TrYdRzEvq14i/Y+eiqDOUfI7ttvCJwQHjvD01/B/1qFLV9Mz1lR/dkR7NXr+e7GNEStjq1OeiyXYb6WSkFomW73yiNb084h/6wetRGx/o3Jnrcs56vBQyq3GpQc18GpDiBskZoEf9Z1SJXwfcRXKTsUJC6M95ZaRktBS09eVrr0c9zRW4meg4+Hb5dQlNItD8TUSt4Qz5Ilyzwvo7TpWtAKatVgU0xd8K+EDuFebwUOP3HbAje8m3kIbppkqvved5tfDEjw3vOaCUimoYCx2W6JXlhxct42VbesBexnZt0zLvxhR4bGv3p0Dckf1XgL2cK+IUie1VNcewHMCUGlwQBLDdcr2i8SLmWvYyyrp/k1d2KailmLCnwQbl3/eAtyGOEQtEamt3Fshd8Qs9806tw9ZfgKjNex3ELTEFHCWAatcsgANcP6QZfxl6kqKVTIbid0WjhW6270bAs5+Bu/bo8Tx2xWoWwZNXllyYg2fxVurcdyZQ5DCmyyMQIA5+fWq8RIbmkqpV+LhDHZKgeKimwzKYb2rLr6IYLXTh99LuotLGojQSXnq/qGukYuFjC4azAjaP3ca63wNwUU=
-  file: build/glnexus_cli
+  file: /GLnexus/glnexus_cli
   skip_cleanup: true
   on:
     repo: dnanexus-rnd/GLnexus
