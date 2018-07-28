@@ -147,8 +147,7 @@ static int all_steps(const vector<string> &vcf_files,
 
 void help(const char* prog) {
     cout << "Usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
-         << "Merge and joint-call input gVCF files, emitting multi-sample BCF on" << endl
-         << "standard output." << endl << endl
+         << "Merge and joint-call input gVCF files, emitting multi-sample BCF on standard output." << endl << endl
          << "Options:" << endl
          << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (required)" << endl
          << "  --config X, -c X      configuration preset name or .yml filename (default: gatk)" << endl

@@ -30,10 +30,13 @@ namespace cli {
 namespace utils {
 
 bool detect_jemalloc(std::shared_ptr<spdlog::logger> logger) {
-    if (!mallctl) {
+    char *v = nullptr;
+    size_t s = sizeof(v);
+    if (!mallctl || mallctl("version", &v, &s, nullptr, 0), !v) {
         logger->warn("jemalloc absent, which will impede performance with high thread counts. See https://github.com/dnanexus-rnd/GLnexus/wiki/Performance");
         return false;
     }
+    logger->info("detected jemalloc {}", v);
     return true;
 }
 
