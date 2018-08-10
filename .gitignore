@@ -57,3 +57,4 @@ src/1.*.zip
 # Packages used by the applet
 lz4-r131.tar
 compile_commands.json
+GLnexus.DB/

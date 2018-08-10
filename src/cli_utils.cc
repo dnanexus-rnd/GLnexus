@@ -103,9 +103,15 @@ Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
     }
 
     // read BED file
-    string rname, beg_txt, end_txt;
+    string line;
     ifstream bedfile(bedfilename);
-    while (bedfile >> rname >> beg_txt >> end_txt) {
+    while (getline(bedfile, line)) {
+        istringstream linestream(line);
+        string rname, beg_txt, end_txt;
+        linestream >> rname >> beg_txt >> end_txt;
+        if (linestream.bad() || rname.empty() || beg_txt.empty() || end_txt.empty()) {
+            return Status::IOError("Error reading ", bedfilename + " " + line);
+        }
         int rid = 0;
         for(; rid<contigs.size(); rid++)
             if (contigs[rid].first == rname)
@@ -113,9 +119,13 @@ Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
         if (rid == contigs.size()) {
             return Status::Invalid("Unknown contig ", rname);
         }
+        errno = 0;
         ranges.push_back(range(rid,
                                strtol(beg_txt.c_str(), nullptr, 10),
                                strtol(end_txt.c_str(), nullptr, 10)));
+        if (errno) {
+            return Status::IOError("Error reading ", bedfilename + " " + line);
+        }
     }
     if (bedfile.bad() || !bedfile.eof()) {
         return Status::IOError( "Error reading ", bedfilename);
