@@ -23,7 +23,7 @@ GLnexus::Status s;
 #define H(desc,expr) \
     s = expr; \
     if (s.bad()) { \
-        console->error() << "Failed to " << desc << ": " << s.str(); \
+        console->error("Failed to {}: {}", desc, s.str()); \
         if (getenv("DX_JOB_ID")) { \
             ofstream joberrorjson("/home/dnanexus/job_error.json"); \
             joberrorjson << "{\"error\": {\"type\": \"AppError\", \"message\": \""; \
@@ -39,7 +39,7 @@ GLnexus::Status s;
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
                      const string &config_name,
-                     int nr_threads,
+                     size_t mem_budget, size_t nr_threads,
                      bool debug,
                      bool iter_compare,
                      size_t bucket_size) {
@@ -49,7 +49,7 @@ static int all_steps(const vector<string> &vcf_files,
     string cfg_crc32c;
 
     if (vcf_files.empty()) {
-        console->error() << "No source GVCF files specified";
+        console->error("No source GVCF files specified");
         return 1;
     }
 
@@ -76,7 +76,7 @@ static int all_steps(const vector<string> &vcf_files,
         // use an empty range filter
         vector<GLnexus::range> ranges;
         H("bulk load into DB",
-          GLnexus::cli::utils::db_bulk_load(console, nr_threads, vcf_files, dbpath, ranges, contigs, false));
+          GLnexus::cli::utils::db_bulk_load(console, mem_budget, nr_threads, vcf_files, dbpath, ranges, contigs, false));
     }
 
     if (iter_compare) {
@@ -92,10 +92,10 @@ static int all_steps(const vector<string> &vcf_files,
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
     H("discover alleles",
-      GLnexus::cli::utils::discover_alleles(console, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
+      GLnexus::cli::utils::discover_alleles(console, mem_budget, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
-        console->info() << "Writing discovered alleles as YAML to " << filename;
+        console->info("Writing discovered alleles as YAML to {}", filename);
         H("serialize discovered alleles to a file",
           GLnexus::cli::utils::yaml_write_discovered_alleles_to_file(dsals, contigs, sample_count, filename));
     }
@@ -118,12 +118,13 @@ static int all_steps(const vector<string> &vcf_files,
           GLnexus::cli::utils::unify_sites(console, unifier_cfg, contigs, dsals_i, sample_count, sites, stats1));
         stats += stats1;
     }
-    console->info() << "unified to " << sites.size() << " sites cleanly with " << stats.unified_alleles << " ALT alleles. "
-                    << stats.lost_alleles << " ALT alleles were " << (unifier_cfg.monoallelic_sites_for_lost_alleles ? "additionally included in monoallelic sites" : "lost due to failure to unify")
-                    << " and " << stats.filtered_alleles << " were filtered out on quality thresholds.";
+    console->info("unified to {} sites cleanly with {} ALT alleles. {} ALT alleles were {} and {} were filtered out on quality thresholds.",
+                  sites.size(), stats.unified_alleles, stats.lost_alleles,
+                  (unifier_cfg.monoallelic_sites_for_lost_alleles ? "additionally included in monoallelic sites" : "lost due to failure to unify"),
+                  stats.filtered_alleles);
     if (debug) {
         string filename("/tmp/sites.yml");
-        console->info() << "Writing unified sites as YAML to " << filename;
+        console->info("Writing unified sites as YAML to {}", filename);
         H("write unified sites to file",
           GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
     }
@@ -138,7 +139,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
     string outfile("-");
     H("Genotyping",
-      GLnexus::cli::utils::genotype(console, nr_threads, dbpath, genotyper_cfg, sites, hdr_lines, outfile));
+      GLnexus::cli::utils::genotype(console, mem_budget, nr_threads, dbpath, genotyper_cfg, sites, hdr_lines, outfile));
 
     return 0;
 }
@@ -146,13 +147,14 @@ static int all_steps(const vector<string> &vcf_files,
 
 void help(const char* prog) {
     cout << "Usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
-         << "Merge and joint-call input gVCF files, emitting multi-sample BCF on" << endl
-         << "standard output." << endl << endl
+         << "Merge and joint-call input gVCF files, emitting multi-sample BCF on standard output." << endl << endl
          << "Options:" << endl
-         << "  --help, -h           print this help message" << endl
-         << "  --bed FILE, -b FILE  three-column BED file of ranges to analyze (required)" << endl
-         << "  --config X, -c X     configuration preset name or .yml filename (default: gatk)" << endl
-         << "  --list, -l           given files contain lists of gVCF filenames, one per line" << endl
+         << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (required)" << endl
+         << "  --config X, -c X      configuration preset name or .yml filename (default: gatk)" << endl
+         << "  --list, -l            given files contain lists of gVCF filenames, one per line" << endl
+         << "  --mem-gbytes X, -m X  memory budget, in gbytes (default: most of system memory)" << endl
+         << "  --threads X, -t X     thread budget (default: all hardware threads)" << endl
+         << "  --help, -h            print this help message" << endl
          << endl << "Configuration presets:" << endl;
     cout << GLnexus::cli::utils::describe_config_presets() << endl;
 }
@@ -164,7 +166,8 @@ int main(int argc, char *argv[]) {
     GLnexus::Status s;
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%t] %+");
-    console->info() << "glnexus_cli " << GIT_REVISION;
+    console->info("glnexus_cli {}, built {}", GIT_REVISION, __TIMESTAMP__);
+    GLnexus::cli::utils::detect_jemalloc(console);
 
     if (argc < 2) {
         help(argv[0]);
@@ -176,6 +179,8 @@ int main(int argc, char *argv[]) {
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
         {"list", no_argument, 0, 'l'},
+        {"mem-gbytes", required_argument, 0, 'm'},
+        {"threads", required_argument, 0, 't'},
         {"bucket_size", required_argument, 0, 'x'},
         {"debug", no_argument, 0, 'd'},
         {"iter_compare", no_argument, 0, 'i'},
@@ -188,10 +193,10 @@ int main(int argc, char *argv[]) {
     bool debug = false;
     bool iter_compare = false;
     string bedfilename;
-    int nr_threads = std::thread::hardware_concurrency();
+    size_t mem_budget = 0, nr_threads = 0;
     size_t bucket_size = GLnexus::BCFKeyValueData::default_bucket_size;
 
-    while (-1 != (c = getopt_long(argc, argv, "hb:dIx:",
+    while (-1 != (c = getopt_long(argc, argv, "hb:dIx:m:t:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':
@@ -217,7 +222,7 @@ int main(int argc, char *argv[]) {
             case 'h':
             case '?':
                 help(argv[0]);
-                exit(1);
+                exit(0);
                 break;
 
             case 'i':
@@ -228,6 +233,23 @@ int main(int argc, char *argv[]) {
                 bucket_size = strtoul(optarg, nullptr, 10);
                 if (bucket_size == 0 || bucket_size > 1000000000) {
                     cerr << "bucket size should be in (1,1e9]" << endl;
+                    return 1;
+                }
+                break;
+
+            case 'm':
+                mem_budget = strtoull(optarg, nullptr, 10);
+                if (mem_budget == 0 || mem_budget > 16*1024) {
+                    cerr << "invalid --mem-gbytes" << endl;
+                    return 1;
+                }
+                mem_budget <<= 30;
+                break;
+
+            case 't':
+                nr_threads = strtoull(optarg, nullptr, 10);
+                if (nr_threads == 0 || nr_threads > 1024) {
+                    cerr << "invalid --threads" << endl;
                     return 1;
                 }
                 break;
@@ -262,5 +284,5 @@ int main(int argc, char *argv[]) {
         vcf_files = vcf_files_precursor;
     }
 
-    return all_steps(vcf_files, bedfilename, config_name, nr_threads, debug, iter_compare, bucket_size);
+    return all_steps(vcf_files, bedfilename, config_name, mem_budget, nr_threads, debug, iter_compare, bucket_size);
 }

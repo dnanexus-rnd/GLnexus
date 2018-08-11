@@ -42,7 +42,7 @@ TEST_CASE("cli") {
 
         // empty range, so that all records will be loaded into the database
         vector<range> ranges;
-        s = cli::utils::db_bulk_load(console, nr_threads, gvcfs, DB_PATH, ranges, contigs);
+        s = cli::utils::db_bulk_load(console, 0, nr_threads, gvcfs, DB_PATH, ranges, contigs);
         REQUIRE(s.ok());
         REQUIRE(contigs.size() >= 1);
 
@@ -55,7 +55,7 @@ TEST_CASE("cli") {
 
         discovered_alleles dsals;
         unsigned sample_count;
-        s = cli::utils::discover_alleles(console, nr_threads, DB_PATH, ranges, contigs, dsals, sample_count);
+        s = cli::utils::discover_alleles(console, 0, nr_threads, DB_PATH, ranges, contigs, dsals, sample_count);
         REQUIRE(s.ok());
 
         string filename = DB_DIR + "/dsals.yml";
@@ -69,7 +69,7 @@ TEST_CASE("cli") {
         string config_crc32c, config_crc32c2;
         s = cli::utils::load_config(console, config_preset, unifier_cfg, genotyper_cfg, config_crc32c);
         REQUIRE(s.ok());
-        REQUIRE(config_crc32c == "3254599038");
+        REQUIRE(config_crc32c == "1729074049");
 
         YAML::Emitter em;
         em << YAML::BeginMap
@@ -99,7 +99,7 @@ TEST_CASE("cli") {
         REQUIRE(s.ok());
 
         filename = DB_DIR + "/results.bcf";
-        s = cli::utils::genotype(console, nr_threads, DB_PATH, genotyper_cfg, sites, {}, filename);
+        s = cli::utils::genotype(console, 0, nr_threads, DB_PATH, genotyper_cfg, sites, {}, filename);
         REQUIRE(s.ok());
     }
 

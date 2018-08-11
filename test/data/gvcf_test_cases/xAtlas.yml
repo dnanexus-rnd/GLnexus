@@ -99,60 +99,61 @@ genotyper_config:
     # TODO: ref_dp_format=DPX[0] would be more precise
     ref_dp_format: DP
     liftover_fields:
-        - orig_names: [GQ]
-          name: GQ
-          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-          type: int
-          number: basic
-          combi_method: min
-          count: 1
-          ignore_non_variants: true
-        - orig_names: [PL]
-          name: PL
-          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
-          type: int
-          number: genotype
-          combi_method: missing
-          count: 0
-          ignore_non_variants: true
-        - orig_names: [P]
-          name: P
-          description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
-          from: info
-          type: float
-          number: basic
-          count: 1
-          combi_method: missing
-          ignore_non_variants: true
-        - orig_names: [DP]
-          name: DP
-          description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
-          type: int
-          combi_method: min
-          number: basic
-          count: 1
-        - orig_names: [RR]
-          name: RR
-          description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
-          type: int
-          combi_method: min
-          number: basic
-          count: 1
-        - orig_names: [VR]
-          name: VR
-          description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
-          type: int
-          combi_method: max
-          number: basic
-          count: 1
-        - orig_names: [FILTER]
-          name: FT
-          description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
-          type: string
-          combi_method: missing
-          number: basic
-          count: 1
-          ignore_non_variants: true
+    - orig_names: [DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [RR]
+      name: RR
+      description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+    - orig_names: [VR]
+      name: VR
+      description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [PL]
+      name: PL
+      description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+      type: int
+      number: genotype
+      combi_method: missing
+      count: 0
+      ignore_non_variants: true
+    - orig_names: [P]
+      name: P
+      description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
+      from: info
+      type: float
+      number: basic
+      count: 1
+      combi_method: missing
+      ignore_non_variants: true
+    - orig_names: [FILTER]
+      name: FT
+      description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
+      type: string
+      combi_method: missing
+      number: basic
+      count: 1
+      ignore_non_variants: true
 
 truth_unified_sites:
 - range: {ref: 1, beg: 15956, end: 15956}
@@ -279,7 +280,7 @@ truth_output_vcf:
       1	15987	.	M	C	716	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:69:716,75,0:0.999968:26:0:26:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	15989	.	AG	A	659	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:41:659,47,0:0.999904:26:1:25:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	1087454	.	TAA	TA,T	61	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:61,.,.,0,.,125:0.848623:8:5:2:.:..	0/1:.:61,0,125,.,.,.:0.848623:8:5:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	1087554	.	TAA	T	61	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:61,0,125:0.848623:8:5:2:.:..	0/0:.:.:0.848623:4:4:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1087554	.	TAA	T	61	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:61,0,125:0.848623:8:5:2:.:..	0/0:.:.:0.848623:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	1099704	.	GGA	G	828	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:828,0,2005:0.994071:142:83:43:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	1689669	.	CGGCCCT	CGGCCCTGGCCCT,C	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/2:.:85,.,.,0,.,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM
       1	1689769	.	C	CC	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,9:0.999618:6:2:4:.:..

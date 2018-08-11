@@ -11,7 +11,7 @@ source dx-toolkit/environment
 
 # build GLnexus applet
 dx cd ${GLNEXUS_TEST_PROJECT_ID}:/
-dx build -a --destination :/Attic/travis/GLnexus cli/dxapplet
+dx build -a --destination :/Attic/travis/GLnexus build/GLnexus/cli/dxapplet
 GIT_REVISION=$(git describe --long --tags --always)
 dx set_properties :/Attic/travis/GLnexus "git_revision=${GIT_REVISION}"
 

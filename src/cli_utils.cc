@@ -19,9 +19,26 @@
 // This file has utilities employed by the glnexus applet.
 using namespace std;
 
+extern "C"
+{
+  // weak symbol: resolved at runtime by the linker if we are using jemalloc, nullptr otherwise
+  int mallctl(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) __attribute__((weak));
+}
+
 namespace GLnexus {
 namespace cli {
 namespace utils {
+
+bool detect_jemalloc(std::shared_ptr<spdlog::logger> logger) {
+    char *v = nullptr;
+    size_t s = sizeof(v);
+    if (!mallctl || mallctl("version", &v, &s, nullptr, 0), !v) {
+        logger->warn("jemalloc absent, which will impede performance with high thread counts. See https://github.com/dnanexus-rnd/GLnexus/wiki/Performance");
+        return false;
+    }
+    logger->info("detected jemalloc {}", v);
+    return true;
+}
 
 // Parse a range like chr1:1000-2000. The item can also just be the name of a
 // contig, in which case it gets mapped to the contig's full length.
@@ -86,9 +103,15 @@ Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
     }
 
     // read BED file
-    string rname, beg_txt, end_txt;
+    string line;
     ifstream bedfile(bedfilename);
-    while (bedfile >> rname >> beg_txt >> end_txt) {
+    while (getline(bedfile, line)) {
+        istringstream linestream(line);
+        string rname, beg_txt, end_txt;
+        linestream >> rname >> beg_txt >> end_txt;
+        if (linestream.bad() || rname.empty() || beg_txt.empty() || end_txt.empty()) {
+            return Status::IOError("Error reading ", bedfilename + " " + line);
+        }
         int rid = 0;
         for(; rid<contigs.size(); rid++)
             if (contigs[rid].first == rname)
@@ -96,9 +119,13 @@ Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
         if (rid == contigs.size()) {
             return Status::Invalid("Unknown contig ", rname);
         }
+        errno = 0;
         ranges.push_back(range(rid,
                                strtol(beg_txt.c_str(), nullptr, 10),
                                strtol(end_txt.c_str(), nullptr, 10)));
+        if (errno) {
+            return Status::IOError("Error reading ", bedfilename + " " + line);
+        }
     }
     if (bedfile.bad() || !bedfile.eof()) {
         return Status::IOError( "Error reading ", bedfilename);
@@ -111,7 +138,7 @@ Status parse_bed_file(std::shared_ptr<spdlog::logger> logger,
         }
         if (query.end > contigs[query.rid].second) {
             query.end = contigs[query.rid].second;
-            logger->warn() << "Truncated query range at end of contig: " << query.str(contigs);
+            logger->warn("Truncated query range at end of contig: {}", query.str(contigs));
         }
     }
 
@@ -447,14 +474,6 @@ gatk:
         required_dp: 1
         revise_genotypes: true
         liftover_fields:
-            - orig_names: [GQ]
-              name: GQ
-              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-              type: int
-              number: basic
-              combi_method: min
-              count: 1
-              ignore_non_variants: true
             - orig_names: [DP, MIN_DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
@@ -477,17 +496,6 @@ gatk:
               combi_method: missing
               number: basic
               count: 4
-gatk_unfiltered:
-    description: Merge GATK-style gVCFs with no filtering or genotype revision.
-    unifier_config:
-        min_AQ1: 0
-        min_AQ2: 0
-        min_GQ: 0
-        monoallelic_sites_for_lost_alleles: true
-    genotyper_config:
-        required_dp: 1
-        revise_genotypes: false
-        liftover_fields:
             - orig_names: [GQ]
               name: GQ
               description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
@@ -504,6 +512,17 @@ gatk_unfiltered:
               combi_method: missing
               count: 0
               ignore_non_variants: true
+gatk_unfiltered:
+    description: Merge GATK-style gVCFs with no filtering or genotype revision.
+    unifier_config:
+        min_AQ1: 0
+        min_AQ2: 0
+        min_GQ: 0
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 1
+        revise_genotypes: false
+        liftover_fields:
             - orig_names: [DP, MIN_DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
@@ -526,6 +545,22 @@ gatk_unfiltered:
               combi_method: missing
               number: basic
               count: 4
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
 xAtlas:
     unifier_config:
         min_AQ1: 60
@@ -540,6 +575,28 @@ xAtlas:
         # TODO: ref_dp_format=DPX[0] would be more precise
         ref_dp_format: DP
         liftover_fields:
+            - orig_names: [DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [RR]
+              name: RR
+              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [VR]
+              name: VR
+              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
             - orig_names: [GQ]
               name: GQ
               description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
@@ -564,28 +621,6 @@ xAtlas:
               number: basic
               count: 1
               combi_method: missing
-              ignore_non_variants: true
-            - orig_names: [DP]
-              name: DP
-              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
-            - orig_names: [RR]
-              name: RR
-              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
-            - orig_names: [VR]
-              name: VR
-              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
               ignore_non_variants: true
             - orig_names: [FILTER]
               name: FT
@@ -605,6 +640,28 @@ xAtlas_unfiltered:
         # TODO: ref_dp_format=DPX[0] would be more precise
         ref_dp_format: DP
         liftover_fields:
+            - orig_names: [DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [RR]
+              name: RR
+              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [VR]
+              name: VR
+              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
             - orig_names: [GQ]
               name: GQ
               description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
@@ -630,28 +687,6 @@ xAtlas_unfiltered:
               count: 1
               combi_method: missing
               ignore_non_variants: true
-            - orig_names: [DP]
-              name: DP
-              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
-            - orig_names: [RR]
-              name: RR
-              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
-            - orig_names: [VR]
-              name: VR
-              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
-              ignore_non_variants: true
             - orig_names: [FILTER]
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
@@ -670,22 +705,6 @@ weCall:
         required_dp: 1
         revise_genotypes: true
         liftover_fields:
-            - orig_names: [GQ]
-              name: GQ
-              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-              type: int
-              number: basic
-              combi_method: min
-              count: 1
-              ignore_non_variants: true
-            - orig_names: [PL]
-              name: PL
-              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
-              type: int
-              number: genotype
-              combi_method: missing
-              count: 0
-              ignore_non_variants: true
             - orig_names: [MIN_DP, DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
@@ -710,6 +729,22 @@ weCall:
               count: 0
               combi_method: missing
               ignore_non_variants: true
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
             - orig_names: [FILTER]
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
@@ -728,6 +763,21 @@ DeepVariant:
         required_dp: 0
         revise_genotypes: false
         liftover_fields:
+            - orig_names: [DP, MIN_DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
             - orig_names: [GQ]
               name: GQ
               description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
@@ -744,21 +794,6 @@ DeepVariant:
               combi_method: missing
               count: 0
               ignore_non_variants: true
-            - orig_names: [DP, MIN_DP]
-              name: DP
-              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
-              type: int
-              combi_method: min
-              number: basic
-              count: 1
-            - orig_names: [AD]
-              name: AD
-              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
-              type: int
-              number: alleles
-              combi_method: min
-              default_type: zero
-              count: 0
 )eof";
 
 Status load_config(std::shared_ptr<spdlog::logger> logger,
@@ -781,10 +816,10 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
     S(genotyper_cfg.yaml(em));
     em << YAML::EndMap;
     std::string config_text = em.c_str();
-    logger->info() << "config:\n" << config_text;
+    logger->info("config:\n{}", config_text);
 
     config_crc32c = std::to_string(rocksdb::crc32c::Value(config_text.c_str(), config_text.size()));
-    logger->info() << "config CRC32C = " << config_crc32c;
+    logger->info("config CRC32C = {}", config_crc32c);
     return Status::OK();
 }
 
@@ -796,7 +831,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
     Status s;
     if (name.size() > 4 && name.substr(name.size() - 4) == ".yml") {
         try {
-            logger->info() << "Loading config YAML file " << name;
+            logger->info("Loading config YAML file {}", name);
             YAML::Node config = YAML::LoadFile(name);
             if (!config || !config.IsMap()) {
                 return Status::IOError("loading configuration YAML file", name);
@@ -806,7 +841,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
             return Status::IOError("loading configuration YAML file", name);
         }
     } else {
-        logger->info() << "Loading config preset " << name;
+        logger->info("Loading config preset {}", name);
         YAML::Node presets = YAML::Load(config_presets_yml);
         if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
             return Status::NotFound("unknown configuration preset", name);
@@ -855,7 +890,7 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
                vector<pair<string,size_t>> &contigs,
                size_t bucket_size) {
     Status s;
-    logger->info() << "init database, exemplar_vcf=" << exemplar_gvcf;
+    logger->info("init database, exemplar_vcf={}", exemplar_gvcf);
     if (check_dir_exists(dbpath)) {
         return Status::IOError("Database directory already exists", dbpath);
     }
@@ -882,20 +917,22 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
     free(contignames);
 
     // create and initialize the database
+    RocksKeyValue::config cfg;
+    cfg.pfx = GLnexus_prefix_spec();
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Initialize(dbpath, db, GLnexus_prefix_spec()));
+    S(RocksKeyValue::Initialize(dbpath, cfg, db));
     S(BCFKeyValueData::InitializeDB(db.get(), contigs, bucket_size));
 
     // report success
-    logger->info() << "Initialized GLnexus database in " << dbpath;
-    logger->info() << "bucket size: " << bucket_size;
+    logger->info("Initialized GLnexus database in {}", dbpath);
+    logger->info("bucket size: {}", bucket_size);
 
     stringstream ss;
     ss << "contigs:";
     for (const auto& contig : contigs) {
         ss << " " << contig.first;
     }
-    logger->info() << ss.str();
+    logger->info(ss.str());
     S(db->flush());
     db.reset();
 
@@ -907,12 +944,13 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
                       const string &dbpath,
                       std::vector<std::pair<std::string,size_t> > &contigs) {
     Status s;
-    logger->info() << "db_get_contigs " << dbpath;
+    logger->info("db_get_contigs {}", dbpath);
 
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
     unique_ptr<KeyValue::DB> db;
-
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     {
         unique_ptr<BCFKeyValueData> data;
         S(BCFKeyValueData::Open(db.get(), data));
@@ -923,7 +961,7 @@ Status db_get_contigs(std::shared_ptr<spdlog::logger> logger,
 }
 
 Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
-                    size_t nr_threads,
+                    size_t mem_budget, size_t nr_threads,
                     const vector<string> &gvcfs,
                     const string &dbpath,
                     const vector<range> &ranges_i,
@@ -936,9 +974,13 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         ranges.insert(r);
 
     // open the database
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::BULK_LOAD;
+    cfg.pfx = GLnexus_prefix_spec();
+    cfg.mem_budget = mem_budget;
+    cfg.thread_budget = nr_threads/2;
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::BULK_LOAD));
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
     S(BCFKeyValueData::Open(db.get(), data));
 
@@ -951,12 +993,12 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         for (const auto& rng : ranges) {
             ss << " " << rng.str(contigs);
         }
-        logger->info() << "Beginning bulk load of records overlapping:" << ss.str();
+        logger->info("Beginning bulk load of records overlapping: {}", ss.str());
     } else {
-        logger->info() << "Beginning bulk load with no range filter.";
+        logger->info("Beginning bulk load with no range filter.");
     }
 
-    ctpl::thread_pool threadpool(nr_threads);
+    ctpl::thread_pool threadpool(nr_threads || std::thread::hardware_concurrency());
     vector<future<Status>> statuses;
     set<string> datasets_loaded;
     BCFKeyValueData::import_result stats;
@@ -986,17 +1028,17 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                 Status ls = data->import_gvcf(*metadata, dataset, gvcf, ranges, rslt);
                 if (ls.ok()) {
                     if (delete_gvcf_after_load && unlink(gvcf.c_str())) {
-                        logger->warn() << "Loaded " << gvcf << " successfully, but failed deleting it afterwards.";
+                        logger->warn("Loaded {} successfully, but failed deleting it afterwards.", gvcf);
                     }
                     lock_guard<mutex> lock(mu);
                     if (rslt.records == 0) {
-                        logger->warn() << "No data loaded from " << gvcf << " after range and other filters.";
+                        logger->warn("No data loaded from {} after range and other filters.", gvcf);
                     }
                     stats += rslt;
                     datasets_loaded.insert(dataset);
                     size_t n = datasets_loaded.size();
                     if (n % 100 == 0) {
-                        logger->info() << n << " (" << dataset << ")...";
+                        logger->info("{} ({})...", n, dataset);
                     }
                 }
                 return ls;
@@ -1015,15 +1057,10 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     }
 
     // report results
-    logger->info() << "Loaded " << datasets_loaded.size() << " datasets with "
-                    << stats.samples.size() << " samples; "
-                    << stats.bytes << " bytes in "
-                    << stats.records << " BCF records ("
-                    << stats.duplicate_records << " duplicate) in "
-                    << stats.buckets << " buckets. "
-                    << "Bucket max " << stats.max_bytes << " bytes, max "
-                    << stats.max_records << " records. "
-                    << stats.skipped_records << " BCF records skipped due to caller-specific exceptions.";
+    logger->info("Loaded {} datasets with {} samples; {} bytes in {} BCF records ({} duplicate) in {} buckets. Bucket max {} bytes, {} records. {} BCF records skipped due to caller-specific exceptions",
+                 datasets_loaded.size(), stats.samples.size(), stats.bytes,
+                 stats.records, stats.duplicate_records,
+                 stats.buckets, stats.max_bytes, stats.max_records, stats.skipped_records);
 
     // call all_samples_sampleset to create the sample set including
     // the newly loaded ones. By doing this now we make it possible
@@ -1032,24 +1069,24 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     // database to be used)
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "Created sample set " << sampleset;
+    logger->info("Created sample set {}", sampleset);
 
     if (failures.size()) {
         for (const auto& p : failures) {
-            logger->error() << p.first << " " << p.second.str();
+            logger->error("{} {}", p.first, p.second.str());
         }
         return Status::Failure("One or more gVCF inputs failed validation or database loading; check log for details.");
     }
 
-    logger->info() << "Flushing and compacting database...";
+    logger->info("Flushing and compacting database...");
     S(db->flush());
     db.reset();
-    logger->info() << "Bulk load complete!";
+    logger->info("Bulk load complete!");
     return Status::OK();
 }
 
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
-                        size_t nr_threads,
+                        size_t mem_budget, size_t nr_threads,
                         const string &dbpath,
                         const vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
@@ -1061,21 +1098,25 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     dsals.clear();
 
     // open the database in read-only mode
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
+    cfg.mem_budget = mem_budget;
+    cfg.thread_budget = nr_threads;
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     S(BCFKeyValueData::Open(db.get(), data));
 
     // start service, discover alleles
     service_config svccfg;
-    svccfg.threads = nr_threads;
+    svccfg.threads = nr_threads || std::thread::hardware_concurrency();
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
 
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "found sample set " << sampleset;
+    logger->info("found sample set {}", sampleset);
 
-    logger->info() << "discovering alleles in " << ranges.size() << " range(s)";
+    logger->info("discovering alleles in {} range(s)", ranges.size());
     vector<discovered_alleles> valleles;
     S(svc->discover_alleles(sampleset, ranges, sample_count, valleles));
 
@@ -1083,7 +1124,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
         S(merge_discovered_alleles(*it, dsals));
         it->clear(); // free some memory
     }
-    logger->info() << "discovered " << dsals.size() << " alleles";
+    logger->info("discovered {} alleles", dsals.size());
     return Status::OK();
 }
 
@@ -1114,19 +1155,23 @@ Status unify_sites(std::shared_ptr<spdlog::logger> logger,
 
 
 Status genotype(std::shared_ptr<spdlog::logger> logger,
-                size_t nr_threads,
+                size_t mem_budget, size_t nr_threads,
                 const string &dbpath,
                 const genotyper_config &genotyper_cfg,
                 const vector<unified_site> &sites,
                 const vector<string>& extra_header_lines,
                 const string &output_filename) {
     Status s;
-    logger->info() << "Lifting over " << genotyper_cfg.liftover_fields.size() << " fields.";
+    logger->info("Lifting over {} fields", genotyper_cfg.liftover_fields.size());
 
     // open the database in read-only mode
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
+    cfg.mem_budget = mem_budget;
+    cfg.thread_budget = nr_threads;
     unique_ptr<KeyValue::DB> db;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                                   RocksKeyValue::OpenMode::READ_ONLY));
+    S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
     S(BCFKeyValueData::Open(db.get(), data));
 
@@ -1135,25 +1180,25 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
 
     // start service, discover alleles, unify sites, genotype sites
     service_config svccfg;
-    svccfg.threads = nr_threads;
+    svccfg.threads = nr_threads || std::thread::hardware_concurrency();
     svccfg.extra_header_lines = extra_header_lines;
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
 
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "found sample set " << sampleset;
+    logger->info("found sample set {}", sampleset);
 
     S(svc->genotype_sites(genotyper_cfg, sampleset, sites, output_filename));
-    logger->info() << "genotyping complete!";
+    logger->info("genotyping complete!");
 
     auto stalls_ms = svc->threads_stalled_ms();
     if (stalls_ms) {
-        logger->info() << "worker threads were cumulatively stalled for " << stalls_ms << "ms";
+        logger->info("worker threads were cumulatively stalled for {}ms", stalls_ms);
     }
 
     std::shared_ptr<StatsRangeQuery> statsRq = data->getRangeStats();
-    logger->info() << statsRq->str();
+    logger->info(statsRq->str());
 
     return Status::OK();
 }
@@ -1162,18 +1207,22 @@ Status compare_db_itertion_algorithms(std::shared_ptr<spdlog::logger> logger,
                                       const std::string &dbpath,
                                       int n_iter) {
     Status s;
+
     unique_ptr<KeyValue::DB> db;
+    RocksKeyValue::config cfg;
+    cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
+    cfg.pfx = GLnexus_prefix_spec();
+    S(RocksKeyValue::Open(dbpath, cfg, db));
+
     unique_ptr<BCFKeyValueData> data;
-    string sampleset;
-    S(RocksKeyValue::Open(dbpath, db, GLnexus_prefix_spec(),
-                          RocksKeyValue::OpenMode::READ_ONLY));
     S(BCFKeyValueData::Open(db.get(), data));
 
     unique_ptr<MetadataCache> metadata;
     S(MetadataCache::Start(*data, metadata));
 
+    string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info() << "using sample set " << sampleset;
+    logger->info("using sample set {}", sampleset);
 
     // get samples and datasets
     shared_ptr<const set<string>> samples, datasets;

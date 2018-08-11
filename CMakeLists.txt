@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 include(ExternalProject)
 
-# Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(test "Build all tests." OFF) # Makes boolean 'test' available.
-
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
@@ -87,7 +84,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/v5.13.2.zip
+    URL https://github.com/facebook/rocksdb/archive/v5.14.2.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
@@ -153,7 +150,7 @@ set(FCMM_INCLUDE_DIR ${source_dir})
 include_directories(${FCMM_INCLUDE_DIR})
 
 ExternalProject_Add(spdlog
-    URL https://github.com/gabime/spdlog/archive/c900b25dfd.zip
+    URL https://github.com/gabime/spdlog/archive/v0.17.0.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
@@ -177,7 +174,7 @@ ExternalProject_Add(capnp
 
 execute_process(COMMAND git describe --tags --long --dirty --always
                 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -Wno-write-strings -fdiagnostics-color=auto -march=ivybridge")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGIT_REVISION=\"\\\"${GIT_REVISION}\\\"\" -pthread -std=c++14 -Wall -Werror=return-type -Werror=unused-result -Wno-sign-compare -Wno-write-strings -Wno-terminate -fdiagnostics-color=auto -march=ivybridge")
 set(CMAKE_CXX_FLAGS_RELEASE "-gdwarf -DNDEBUG -O3")
 
 ################################
@@ -235,39 +232,37 @@ install(TARGETS glnexus_cli DESTINATION bin)
 ################################
 # Testing
 ################################
-if (test)
 
-  ExternalProject_Add(catch
-    URL https://github.com/philsquared/Catch/archive/v1.8.2.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    LOG_DOWNLOAD ON
-    )
-  ExternalProject_Get_Property(catch source_dir)
-  include_directories(${source_dir}/single_include)
+ExternalProject_Add(catch
+  URL https://github.com/philsquared/Catch/archive/v1.8.2.zip
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  )
+ExternalProject_Get_Property(catch source_dir)
+include_directories(${source_dir}/single_include)
 
-  ##############
-  # Unit Tests
-  ##############
-  add_executable(unit_tests
-                 src/diploid.cc test/diploid.cc
-                 test/unit_tests.cc
-                 test/htslib_behaviors.cc
-                 test/rocks_behaviors.cc
-                 test/types.cc
-                 test/genotyper.cc
-                 test/service.cc
-                 test/gvcf_test_cases.cc
-                 test/BCFKeyValueData.cc
-                 test/rocks_integration.cc
-                 test/unifier.cc
-                 test/cli_utils.cc
-                 test/cli.cc)
-  add_dependencies(unit_tests catch)
-  add_dependencies(unit_tests libglnexus)
-  target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
+add_executable(unit_tests
+                src/diploid.cc test/diploid.cc
+                test/unit_tests.cc
+                test/htslib_behaviors.cc
+                test/rocks_behaviors.cc
+                test/types.cc
+                test/genotyper.cc
+                test/service.cc
+                test/gvcf_test_cases.cc
+                test/BCFKeyValueData.cc
+                test/rocks_integration.cc
+                test/unifier.cc
+                test/cli_utils.cc
+                test/cli.cc)
+add_dependencies(unit_tests catch)
+add_dependencies(unit_tests libglnexus)
+target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
 
-  add_test(unit_tests unit_tests)
-endif()
+include(CTest)
+add_test(NAME unit_tests COMMAND ./unit_tests -d yes)
+add_test(NAME jemalloc_warning COMMAND test/jemalloc_linking.sh)
+add_test(NAME getting_started COMMAND test/getting_started.sh)

@@ -559,11 +559,11 @@ TEST_CASE("iter_compare") {
          gvcfs.push_back(basedir + "/" + fname);
     }
     vector<range> ranges;
-    s = cli::utils::db_bulk_load(console, 8, gvcfs, dbpath, ranges, contigs);
+    s = cli::utils::db_bulk_load(console,  0, 8, gvcfs, dbpath, ranges, contigs);
     REQUIRE(s.ok());
     REQUIRE(contigs.size() >= 1);
 
     int n_iter = 50;
     s = cli::utils::compare_db_itertion_algorithms(console, dbpath, n_iter);
-    console->info() << "Passed " << n_iter << " iterator comparison tests";
+    console->info("Passed {} iterator comparison tests", n_iter);
 }
