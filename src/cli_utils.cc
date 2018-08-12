@@ -969,6 +969,10 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     bool delete_gvcf_after_load) {
     Status s;
 
+    if (nr_threads == 0) {
+        nr_threads = std::thread::hardware_concurrency();
+    }
+
     set<range> ranges;
     for (auto &r : ranges_i)
         ranges.insert(r);
@@ -978,7 +982,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
     cfg.mode = RocksKeyValue::OpenMode::BULK_LOAD;
     cfg.pfx = GLnexus_prefix_spec();
     cfg.mem_budget = mem_budget;
-    cfg.thread_budget = nr_threads/2;
+    cfg.thread_budget = nr_threads;
     unique_ptr<KeyValue::DB> db;
     S(RocksKeyValue::Open(dbpath, cfg, db));
     unique_ptr<BCFKeyValueData> data;
@@ -998,7 +1002,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         logger->info("Beginning bulk load with no range filter.");
     }
 
-    ctpl::thread_pool threadpool(nr_threads || std::thread::hardware_concurrency());
+    ctpl::thread_pool threadpool(nr_threads);
     vector<future<Status>> statuses;
     set<string> datasets_loaded;
     BCFKeyValueData::import_result stats;
@@ -1097,6 +1101,10 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     unique_ptr<BCFKeyValueData> data;
     dsals.clear();
 
+    if (nr_threads == 0) {
+        nr_threads = std::thread::hardware_concurrency();
+    }
+
     // open the database in read-only mode
     RocksKeyValue::config cfg;
     cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
@@ -1108,7 +1116,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
 
     // start service, discover alleles
     service_config svccfg;
-    svccfg.threads = nr_threads || std::thread::hardware_concurrency();
+    svccfg.threads = nr_threads;
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));
 
@@ -1164,6 +1172,10 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     Status s;
     logger->info("Lifting over {} fields", genotyper_cfg.liftover_fields.size());
 
+    if (nr_threads == 0) {
+        nr_threads = std::thread::hardware_concurrency();
+    }
+
     // open the database in read-only mode
     RocksKeyValue::config cfg;
     cfg.mode = RocksKeyValue::OpenMode::READ_ONLY;
@@ -1180,7 +1192,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
 
     // start service, discover alleles, unify sites, genotype sites
     service_config svccfg;
-    svccfg.threads = nr_threads || std::thread::hardware_concurrency();
+    svccfg.threads = nr_threads;
     svccfg.extra_header_lines = extra_header_lines;
     unique_ptr<Service> svc;
     S(Service::Start(svccfg, *data, *data, svc));

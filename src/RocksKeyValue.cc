@@ -46,6 +46,17 @@ static size_t totalRAM() {
     return memoized;
 }
 
+// Given a user-specified memory budget (zero if none), calculate the practical
+// effective memory budget
+size_t calculate_mem_budget(size_t specified_mem_budget) {
+    size_t ans = totalRAM();
+    if (specified_mem_budget > 0) {
+        ans = std::min(ans, specified_mem_budget);
+    }
+    ans = std::max(ans, 4U*size_t(1<<30));
+    return ans;
+}
+
 // Convert a rocksdb Status into a GLnexus Status structure
 static Status convertStatus(const rocksdb::Status &s)
 {
@@ -83,8 +94,7 @@ static Status convertStatus(const rocksdb::Status &s)
 
 // Create RocksDB block cache to be shared among all collections in one database
 std::shared_ptr<rocksdb::Cache> NewBlockCache(OpenMode mode, size_t mem_budget) {
-    mem_budget = std::max(mem_budget, size_t(2<<30));
-    mem_budget = std::min(mem_budget, totalRAM());
+    assert(mem_budget >= 4U*size_t(1<<30));
     if (mode != OpenMode::BULK_LOAD) {
         return rocksdb::NewLRUCache(mem_budget / 2, 8);
     } else {
@@ -141,6 +151,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
         // Increase memtable size
+        assert(mem_budget >= 4U*size_t(1<<30));
         opts.write_buffer_size = mem_budget / 6;
         opts.max_write_buffer_number = 4;
         opts.min_write_buffer_number_to_merge = 1;
@@ -365,9 +376,10 @@ public:
         if (opt.mode != OpenMode::NORMAL && opt.mode != OpenMode::BULK_LOAD) {
             return Status::Invalid("RocksKeyValue::Initialize: invalid open mode");
         }
-        auto block_cache = NewBlockCache(opt.mode, opt.mem_budget);
+        size_t mem_budget = calculate_mem_budget(opt.mem_budget);
+        auto block_cache = NewBlockCache(opt.mode, mem_budget);
         rocksdb::Options options;
-        ApplyDBOptions(opt.mode, opt.mem_budget, opt.thread_budget, block_cache, options);
+        ApplyDBOptions(opt.mode, mem_budget, opt.thread_budget, block_cache, options);
         options.create_if_missing = true;
         options.error_if_exists = true;
 
@@ -379,7 +391,7 @@ public:
         assert(rawdb != nullptr);
 
         std::map<const std::string, rocksdb::ColumnFamilyHandle*> coll2handle;
-        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, opt.mem_budget, block_cache));
+        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, mem_budget, block_cache));
         if (!db) {
             delete rawdb;
             return Status::Failure();
@@ -390,9 +402,10 @@ public:
     static Status Open(const std::string& dbPath, const config& opt,
                        std::unique_ptr<KeyValue::DB> &db) {
         // prepare options
-        auto block_cache = NewBlockCache(opt.mode, opt.mem_budget);
+        size_t mem_budget = calculate_mem_budget(opt.mem_budget);
+        auto block_cache = NewBlockCache(opt.mode, mem_budget);
         rocksdb::Options options;
-        ApplyDBOptions(opt.mode, opt.mem_budget, opt.thread_budget, block_cache, options);
+        ApplyDBOptions(opt.mode, mem_budget, opt.thread_budget, block_cache, options);
         options.create_if_missing = false;
 
         // detect the database's column families
@@ -408,7 +421,7 @@ public:
             if (opt.pfx && nm == opt.pfx->first) {
                 effective_pfx = opt.pfx->second;
             }
-            ApplyColumnFamilyOptions(opt.mode, effective_pfx, opt.mem_budget, block_cache, colopts);
+            ApplyColumnFamilyOptions(opt.mode, effective_pfx, mem_budget, block_cache, colopts);
             rocksdb::ColumnFamilyDescriptor cfd;
             cfd.name = nm;
             cfd.options = colopts;
@@ -436,7 +449,7 @@ public:
         for (size_t i = 0; i < column_families.size(); i++) {
             coll2handle[column_family_names[i]] = column_family_handles[i];
         }
-        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, opt.mem_budget, block_cache));
+        db.reset(new DB(rawdb, coll2handle, opt.mode, opt.pfx, mem_budget, block_cache));
         if (!db) {
             for (auto h : column_family_handles) {
                 delete h;
