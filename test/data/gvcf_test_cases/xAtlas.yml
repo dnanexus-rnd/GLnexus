@@ -56,8 +56,8 @@ input:
         1	69155	.	T	.	.	PASS	END=69214;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:1:1:.:0,32,82:0,0,0,0:1,4,1.83333,0.806051:1,4,1.83333,0.806051
         1	69215	.	T	TA	15	read_end_ratio	P=0.971431	GT:VR:RR:DP:GQ:PL	0/1:2:5:5:.:9,0,125
         1	69216	.	G	.	.	PASS	END=69259;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:5:5:.:0,45,208:0,0,0,0:5,7,6.22727,0.522233:5,7,6.22727,0.522233
-        1	1087454	.	TAA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:61,0,125
-        1	1087554	.	TAA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:61,0,125
+        1	1087454	.	TAA	T	8	PASS	P=0.91	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:61,0,125
+        1	1087554	.	TAA	T	8	PASS	P=0.91	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:61,0,125
         1	1689669	.	C	CGGCCCT	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
         1	1689769	.	C	CC	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
     - xAtlasTester.gvcf: |
@@ -69,7 +69,7 @@ input:
         1	15989	.	AG	A	40	PASS	P=0.999904	GT:VR:RR:DP:GQ:PL	1/1:25:1:26:.:659,47,0
         1	15990	.	G	.	.	VRFromDeletion	END=15990;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	1/1:25:1:26:.:659,47,0:25,25,25,0:1,1,1,0:26,26,26,0
         1	69215	.	T	TA	3	PASS	P=0.526272	GT:VR:RR:DP:GQ:PL	0/0:2:8:8:.:0,0,202
-        1	1087454	.	TA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:61,0,125
+        1	1087454	.	TA	T	8	PASS	P=0.91	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:61,0,125
         1	1087554	.	TA	T	8	PASS	P=0.848623	GT:VR:RR:DP:GQ:PL	0/1:2:5:8:.:9,0,125
         1	1087556	.	G	.	.	PASS	END=1087656;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	1099702	.	TTGGA	T	2	low_qual	P=0.43489	GT:VR:RR:DP:GQ:PL	0/0:13:129:144:.:0,80,3357
@@ -86,8 +86,8 @@ input:
         1	1689770	.	C	CC	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
 
 unifier_config:
-    min_AQ1: 60
-    min_AQ2: 40
+    min_AQ1: 10
+    min_AQ2: 3
     drop_filtered: true
     monoallelic_sites_for_lost_alleles: true
     max_alleles_per_site: 150
@@ -160,40 +160,40 @@ truth_unified_sites:
   alleles:
     - dna: G
     - dna: A
-      quality: 257
+      quality: 36
       frequency: 0.125
-  quality: 257
+  quality: 36
 - range: {ref: 1, beg: 15983, end: 15983}
   alleles:
     - dna: C
     - dna: T
-      quality: 257
+      quality: 36
       frequency: 0.25
     - dna: G
-      quality: 257
+      quality: 36
       frequency: 0.125
-  quality: 257
+  quality: 36
 - range: {ref: 1, beg: 15985, end: 15985}
   alleles:
     - dna: A
     - dna: T
-      quality: 257
+      quality: 36
       frequency: 0.25
-  quality: 257
+  quality: 36
 - range: {ref: 1, beg: 15987, end: 15987}
   alleles:
     - dna: M
     - dna: C
-      quality: 716
+      quality: 44
       frequency: 0.25
-  quality: 716
+  quality: 44
 - range: {ref: 1, beg: 15989, end: 15990}
   alleles:
     - dna: AG
     - dna: A
-      quality: 659
+      quality: 40
       frequency: 0.25
-  quality: 659
+  quality: 40
 - range: {ref: 1, beg: 1087454, end: 1087456}
   alleles:
     - dna: TAA
@@ -201,28 +201,28 @@ truth_unified_sites:
       normalized:
         range: {beg: 1087454, end: 1087455}
         dna: T
-      quality: 61
+      quality: 10
       frequency: 0.125
     - dna: T
-      quality: 61
+      quality: 10
       frequency: 0.125
-  quality: 61
+  quality: 10
 - range: {ref: 1, beg: 1087554, end: 1087556}
   in_target: {ref: 1, beg: 1, end: 1000000000}
   alleles:
     - dna: TAA
     - dna: T
-      quality: 61
+      quality: 10
       frequency: 0.125
   lost_allele_frequency: 0.125
-  quality: 61
+  quality: 10
 - range: {ref: 1, beg: 1099704, end: 1099706}
   alleles:
     - dna: GGA
     - dna: G
-      quality: 828
+      quality: 22
       frequency: 0.125
-  quality: 828
+  quality: 22
 - range: {ref: 1, beg: 1689669, end: 1689675}
   alleles:
     - dna: CGGCCCT
@@ -230,12 +230,12 @@ truth_unified_sites:
       normalized:
         range: {beg: 1689669, end: 1689669}
         dna: CGGCCCT
-      quality: 85
+      quality: 34
       frequency: 0.25
     - dna: C
-      quality: 85
+      quality: 34
       frequency: 0.125
-  quality: 85
+  quality: 34
   unification:
     - range: {beg: 1689675, end: 1689675}
       dna: TGGCCCT
@@ -244,9 +244,9 @@ truth_unified_sites:
   alleles:
     - dna: C
     - dna: CC
-      quality: 85
+      quality: 34
       frequency: 0.25
-  quality: 85
+  quality: 34
   unification:
     - range: {beg: 1689770, end: 1689770}
       dna: CC
@@ -255,9 +255,9 @@ truth_unified_sites:
   alleles:
     - dna: AG
     - dna: A
-      quality: 85
+      quality: 10
       frequency: 0.125
-  quality: 85
+  quality: 10
 
 truth_output_vcf:
   - truth.vcf: |
@@ -274,14 +274,14 @@ truth_output_vcf:
       ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002	xAtlasTester	ythird	zfourth
-      1	15956	.	G	A	257	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/0:.:0,42,177:.:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	15983	.	C	T,G	257	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:0.999774:20:8:12:.:..	1/1:99:257,172,0,.,.,.:0.999774:20:1:19:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	15985	.	A	T	257	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/1:.:257,0,172:0.999774:4:0:4:low_coverage:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	15987	.	M	C	716	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:69:716,75,0:0.999968:26:0:26:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	15989	.	AG	A	659	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:41:659,47,0:0.999904:26:1:25:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	1087454	.	TAA	TA,T	61	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:61,.,.,0,.,125:0.848623:8:5:2:.:..	0/1:.:61,0,125,.,.,.:0.848623:8:5:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	1087554	.	TAA	T	61	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:61,0,125:0.848623:8:5:2:.:..	0/0:.:.:0.848623:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	1099704	.	GGA	G	828	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:828,0,2005:0.994071:142:83:43:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
-      1	1689669	.	CGGCCCT	CGGCCCTGGCCCT,C	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/2:.:85,.,.,0,.,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM
-      1	1689769	.	C	CC	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,9:0.999618:6:2:4:.:..
-      1	131211614	.	AG	A	85	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,344:0.905149:21:14:6:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15956	.	G	A	36	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/0:.:0,42,177:.:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15983	.	C	T,G	36	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:0.999774:20:8:12:.:..	1/1:99:257,172,0,.,.,.:0.999774:20:1:19:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15985	.	A	T	36	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/1:.:257,0,172:0.999774:4:0:4:low_coverage:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15987	.	M	C	44	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:69:716,75,0:0.999968:26:0:26:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	15989	.	AG	A	40	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:41:659,47,0:0.999904:26:1:25:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1087454	.	TAA	TA,T	10	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:61,.,.,0,.,125:0.91:8:5:2:.:..	0/1:.:61,0,125,.,.,.:0.91:8:5:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1087554	.	TAA	T	10	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:61,0,125:0.91:8:5:2:.:..	0/0:.:.:0.848623:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1099704	.	GGA	G	22	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:828,0,2005:0.994071:142:83:43:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
+      1	1689669	.	CGGCCCT	CGGCCCTGGCCCT,C	34	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/1:.:85,0,9,.,.,.:0.999618:6:2:4:.:..	0/2:.:85,.,.,0,.,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM
+      1	1689769	.	C	CC	34	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:85,0,9:0.999618:6:2:4:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,9:0.999618:6:2:4:.:..
+      1	131211614	.	AG	A	10	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:85,0,344:0.905149:21:14:6:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
