@@ -563,8 +563,8 @@ gatk_unfiltered:
               ignore_non_variants: true
 xAtlas:
     unifier_config:
-        min_AQ1: 60
-        min_AQ2: 40
+        min_AQ1: 10
+        min_AQ2: 3
         drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 150
