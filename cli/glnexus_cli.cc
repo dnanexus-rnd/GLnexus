@@ -38,7 +38,7 @@ GLnexus::Status s;
 // return 0 on success, 1 on failure.
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
-                     const string &config_name,
+                     const string &config_name, bool squeeze,
                      size_t mem_budget, size_t nr_threads,
                      bool debug,
                      bool iter_compare,
@@ -54,7 +54,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     H("load unifier/genotyper configuration",
-        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_crc32c));
+        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_crc32c, squeeze));
 
     // initilize empty database
     string dbpath("GLnexus.DB");
@@ -178,6 +178,7 @@ int main(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
+        {"squeeze", no_argument, 0, 'S'},
         {"list", no_argument, 0, 'l'},
         {"mem-gbytes", required_argument, 0, 'm'},
         {"threads", required_argument, 0, 't'},
@@ -189,6 +190,7 @@ int main(int argc, char *argv[]) {
 
     int c;
     string config_name = "gatk";
+    bool squeeze = false;
     bool list_of_files = false;
     bool debug = false;
     bool iter_compare = false;
@@ -213,6 +215,10 @@ int main(int argc, char *argv[]) {
 
             case 'c':
                 config_name = string(optarg);
+                break;
+
+            case 'S':
+                squeeze = true;
                 break;
 
             case 'd':
@@ -284,5 +290,5 @@ int main(int argc, char *argv[]) {
         vcf_files = vcf_files_precursor;
     }
 
-    return all_steps(vcf_files, bedfilename, config_name, mem_budget, nr_threads, debug, iter_compare, bucket_size);
+    return all_steps(vcf_files, bedfilename, config_name, squeeze, mem_budget, nr_threads, debug, iter_compare, bucket_size);
 }
