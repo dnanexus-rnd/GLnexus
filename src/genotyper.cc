@@ -744,7 +744,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
 
         // Update FORMAT fields for this dataset.
-        if (!variant_records.empty() || !cfg.squeeze) {
+        if (!(cfg.squeeze && variant_records.empty() && !all_records.empty())) {
             S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
                                 format_helpers, all_records, variant_records_used));
             // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
@@ -775,7 +775,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 }
             }
         } else {
-            // Short path if cfg.squeeze && variant_records.empty(): update DP appropriately
+            // Short path if cfg.squeeze && variant_records.empty() && !all_records.empty():
+            //   Update DP only and apply squeeze transform
             S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
                                    format_helpers, all_records, variant_records_used, true));
         }
