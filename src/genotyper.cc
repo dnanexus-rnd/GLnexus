@@ -668,8 +668,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
 
     AlleleDepthHelper adh(cfg);
     vector<DatasetResidual> lost_calls_info;
-    vector<bool> squeezed;
-    squeezed.resize(samples.size(), false);
 
     map<string,int> samples_index;
     for (int i = 0; i < samples.size(); i++) {
