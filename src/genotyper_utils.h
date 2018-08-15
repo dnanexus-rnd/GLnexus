@@ -405,7 +405,7 @@ public:
         for (auto& dp : format_v[sample]) {
             if (dp > 0) {
                 auto odp = dp;
-                for (dp=1; dp*2 < odp; dp *= 2);
+                for (dp=1; dp*2 <= odp; dp *= 2);
             }
         }
         return Status::OK();
