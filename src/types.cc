@@ -817,6 +817,7 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
     ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
     ans << YAML::Key << "output_residuals" << YAML::Value << output_residuals;
+    ans << YAML::Key << "squeeze" << YAML::Value << squeeze;
 
     ans << YAML::Key << "output_format" << YAML::Value;
     if (output_format == GLnexusOutputFormat::BCF) {
@@ -886,6 +887,12 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     if (n_output_residuals) {
         V(n_output_residuals.IsScalar(), "invalid output_residuals");
         ans.output_residuals = n_output_residuals.as<bool>();
+    }
+
+    const auto n_squeeze = yaml["squeeze"];
+    if (n_squeeze) {
+        V(n_squeeze.IsScalar(), "invalid squeeze");
+        ans.squeeze = n_squeeze.as<bool>();
     }
 
     const auto n_output_format = yaml["output_format"];

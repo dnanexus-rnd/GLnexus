@@ -725,6 +725,12 @@ struct genotyper_config {
     // FORMAT fields from the original gvcfs to be lifted over to the output
     std::vector<retained_format_field> liftover_fields;
 
+    // Suppress usually-unnecessary detail from output to reduce size and
+    // improve compressibility. Specifically, in entries indicating no
+    // non-reference reads (AD=*,0), report GT and DP only, and round
+    // DP down to a power of two (0, 1, 2, 4, 8, 16, ...)
+    bool squeeze = false;
+
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
