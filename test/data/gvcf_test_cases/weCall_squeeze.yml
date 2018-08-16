@@ -1,0 +1,198 @@
+readme: |
+  weCall GVCF dialect
+  Subtleties:
+  1. Phased genotypes
+  2. Long reference confidence records (MIN_DP often zero)
+  3. Monoallelic representation for overlapping ALT alleles (two sites, one with 1|. and the other .|1)
+
+input:
+  header : |-
+    ##fileformat=VCFv4.2
+    ##options={ allowMNPCalls: 0 | inputs: realigned.bam | logLevel: 2 | minAlleleBiasP: 0.009 | minBadReadsScore: 15 | minIndelQOverDepth: 15 | minRMSMappingQ: 40 | minSNPQOverDepth: 15 | output: TAICHI_3-00038-104_R05-2375.gvcf | outputRefCalls: 1 | refFile: genome.fa | regions: targets.bed }
+    ##INFO=<ID=PP,Number=A,Type=Integer,Description="Posterior probability (phred scaled) that this variant does not segregate.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=DP,Number=1,Type=Integer,Description="Total depth of read coverage at this locus.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=DPR,Number=1,Type=Integer,Description="Total probabilistic depth of reverse read coverage at this locus (sum of probabilities of each read supporting the variant).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=DPF,Number=1,Type=Integer,Description="Total probabilistic depth of forward read coverage at this locus (sum of probabilities of each read supporting the variant).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=VC,Number=A,Type=Integer,Description="Total probabilistic number of reads supporting each alternative allele (sum of probabilities of each read supporting the allele).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=VCR,Number=A,Type=Integer,Description="Total probabilistic number of reverse reads supporting each alternative allele (sum of probabilities of each read supporting the allele).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=VCF,Number=A,Type=Integer,Description="Total probabilistic number of forward reads supporting each alternative allele (sum of probabilities of each read supporting the allele).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=MQ,Number=A,Type=Float,Description="Root mean square of mapping quality of reads supporting each alternative allele.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=ABPV,Number=A,Type=Float,Description="Allele bias P-value; probability that fraction of reads supporting alt allele (VC) amongst read depth (DP) is more extreme than expected assuming a beta-binomial distribution.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=SBPV,Number=A,Type=Float,Description="Strand bias P-value; probability that the fraction of forward reads (VCF) amongst reads supporting alt allele (VC) is more extreme than expected assuming a beta-binomial distribution.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=QD,Number=A,Type=Float,Description="Ratio of phred-scaled posterior probability (PP) to number of supporting reads for each allele (VC).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=BR,Number=A,Type=Float,Description="The median of the per-read min base quality (within a interval of the locus) taken over reads supporting each allele.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=BEG,Number=1,Type=Integer,Description="Start position of reference call block.",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="End position of reference call block (inclusive).",Source="weCall",Version="1.0.2">
+    ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Length of reference call block.",Source="weCall",Version="1.0.2">
+    ##FILTER=<ID=AB,Description="Allele Bias: Indicates lower number of reads supporting variant than expected (any of INFO::ABPV < 0.009).">
+    ##FILTER=<ID=AB+SB,Description="Allele + Strand Bias: Indicates that both the AB and SB filters are close to being triggered (any of INFO::ABPV + INFO::SBPV < 0.07).">
+    ##FILTER=<ID=BR,Description="Bad Reads: Indicates low quality base pairs on reads in the vicinity of variant locus (any of INFO::BR < 15).">
+    ##FILTER=<ID=LQ,Description="Low Quality: Indicates a low variant quality (any of INFO::PP < 10).">
+    ##FILTER=<ID=MQ,Description="low Mapping Quality: Indicates presence of low mapping quality (any of INFO::MQ < 40).">
+    ##FILTER=<ID=QD,Description="Quality over Depth: Indicates low quality relative to number of supporting reads (any of INFO::QD < 15 for Indels or INFO::QD < 15 otherwise).">
+    ##FILTER=<ID=SB,Description="Strand Bias: Indicates imbalance between number of forward and reverse reads supporting variant (any of INFO::SBPV < 0.01).">
+    ##FILTER=<ID=NC,Description="Not called: Indicates a variant that was not positively genotyped in any sample.">
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotypes of reference and alternative alleles in order listed.",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Probabilistic allelic depths for the ref and alt alleles in the order listed (i.e. INFO::VC split out by sample).",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Total depth of read coverage at this locus (i.e. INFO::DP split out by sample).",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Phred-scaled genotype quality (i.e. posterior probability that the genotype call is incorrect).",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification.",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=VAF,Number=A,Type=Float,Description="Probabilistic variant allelic frequencies for each alt allele (FORMAT::AD / FORMAT::DP).",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=PS,Number=1,Type=String,Description="Phase set id.",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=PQ,Number=1,Type=Integer,Description="Phred-scaled phase quality (i.e. posterior probability that the phasing is incorrect).",Source="weCall",Version="1.0.2">
+    ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum read coverage observed within the reference block.",Source="weCall",Version="1.0.2">
+    ##contig=<ID=12,length=133275309>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+
+  body:
+    - A.gvcf: |
+        A
+        12	111803942	.	A	<NON_REF>	69	PASS	BEG=111803942;END=111803961;LEN=20	GT:DP:MIN_DP:GQ	0|0:52:35:69
+        12	111803962	.	G	A	498	PASS	PP=498;DP=35;DPR=29;DPF=6;VC=21;VCR=17;VCF=4;ABPV=.;SBPV=0.4884;MQ=60;BR=27;QD=25.37	GT:PL:GQ:PQ:PS:AD:DP:VAF	0|1:539,0,297:297:3000:111803941:14,21:35:0.6
+        12	111803963	.	A	<NON_REF>	62	PASS	BEG=111803963;END=111803982;LEN=20	GT:DP:MIN_DP:GQ	0|0:35:30:62
+        12	112080563	.	AACAC	A	119	BR	PP=119;DP=7;DPR=7;DPF=0;VC=4;VCR=4;VCF=0;ABPV=.;SBPV=.;MQ=56.43;BR=8;QD=40.72	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|0:165,0,373:17:475:11080533:3,4:7:0.5714
+        12	116271370	.	A	<NON_REF>	128	PASS	BEG=116271370;END=116271388;LEN=19	GT:DP:MIN_DP:GQ	0|0:124:97:128
+        12	116271389	.	CT	C	409	PASS	PP=409;DP=65;DPR=65;DPF=0;VC=27;VCR=27;VCF=0;ABPV=0.2226;SBPV=.;MQ=60;BR=33;QD=16.67	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|.:454,0,538:454:3000:36271369:1,27:65:0.4154
+        12	116271389	.	CTT	C	492	PASS	PP=492;DP=65;DPR=65;DPF=0;VC=37;VCR=37;VCF=0;ABPV=.;SBPV=.;MQ=60.58;BR=33;QD=14.43	GT:PL:GQ:PQ:PS:AD:DP:VAF	.|1:538,0,454:454:3000:36271369:1,37:65:0.5692
+        12	116271392	.	T	<NON_REF>	78	PASS	BEG=116271392;END=116271419;LEN=28	GT:DP:MIN_DP:GQ	0|0:58:42:78
+        12	116271420	.	TAC	T	620	MQ	PP=620;DP=36;DPR=21;DPF=15;VC=18;VCR=14;VCF=4;ABPV=.;SBPV=0.1199;MQ=36.56;BR=33;QD=36.77	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|.:668,0,494:164:1652:1722547:5,18:36:0.5
+        12	116271422	.	C	G	265	MQ	PP=265;DP=31;DPR=19;DPF=12;VC=12;VCR=4;VCF=8;ABPV=0.21;SBPV=0.06592;MQ=33.12;BR=33;QD=24.98	GT:PL:GQ:PQ:PS:AD:DP:VAF	.|1:301,0,1074:164:1652:1722547:3,12:31:0.3871
+        12	116271423	.	A	<NON_REF>	48	PASS	BEG=1722575;END=1722598;LEN=24	GT:DP:MIN_DP:GQ	0|0:30:21:48
+
+    - B.gvcf: |
+        B
+        12	111803509	.	G	<NON_REF>	.	PASS	BEG=111803509;END=111804324;LEN=816	GT:DP:MIN_DP:GQ	0|0:162:42:.
+        12	112080544	.	A	<NON_REF>	48	PASS	BEG=112080544;END=112080664;LEN=121	GT:DP:MIN_DP:GQ	0|0:41:21:48
+        12	116271370	.	A	<NON_REF>	128	PASS	BEG=116271370;END=116271470;LEN=101	GT:DP:MIN_DP:GQ	0|0:124:97:128
+    - C.gvcf: |
+        C
+        12	111803769	.	A	<NON_REF>	58	PASS	BEG=111803769;END=111803941;LEN=173	GT:DP:MIN_DP:GQ	0|0:166:27:58
+        12	111803942	.	A	<NON_REF>	91	PASS	BEG=111803942;END=111803961;LEN=20	GT:DP:MIN_DP:GQ	0|0:65:53:91
+        12	111803962	.	G	A	729	PASS	PP=729;DP=52;DPR=42;DPF=10;VC=30;VCR=26;VCF=4;ABPV=.;SBPV=0.3834;MQ=60;BR=27;QD=25.46	GT:PL:GQ:PQ:PS:AD:DP:VAF	0|1:770,0,476:476:3000:111803941:22,30:52:0.5769
+        12	111803963	.	A	<NON_REF>	71	PASS	BEG=111803963;END=111803982;LEN=20	GT:DP:MIN_DP:GQ	0|0:56:36:71
+        12	111803983	.	G	<NON_REF>	.	PASS	BEG=111803983;END=111804324;LEN=342	GT:DP:MIN_DP:GQ	0|0:41:0:.
+        12	112080563	.	AACAC	A	79	PASS	PP=79;DP=8;DPR=6;DPF=2;VC=5;VCR=4;VCF=1;ABPV=.;SBPV=0.6332;MQ=60;BR=14;QD=24.58	GT:PL:GQ:PQ:PS:AD:DP:VAF	1|1:125,65,0:65:3000:11080543:0,5:8:0.62
+
+unifier_config:
+  min_AQ1: 60
+  min_AQ2: 30
+  min_GQ: 30
+  monoallelic_sites_for_lost_alleles: true
+
+genotyper_config:
+    required_dp: 0
+    revise_genotypes: false
+    squeeze: true
+    liftover_fields:
+        - orig_names: [MIN_DP, DP]
+          name: DP
+          description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+          type: int
+          combi_method: min
+          number: basic
+          count: 1
+        - orig_names: [AD]
+          name: AD
+          description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+          type: int
+          number: alleles
+          combi_method: min
+          default_type: zero
+          count: 0
+        - orig_names: [SBPV]
+          name: SBPV
+          description: '##FORMAT=<ID=SBPV,Number=A,Type=Float,Description="Strand bias P-value; probability that the fraction of forward reads (VCF) amongst reads supporting alt allele (VC) is more extreme than expected assuming a beta-binomial distribution.">'
+          from: info
+          type: float
+          number: alt
+          count: 0
+          combi_method: missing
+          ignore_non_variants: true
+        - orig_names: [GQ]
+          name: GQ
+          description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+          type: int
+          number: basic
+          combi_method: min
+          count: 1
+          ignore_non_variants: true
+        - orig_names: [PL]
+          name: PL
+          description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+          type: int
+          number: genotype
+          combi_method: missing
+          count: 0
+          ignore_non_variants: true
+        - orig_names: [FILTER]
+          name: FT
+          description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
+          type: string
+          combi_method: missing
+          number: basic
+          count: 1
+          ignore_non_variants: true
+
+truth_unified_sites:
+- range: {ref: 12, beg: 111803962, end: 111803962}
+  alleles:
+    - dna: G
+    - dna: A
+      quality: 770
+      frequency: 0.333333
+  quality: 770
+- range: {ref: 12, beg: 112080563, end: 112080567}
+  alleles:
+    - dna: AACAC
+    - dna: A
+      quality: 165
+      frequency: 0.333333
+  quality: 165
+- range: {ref: 12, beg: 116271389, end: 116271391}
+  alleles:
+    - dna: CTT
+    - dna: C
+      quality: 538
+      frequency: 0.166667
+    - dna: CT
+      normalized:
+        range: {beg: 116271389, end: 116271390}
+        dna: C
+      quality: 454
+      frequency: 0.166667
+  quality: 538
+- range: {ref: 12, beg: 116271420, end: 116271422}
+  alleles:
+    - dna: TAC
+    - dna: T
+      quality: 668
+      frequency: 0.166667
+    - dna: TAG
+      normalized:
+        range: {beg: 116271422, end: 116271422}
+        dna: G
+      quality: 301
+      frequency: 0.166667
+  quality: 668
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency estimate for each alternate allele">
+      ##INFO=<ID=AQ,Number=A,Type=Integer,Description="Allele Quality score reflecting evidence from all samples (Phred scale)">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FILTER=<ID=MONOALLELIC,Description="Site represents one ALT allele in a region with multiple variants that could not be unified into non-overlapping multi-allelic sites">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=2,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present, M = site is Monoallelic, no assertion about presence of REF or ALT allele">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=SBPV,Number=A,Type=Float,Description="Strand bias P-value; probability that the fraction of forward reads (VCF) amongst reads supporting alt allele (VC) is more extreme than expected assuming a beta-binomial distribution.">
+      ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
+      ##contig=<ID=12,length=133275309>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
+      12	111803962	12_111803962_G_A	G	A	770	.	AF=0.333333;AQ=770	GT:DP:AD:SBPV:GQ:PL:FT:RNC	0/1:35:14,21:0.4884:297:539,0,297:.:..	0/0:32:.:.:.:.:.:..	0/1:52:22,30:0.3834:476:770,0,476:.:..
+      12	112080563	12_112080563_AACAC_A	AACAC	A	165	.	AF=0.333333;AQ=165	GT:DP:AD:SBPV:GQ:PL:FT:RNC	0/1:7:3,4:.:17:165,0,373:BR:..	0/0:16:.:.:.:.:.:..	1/1:8:0,5:0.6332:65:125,65,0:.:..
+      12	116271389	12_116271389_CTT_C;12_116271389_CT_C	CTT	C,CT	538	.	AF=0.166667,0.166667;AQ=538,454	GT:DP:AD:SBPV:GQ:PL:FT:RNC	1/2:65:.,37,27:.,.:454:.:.:..	0/0:64:.:.,.:.:.:.:..	./.:.:.:.,.:.:.:.:MM
+      12	116271420	12_116271420_TAC_T;12_116271422_C_G	TAC	T,TAG	668	.	AF=0.166667,0.166667;AQ=668,301	GT:DP:AD:SBPV:GQ:PL:FT:RNC	1/2:31:.,18,12:.,.:164:.:.:..	0/0:64:.:.,.:.:.:.:..	./.:.:.:.,.:.:.:.:MM

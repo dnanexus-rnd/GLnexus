@@ -744,34 +744,41 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
 
         // Update FORMAT fields for this dataset.
-        S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
-                               format_helpers, all_records, variant_records_used));
-        // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
-        // we must censor the FORMAT fields as potentially unreliable/misleading.
-        for (const auto& p : sample_mapping) {
-            auto rnc1 = genotypes[p.second*2].RNC;
-            auto rnc2 = genotypes[p.second*2+1].RNC;
-            bool half_call = site.monoallelic || genotypes[p.second*2].half_call || genotypes[p.second*2+1].half_call;
+        if (!(cfg.squeeze && variant_records.empty() && !all_records.empty())) {
+            S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
+                                format_helpers, all_records, variant_records_used));
+            // But if rnc = MissingData, PartialData, UnphasedVariants, or OverlappingVariants, then
+            // we must censor the FORMAT fields as potentially unreliable/misleading.
+            for (const auto& p : sample_mapping) {
+                auto rnc1 = genotypes[p.second*2].RNC;
+                auto rnc2 = genotypes[p.second*2+1].RNC;
+                bool half_call = site.monoallelic || genotypes[p.second*2].half_call || genotypes[p.second*2+1].half_call;
 
-            if (rnc1 == NoCallReason::MissingData || rnc1 == NoCallReason::PartialData) {
-                assert(rnc1 == rnc2);
-                for (const auto& fh : format_helpers) {
-                    S(fh->censor(p.second, false));
-                }
-            } else if (rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
-                       rnc1 == NoCallReason::OverlappingVariants || rnc2 == NoCallReason::OverlappingVariants) {
-                for (const auto& fh : format_helpers) {
-                    if (fh->field_info.name != "DP") { // whitelist
-                        S(fh->censor(p.second, half_call));
+                if (rnc1 == NoCallReason::MissingData || rnc1 == NoCallReason::PartialData) {
+                    assert(rnc1 == rnc2);
+                    for (const auto& fh : format_helpers) {
+                        S(fh->censor(p.second, false));
                     }
-                }
-            } else if (half_call) {
-                for (const auto& fh : format_helpers) {
-                    if (fh->field_info.name != "DP" && fh->field_info.name != "GQ") {
-                        S(fh->censor(p.second, true));
+                } else if (rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
+                        rnc1 == NoCallReason::OverlappingVariants || rnc2 == NoCallReason::OverlappingVariants) {
+                    for (const auto& fh : format_helpers) {
+                        if (fh->field_info.name != "DP") { // whitelist
+                            S(fh->censor(p.second, half_call));
+                        }
+                    }
+                } else if (half_call) {
+                    for (const auto& fh : format_helpers) {
+                        if (fh->field_info.name != "DP" && fh->field_info.name != "GQ") {
+                            S(fh->censor(p.second, true));
+                        }
                     }
                 }
             }
+        } else {
+            // Short path if cfg.squeeze && variant_records.empty() && !all_records.empty():
+            //   Update DP only and apply squeeze transform
+            S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
+                                   format_helpers, all_records, variant_records_used, true));
         }
 
         // Handle residuals
