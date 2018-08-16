@@ -403,9 +403,9 @@ public:
         // round DP values down to a power of two
         assert(sample < format_v.size());
         for (auto& dp : format_v[sample]) {
-            if (dp > 0) {
+            if (dp > 2) {
                 auto odp = dp;
-                for (dp=1; dp*2 <= odp; dp *= 2);
+                for (dp=2; dp*2 <= odp; dp *= 2);
             }
         }
         return Status::OK();
