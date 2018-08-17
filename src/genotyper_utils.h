@@ -816,6 +816,7 @@ Status update_format_fields(const genotyper_config& cfg, const string& dataset, 
 // the upstream variant caller and whether we're looking at a reference confidence
 // or variant record.
 class AlleleDepthHelper {
+protected:
     const genotyper_config& cfg_;
     size_t n_sample_ = 0, n_allele_ = 0;
     bool is_g_ = false;
@@ -829,10 +830,12 @@ public:
         : cfg_(cfg)
         {}
 
+    virtual ~AlleleDepthHelper() = default;
+
     // The helper can be reused for multiple records by calling Load()
     // repeatedly. This will be slightly more efficient than using a new
     // helper for each record.
-    Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) {
+    virtual Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) {
         n_sample_ = record->n_sample;
         n_allele_ = record->n_allele;
         // is this a gVCF reference confidence record?
@@ -892,7 +895,7 @@ public:
     bool is_gvcf_ref() { return is_g_; }
 
     // get depth for sample i & allele j
-    unsigned get(unsigned sample, unsigned allele) {
+    virtual unsigned get(unsigned sample, unsigned allele) {
         if (sample >= n_sample_ || allele >= n_allele_) return 0;
         if (is_g_) {
             // the MIN_DP array has just one integer per sample
@@ -904,6 +907,68 @@ public:
         }
     }
 };
+
+class xAtlasAlleleDepthHelper : public AlleleDepthHelper {
+    htsvecbox<int32_t> rr_;
+    htsvecbox<float> rrx_;
+
+public:
+    xAtlasAlleleDepthHelper(const genotyper_config& cfg)
+        : AlleleDepthHelper(cfg)
+        {}
+
+    // load from RRX for reference bands; VR and RR in variant records
+    Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) override {
+        n_sample_ = record->n_sample;
+        n_allele_ = record->n_allele;
+        is_g_ = is_gvcf_ref_record(record);
+
+        if (is_g_) {
+            int nv = bcf_get_format_float(dataset_header, record, "RRX", &rrx_.v, &rrx_.capacity);
+
+            if (nv != record->n_sample*4) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+                return Status::Invalid("genotyper: xAtlas gVCF RRX is missing or malformed", errmsg.str());
+            }
+        } else {
+            if (bcf_get_format_int32(dataset_header, record, "VR", &v_.v, &v_.capacity) != n_sample_) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+                return Status::Invalid("genotyper: xAtlas gVCF VR is missing or malformed", errmsg.str());
+            }
+            if (bcf_get_format_int32(dataset_header, record, "RR", &rr_.v, &rr_.capacity) != n_sample_) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+                return Status::Invalid("genotyper: xAtlas gVCF RR is missing or malformed", errmsg.str());
+            }
+        }
+        return Status::OK();
+    }
+
+    unsigned get(unsigned sample, unsigned allele) override {
+        if (sample >= n_sample_ || allele >= n_allele_) return 0;
+        if (is_g_) {
+            if (allele != 0) return 0;
+            // RRX has four floats per sample, the first of which is minimum
+            return int(rrx_[sample*4]);
+        }
+        switch (allele) {
+            case 0:
+                return rr_[sample];
+            case 1:
+                return v_[sample];
+        }
+        return 0;
+    }
+};
+
+unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg) {
+    if (cfg.ref_dp_format == "RRX" && cfg.allele_dp_format == "VR") {
+        return make_unique<xAtlasAlleleDepthHelper>(cfg);
+    }
+    return make_unique<AlleleDepthHelper>(cfg);
+}
 
 /// A helper function to update min_ref_depth based on several reference
 /// confidence records. min_ref_depth[j] is the minimum depth of reference
