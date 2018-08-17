@@ -775,6 +775,13 @@ TEST_CASE("weCall") {
     GVCFTestCase("weCall", v_formats, v_infos, false).perform_gvcf_test();
 }
 
+
+TEST_CASE("weCall_squeeze") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT", "SBPV"};
+    vector<string> v_infos = {"ANR","AF","AQ"};
+    GVCFTestCase("weCall_squeeze", v_formats, v_infos, false).perform_gvcf_test();
+}
+
 TEST_CASE("edge_spanning_deletion") {
     vector<string> v_formats = {"GT", "RNC", "AD", "DP", "SB"};
     vector<string> v_infos = {};

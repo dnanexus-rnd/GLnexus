@@ -44,6 +44,10 @@ public:
         return Status::OK();
     }
 
+    virtual Status squeeze(int sample) {
+        return Status::OK();
+    }
+
     virtual Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) = 0;
 
     virtual ~FormatFieldHelper() = default;
@@ -388,6 +392,26 @@ public:
     }
 };
 
+class DPFieldHelper : public NumericFormatFieldHelper<int32_t> {
+public:
+    DPFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
+        : NumericFormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+        assert(field_info.name == "DP");
+    }
+
+    Status squeeze(int sample) override {
+        // round DP values down to a power of two
+        assert(sample < format_v.size());
+        for (auto& dp : format_v[sample]) {
+            if (dp > 2) {
+                auto odp = dp;
+                for (dp=2; dp*2 <= odp; dp *= 2);
+            }
+        }
+        return Status::OK();
+    }
+};
+
 // Special-case logic for the allele depth (AD) field
 class ADFieldHelper : public NumericFormatFieldHelper<int32_t> {
 public:
@@ -705,6 +729,11 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
                 return Status::Invalid("genotyper misconfiguration: AD format field should have type=int, number=alleles");
             }
             format_helpers.push_back(unique_ptr<FormatFieldHelper>(new ADFieldHelper(cfg.ref_dp_format, format_field_info, samples.size(), count)));
+        } else if (format_field_info.name == "DP") {
+            if (format_field_info.type != RetainedFieldType::INT || format_field_info.number != RetainedFieldNumber::BASIC || format_field_info.count != 1) {
+                return Status::Invalid("genotyper misconfiguration: DP format field should have type=int, number=basic, count=1");
+            }
+            format_helpers.push_back(unique_ptr<FormatFieldHelper>(new DPFieldHelper(format_field_info, samples.size(), count)));
         } else if (format_field_info.name == "FT") {
             if (format_field_info.type != RetainedFieldType::STRING || format_field_info.number != RetainedFieldNumber::BASIC || format_field_info.count != 1) {
                 return Status::Invalid("genotyper misconfiguration: FT format field should have type=string, number=basic, count=1");
@@ -741,11 +770,20 @@ Status update_format_fields(const genotyper_config& cfg, const string& dataset, 
                             const map<int,int>& sample_mapping, const unified_site& site,
                             vector<unique_ptr<FormatFieldHelper>>& format_helpers,
                             const vector<shared_ptr<bcf1_t_plus>>& all_records,
-                            const vector<shared_ptr<bcf1_t_plus>>& variant_records) {
+                            const vector<shared_ptr<bcf1_t_plus>>& variant_records,
+                            bool squeeze = false) {
     Status s;
 
     // Update format helpers
     for (auto& format_helper : format_helpers) {
+        if (squeeze && format_helper->field_info.name != "DP") {
+            // squeeze: censor all fields but DP
+            for (const auto& p : sample_mapping) {
+                S(format_helper->censor(p.second, false));
+            }
+            continue;
+        }
+
         const vector<shared_ptr<bcf1_t_plus>> *records_to_use = nullptr;
         if ((cfg.allow_partial_data || format_helper->field_info.ignore_non_variants) && !variant_records.empty()) {
             // Only care about variant records, loop through variant_records
@@ -760,6 +798,13 @@ Status update_format_fields(const genotyper_config& cfg, const string& dataset, 
                                                sample_mapping, record->allele_mapping, site.alleles.size());
             if (s.bad() && s != StatusCode::NOT_FOUND) {
                 return s;
+            }
+        }
+
+        if (squeeze) {
+            assert(format_helper->field_info.name == "DP");
+            for (const auto& p : sample_mapping) {
+                S(format_helper->squeeze(p.second));
             }
         }
     }

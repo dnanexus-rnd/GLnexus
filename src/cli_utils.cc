@@ -800,7 +800,8 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    const YAML::Node& config,
                    unifier_config& unifier_cfg,
                    genotyper_config& genotyper_cfg,
-                   std::string& config_crc32c) {
+                   std::string& config_crc32c,
+                   bool squeeze) {
     Status s;
     if (config["unifier_config"]) {
         S(unifier_config::of_yaml(config["unifier_config"], unifier_cfg));
@@ -808,6 +809,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
     if (config["genotyper_config"]) {
         S(genotyper_config::of_yaml(config["genotyper_config"], genotyper_cfg));
     }
+    genotyper_cfg.squeeze = squeeze;
     YAML::Emitter em;
     em << YAML::BeginMap
        << YAML::Key << "unifier_config" << YAML::Value;
@@ -827,7 +829,8 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    const std::string& name,
                    unifier_config& unifier_cfg,
                    genotyper_config& genotyper_cfg,
-                   std::string& config_crc32c) {
+                   std::string& config_crc32c,
+                   bool squeeze) {
     Status s;
     if (name.size() > 4 && name.substr(name.size() - 4) == ".yml") {
         try {
@@ -836,7 +839,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
             if (!config || !config.IsMap()) {
                 return Status::IOError("loading configuration YAML file", name);
             }
-            return load_config(logger, config, unifier_cfg, genotyper_cfg, config_crc32c);
+            return load_config(logger, config, unifier_cfg, genotyper_cfg, config_crc32c, squeeze);
         } catch (YAML::Exception& exn) {
             return Status::IOError("loading configuration YAML file", name);
         }
@@ -846,7 +849,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
         if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
             return Status::NotFound("unknown configuration preset", name);
         }
-        return load_config(logger, presets[name], unifier_cfg, genotyper_cfg, config_crc32c);
+        return load_config(logger, presets[name], unifier_cfg, genotyper_cfg, config_crc32c, squeeze);
     }
 }
 
@@ -860,7 +863,7 @@ std::string describe_config_presets() {
         genotyper_config gc;
         std::string config_crc32c;
         auto logger = spdlog::create<spdlog::sinks::null_sink_st>("null");
-        Status s = load_config(logger, it->second, uc, gc, config_crc32c);
+        Status s = load_config(logger, it->second, uc, gc, config_crc32c, false);
         spdlog::drop("null");
         if (s.ok()) {
             os << setw(16) << it->first.as<string>();
