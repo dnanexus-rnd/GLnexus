@@ -822,13 +822,17 @@ protected:
     bool is_g_ = false;
     htsvecbox<int32_t> v_;
 
-public:
-
-    // The AlleleDepthHelper is constructed into an undefined state. Load()
-    // must be invoked, successfully, before it can be used.
+    // use NewAlleleDepthHelper()
     AlleleDepthHelper(const genotyper_config& cfg)
         : cfg_(cfg)
         {}
+
+    static auto Make(const genotyper_config& cfg) {
+        return unique_ptr<AlleleDepthHelper>(new AlleleDepthHelper(cfg));
+    }
+    friend unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg);
+
+public:
 
     virtual ~AlleleDepthHelper() = default;
 
@@ -912,10 +916,17 @@ class xAtlasAlleleDepthHelper : public AlleleDepthHelper {
     htsvecbox<int32_t> rr_;
     htsvecbox<float> rrx_;
 
-public:
+    // use NewAlleleDepthHepler()
     xAtlasAlleleDepthHelper(const genotyper_config& cfg)
         : AlleleDepthHelper(cfg)
         {}
+
+    static auto Make(const genotyper_config& cfg) {
+        return unique_ptr<AlleleDepthHelper>(new xAtlasAlleleDepthHelper(cfg));
+    }
+    friend unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg);
+
+public:
 
     // load from RRX for reference bands; VR and RR in variant records
     Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) override {
@@ -963,11 +974,13 @@ public:
     }
 };
 
+// The AlleleDepthHelper is constructed into an undefined state. Load()
+// must be invoked, successfully, before it can be used.
 unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg) {
     if (cfg.ref_dp_format == "RRX" && cfg.allele_dp_format == "VR") {
-        return make_unique<xAtlasAlleleDepthHelper>(cfg);
+        return xAtlasAlleleDepthHelper::Make(cfg);
     }
-    return make_unique<AlleleDepthHelper>(cfg);
+    return AlleleDepthHelper::Make(cfg);
 }
 
 /// A helper function to update min_ref_depth based on several reference

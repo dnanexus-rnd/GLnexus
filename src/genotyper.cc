@@ -525,10 +525,10 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                     case 0:
                     case 1:
                         {
-                            AlleleDepthHelper depth2(cfg);
-                            S(depth2.Load(dataset, dataset_header, record2->p.get()));
+                            auto depth2 = NewAlleleDepthHelper(cfg);
+                            S(depth2->Load(dataset, dataset_header, record2->p.get()));
 
-                            fill_allele(record2,depth2,call_mode2,1);
+                            fill_allele(record2,(*depth2),call_mode2,1);
                             assert(genotypes[2*ij.second+1].RNC != NoCallReason::MissingData);
                             genotypes[2*ij.second+1].half_call = true;
                         }
