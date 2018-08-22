@@ -571,11 +571,11 @@ xAtlas:
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 150
     genotyper_config:
-        required_dp: 0
+        required_dp: 1
         allow_partial_data: true
         revise_genotypes: true
-        # TODO: ref_dp_format=DPX[0] would be more precise
-        ref_dp_format: DP
+        ref_dp_format: RRX
+        allele_dp_format: VR
         liftover_fields:
             - orig_names: [DP]
               name: DP
@@ -636,11 +636,11 @@ xAtlas_unfiltered:
     unifier_config:
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
-        required_dp: 0
+        required_dp: 1
         allow_partial_data: true
         revise_genotypes: false
-        # TODO: ref_dp_format=DPX[0] would be more precise
-        ref_dp_format: DP
+        ref_dp_format: RRX
+        allele_dp_format: VR
         liftover_fields:
             - orig_names: [DP]
               name: DP
