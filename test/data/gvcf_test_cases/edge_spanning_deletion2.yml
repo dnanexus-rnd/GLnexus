@@ -45,13 +45,14 @@ genotyper_config:
       combi_method: max
       number: basic
       count: 4
-    - orig_names: [DP, MIN_DP]
+    - orig_names: [MIN_DP, DP]
       name: DP
       description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
       type: int
       combi_method: min
       number: basic
       count: 1
+      ignore_non_variants: true
     - orig_names: [AD]
       name: AD
       description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
@@ -89,4 +90,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	CCCC	TCCC,T	35	.	.	GT:SB:DP:AD:RNC	./2:.,.,.,.:20:.,0,19:O.	0/1:11,12,13,14:2:1,17,0:..
+      A	1000	.	CCCC	TCCC,T	35	.	.	GT:SB:DP:AD:RNC	./2:.,.,.,.:20:.,0,19:O.	0/1:11,12,13,14:20:1,17,0:..
