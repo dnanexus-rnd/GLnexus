@@ -914,7 +914,6 @@ public:
 
 class xAtlasAlleleDepthHelper : public AlleleDepthHelper {
     htsvecbox<int32_t> rr_;
-    htsvecbox<float> rrx_;
 
     // use NewAlleleDepthHepler()
     xAtlasAlleleDepthHelper(const genotyper_config& cfg)
@@ -928,47 +927,36 @@ class xAtlasAlleleDepthHelper : public AlleleDepthHelper {
 
 public:
 
-    // load from RRX for reference bands; VR and RR in variant records
+    // load RR for reference depth, and VR in variant records
+    // in ref records, xAtlas makes RR the minimum ref depth across the band.
     Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) override {
         n_sample_ = record->n_sample;
         n_allele_ = record->n_allele;
+
+        if (bcf_get_format_int32(dataset_header, record, "RR", &rr_.v, &rr_.capacity) != n_sample_) {
+            ostringstream errmsg;
+            errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+            return Status::Invalid("genotyper: xAtlas gVCF RR is missing or malformed", errmsg.str());
+        }
+
         is_g_ = is_gvcf_ref_record(record);
-
-        if (is_g_) {
-            int nv = bcf_get_format_float(dataset_header, record, "RRX", &rrx_.v, &rrx_.capacity);
-
-            if (nv != record->n_sample*4) {
-                ostringstream errmsg;
-                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
-                return Status::Invalid("genotyper: xAtlas gVCF RRX is missing or malformed", errmsg.str());
-            }
-        } else {
+        if (!is_g_) {
             if (bcf_get_format_int32(dataset_header, record, "VR", &v_.v, &v_.capacity) != n_sample_) {
                 ostringstream errmsg;
                 errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
                 return Status::Invalid("genotyper: xAtlas gVCF VR is missing or malformed", errmsg.str());
             }
-            if (bcf_get_format_int32(dataset_header, record, "RR", &rr_.v, &rr_.capacity) != n_sample_) {
-                ostringstream errmsg;
-                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
-                return Status::Invalid("genotyper: xAtlas gVCF RR is missing or malformed", errmsg.str());
-            }
         }
+
         return Status::OK();
     }
 
     unsigned get(unsigned sample, unsigned allele) override {
         if (sample >= n_sample_ || allele >= n_allele_) return 0;
-        if (is_g_) {
-            if (allele != 0) return 0;
-            // RRX has four floats per sample, the first of which is minimum
-            return int(rrx_[sample*4]);
-        }
-        switch (allele) {
-            case 0:
-                return rr_[sample];
-            case 1:
-                return v_[sample];
+        if (allele == 0) {
+            return rr_[sample];
+        } else if (!is_g_) {
+            return v_[sample];
         }
         return 0;
     }
@@ -977,7 +965,7 @@ public:
 // The AlleleDepthHelper is constructed into an undefined state. Load()
 // must be invoked, successfully, before it can be used.
 unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg) {
-    if (cfg.ref_dp_format == "RRX" && cfg.allele_dp_format == "VR") {
+    if (cfg.ref_dp_format == "RR" && cfg.allele_dp_format == "VR") {
         return xAtlasAlleleDepthHelper::Make(cfg);
     }
     return AlleleDepthHelper::Make(cfg);

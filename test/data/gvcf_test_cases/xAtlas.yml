@@ -88,7 +88,7 @@ input:
         1	15986	.	C	.	.	PASS	END=16000;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:63:63:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	1689700	.	G	.	.	PASS	END=1689769;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	1689770	.	C	CC	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
-        1	131211614	.	A	.	.	PASS	END=131211700;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:0,7,5.125,1.31022:4,7,5.125,1.31022
+        1	131211614	.	A	.	.	PASS	END=131211700;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:0:4:.:0,42,177:0,0,0,0:0,7,5.125,1.31022:4,7,5.125,1.31022
 
 unifier_config:
     min_AQ1: 10
@@ -102,7 +102,7 @@ genotyper_config:
     revise_genotypes: true
     allow_partial_data: true
     squeeze: true
-    ref_dp_format: RRX
+    ref_dp_format: RR
     allele_dp_format: VR
     liftover_fields:
     - orig_names: [DP]

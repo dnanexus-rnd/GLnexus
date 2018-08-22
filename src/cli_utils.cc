@@ -574,7 +574,7 @@ xAtlas:
         required_dp: 1
         allow_partial_data: true
         revise_genotypes: true
-        ref_dp_format: RRX
+        ref_dp_format: RR
         allele_dp_format: VR
         liftover_fields:
             - orig_names: [DP]
@@ -639,7 +639,7 @@ xAtlas_unfiltered:
         required_dp: 1
         allow_partial_data: true
         revise_genotypes: false
-        ref_dp_format: RRX
+        ref_dp_format: RR
         allele_dp_format: VR
         liftover_fields:
             - orig_names: [DP]
