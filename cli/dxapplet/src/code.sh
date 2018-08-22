@@ -59,9 +59,13 @@ main() {
     if [ -n "$bucket_size" ]; then
         bucket_size_arg="--bucket_size $bucket_size"
     fi
+    squeeze_arg=""
+    if [[ "$squeeze" == "true" ]]; then
+        squeeze_arg="--squeeze"
+    fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli --config "$config" --list --bed $bed_ranges $bucket_size_arg $debug_flags /tmp/gvcf_list \
+    time numactl --interleave=all glnexus_cli --config "$config" $squeeze_arg --list --bed $bed_ranges $bucket_size_arg $debug_flags /tmp/gvcf_list \
         | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then

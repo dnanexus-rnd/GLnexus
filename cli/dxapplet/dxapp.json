@@ -35,6 +35,13 @@
       "default": "gatk"
     },
     {
+      "name": "squeeze",
+      "help": "Squeeze output QC fields",
+      "class": "boolean",
+      "default": false,
+      "optional": true
+    },
+    {
       "name": "bucket_size",
       "class": "int",
       "optional": true
