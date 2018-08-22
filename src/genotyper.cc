@@ -779,6 +779,10 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             //   Update DP only and apply squeeze transform
             S(update_format_fields(cfg, dataset, dataset_header.get(), sample_mapping, site,
                                    format_helpers, all_records, variant_records_used, true));
+            for (const auto& p : sample_mapping) {
+                genotypes[p.second*2].RNC = NoCallReason::N_A;
+                genotypes[p.second*2+1].RNC = NoCallReason::N_A;
+            }
         }
 
         // Handle residuals
