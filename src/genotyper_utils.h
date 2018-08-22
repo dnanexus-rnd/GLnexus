@@ -526,17 +526,16 @@ protected:
             } else if (format_one.empty() || field_info.combi_method == FieldCombinationMethod::MISSING) {
                 ans.push_back(".");
             } else if (field_info.combi_method == FieldCombinationMethod::SEMICOLON) {
-                return Status::NotImplemented("genotyper StringFormatFieldHelper::combine_format_data SEMICOLON"); /*
                 ostringstream oss;
                 bool first = true;
-                for (auto& s : format_one) {
+                for (auto& s : set<string>(format_one.begin(), format_one.end())) {
                     if (!first) {
                         oss << ';';
                     }
                     oss << s;
                     first = false;
                 }
-                ans.push_back(oss.str());*/
+                ans.push_back(oss.str());
             } else {
                 return Status::Invalid("genotyper misconfiguration: unsupported combi_method for string format field.", field_info.name);
             }
@@ -672,26 +671,22 @@ public:
         }
 
         if (record->d.n_flt) {
-            ostringstream filters;
-            bool first=true;
+            vector<string> filters;
             for (int i = 0; i < record->d.n_flt; i++) {
                 string filter = dataset_header->id[BCF_DT_ID][record->d.flt[i]].key;
                 if (filter.size() && filter != "PASS") {
-                    // TODO: scheme to deduplicate filters seen in multiple records
-                    if (!first) {
-                        filters << ';';
-                    }
-                    filters << filter;
-                    first=false;
+                    filters.push_back(filter);
                 }
             }
 
-            if (!first) {
+            if (!filters.empty()) {
                 for (int i = 0; i < record->n_sample; i++) {
                     int out_ind = get_out_ind_of_value(i, 0, sample_mapping, allele_mapping, n_allele_out);
                     if (out_ind >= 0) {
                         assert(out_ind < format_v.size());
-                        format_v[out_ind].push_back(filters.str());
+                        for (const auto& filter : filters) {
+                            format_v[out_ind].push_back(filter);
+                        }
                     }
                 }
             }

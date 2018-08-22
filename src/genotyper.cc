@@ -762,13 +762,14 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 } else if (rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
                         rnc1 == NoCallReason::OverlappingVariants || rnc2 == NoCallReason::OverlappingVariants) {
                     for (const auto& fh : format_helpers) {
-                        if (fh->field_info.name != "DP") { // whitelist
+                        if (fh->field_info.name != "DP" && fh->field_info.name != "FT") { // whitelist
                             S(fh->censor(p.second, half_call));
                         }
                     }
                 } else if (half_call) {
                     for (const auto& fh : format_helpers) {
-                        if (fh->field_info.name != "DP" && fh->field_info.name != "GQ") {
+                        if (fh->field_info.name != "DP" && fh->field_info.name != "GQ"
+                            && fh->field_info.name != "FT") {
                             S(fh->censor(p.second, true));
                         }
                     }

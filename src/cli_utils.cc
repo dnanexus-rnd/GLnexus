@@ -567,7 +567,6 @@ xAtlas:
     unifier_config:
         min_AQ1: 10
         min_AQ2: 3
-        drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 150
     genotyper_config:
@@ -628,7 +627,7 @@ xAtlas:
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
               type: string
-              combi_method: missing
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
@@ -693,7 +692,7 @@ xAtlas_unfiltered:
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
               type: string
-              combi_method: missing
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
