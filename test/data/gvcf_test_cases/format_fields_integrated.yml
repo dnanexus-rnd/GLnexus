@@ -34,18 +34,19 @@ input:
         21	10009461	.	T	A, <NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
         21	10009462	.	T	A,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
         21	10009463	.	C	G,<NON_REF>	.	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:2,8,2,2
-        21	10009464	.	A	<NON_REF>	.	.	END=10009465	GT:DP:GQ:MIN_DP:PL:SB	0/0:13:0:13:0,0,342:1,1,1,1
+        21	10009464	.	A	<NON_REF>	.	.	END=10009465	GT:DP:GQ:MIN_DP:PL:SB	0/0:26:0:13:0,0,342:1,1,1,1
         21	10009466	.	AA	GT,<NON_REF>	0.03	.	.	GT:AD:DP:GQ:PL:SB	0/1:10,2,0:12:16:16,0,240,46,246,292:1,9,1,1
 
 genotyper_config:
   liftover_fields:
-    - orig_names: [DP, MIN_DP]
+    - orig_names: [MIN_DP, DP]
       name: DP
       description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
       type: int
       combi_method: min
       number: basic
       count: 1
+      ignore_non_variants: true
     - orig_names: [SB]
       name: SB
       description: "##FORMAT=<ID=SB,Number=4,Type=Integer,Description=\"Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.\">"

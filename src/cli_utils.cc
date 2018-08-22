@@ -474,13 +474,14 @@ gatk:
         required_dp: 1
         revise_genotypes: true
         liftover_fields:
-            - orig_names: [DP, MIN_DP]
+            - orig_names: [MIN_DP, DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
               type: int
               combi_method: min
               number: basic
               count: 1
+              ignore_non_variants: true
             - orig_names: [AD]
               name: AD
               description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
@@ -523,13 +524,14 @@ gatk_unfiltered:
         required_dp: 1
         revise_genotypes: false
         liftover_fields:
-            - orig_names: [DP, MIN_DP]
+            - orig_names: [MIN_DP, DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
               type: int
               combi_method: min
               number: basic
               count: 1
+              ignore_non_variants: true
             - orig_names: [AD]
               name: AD
               description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
@@ -636,6 +638,7 @@ weCall:
               combi_method: min
               number: basic
               count: 1
+              ignore_non_variants: true
             - orig_names: [AD]
               name: AD
               description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
@@ -687,13 +690,14 @@ DeepVariant:
         required_dp: 0
         revise_genotypes: false
         liftover_fields:
-            - orig_names: [DP, MIN_DP]
+            - orig_names: [MIN_DP, DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
               type: int
               combi_method: min
               number: basic
               count: 1
+              ignore_non_variants: true
             - orig_names: [AD]
               name: AD
               description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
