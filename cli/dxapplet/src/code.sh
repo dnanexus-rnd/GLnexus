@@ -7,7 +7,6 @@ main() {
     set -ex -o pipefail
 
     compressor="pigz"
-    vcf_compressor="bgzip --threads $(nproc)"
     compress_ext="gz"
 
     # log detailed utilization
@@ -60,13 +59,15 @@ main() {
         bucket_size_arg="--bucket_size $bucket_size"
     fi
     squeeze_arg=""
+    squeeze_cmd="cat"
     if [[ "$squeeze" == "true" ]]; then
         squeeze_arg="--squeeze"
+        squeeze_cmd="spvcf squeeze -q -"
     fi
 
     mkdir -p out/vcf
     time numactl --interleave=all glnexus_cli --config "$config" $squeeze_arg --list --bed $bed_ranges $bucket_size_arg $debug_flags /tmp/gvcf_list \
-        | bcftools view - | $vcf_compressor -c > "out/vcf/${output_name}.vcf.${compress_ext}"
+        | bcftools view - | $squeeze_cmd | bgzip --threads $(nproc) -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then
         # Try to kill the perf process nicely; this does not always work
