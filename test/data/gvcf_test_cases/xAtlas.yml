@@ -79,6 +79,8 @@ input:
         1	131211615	.	GGA	G	2	low_qual	P=0.366185	GT:VR:RR:DP:GQ:PL	0/0:2:16:19:.:0,24,432
     - Third.gvcf: |
         ythird
+        1	49514	.	AG	A	27	high_coverage	P=0.997937	GT:VR:RR:DP:GQ:PL	0/1:4:5:9:.:61,0,119
+        1	49515	.	G	GA	27	single_strand	P=0.998008	GT:VR:RR:DP:GQ:PL	0/1:5:0:9:.:113,0,12
         1	1689669	.	CGGCCCT	C	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
     - Fourth.gvcf: |
         zfourth
@@ -86,12 +88,11 @@ input:
         1	15986	.	C	.	.	PASS	END=16000;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:63:63:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	1689700	.	G	.	.	PASS	END=1689769;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022
         1	1689770	.	C	CC	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
-        1	131211614	.	A	.	.	PASS	END=131211700;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:4:4:.:0,42,177:0,0,0,0:0,7,5.125,1.31022:4,7,5.125,1.31022
+        1	131211614	.	A	.	.	PASS	END=131211700;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:0:4:.:0,42,177:0,0,0,0:0,7,5.125,1.31022:4,7,5.125,1.31022
 
 unifier_config:
     min_AQ1: 10
     min_AQ2: 3
-    drop_filtered: true
     monoallelic_sites_for_lost_alleles: true
     max_alleles_per_site: 150
 
@@ -100,7 +101,7 @@ genotyper_config:
     revise_genotypes: true
     allow_partial_data: true
     squeeze: true
-    ref_dp_format: RRX
+    ref_dp_format: RR
     allele_dp_format: VR
     liftover_fields:
     - orig_names: [DP]
@@ -154,12 +155,20 @@ genotyper_config:
       name: FT
       description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
       type: string
-      combi_method: missing
+      combi_method: semicolon
       number: basic
       count: 1
       ignore_non_variants: true
 
 truth_unified_sites:
+- range: {ref: 1, beg: 15922, end: 15922}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: A
+    - dna: G
+      quality: 34
+      frequency: 0.25
+  quality: 34
 - range: {ref: 1, beg: 15956, end: 15956}
   alleles:
     - dna: G
@@ -198,6 +207,27 @@ truth_unified_sites:
       quality: 40
       frequency: 0.25
   quality: 40
+- range: {ref: 1, beg: 49514, end: 49515}
+  alleles:
+    - dna: AG
+    - dna: AGA
+      normalized:
+        range: {beg: 49515, end: 49515}
+        dna: GA
+      quality: 27
+      frequency: 0.125
+    - dna: A
+      quality: 26
+      frequency: 0.125
+  quality: 27
+- range: {ref: 1, beg: 69215, end: 69215}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: T
+    - dna: TA
+      quality: 15
+      frequency: 0.125
+  quality: 15
 - range: {ref: 1, beg: 1087454, end: 1087456}
   alleles:
     - dna: TAA
@@ -278,11 +308,14 @@ truth_output_vcf:
       ##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002	xAtlasTester	ythird	zfourth
+      1	15922	1_15922_A_G	A	G	34	.	AF=0.25;AQ=34	GT:DP:RR:VR:GQ:PL:P:FT:RNC	1/1:4:0:4:3:85,9,0:0.999618:low_coverage:..	0/0:4:.:.:.:.:.:.:..	./.:.:.:.:.:.:.:.:MM	0/0:64:.:.:.:.:.:.:..
       1	15956	.	G	A	36	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	0/0:.:.:.:4:.:.:.:..	./.:.:.:.:.:.:.:.:MM	0/0:.:.:.:64:.:.:.:..
       1	15983	.	C	T,G	36	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:257,.,.,0,.,172:0.999774:20:8:12:.:..	1/1:99:257,172,0,.,.,.:0.999774:20:1:19:.:..	./.:.:.:.:.:.:.:.:MM	0/0:.:.:.:64:.:.:.:..
       1	15985	.	A	T	36	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:257,0,172:0.999774:20:8:12:.:..	./1:.:257,0,172:0.999774:4:0:4:low_coverage:D.	./.:.:.:.:.:.:.:.:MM	0/0:.:.:.:64:.:.:.:..
       1	15987	.	M	C	44	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:69:716,75,0:0.999968:26:0:26:.:..	./.:.:.:.:.:.:.:.:MM	0/0:.:.:.:32:.:.:.:..
       1	15989	.	AG	A	40	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	1/1:41:659,47,0:0.999904:26:1:25:.:..	./.:.:.:.:.:.:.:.:MM	0/0:.:.:.:32:.:.:.:..
+      1	49514	1_49515_G_GA;1_49514_AG_A	AG	AGA,A	27	.	AF=0.125,0.125;AQ=27,26	GT:DP:RR:VR:GQ:PL:P:FT:RNC	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM	1/2:9:.:.:.:.:.:high_coverage;single_strand:..	./.:.:.:.:.:.:.:.:MM
+      1	69215	1_69215_T_TA	T	TA	15	.	AF=0.125;AQ=15	GT:DP:RR:VR:GQ:PL:P:FT:RNC	0/1:5:5:2:.:9,0,125:0.971431:read_end_ratio:..	0/0:8:8:2:.:0,0,202:0.526272:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	1087454	.	TAA	TA,T	10	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/2:.:61,.,.,0,.,125:0.91:8:5:2:.:..	0/1:.:61,0,125,.,.,.:0.91:8:5:2:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	1087554	.	TAA	T	10	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	0/1:.:61,0,125:0.91:8:5:2:.:..	0/0:.:.:0.848623:4:4:0:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM
       1	1099704	.	GGA	G	22	.	.	GT:GQ:PL:P:DP:RR:VR:FT:RNC	./.:.:.:.:.:.:.:.:MM	0/1:.:828,0,2005:0.994071:142:83:43:.:..	./.:.:.:.:.:.:.:.:MM	./.:.:.:.:.:.:.:.:MM

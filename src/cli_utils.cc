@@ -567,14 +567,13 @@ xAtlas:
     unifier_config:
         min_AQ1: 10
         min_AQ2: 3
-        drop_filtered: true
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 150
     genotyper_config:
         required_dp: 1
         allow_partial_data: true
         revise_genotypes: true
-        ref_dp_format: RRX
+        ref_dp_format: RR
         allele_dp_format: VR
         liftover_fields:
             - orig_names: [DP]
@@ -628,7 +627,7 @@ xAtlas:
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
               type: string
-              combi_method: missing
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
@@ -639,7 +638,7 @@ xAtlas_unfiltered:
         required_dp: 1
         allow_partial_data: true
         revise_genotypes: false
-        ref_dp_format: RRX
+        ref_dp_format: RR
         allele_dp_format: VR
         liftover_fields:
             - orig_names: [DP]
@@ -693,7 +692,7 @@ xAtlas_unfiltered:
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
               type: string
-              combi_method: missing
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
