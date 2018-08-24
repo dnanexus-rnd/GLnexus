@@ -525,10 +525,10 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                     case 0:
                     case 1:
                         {
-                            AlleleDepthHelper depth2(cfg);
-                            S(depth2.Load(dataset, dataset_header, record2->p.get()));
+                            auto depth2 = NewAlleleDepthHelper(cfg);
+                            S(depth2->Load(dataset, dataset_header, record2->p.get()));
 
-                            fill_allele(record2,depth2,call_mode2,1);
+                            fill_allele(record2,(*depth2),call_mode2,1);
                             assert(genotypes[2*ij.second+1].RNC != NoCallReason::MissingData);
                             genotypes[2*ij.second+1].half_call = true;
                         }
@@ -666,7 +666,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                            samples2, datasets, iterators));
     assert(samples.size() == samples2->size());
 
-    AlleleDepthHelper adh(cfg);
+    auto adh = NewAlleleDepthHelper(cfg);
     vector<DatasetResidual> lost_calls_info;
 
     map<string,int> samples_index;
@@ -722,7 +722,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         vector<shared_ptr<bcf1_t_plus>> all_records, variant_records, variant_records_used;
         NoCallReason rnc = NoCallReason::MissingData;
         S(prepare_dataset_records(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
-                                  sample_mapping, records, adh, rnc, min_ref_depth,
+                                  sample_mapping, records, *adh, rnc, min_ref_depth,
                                   all_records, variant_records));
 
         if (rnc != NoCallReason::N_A) {
@@ -735,11 +735,11 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         } else if (!site.monoallelic) {
             // make genotype calls for the samples in this dataset
             S(translate_genotypes(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
-                                  sample_mapping, variant_records, adh, min_ref_depth,
+                                  sample_mapping, variant_records, *adh, min_ref_depth,
                                   genotypes, variant_records_used));
         } else {
             S(translate_monoallelic(cfg, site, dataset, dataset_header.get(), bcf_nsamples,
-                                    sample_mapping, variant_records, adh, min_ref_depth,
+                                    sample_mapping, variant_records, *adh, min_ref_depth,
                                     genotypes, variant_records_used));
         }
 
@@ -762,13 +762,14 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 } else if (rnc1 == NoCallReason::UnphasedVariants || rnc2 == NoCallReason::UnphasedVariants ||
                         rnc1 == NoCallReason::OverlappingVariants || rnc2 == NoCallReason::OverlappingVariants) {
                     for (const auto& fh : format_helpers) {
-                        if (fh->field_info.name != "DP") { // whitelist
+                        if (fh->field_info.name != "DP" && fh->field_info.name != "FT") { // whitelist
                             S(fh->censor(p.second, half_call));
                         }
                     }
                 } else if (half_call) {
                     for (const auto& fh : format_helpers) {
-                        if (fh->field_info.name != "DP" && fh->field_info.name != "GQ") {
+                        if (fh->field_info.name != "DP" && fh->field_info.name != "GQ"
+                            && fh->field_info.name != "FT") {
                             S(fh->censor(p.second, true));
                         }
                     }

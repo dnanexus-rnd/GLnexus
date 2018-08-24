@@ -526,17 +526,16 @@ protected:
             } else if (format_one.empty() || field_info.combi_method == FieldCombinationMethod::MISSING) {
                 ans.push_back(".");
             } else if (field_info.combi_method == FieldCombinationMethod::SEMICOLON) {
-                return Status::NotImplemented("genotyper StringFormatFieldHelper::combine_format_data SEMICOLON"); /*
                 ostringstream oss;
                 bool first = true;
-                for (auto& s : format_one) {
+                for (auto& s : set<string>(format_one.begin(), format_one.end())) {
                     if (!first) {
                         oss << ';';
                     }
                     oss << s;
                     first = false;
                 }
-                ans.push_back(oss.str());*/
+                ans.push_back(oss.str());
             } else {
                 return Status::Invalid("genotyper misconfiguration: unsupported combi_method for string format field.", field_info.name);
             }
@@ -672,26 +671,22 @@ public:
         }
 
         if (record->d.n_flt) {
-            ostringstream filters;
-            bool first=true;
+            vector<string> filters;
             for (int i = 0; i < record->d.n_flt; i++) {
                 string filter = dataset_header->id[BCF_DT_ID][record->d.flt[i]].key;
                 if (filter.size() && filter != "PASS") {
-                    // TODO: scheme to deduplicate filters seen in multiple records
-                    if (!first) {
-                        filters << ';';
-                    }
-                    filters << filter;
-                    first=false;
+                    filters.push_back(filter);
                 }
             }
 
-            if (!first) {
+            if (!filters.empty()) {
                 for (int i = 0; i < record->n_sample; i++) {
                     int out_ind = get_out_ind_of_value(i, 0, sample_mapping, allele_mapping, n_allele_out);
                     if (out_ind >= 0) {
                         assert(out_ind < format_v.size());
-                        format_v[out_ind].push_back(filters.str());
+                        for (const auto& filter : filters) {
+                            format_v[out_ind].push_back(filter);
+                        }
                     }
                 }
             }
@@ -816,23 +811,30 @@ Status update_format_fields(const genotyper_config& cfg, const string& dataset, 
 // the upstream variant caller and whether we're looking at a reference confidence
 // or variant record.
 class AlleleDepthHelper {
+protected:
     const genotyper_config& cfg_;
     size_t n_sample_ = 0, n_allele_ = 0;
     bool is_g_ = false;
     htsvecbox<int32_t> v_;
 
-public:
-
-    // The AlleleDepthHelper is constructed into an undefined state. Load()
-    // must be invoked, successfully, before it can be used.
+    // use NewAlleleDepthHelper()
     AlleleDepthHelper(const genotyper_config& cfg)
         : cfg_(cfg)
         {}
 
+    static auto Make(const genotyper_config& cfg) {
+        return unique_ptr<AlleleDepthHelper>(new AlleleDepthHelper(cfg));
+    }
+    friend unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg);
+
+public:
+
+    virtual ~AlleleDepthHelper() = default;
+
     // The helper can be reused for multiple records by calling Load()
     // repeatedly. This will be slightly more efficient than using a new
     // helper for each record.
-    Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) {
+    virtual Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) {
         n_sample_ = record->n_sample;
         n_allele_ = record->n_allele;
         // is this a gVCF reference confidence record?
@@ -892,7 +894,7 @@ public:
     bool is_gvcf_ref() { return is_g_; }
 
     // get depth for sample i & allele j
-    unsigned get(unsigned sample, unsigned allele) {
+    virtual unsigned get(unsigned sample, unsigned allele) {
         if (sample >= n_sample_ || allele >= n_allele_) return 0;
         if (is_g_) {
             // the MIN_DP array has just one integer per sample
@@ -904,6 +906,65 @@ public:
         }
     }
 };
+
+class xAtlasAlleleDepthHelper : public AlleleDepthHelper {
+    htsvecbox<int32_t> rr_;
+
+    // use NewAlleleDepthHepler()
+    xAtlasAlleleDepthHelper(const genotyper_config& cfg)
+        : AlleleDepthHelper(cfg)
+        {}
+
+    static auto Make(const genotyper_config& cfg) {
+        return unique_ptr<AlleleDepthHelper>(new xAtlasAlleleDepthHelper(cfg));
+    }
+    friend unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg);
+
+public:
+
+    // load RR for reference depth, and VR in variant records
+    // in ref records, xAtlas makes RR the minimum ref depth across the band.
+    Status Load(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record) override {
+        n_sample_ = record->n_sample;
+        n_allele_ = record->n_allele;
+
+        if (bcf_get_format_int32(dataset_header, record, "RR", &rr_.v, &rr_.capacity) != n_sample_) {
+            ostringstream errmsg;
+            errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+            return Status::Invalid("genotyper: xAtlas gVCF RR is missing or malformed", errmsg.str());
+        }
+
+        is_g_ = is_gvcf_ref_record(record);
+        if (!is_g_) {
+            if (bcf_get_format_int32(dataset_header, record, "VR", &v_.v, &v_.capacity) != n_sample_) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " (" << cfg_.ref_dp_format << ")";
+                return Status::Invalid("genotyper: xAtlas gVCF VR is missing or malformed", errmsg.str());
+            }
+        }
+
+        return Status::OK();
+    }
+
+    unsigned get(unsigned sample, unsigned allele) override {
+        if (sample >= n_sample_ || allele >= n_allele_) return 0;
+        if (allele == 0) {
+            return rr_[sample];
+        } else if (!is_g_) {
+            return v_[sample];
+        }
+        return 0;
+    }
+};
+
+// The AlleleDepthHelper is constructed into an undefined state. Load()
+// must be invoked, successfully, before it can be used.
+unique_ptr<AlleleDepthHelper> NewAlleleDepthHelper(const genotyper_config& cfg) {
+    if (cfg.ref_dp_format == "RR" && cfg.allele_dp_format == "VR") {
+        return xAtlasAlleleDepthHelper::Make(cfg);
+    }
+    return AlleleDepthHelper::Make(cfg);
+}
 
 /// A helper function to update min_ref_depth based on several reference
 /// confidence records. min_ref_depth[j] is the minimum depth of reference

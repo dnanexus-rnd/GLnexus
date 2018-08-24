@@ -31,14 +31,39 @@ Status discover_alleles_from_iterator(const set<string>& samples,
         // for each BCF record
         vector<top_AQ> topAQ;
         vector<zygosity_by_GQ> zGQ;
+        htsvecbox<float> xAtlasP;
         for (const auto& record : records) {
             assert(!is_gvcf_ref_record(record.get()));
             range rng(record);
             assert(pos.overlaps(rng));
             bool filtered = (bcf_has_filter(dataset_header.get(), record.get(), ".") == 0);
 
-            // find the max AQ for each allele
+            // find the max AQ for each allele based on the genotype likelihoods
             S(diploid::bcf_alleles_topAQ(dataset_header.get(), record.get(), dataset_relevant_samples, topAQ));
+
+            // xAtlas special case: if we have an INFO field "P", override
+            //   AQ = -10log_10(1-P)
+            if (bcf_get_info_float(dataset_header.get(), record.get(), "P", &xAtlasP.v, &xAtlasP.capacity) == 1) {
+                if (record->n_allele != 2 || record->n_sample != 1) {
+                    ostringstream errmsg;
+                    errmsg << dataset << "@" << rng.str();
+                    return Status::Invalid("unexpected: multiple samples or alternate alleles in gVCF record with P field (assumed xAtlas)", errmsg.str());
+                }
+                vector<int> xAQ;
+                for (auto s : dataset_relevant_samples) {
+                    assert(s == 0);
+                    float p = xAtlasP[s];
+                    if (p != p || p < 0.0 || p > 1.0) {
+                        ostringstream errmsg;
+                        errmsg << dataset << " " << to_string(p) << "@" << rng.str();
+                        return Status::Invalid("invalid P-value", errmsg.str());
+                    }
+                    xAQ.push_back(p == 1.0 ? 9999 : int(-10*log10f(1-p)));
+                }
+                assert(topAQ.size() == 2);
+                topAQ[1].clear();
+                topAQ[1] += xAQ;
+            }
 
             // find zygosity_by_GQ for each allele
             S(diploid::bcf_zygosity_by_GQ(dataset_header.get(), record.get(), dataset_relevant_samples, zGQ));

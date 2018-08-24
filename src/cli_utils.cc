@@ -565,24 +565,17 @@ gatk_unfiltered:
               ignore_non_variants: true
 xAtlas:
     unifier_config:
-        drop_filtered: true
+        min_AQ1: 10
+        min_AQ2: 3
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 150
     genotyper_config:
-        required_dp: 0
+        required_dp: 1
         allow_partial_data: true
-        revise_genotypes: false
-        # TODO: ref_dp_format=DPX[0] would be more precise
-        ref_dp_format: DP
+        revise_genotypes: true
+        ref_dp_format: RR
+        allele_dp_format: VR
         liftover_fields:
-            - orig_names: [GQ]
-              name: GQ
-              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
-              type: int
-              number: basic
-              combi_method: min
-              count: 1
-              ignore_non_variants: true
             - orig_names: [DP]
               name: DP
               description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
@@ -601,8 +594,16 @@ xAtlas:
               name: VR
               description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
               type: int
-              combi_method: min
+              combi_method: max
               number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
               count: 1
               ignore_non_variants: true
             - orig_names: [PL]
@@ -613,11 +614,85 @@ xAtlas:
               combi_method: missing
               count: 0
               ignore_non_variants: true
+            - orig_names: [P]
+              name: P
+              description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
+              from: info
+              type: float
+              number: basic
+              count: 1
+              combi_method: missing
+              ignore_non_variants: true
             - orig_names: [FILTER]
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
               type: string
+              combi_method: semicolon
+              number: basic
+              count: 1
+              ignore_non_variants: true
+xAtlas_unfiltered:
+    unifier_config:
+        monoallelic_sites_for_lost_alleles: true
+    genotyper_config:
+        required_dp: 1
+        allow_partial_data: true
+        revise_genotypes: false
+        ref_dp_format: RR
+        allele_dp_format: VR
+        liftover_fields:
+            - orig_names: [DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [RR]
+              name: RR
+              description: '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Reference Read Depth">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+            - orig_names: [VR]
+              name: VR
+              description: '##FORMAT=<ID=VR,Number=1,Type=Integer,Description="Major Variant Read Depth">'
+              type: int
+              combi_method: max
+              number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
               combi_method: missing
+              count: 0
+              ignore_non_variants: true
+            - orig_names: [P]
+              name: P
+              description: '##FORMAT=<ID=P,Number=1,Type=Float,Description="xAtlas variant p-value">'
+              from: info
+              type: float
+              number: basic
+              count: 1
+              combi_method: missing
+              ignore_non_variants: true
+            - orig_names: [FILTER]
+              name: FT
+              description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF (other than PASS)">'
+              type: string
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
