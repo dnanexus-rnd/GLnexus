@@ -1,5 +1,6 @@
 readme: |
   Regression test for an unusual class of gVCF variant records with INFO DP=0 and no FORMAT DP or AD
+  With GATK4 we see a few variant records that don't even have DP...
 
 input:
   header: |-
@@ -23,7 +24,7 @@ input:
   body:
     - A.gvcf: |
         A
-        A	900	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
+        A	1000	.	A	T,<NON_REF>	0.01	.	MLEAC=0,0;MLEAF=NaN,NaN	GT	./.
     - B.gvcf: |
         B
         A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
@@ -68,4 +69,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	C	CG	35	.	.	GT:DP:AD:RNC	0/0:1:1,0:..	1/1:.:0,0:..
+      A	1000	.	C	CG	35	.	.	GT:DP:AD:RNC	./.:.:.:MM	1/1:.:0,0:..

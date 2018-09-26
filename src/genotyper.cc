@@ -540,9 +540,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             default:
                 assert(false);
         }
-
-        assert(genotypes[2*ij.second].RNC != NoCallReason::MissingData);
-        assert(genotypes[2*ij.second+1].RNC != NoCallReason::MissingData);
     }
 
     return Status::OK();

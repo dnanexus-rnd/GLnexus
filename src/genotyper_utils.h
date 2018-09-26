@@ -856,22 +856,9 @@ public:
                                           &v_.v, &v_.capacity);
 
             if (nv == -1 || nv == -3) {
-                // We allow the AD field to not exist mainly as a (poor)
-                // workaround for some of our test case gVCFs not having it...
-
-                if (nv == -3) {
-                    // AD is declared in the header, but not present in the
-                    // FORMAT fields for this record. We'll tolerate this for
-                    // an unusual observed class of variant records which have
-                    // INFO DP=0 (gVCF test case DP0_noAD.yml)
-
-                    nv = bcf_get_info_int32(dataset_header, record, "DP", &v_.v, &v_.capacity);
-                    if (nv != 1 || v_[0] != 0) {
-                        ostringstream errmsg;
-                        errmsg << dataset << " " << range(record).str() << " (" << cfg_.allele_dp_format << ")";
-                        return Status::Invalid("genotyper: VCF allele depth FORMAT field is missing", errmsg.str());
-                    }
-                }
+                // The AD field isn't present on this record, so consider all
+                // depths zero. This happens in HaplotypeCaller gVCFs for
+                // unknown reasons.
 
                 nv = record->n_sample * record->n_allele;
                 if (v_.capacity < nv) {
