@@ -464,7 +464,7 @@ bool check_dir_exists(const string &path) {
 // should reside in some user-modifiable yml file
 static const char* config_presets_yml = R"eof(
 gatk:
-    description: Merge and joint-call GATK-style gVCFs
+    description: Joint-call GATK-style gVCFs
     unifier_config:
         min_AQ1: 70
         min_AQ2: 40
@@ -514,7 +514,7 @@ gatk:
               count: 0
               ignore_non_variants: true
 gatk_unfiltered:
-    description: Merge GATK-style gVCFs with no filtering or genotype revision.
+    description: Merge GATK-style gVCFs with no QC filters or genotype revision
     unifier_config:
         min_AQ1: 0
         min_AQ2: 0
@@ -564,6 +564,7 @@ gatk_unfiltered:
               count: 0
               ignore_non_variants: true
 xAtlas:
+    description: Joint-call xAtlas gVCFs
     unifier_config:
         min_AQ1: 10
         min_AQ2: 3
@@ -632,6 +633,7 @@ xAtlas:
               count: 1
               ignore_non_variants: true
 xAtlas_unfiltered:
+    description: Merge xAtlas gVCFs with no QC filters or genotype revision
     unifier_config:
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
@@ -697,6 +699,7 @@ xAtlas_unfiltered:
               count: 1
               ignore_non_variants: true
 weCall:
+    description: Joint-call xAtlas gVCFs
     unifier_config:
         min_AQ1: 30
         min_AQ2: 30
@@ -756,6 +759,7 @@ weCall:
               count: 1
               ignore_non_variants: true
 DeepVariant:
+    description: "[EXPERIMENTAL] Merge DeepVariant gVCFs with no QC filters or genotype revision"
     unifier_config:
         min_AQ1: 0
         min_AQ2: 0
