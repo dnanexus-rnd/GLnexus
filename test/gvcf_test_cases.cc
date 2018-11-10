@@ -332,6 +332,9 @@ public:
 
         unifier_stats stats;
         s = unified_sites(unifier_cfg, N, als, sites, stats);
+        if (!s.ok()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
 
         REQUIRE(is_sorted(sites.begin(), sites.end()));
