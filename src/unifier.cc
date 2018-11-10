@@ -473,18 +473,21 @@ Status delineate_sites(const unifier_config& cfg, discovered_alleles& alleles,
         }
 
         for (const auto& pa : pruned) {
-            discovered_allele *longest_original_ref = nullptr;
-            for (const auto& al : pa.second.originals) {
-                const auto r = refs_by_range.find(al.pos);
-                if (r == refs_by_range.end()) {
-                    return Status::Invalid("delineate_sites: missing REF allele for ", al.pos.str());
-                }
-                if (!longest_original_ref || longest_original_ref->first.dna.size() < r->second.first.dna.size()) {
-                    longest_original_ref = &(r->second);
+            // we need to supply a discovered reference allele to go along with
+            // the pruned alt allele; find the shortest one which contains the
+            // alt. note, we realigned the alt so this might not cover the
+            // original!
+            const discovered_allele *shortest_containing_ref = nullptr;
+            for (const auto& ref : refs_by_range) {
+                if (ref.first.contains(pa.first.pos) &&
+                    (!shortest_containing_ref || ref.first.size() < shortest_containing_ref->first.pos.size())) {
+                        shortest_containing_ref = &ref.second;
                 }
             }
-            assert(longest_original_ref);
-            all_pruned_alleles.push_back(make_pair(pa, *longest_original_ref));
+            if (!shortest_containing_ref) {
+                return Status::Invalid("delineate_sites: missing REF allele for ", pa.first.str());
+            }
+            all_pruned_alleles.push_back(make_pair(pa, *shortest_containing_ref));
         }
     }
     return Status::OK();
@@ -574,6 +577,18 @@ Status unified_sites(const unifier_config& cfg,
                      unifier_stats& stats_out) {
     Status s;
     unifier_stats stats;
+
+    /* desperate-straits debugging:
+    for (const auto& allele : alleles) {
+        if (allele.first.pos.overlaps(range(7, 16188960, 16188970))) {
+            cerr << allele.first.str();
+            if (allele.second.is_ref) {
+                cerr << " *";
+            }
+            cerr << endl;
+        }
+    }
+    */
 
     map<range,tuple<discovered_alleles,minimized_alleles,minimized_alleles>> sites;
     vector<pair<minimized_allele,discovered_allele>> all_pruned_alleles;
