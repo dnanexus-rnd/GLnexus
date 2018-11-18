@@ -385,7 +385,7 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     }
     htsvecbox<int> gt;
     int nGT = bcf_get_genotypes(hdr, bcf, &gt.v, &gt.capacity);
-    if (nGT != 2*bcf->n_sample) {
+    if (nGT != 2*record->n_sample && !(record->n_sample == 1 && nGT == 1)) {
         return Status::Invalid("gVCF record doesn't have expected # of GT entries", filename + " " + range(bcf).str(contigs));
     }
     for (int i = 0; i < nGT; i++) {

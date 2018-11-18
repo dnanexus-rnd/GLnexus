@@ -1,0 +1,198 @@
+readme: |
+  Strelka2 gVCF dialect (WIP)
+
+input:
+  header : |-
+    ##fileformat=VCFv4.1
+    ##source=strelka
+    ##source_version=2.8.4
+    ##startTime=Sat Feb  3 16:56:46 2018
+    ##contig=<ID=1,length=249250621>
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the region described in this record">
+    ##INFO=<ID=BLOCKAVG_min30p3a,Number=0,Type=Flag,Description="Non-variant multi-site block. Non-variant blocks are defined independently for each sample. All sites in such a block are constrained to be non-variant, have the same filter value, and have sample values {GQX,DP,DPF} in range [x,y], y <= max(x+3,(x*1.3)).">
+    ##INFO=<ID=SNVHPOL,Number=1,Type=Integer,Description="SNV contextual homopolymer length">
+    ##INFO=<ID=CIGAR,Number=A,Type=String,Description="CIGAR alignment for each alternate indel allele">
+    ##INFO=<ID=RU,Number=A,Type=String,Description="Smallest repeating sequence unit extended or contracted in the indel allele relative to the reference. RUs are not reported if longer than 20 bases">
+    ##INFO=<ID=REFREP,Number=A,Type=Integer,Description="Number of times RU is repeated in reference">
+    ##INFO=<ID=IDREP,Number=A,Type=Integer,Description="Number of times RU is repeated in indel allele">
+    ##INFO=<ID=MQ,Number=1,Type=Integer,Description="RMS of mapping quality">
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+    ##FORMAT=<ID=GQX,Number=1,Type=Integer,Description="Empirically calibrated genotype quality score for variant sites, otherwise minimum of {Genotype quality assuming variant position,Genotype quality assuming non-variant position}">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Filtered basecall depth used for site genotyping. In a non-variant multi-site block this value represents the average of all sites in the block.">
+    ##FORMAT=<ID=DPF,Number=1,Type=Integer,Description="Basecalls filtered from input prior to site genotyping. In a non-variant multi-site block this value represents the average of all sites in the block.">
+    ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum filtered basecall depth used for site genotyping within a non-variant multi-site block">
+    ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed. For indels this value only includes reads which confidently support each allele (posterior prob 0.51 or higher that read contains indicated allele vs all other intersecting indel alleles)">
+    ##FORMAT=<ID=ADF,Number=.,Type=Integer,Description="Allelic depths on the forward strand">
+    ##FORMAT=<ID=ADR,Number=.,Type=Integer,Description="Allelic depths on the reverse strand">
+    ##FORMAT=<ID=FT,Number=1,Type=String,Description="Sample filter, 'PASS' indicates that all filters have passed for this sample">
+    ##FORMAT=<ID=DPI,Number=1,Type=Integer,Description="Read depth associated with indel, taken from the site preceding the indel">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+    ##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set identifier">
+    ##FORMAT=<ID=SB,Number=1,Type=Float,Description="Sample site strand bias">
+    ##FILTER=<ID=IndelConflict,Description="Indel genotypes from two or more loci conflict in at least one sample">
+    ##FILTER=<ID=SiteConflict,Description="Site is filtered due to an overlapping indel call filter">
+    ##FILTER=<ID=LowGQX,Description="Locus GQX is below threshold or not present">
+    ##FILTER=<ID=HighDPFRatio,Description="The fraction of basecalls filtered out at a site is greater than 0.4">
+    ##FILTER=<ID=HighSNVSB,Description="Sample SNV strand bias value (SB) exceeds 10">
+    ##FILTER=<ID=HighDepth,Description="Locus depth is greater than 3x the mean chromosome depth">
+    ##Depth_1=35.00
+    ##FILTER=<ID=LowDepth,Description="Locus depth is below 3">
+    ##FILTER=<ID=PloidyConflict,Description="Genotype call from variant caller not consistent with chromosome ploidy">
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - HG001.gvcf: |
+        HG001
+        1	1	.	N	.	.	LowGQX;LowDepth	END=9999;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	.:.:0:0:0
+        1	10000	.	N	.	.	LowGQX;LowDepth	.	GT:GQX:DP:DPF:MIN_DP	.:.:1:0:1
+        1	10001	.	T	.	.	LowGQX	.	GT:GQX:DP:DPF:MIN_DP	0/0:10:4:1:4
+        1	10002	.	A	.	.	PASS	END=10104;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:27:11:2:10
+        1	10105	.	A	.	.	HighDPFRatio;HighDepth	END=10143;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:50:34:69:23
+        1	10144	.	T	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:4:17:80:17
+        1	10145	.	A	.	.	HighDPFRatio;HighDepth	END=10146;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:51:19:77:18
+        1	10146	.	AC	A	844	PASS	CIGAR=1M1D;RU=C;REFREP=4;IDREP=3;MQ=21	GT:GQ:GQX:DPI:AD:ADF:ADR:FT:PL	0/1:782:6:95:37,39:34,33:3,6:PASS:879,0,779
+        1	10147	.	C	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0:163:9:30:9
+        1	10148	.	C	.	.	HighDPFRatio;HighDepth	END=10176;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:21:12:52:8
+        1	10177	.	A	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:8:13:38:13
+        1	10177	.	A	AC	587	PASS	CIGAR=1M1I;RU=C;REFREP=2;IDREP=3;MQ=21	GT:GQ:GQX:DPI:AD:ADF:ADR:FT:PL	0/1:401:6:51:22,27:19,20:3,7:PASS:629,0,398
+        1	10178	.	C	.	.	HighDPFRatio;HighDepth	END=10185;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:33:15:35:12
+        1	10186	.	T	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:10:17:37:17
+        1	10187	.	A	.	.	HighDPFRatio;HighDepth	END=10228;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:51:27:41:18
+    - HG002.gvcf: |
+        HG002
+        1	1	.	N	.	.	LowGQX;LowDepth	END=9999;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	.:.:0:0:0
+        1	10000	.	N	.	.	LowGQX;HighDPFRatio;LowDepth	.	GT:GQX:DP:DPF:MIN_DP	.:.:0:1:0
+        1	10001	.	T	.	.	LowGQX;HighDPFRatio;LowDepth	END=10002;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:3:2:2:1
+        1	10003	.	A	.	.	LowGQX	.	GT:GQX:DP:DPF:MIN_DP	0/0:10:4:2:4
+        1	10004	.	C	.	.	LowGQX;HighDPFRatio	.	GT:GQX:DP:DPF:MIN_DP	0/0:12:5:5:5
+        1	10005	.	C	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:21:8:6:8
+        1	10006	.	C	.	.	HighDepth	END=10007;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:27:10:6:10
+        1	10008	.	A	.	.	HighDPFRatio;HighDepth	END=10137;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:24:10:9:9
+        1	10138	.	T	.	.	HighDPFRatio;HighDepth	END=10146;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:15:9:66:6
+        1	10146	.	AC	A	418	PASS	CIGAR=1M1D;RU=C;REFREP=4;IDREP=3;MQ=19	GT:GQ:GQX:DPI:AD:ADF:ADR:FT:PL	0/1:456:6:74:37,29:31,22:6,7:PASS:453,0,719
+        1	10147	.	C	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0:111:4:32:4
+        1	10148	.	C	.	.	HighDPFRatio;HighDepth	END=10150;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:15:7:60:6
+        1	10150	.	CT	C	14	LowGQX	CIGAR=1M1D;RU=T;REFREP=1;IDREP=0;MQ=20	GT:GQ:GQX:DPI:AD:ADF:ADR:FT:PL	0/1:56:1:67:47,11:41,5:6,6:LowGQX:53,0,907
+        1	10151	.	T	.	.	SiteConflict;LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0:14:4:46:4
+        1	10152	.	A	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:12:5:62:5
+        1	10153	.	A	.	.	HighDPFRatio;HighDepth	END=10161;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:15:7:57:6
+        1	10162	.	C	.	.	LowGQX;HighDPFRatio;HighDepth	END=10170;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:10:4:60:4
+        1	10171	.	A	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:15:6:57:6
+        1	10172	.	C	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:12:5:57:5
+        1	10173	.	C	.	.	HighDPFRatio;HighDepth	END=10174;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:15:6:55:6
+        1	10175	.	T	A	0	LowGQX	SNVHPOL=4;MQ=22	GT:GQ:GQX:DP:DPF:AD:ADF:ADR:SB:FT:PL	0/1:3:0:7:56:6,1:4,0:2,1:0.0:LowGQX:3,0,111
+        1	10176	.	A	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:15:6:56:6
+        1	10177	.	A	.	.	LowGQX;HighDPFRatio;HighDepth	END=10180;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:10:5:54:4
+        1	10181	.	A	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:27:10:49:10
+        1	10182	.	A	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:3:11:50:11
+        1	10183	.	C	.	.	HighDPFRatio;HighDepth	END=10207;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:27:17:46:10
+
+unifier_config:
+    min_AQ1: 0
+    min_AQ2: 0
+    min_GQ: 0
+    monoallelic_sites_for_lost_alleles: true
+
+genotyper_config:
+    required_dp: 0
+    revise_genotypes: false
+    liftover_fields:
+    - orig_names: [MIN_DP, DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_type: zero
+      count: 0
+    - orig_names: [GQ, GQX]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [PL]
+      name: PL
+      description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+      type: int
+      number: genotype
+      combi_method: missing
+      count: 0
+      ignore_non_variants: true
+    - orig_names: [FILTER]
+      name: FT
+      description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
+      type: string
+      combi_method: missing
+      number: basic
+      count: 1
+      ignore_non_variants: true
+
+truth_unified_sites:
+- range: {ref: 1, beg: 10146, end: 10147}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: AC
+    - dna: A
+      quality: 879
+      frequency: 0.5
+  quality: 879
+- range: {ref: 1, beg: 10150, end: 10151}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: CT
+    - dna: C
+      quality: 53
+      frequency: 0.25
+  quality: 53
+- range: {ref: 1, beg: 10175, end: 10175}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: T
+    - dna: A
+      quality: 3
+      frequency: 0.25
+  quality: 3
+- range: {ref: 1, beg: 10177, end: 10177}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: A
+    - dna: AC
+      quality: 629
+      frequency: 0.25
+  quality: 629
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency estimate for each alternate allele">
+      ##INFO=<ID=AQ,Number=A,Type=Integer,Description="Allele Quality score reflecting evidence from all samples (Phred scale)">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype likelihoods, Phred encoded">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=21,length=48129895>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12877	NA12878
+      chr21	9412193	chr21_9412193_C_T	C	T	18	.	AF=0.25;AQ=18	GT:GQ:PL:DP:AD:RNC	0/0:50:.:30:30,0:..	0/1:19:18,0,40:75:52,23:..
+      chr21	9412269	chr21_9412269_A_T	A	T	28	.	AF=0.25;AQ=28	GT:GQ:PL:DP:AD:RNC	0/0:50:.:32:32,0:..	0/1:28:28,0,36:81:57,24:..
+      chr21	9412358	chr21_9412358_TA_T	TA	T	35	.	AF=0.25;AQ=35	GT:GQ:PL:DP:AD:RNC	0/0:50:.:21:21,0:..	0/1:35:35,0,44:69:40,28:..
+      chr21	9412435	chr21_9412435_T_A	T	A	23	.	AF=0.25;AQ=23	GT:GQ:PL:DP:AD:RNC	0/1:24:23,0,37:44:22,22:..	0/0:14:0,13,42:103:89,14:..
+      chr21	9412441	chr21_9412441_TATA_T	TATA	T	31	.	AF=0.5;AQ=31	GT:GQ:PL:DP:AD:RNC	0/1:26:31,0,27:47:25,22:..	0/1:27:27,0,46:98:69,29:..
+      chr21	9418260	chr21_9418260_A_T;chr21_9418260_A_C	A	T,C	43	.	AF=0.75,0.25;AQ=43,42	GT:GQ:PL:DP:AD:RNC	1/1:35:36,40,0,.,.,.:91:0,91,0:..	1/2:38:45,48,42,48,0,43:135:0,106,29:..
+      chr21	11000381	chr21_11000381_AG_A;chr21_11000382_G_A	AG	A,AA	2	.	AF=0.5,0.5;AQ=2,1	GT:GQ:PL:DP:AD:RNC	./.:.:.:.:.:PP	./.:.:.:20:.:OO
+      chr21	16188963	chr21_16188963_CAT_C	CAT	C	2	.	AF=0.5;AQ=2	GT:DP:AD:GQ:PL:RNC	./0:32:20,0:3:.:-.	1/1:32:20,12:3:2,3,0:..
+      chr21	16188965	chr21_16188965_TAC_T	TAC	T	2	MONOALLELIC	AF=0.5;AQ=2	GT:DP:AD:GQ:PL:RNC	./.:32:.,12:.:.:OO	./.:32:.,0:3:.:11
+      chr21	16188967	chr21_16188967_C_G	C	G	2	.	AF=0.5;AQ=2	GT:DP:AD:GQ:PL:RNC	./.:32:.:.:.:OO	1/1:32:20,12:3:2,3,0:..
