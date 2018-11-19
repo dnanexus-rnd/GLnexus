@@ -306,12 +306,14 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 
     // ex post facto check for reference confidence records whose GT is other
     // than 0/0 (probably ./.), which we'll translate to PartialData non-calls
-    for (const auto& rp : all_records) {
-        if (rp->is_ref) {
-            for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
-                if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
-                    rnc = NoCallReason::PartialData;
-                    return Status::OK();
+    if (variant_records.empty()) {
+        for (const auto& rp : all_records) {
+            if (rp->is_ref) {
+                for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
+                    if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
+                        rnc = NoCallReason::PartialData;
+                        return Status::OK();
+                    }
                 }
             }
         }
