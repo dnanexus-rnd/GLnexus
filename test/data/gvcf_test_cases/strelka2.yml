@@ -7,8 +7,8 @@ readme: |
   - DP/DPI
   - MIN_DP in ref bands seems very low across the board
   - PLs are not lifted over due to unexpected number of them in haploid
-    variant records
-  - haploid GT=. ref band at 66375 conflicts with DV ./. ref bands
+    variant records (could be worked around by rewriting PL like we
+    rewrite GT)
 
 input:
   header : |-
