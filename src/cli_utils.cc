@@ -699,7 +699,7 @@ xAtlas_unfiltered:
               count: 1
               ignore_non_variants: true
 weCall:
-    description: Joint-call xAtlas gVCFs
+    description: Joint-call weCall gVCFs
     unifier_config:
         min_AQ1: 30
         min_AQ2: 30
