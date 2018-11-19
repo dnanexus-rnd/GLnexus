@@ -334,6 +334,9 @@ public:
         discovered_alleles als;
         unsigned N;
         Status s = svc->discover_alleles("<ALL>", pos, N, als);
+        if (s.bad()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
 
         unifier_stats stats;
@@ -823,7 +826,7 @@ TEST_CASE("DeepVariant") {
 }
 
 TEST_CASE("strelka2") {
-    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT"};
+    vector<string> v_formats = {"DP", "GT", "GQ", "AD", "FT"};
     vector<string> v_infos = {"AF","AQ"};
     GVCFTestCase("strelka2", v_formats, v_infos, false).perform_gvcf_test();
 }

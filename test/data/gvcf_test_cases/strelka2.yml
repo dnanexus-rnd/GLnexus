@@ -1,11 +1,14 @@
 readme: |
-  Strelka2 gVCF dialect (WIP)
+  Strelka2 gVCF dialect (WIP). The most unique feature of Strelka2 is its use
+  of 'haploid' records to represent the other haplotype near a deletion.
 
   FIXME:
   - GQ is a float (unusual)
-  - AD has ignore_non_variants=true due to unusual 'haploid' records following deletions
   - DP/DPI
   - MIN_DP in ref bands seems very low across the board
+  - PLs are not lifted over due to unexpected number of them in haploid
+    variant records
+  - haploid GT=. ref band at 66375 conflicts with DV ./. ref bands
 
 input:
   header : |-
@@ -64,6 +67,11 @@ input:
         1	10178	.	C	.	.	HighDPFRatio;HighDepth	END=10185;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:33:15:35:12
         1	10186	.	T	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:10:17:37:17
         1	10187	.	A	.	.	HighDPFRatio;HighDepth	END=10228;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:51:27:41:18
+        1	66132	.	T	.	.	PASS	END=66160;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:87:32:2:30
+        1	66160	.	TTATATA	T	92	PASS	CIGAR=1M6D;RU=TA;REFREP=7;IDREP=4;MQ=39	GT:GQ:GQX:DPI:AD:ADF:ADR:FT:PL	0/1:107:9:33:21,8:6,4:15,4:PASS:104,0,4
+        1	66161	.	T	.	.	PASS	.	GT:GQX:DP:DPF:MIN_DP	0:92:21:0:21
+        1	66162	.	A	T	92	PASS	SNVHPOL=5;MQ=39	GT:GQ:GQX:DP:DPF:AD:ADF:ADR:SB:FT:PL	1:153:5:21:0:5,16:5,1:0,15:14.2:PASS:158,0
+        1	66163	.	T	.	.	PASS	END=66385;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0:92:21:0:21
     - HG002.gvcf: |
         HG002
         1	1	.	N	.	.	LowGQX;LowDepth	END=9999;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	.:.:0:0:0
@@ -92,6 +100,15 @@ input:
         1	10181	.	A	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:27:10:49:10
         1	10182	.	A	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:3:11:50:11
         1	10183	.	C	.	.	HighDPFRatio;HighDepth	END=10207;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:27:17:46:10
+        1	66132	.	T	.	.	PASS	END=66166;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:87:32:2:30
+        1	66371	.	A	.	.	LowGQX;HighDPFRatio;HighDepth	END=66372;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:12:5:81:5
+        1	66373	.	A	.	.	HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:18:7:81:7
+        1	66374	.	T	.	.	LowGQX;HighDPFRatio;HighDepth	.	GT:GQX:DP:DPF:MIN_DP	0/0:12:5:81:5
+        1	66374	.	TATAA	T,TTAA	1176	LowGQX	CIGAR=1M4D,1M1D3M;RU=ATAA,A;REFREP=1,1;IDREP=0,0;MQ=44	GT:GQ:GQX:DPI:AD:ADF:ADR:FT:PL	1/2:391:1:86:16,31,33:7,16,22:9,15,11:LowGQX:999,442,685,391,0,632
+        1	66375	.	A	.	.	SiteConflict;LowGQX;HighDPFRatio	.	GT:GQX:DP:DPF:MIN_DP	.:.:4:13:4
+        1	66376	.	T	.	.	SiteConflict;HighDPFRatio	END=66377;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0:92:6:41:5
+        1	66378	.	A	T	115	SiteConflict	SNVHPOL=3;MQ=42	GT:GQ:GQX:DP:DPF:AD:ADF:ADR:SB:FT:PL	1:143:8:7:44:0,7:0,6:0,1:-9.6:SiteConflict:150,0
+        1	66379	.	A	.	.	HighDPFRatio;HighDepth	END=66385;BLOCKAVG_min30p3a	GT:GQX:DP:DPF:MIN_DP	0/0:45:22:77:16
 
 unifier_config:
     min_AQ1: 0
@@ -127,14 +144,6 @@ genotyper_config:
       number: basic
       combi_method: min
       count: 1
-      ignore_non_variants: true
-    - orig_names: [PL]
-      name: PL
-      description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
-      type: int
-      number: genotype
-      combi_method: missing
-      count: 0
       ignore_non_variants: true
     - orig_names: [FILTER]
       name: FT
@@ -178,6 +187,38 @@ truth_unified_sites:
       quality: 629
       frequency: 0.25
   quality: 629
+- range: {ref: 1, beg: 66160, end: 66166}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: TTATATA
+    - dna: T
+      quality: 104
+      frequency: 0.25
+    - dna: TTTTATA
+      normalized:
+        range: {beg: 66162, end: 66162}
+        dna: T
+      frequency: 0.25
+  quality: 104
+- range: {ref: 1, beg: 66374, end: 66378}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: TATAA
+    - dna: TTAA
+      normalized:
+        range: {beg: 66374, end: 66375}
+        dna: T
+      quality: 442
+      frequency: 0.25
+    - dna: T
+      quality: 391
+      frequency: 0.25
+    - dna: TATAT
+      normalized:
+        range: {beg: 66378, end: 66378}
+        dna: T
+      frequency: 0.25
+  quality: 442
 
 truth_output_vcf:
   - truth.vcf: |
@@ -197,3 +238,6 @@ truth_output_vcf:
       1	10150	1_10150_CT_C	CT	C	53	.	AF=0.25;AQ=53	GT:DP:AD:GQ:PL:FT:RNC	0/0:8:8,0:.:.:.:..	0/1:67:47,11:56:53,0,907:LowGQX:..
       1	10175	1_10175_T_A	T	A	3	.	AF=0.25;AQ=3	GT:DP:AD:GQ:PL:FT:RNC	0/0:8:8,0:.:.:.:..	0/1:7:6,1:3:3,0,111:LowGQX:..
       1	10177	1_10177_A_AC	A	AC	629	.	AF=0.25;AQ=629	GT:DP:AD:GQ:PL:FT:RNC	0/1:51:22,27:401:629,0,398:.:..	0/0:4:4,0:.:.:.:..
+      1	66160	1_66160_TTATATA_T;1_66162_A_T	TTATATA	T,TTTTATA	104	.	AF=0.25,0.25;AQ=104,0	GT:DP:AD:GQ:FT:RNC	1/2:21:.,8,16:107:.:..	0/0:30:30,0,0:.:.:..
+      1	66374	1_66374_TATAA_T	TATAA	T	.	MONOALLELIC	AF=0.25	GT:DP:AD:GQ:FT:RNC	./.:21:.,0:.:.:11	./.:.:.:.:.:PP
+      1	66374	1_66374_TA_T;1_66374_TATAA_T;1_66378_A_T	TATAA	TTAA,T,TATAT	442	.	AF=0.25,0.25,0.25;AQ=442,391,0	GT:DP:AD:GQ:FT:RNC	0/0:21:21,0,0,0:.:.:..	./.:.:.:.:.:PP
