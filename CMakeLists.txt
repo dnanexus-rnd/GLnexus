@@ -42,7 +42,7 @@ SET(ENV{PKG_CONFIG_PATH} ${CMAKE_BINARY_DIR}/external/lib/pkgconfig)
 # After build, double-check external/src/htslib-stamp/htslib-build-out.log
 # to make sure CFLAGS were set as expected
 ExternalProject_Add(htslib
-    URL https://github.com/samtools/htslib/releases/download/1.8/htslib-1.8.tar.bz2
+    URL https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     PATCH_COMMAND sed -i "s/^CFLAGS .*$/CFLAGS = -gdwarf -O3 -DNDEBUG -march=ivybridge/" Makefile
@@ -84,7 +84,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/v5.14.2.zip
+    URL https://github.com/facebook/rocksdb/archive/v5.17.2.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
@@ -150,7 +150,7 @@ set(FCMM_INCLUDE_DIR ${source_dir})
 include_directories(${FCMM_INCLUDE_DIR})
 
 ExternalProject_Add(spdlog
-    URL https://github.com/gabime/spdlog/archive/v0.17.0.zip
+    URL https://github.com/gabime/spdlog/archive/v1.2.1.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
@@ -163,7 +163,7 @@ set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
 include_directories(${SPDLOG_INCLUDE_DIR})
 
 ExternalProject_Add(capnp
-    URL https://capnproto.org/capnproto-c++-0.6.1.tar.gz
+    URL https://capnproto.org/capnproto-c++-0.7.0.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/external
     BUILD_IN_SOURCE 1

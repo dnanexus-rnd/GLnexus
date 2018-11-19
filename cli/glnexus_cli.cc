@@ -14,6 +14,7 @@
 #include "RocksKeyValue.h"
 #include "ctpl_stl.h"
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_sinks.h"
 #include "cli_utils.h"
 
 using namespace std;
