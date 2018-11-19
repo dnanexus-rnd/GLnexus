@@ -51,6 +51,7 @@ static inline bool is_deletion(const string& ref, const string& alt) {
         swap(ans.gt[0], ans.gt[1]);
         ans.gt[0] = bcf_gt_missing;
         assert(bcf_gt_is_missing(ans.gt[0]));
+        ans.was_haploid = true;
     } else if(nGT != 2*record->n_sample || !ans.gt.v) {
         return Status::Failure("genotyper::preprocess_record: unexpected result from bcf_get_genotypes");
     }
@@ -305,12 +306,13 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 
     // ex post facto check for reference confidence records whose GT is other
     // than 0/0 (probably ./.), which we'll translate to PartialData non-calls
+    // We exclude 'haploid' records from this treatment for now as observed
+    // examples (e.g. in Strelka2 gVCFs) don't seem to require it, but this
+    // may need to be configurable in the future.
     for (const auto& rp : all_records) {
-        if (rp->is_ref) {
-            for (unsigned i = 0; i < rp->p->n_sample; i++) {
-                if ((bcf_gt_is_missing(rp->gt[2*i]) && bcf_gt_is_missing(rp->gt[2*i+1]))
-                    || (!bcf_gt_is_missing(rp->gt[2*i]) && bcf_gt_allele(rp->gt[2*i]) != 0)
-                    || (!bcf_gt_is_missing(rp->gt[2*i+1]) && bcf_gt_allele(rp->gt[2*i+1]) != 0)) {
+        if (rp->is_ref && !rp->was_haploid) {
+            for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
+                if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
                     rnc = NoCallReason::PartialData;
                     return Status::OK();
                 }
