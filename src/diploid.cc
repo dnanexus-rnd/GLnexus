@@ -46,6 +46,17 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
                           vector<zygosity_by_GQ>& ans) {
     htsvecbox<int> gt;
     int nGT = bcf_get_genotypes(header, record, &gt.v, &gt.capacity);
+    if (record->n_sample == 1 && nGT == 1 && !gt.empty()) {
+        // special case for Strelka2 and other callers which emit some gVCF
+        // records with GT=. or GT=0 or GT=1: rewrite these to look like ./.
+        // and ./0 and ./1 as far as our genotyper is concerned.
+        gt.v = (int*) realloc(gt.v, 2*sizeof(int));
+        gt.capacity = 2;
+        swap(gt[0], gt[1]);
+        gt[0] = bcf_gt_missing;
+        assert(bcf_gt_is_missing(gt[0]));
+        nGT = 2;
+    }
     if (gt.empty() || nGT != 2*record->n_sample) return Status::Failure("bcf_get_genotypes");
 
     htsvecbox<int32_t> gq;

@@ -79,6 +79,12 @@ struct bcf1_t_plus {
 
     // indicating whether each allele is a deletion wrt the reference
     std::vector<bool> deletion_allele;
+
+    // True if the original record was 'haploid' (e.g. GT=0 or GT=1) as seen
+    // with some gVCF callers like Strelka2.
+    // In preprocessing, we rewrite gt to loook like ./0 or ./1 for simpler
+    // treatment subsequently, but note the original form here.
+    bool was_haploid = false;
 };
 Status preprocess_record(const unified_site& site, const bcf_hdr_t* hdr, const std::shared_ptr<bcf1_t>& record, bcf1_t_plus& ans);
 Status revise_genotypes(const genotyper_config& cfg, const unified_site& us, const std::map<int, int>& sample_mapping,

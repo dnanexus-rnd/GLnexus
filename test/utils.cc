@@ -57,7 +57,7 @@ class VCFData : public Metadata, public BCFData {
             }
             htsvecbox<int> gt;
             int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt.v, &gt.capacity);
-            if (nGT != 2*record->n_sample) {
+            if (nGT != 2*record->n_sample && nGT != record->n_sample) {
                 return Status::Invalid("gVCF record doesn't have expected # of GT entries", path + " " + range(record).str());
             }
             for (int i = 0; i < nGT; i++) {

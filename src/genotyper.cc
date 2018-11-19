@@ -14,20 +14,6 @@ __asm__(".symver logf,logf@GLIBC_2.2.5");
 
 namespace GLnexus {
 
-// Helper: determine if all genotypes in the record are 0/0
-static inline bool is_homozygous_ref(const bcf_hdr_t* hdr, bcf1_t* record) {
-    htsvecbox<int> gt;
-    int nGT = bcf_get_genotypes(hdr, record, &gt.v, &gt.capacity);
-    for (int i = 0; i < record->n_sample; i++) {
-        assert(i*2+1<nGT);
-        if (bcf_gt_is_missing(gt[i*2]) || bcf_gt_allele(gt[i*2]) != 0 ||
-            bcf_gt_is_missing(gt[i*2+1]) || bcf_gt_allele(gt[i*2+1]) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 // Helper: given REF and ALT DNA, determine if the ALT represents a deletion
 // with respect to REF. Left-alignment is assumed and reference padding on the
 // left is tolerated.
@@ -55,7 +41,18 @@ static inline bool is_deletion(const string& ref, const string& alt) {
 
     ans.is_ref = is_gvcf_ref_record(record.get());
 
-    if(bcf_get_genotypes(hdr, record.get(), &ans.gt.v, &ans.gt.capacity) != 2*record->n_sample || !ans.gt.v) {
+    auto nGT = bcf_get_genotypes(hdr, record.get(), &ans.gt.v, &ans.gt.capacity);
+    if (record->n_sample == 1 && nGT == 1 && !ans.gt.empty()) {
+        // special case for Strelka2 and other callers which emit some gVCF
+        // records with GT=. or GT=0 or GT=1: rewrite these to look like ./.
+        // and ./0 and ./1 as far as our genotyper is concerned.
+        ans.gt.v = (int*) realloc(ans.gt.v, 2*sizeof(int));
+        ans.gt.capacity = 2;
+        swap(ans.gt[0], ans.gt[1]);
+        ans.gt[0] = bcf_gt_missing;
+        assert(bcf_gt_is_missing(ans.gt[0]));
+        ans.was_haploid = true;
+    } else if(nGT != 2*record->n_sample || !ans.gt.v) {
         return Status::Failure("genotyper::preprocess_record: unexpected result from bcf_get_genotypes");
     }
 
@@ -309,8 +306,11 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 
     // ex post facto check for reference confidence records whose GT is other
     // than 0/0 (probably ./.), which we'll translate to PartialData non-calls
+    // We exclude 'haploid' records from this treatment for now as observed
+    // examples (e.g. in Strelka2 gVCFs) don't seem to require it, but this
+    // may need to be configurable in the future.
     for (const auto& rp : all_records) {
-        if (rp->is_ref) {
+        if (rp->is_ref && !rp->was_haploid) {
             for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
                 if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
                     rnc = NoCallReason::PartialData;

@@ -103,6 +103,32 @@ TEST_CASE("htslib VCF missing data representation") {
     if (dp) free(dp);
 }
 
+TEST_CASE("htslib VCF missing data representation for GT=.") {
+    UPD(vcfFile, vcf, bcf_open("test/data/missingdata1.gvcf", "r"), [](vcfFile* f) { bcf_close(f); });
+    UPD(bcf_hdr_t, hdr, bcf_hdr_read(vcf), &bcf_hdr_destroy);
+    UPD(bcf1_t, vt, bcf_init(), &bcf_destroy);
+
+    REQUIRE(bcf_hdr_nsamples(hdr) == 1);
+
+    int *gt = nullptr, gtsz = 0;
+
+    REQUIRE(bcf_read(vcf, hdr, vt) == 0);
+    REQUIRE(vt->pos == 9999);
+    REQUIRE(bcf_unpack(vt, BCF_UN_ALL) == 0);
+
+    REQUIRE(bcf_get_genotypes(hdr, vt, &gt, &gtsz) == 1);
+    REQUIRE(bcf_gt_is_missing(gt[0]));
+
+    REQUIRE(bcf_read(vcf, hdr, vt) == 0);
+    REQUIRE(vt->pos == 10924);
+    REQUIRE(bcf_unpack(vt, BCF_UN_ALL) == 0);
+
+    REQUIRE(bcf_get_genotypes(hdr, vt, &gt, &gtsz) == 1);
+    REQUIRE(bcf_gt_is_missing(gt[0]));
+
+    if (gt) free(gt);
+}
+
 TEST_CASE("htslib VCF header chrom injection") {
     // verify our method to inject contig entries into a vcf_hdr_t to preclude
     // BCF_ERR_CTG_UNDEF errors and stderr warnings like

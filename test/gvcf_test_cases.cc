@@ -177,6 +177,9 @@ class GVCFTestCase {
 
             unified_site site(range(-1, -1, -1));
             s = unified_site::of_yaml(*site_p, contigs, site);
+            if (s.bad()) {
+                cout << s.str() << endl;
+            }
             REQUIRE(s.ok());
             truth_sites.push_back(site);
         }
@@ -245,6 +248,9 @@ public:
         S(write_gvcfs(n_gvcfs, true));
 
         s = VCFData::Open(input_gvcfs, data, temp_dir_path);
+        if (s.bad()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
         s = data->contigs(contigs);
 
@@ -328,6 +334,9 @@ public:
         discovered_alleles als;
         unsigned N;
         Status s = svc->discover_alleles("<ALL>", pos, N, als);
+        if (s.bad()) {
+            cout << s.str() << endl;
+        }
         REQUIRE(s.ok());
 
         unifier_stats stats;
@@ -814,4 +823,10 @@ TEST_CASE("DeepVariant") {
     vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD"};
     vector<string> v_infos = {"ANR","AF","AQ"};
     GVCFTestCase("deepvariant", v_formats, v_infos, false).perform_gvcf_test();
+}
+
+TEST_CASE("strelka2") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "AD", "FT"};
+    vector<string> v_infos = {"AF","AQ"};
+    GVCFTestCase("strelka2", v_formats, v_infos, false).perform_gvcf_test();
 }
