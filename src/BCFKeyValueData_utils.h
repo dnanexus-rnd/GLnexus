@@ -398,8 +398,8 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     htsvecbox<int32_t> pl;
     int nPL = bcf_get_format_int32(hdr, bcf, "PL", &pl.v, &pl.capacity);
     if (nPL >= 0) {
-        for (int i = 0; i < nPL; i++) {
-            if (pl[i] < 0) {
+        for (int i = 0; i < nPL && pl[i] != bcf_int32_vector_end; i++) {
+            if (pl[i] != bcf_int32_missing && pl[i] < 0) {
                 return Status::Invalid("negative PL entry in gVCF record", filename + " " + range(bcf).str(contigs));
             }
         }
