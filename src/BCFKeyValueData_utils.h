@@ -385,7 +385,7 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
     }
     htsvecbox<int> gt;
     int nGT = bcf_get_genotypes(hdr, bcf, &gt.v, &gt.capacity);
-    if (nGT != 2*bcf->n_sample && !(bcf->n_sample == 1 && nGT == 1)) {
+    if (nGT != 2*bcf->n_sample && /* Strelka2 accommodation: */ !(bcf->n_sample == 1 && nGT == 1)) {
         return Status::Invalid("gVCF record doesn't have expected # of GT entries", filename + " " + range(bcf).str(contigs));
     }
     for (int i = 0; i < nGT; i++) {
@@ -394,14 +394,10 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
         }
     }
 
-    // validate genotype likelihoods (n_samples*nGT entries; PL: all entries nonnegative; GL: all entries nonpositive)
+    // validate genotype likelihoods (PL: all entries nonnegative)
     htsvecbox<int32_t> pl;
     int nPL = bcf_get_format_int32(hdr, bcf, "PL", &pl.v, &pl.capacity);
     if (nPL >= 0) {
-        if (nPL != bcf->n_sample * diploid::genotypes(bcf->n_allele) && bcf->n_allele > 1) {
-            // the exception when bcf->n_allele == 1 accommodates xAtlas
-            return Status::Invalid("gVCF record doesn't have expected # of PL entries", filename + " " + range(bcf).str(contigs));
-        }
         for (int i = 0; i < nPL; i++) {
             if (pl[i] < 0) {
                 return Status::Invalid("negative PL entry in gVCF record", filename + " " + range(bcf).str(contigs));
