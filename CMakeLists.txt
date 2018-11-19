@@ -163,7 +163,7 @@ set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
 include_directories(${SPDLOG_INCLUDE_DIR})
 
 ExternalProject_Add(capnp
-    URL https://capnproto.org/capnproto-c++-0.7.0.tar.gz
+    URL https://capnproto.org/capnproto-c++-0.6.1.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/external
     BUILD_IN_SOURCE 1
