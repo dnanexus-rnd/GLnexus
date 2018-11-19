@@ -467,13 +467,14 @@ static Status ScanBCFBucket(const range& bucket, const string& dataset,
     //             https://github.com/capnproto/capnproto/issues/313
     //             https://lemire.me/blog/2012/05/31/data-alignment-for-speed-myth-or-reality/
     //             http://pzemtsov.github.io/2016/11/06/bug-story-alignment-on-x86.html
+    //             https://github.com/capnproto/capnproto/commit/3aa2b2aa02edb1c160b154ad74c08c929a02512a
     #ifndef __x86_64__
     if (uint64_t(data.data) % sizeof(::capnp::word)) {
          return Status::Failure("BCFBucketReader: input buffer isn't word-aligned");
     }
     #endif
     try {
-        ::capnp::FlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)data.data, data.size / sizeof(::capnp::word)));
+        ::capnp::UnalignedFlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)data.data, data.size / sizeof(::capnp::word)));
         capnp::BCFBucket::Reader bucket_reader = message.getRoot<capnp::BCFBucket>();
 
         // Scan: begin at a position informed by the 'skip index'

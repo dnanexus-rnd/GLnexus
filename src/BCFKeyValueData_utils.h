@@ -229,7 +229,7 @@ public:
                 for (int ofs = 0; ofs < alignments_to_test; ofs++) {
                     auto buf = (uint8_t*) calloc(ans.size() + ofs, 1);
                     memcpy(buf+ofs, ans.data(), ans.size());
-                    ::capnp::FlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)(buf+ofs), ans.size() / sizeof(::capnp::word)));
+                    ::capnp::UnalignedFlatArrayMessageReader message(kj::ArrayPtr<const ::capnp::word>((::capnp::word*)(buf+ofs), ans.size() / sizeof(::capnp::word)));
                     capnp::BCFBucket::Reader bucket_reader = message.getRoot<capnp::BCFBucket>();
                     auto records = bucket_reader.getRecords();
                     assert(records.size() == records_.size());
