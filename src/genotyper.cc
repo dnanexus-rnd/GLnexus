@@ -51,7 +51,6 @@ static inline bool is_deletion(const string& ref, const string& alt) {
         swap(ans.gt[0], ans.gt[1]);
         ans.gt[0] = bcf_gt_missing;
         assert(bcf_gt_is_missing(ans.gt[0]));
-        assert(bcf_gt_is_missing(ans.gt[1]) || bcf_gt_allele(ans.gt[1]) == 0);
     } else if(nGT != 2*record->n_sample || !ans.gt.v) {
         return Status::Failure("genotyper::preprocess_record: unexpected result from bcf_get_genotypes");
     }

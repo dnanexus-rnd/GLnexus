@@ -55,7 +55,6 @@ Status bcf_zygosity_by_GQ(const bcf_hdr_t* header, bcf1_t* record, const std::ve
         swap(gt[0], gt[1]);
         gt[0] = bcf_gt_missing;
         assert(bcf_gt_is_missing(gt[0]));
-        assert(bcf_gt_is_missing(gt[1]) || bcf_gt_allele(gt[1]) == 0);
         nGT = 2;
     }
     if (gt.empty() || nGT != 2*record->n_sample) return Status::Failure("bcf_get_genotypes");
