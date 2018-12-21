@@ -923,9 +923,8 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
 }
 
 // regex for a VCF symbolic allele
-static std::regex regex_symbolic_allele("<.*>");
 bool is_symbolic_allele(const char* allele) {
-    return regex_match(allele, regex_symbolic_allele);
+    return allele[0] == '<' && allele[strlen(allele) - 1] == '>';
 }
 
 // gVCF reference confidence records recognized as having either:
