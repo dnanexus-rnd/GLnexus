@@ -365,15 +365,17 @@ static Status validate_bcf(BCFBucketRange& rangeHelper,
 
     // check that alleles are all distinct, and that all alleles are valid strings
     // of IUPAC nucleotides, except the last ALT allele which may be symbolic.
+    set<string> alleles;
     for (int i=0; i < bcf->n_allele; i++) {
-        const char* allele_i = bcf->d.allele[i];
+        const string allele_i(bcf->d.allele[i]);
         if (!(is_iupac_nucleotides(allele_i) ||
-              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i)))) {
+              (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())))) {
             return Status::Invalid("allele is not a DNA sequence ",
                                 filename + " " + allele_i +  " " + range(bcf).str(contigs));
         }
+        alleles.insert(allele_i);
     }
-    if (bcf->n_allele<1) {
+    if (bcf->n_allele<1 || alleles.size() != bcf->n_allele) {
         return Status::Invalid("alleles are not distinct ", filename + " " + range(bcf).str(contigs));
     }
 
