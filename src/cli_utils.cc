@@ -705,6 +705,7 @@ weCall:
         min_AQ2: 30
         min_GQ: 30
         monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 70
     genotyper_config:
         required_dp: 1
         revise_genotypes: true
