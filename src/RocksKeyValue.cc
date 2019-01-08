@@ -557,7 +557,10 @@ public:
     Status flush() override {
         if (mode_ != OpenMode::READ_ONLY) {
             Status s;
-            S(convertStatus(db_->SyncWAL()));
+            if (mode_ != OpenMode::BULK_LOAD) {
+                // WAL is disabled anyway
+                S(convertStatus(db_->SyncWAL()));
+            }
             for (const auto& p : coll2handle_) {
                 S(convertStatus(db_->Flush(rocksdb::FlushOptions(), p.second)));
             }
