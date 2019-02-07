@@ -378,6 +378,7 @@ static Status validate_bcf(const std::vector<std::pair<std::string,size_t> >&con
     for (int i=0; i < bcf->n_allele; i++) {
         const string allele_i(bcf->d.allele[i]);
         if (!(is_iupac_nucleotides(allele_i) ||
+              allele_i == "*" ||
               (i == bcf->n_allele-1 && is_symbolic_allele(allele_i.c_str())))) {
             return Status::Invalid("allele is not a DNA sequence ",
                                 filename + " " + allele_i +  " " + range(bcf).str(contigs));

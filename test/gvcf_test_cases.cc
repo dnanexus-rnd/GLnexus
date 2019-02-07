@@ -832,3 +832,10 @@ TEST_CASE("strelka2") {
     vector<string> v_infos = {"AF","AQ"};
     GVCFTestCase("strelka2", v_formats, v_infos, false).perform_gvcf_test();
 }
+
+TEST_CASE("star_allele") {
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ", "PL"};
+    vector<string> v_infos = {};
+    GVCFTestCase DP0_case("star_allele", v_formats, v_infos);
+    DP0_case.perform_gvcf_test();
+}
