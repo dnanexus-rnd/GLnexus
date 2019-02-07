@@ -21,10 +21,6 @@
 #include <defs.capnp.h>
 using namespace std;
 
-const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
-const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
-const uint64_t MAX_RECORD_LEN = 100000;
-
 #include "BCFKeyValueData_utils.h"
 
 namespace GLnexus {
@@ -959,7 +955,7 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
 
         // Check various aspects of the record's validity; e.g. make sure the
         // records are coordinate sorted.
-        S(validate_bcf(rangeHelper, metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos));
+        S(validate_bcf(metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {

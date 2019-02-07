@@ -24,7 +24,7 @@ input:
   body:
     - A.gvcf: |
         A
-        A	1000	.	A	T,<NON_REF>	0.01	.	MLEAC=0,0;MLEAF=NaN,NaN	GT	./.
+        A	1000	.	A	T,<NON_REF>	0.01	.	.	GT	./.
     - B.gvcf: |
         B
         A	900	.	G	<NON_REF>	.	.	END=999	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0

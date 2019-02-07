@@ -15,7 +15,7 @@ input:
       ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
       ##FILTER=<ID=PASS,Description="All filters passed">
       ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
-      ##contig=<ID=A,length=1000000>
+      ##contig=<ID=A,length=10000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
   body:
     - A.gvcf: |

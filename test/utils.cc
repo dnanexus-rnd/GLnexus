@@ -5,6 +5,7 @@
 #include "genotyper.h"
 using namespace std;
 using namespace GLnexus;
+#include "BCFKeyValueData_utils.h"
 
 // serves data from VCF files in the test/data directory
 // x.vcf is loaded as data set "x" with a sample set "x", and a sample set for
@@ -13,6 +14,7 @@ using namespace GLnexus;
 class VCFData : public Metadata, public BCFData {
     struct vcf_data_t {
         shared_ptr<bcf_hdr_t> header;
+        shared_ptr<const vector<pair<string,size_t> > > contigs;
         shared_ptr<const vector<string> > samples;
         vector<shared_ptr<bcf1_t> > records;
     };
@@ -21,9 +23,10 @@ class VCFData : public Metadata, public BCFData {
 
     VCFData() {}
 
-    static Status load_vcf(const string& path, vcf_data_t& ans) {
+    static Status load_vcf(const string& path, vcf_data_t& ans, bool validate) {
         unique_ptr<vcfFile, void(*)(vcfFile*)> vcf(bcf_open(path.c_str(), "r"),
                                                    [](vcfFile* f) { bcf_close(f); });
+        Status s;
         if (!vcf) {
             return Status::IOError("bcf_open failed", path);
         }
@@ -32,6 +35,22 @@ class VCFData : public Metadata, public BCFData {
         if (!hdr) {
             return Status::IOError("bcf_hdr_read failed", path);
         }
+
+        int ncontigs = 0;
+        const char **contignames = bcf_hdr_seqnames(hdr.get(), &ncontigs);
+        if (!contignames) return Status::Failure("bcf_hdr_seqnames");
+        assert(ncontigs == hdr->n[BCF_DT_CTG]);
+
+        auto contigs = make_shared<vector<pair<string,size_t> > >();
+        for (int i = 0; i < ncontigs; ++i)
+        {
+            size_t sz = 0;
+            if (hdr->id[BCF_DT_CTG][i].val) {
+                sz = hdr->id[BCF_DT_CTG][i].val->info[0];
+            }
+            contigs->push_back(make_pair(string(contignames[i]),sz));
+        }
+        free(contignames);
 
         int nsamples = bcf_hdr_nsamples(hdr);
         auto samples = make_shared<vector<string> >();
@@ -51,25 +70,18 @@ class VCFData : public Metadata, public BCFData {
                 return Status::IOError("bcf_unpack", path);
             }
 
-            // Genotype validation from BCFKeyValueData::validate_bcf. Reproduced here for a regression test depending on this check
             if (bcf_has_filter(hdr.get(), record.get(), "VRFromDeletion") == 1) {
                 continue;
             }
-            htsvecbox<int> gt;
-            int nGT = bcf_get_genotypes(hdr.get(), record.get(), &gt.v, &gt.capacity);
-            if (nGT != 2*record->n_sample && nGT != record->n_sample) {
-                return Status::Invalid("gVCF record doesn't have expected # of GT entries", path + " " + range(record).str());
-            }
-            for (int i = 0; i < nGT; i++) {
-                if (!bcf_gt_is_missing(gt[i]) && (bcf_gt_allele(gt[i]) < 0 || bcf_gt_allele(gt[i]) >= record->n_allele)) {
-                    return Status::Invalid("invalid GT entry in gVCF record", path + " " + range(record).str());
-                }
+            if (validate) {
+                S(validate_bcf(*contigs, path, hdr.get(), record.get(), 0, 0));
             }
 
             records.push_back(move(record));
         }
 
         ans.header = hdr;
+        ans.contigs = contigs;
         ans.samples = move(samples);
         ans.records = move(records);
 
@@ -78,13 +90,13 @@ class VCFData : public Metadata, public BCFData {
 
 public:
     static Status Open(const set<string> names, unique_ptr<VCFData>& ans,
-                       const string path="test/data/") {
+                       bool validate = true, const string path="test/data/") {
         Status s;
         map<string,vcf_data_t> datasets;
         for (const auto& nm : names) {
             vcf_data_t d;
             string f_path = path + nm;
-            s = load_vcf(f_path, d);
+            s = load_vcf(f_path, d, validate);
             if (s.bad()) return s;
 
             datasets[nm.substr(0,nm.find_last_of("."))] = d;
@@ -111,23 +123,7 @@ public:
     }
 
     Status contigs(vector<pair<string,size_t> >& ans) const override {
-        int ncontigs = 0;
-        const auto& hdr = datasets_.begin()->second.header;
-        const char **contignames = bcf_hdr_seqnames(hdr.get(), &ncontigs);
-        if (!contignames) return Status::Failure("bcf_hdr_seqnames");
-        assert(ncontigs == hdr->n[BCF_DT_CTG]);
-
-        ans.clear();
-        for (int i = 0; i < ncontigs; ++i)
-        {
-            size_t sz = 0;
-            if (hdr->id[BCF_DT_CTG][i].val) {
-                sz = hdr->id[BCF_DT_CTG][i].val->info[0];
-            }
-            ans.push_back(make_pair(string(contignames[i]),sz));
-        }
-        free(contignames);
-
+        ans = *(datasets_.begin()->second.contigs);
         return Status::OK();
     }
 

@@ -65,6 +65,8 @@ class GVCFTestCase {
     bool test_usites;
     bool test_genotypes;
 
+    bool validate_on_ingest = true;
+
     // Limit verbosity, prevent reprinting of the case header
     bool has_printed_header = false;
 
@@ -202,7 +204,7 @@ public:
     // for locating input yaml file; by convention, the yaml file is found
     // at INPUT_ROOT_DIR/<name>.yml
     GVCFTestCase(const string _name, bool _test_dsals=false,
-                 bool _test_usites=true, bool _test_genotypes=true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), name(_name) {
+                 bool _test_usites=true, bool _test_genotypes=true, bool _validate_on_ingest = true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), validate_on_ingest(_validate_on_ingest), name(_name) {
         validated_formats = {"GT", "RNC"};
         validated_infos = {};
     }
@@ -211,7 +213,7 @@ public:
     // for validation
     GVCFTestCase(const string _name, vector<string> _validated_formats,
                  vector<string> _validated_infos, bool _test_dsals=false,
-                 bool _test_usites=true, bool _test_genotypes=true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), validated_formats(_validated_formats), validated_infos(_validated_infos), name(_name) {}
+                 bool _test_usites=true, bool _test_genotypes=true, bool _validate_on_ingest = true): test_dsals(_test_dsals), test_usites(_test_usites), test_genotypes(_test_genotypes), validated_formats(_validated_formats), validated_infos(_validated_infos), validate_on_ingest(_validate_on_ingest), name(_name) {}
 
     // Reads in a yml file; writes gvcf records contained within yaml
     // file to disk; load expected unified_sites to memory
@@ -247,7 +249,7 @@ public:
         const auto n_gvcfs = n_input["body"];
         S(write_gvcfs(n_gvcfs, true));
 
-        s = VCFData::Open(input_gvcfs, data, temp_dir_path);
+        s = VCFData::Open(input_gvcfs, data, validate_on_ingest, temp_dir_path);
         if (s.bad()) {
             cout << s.str() << endl;
         }
@@ -617,7 +619,7 @@ TEST_CASE("services test: discover_alleles_gVCF") {
 }
 
 TEST_CASE("services test: discover_alleles_gVCF_bogus") {
-    GVCFTestCase discover_allele_case("discover_alleles_gvcf_bogus", true, false, false);
+    GVCFTestCase discover_allele_case("discover_alleles_gvcf_bogus", true, false, false, false);
     discover_allele_case.load_yml();
     discovered_alleles als;
 
