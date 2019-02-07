@@ -1,0 +1,142 @@
+readme: |
+
+  Handling the GATK star allele used to denote overlapping deletions:
+    https://software.broadinstitute.org/gatk/documentation/article.php?id=6926
+  Although, it seems to appear unexpectedly elsewhere too.
+
+  Currently, we may emit incomplete genotypes when the star alleles are called.
+  With further tweaking we can do better by making the OverlappingVariants
+  non-call condition tolerate calls of the star allele.
+
+input:
+  header: |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+      ##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=1,length=20000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        1	888747	.	G	<NON_REF>	.	.	END=888889	GT:DP:GQ:MIN_DP:PL	0/0:71:99:44:0,120,1800
+        1	999953	.	G	<NON_REF>	.	.	END=999962	GT:DP:GQ:MIN_DP:PL	0/0:56:98:53:0,98,1485
+        1	999963	.	AACACAC	*,A,AAC,AACAC,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:25,0,0,0,3,0:28:33:0,147,1694,88,1048,1139,86,1053,996,1027,33,901,802,860,880,89,1074,1009,1024,864,1037:7,18,0,3
+        1	999964	rs1	ACACACAC	A,*,AACACAC,AAC,AACAC,<NON_REF>	181.73	.	.	GT:AD:DP:GQ:PL:SB	0/3:8,0,3,4,0,1,0:16:69:219,265,1515,69,522,536,0,818,176,732,206,1418,530,814,1441,234,1323,532,794,1315,1348,265,1367,555,818,1348,1343,1375:1,7,0,8
+        1	999965	rs2	C	*,A,<NON_REF>	352.77	.	.	GT:AD:DP:GQ:PL:SB	0/1:8,11,0,0:19:99:381,0,163,479,277,1483,477,275,1122,1044:1,7,1,10
+        1	999966	rs3	ACACAC	*,A,AAC,AACAC,<NON_REF>	102.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:11,1,2,2,0,0:16:63:140,0,564,90,444,1437,63,442,1325,1389,181,496,1359,1358,1451,183,498,1399,1386,1455,1479:1,10,0,5
+        1	999972	.	A	<NON_REF>	.	.	END=999988	GT:DP:GQ:MIN_DP:PL	0/0:56:67:46:0,67,1080
+    - B.gvcf: |
+        B
+        1	888747	.	G	<NON_REF>	.	.	END=888860	GT:DP:GQ:MIN_DP:PL	0/0:71:99:44:0,120,1800
+        1	888861	rs4	GCGGCTC	G,<NON_REF>	883.73	.	.	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:61,33,0:94:99:0|1:1955061_GCGGCTC_G:921,0,2368,1107,2471,3578:33,28,13,20
+        1	888868	.	ACACCGGAAGTGC	A,<NON_REF>	846.73	.	.	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:62,33,0:95:99:0|1:1955061_GCGGCTC_G:884,0,2736,1107,2840,3947:31,31,13,20
+        1	888880	rs5	C	*,CGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA,<NON_REF>	4069.73	.	.	GT:AD:DP:GQ:PL:SB	1/2:0,33,49,0:82:99:4107,2291,2584,1145,0,945,3821,2542,1193,3978:0,0,37,45
+        1	888881	.	G	<NON_REF>	.	.	END=888889	GT:DP:GQ:MIN_DP:PL	0/0:105:99:105:0,120,1800
+        1	999953	.	G	<NON_REF>	.	.	END=999988	GT:DP:GQ:MIN_DP:PL	0/0:56:98:53:0,98,1485
+
+genotyper_config:
+  required_dp: 1
+  revise_genotypes: false
+  liftover_fields:
+  - orig_names: [MIN_DP, DP]
+    name: DP
+    description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+    type: int
+    combi_method: min
+    number: basic
+    count: 1
+    ignore_non_variants: true
+  - orig_names: [AD]
+    name: AD
+    description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+    type: int
+    number: alleles
+    combi_method: min
+    default_type: zero
+    count: 0
+  - orig_names: [SB]
+    name: SB
+    description: '##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fishers Exact Test to detect strand bias.">'
+    type: int
+    combi_method: missing
+    number: basic
+    count: 4
+  - orig_names: [GQ]
+    name: GQ
+    description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+    type: int
+    number: basic
+    combi_method: min
+    count: 1
+    ignore_non_variants: true
+  - orig_names: [PL]
+    name: PL
+    description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+    type: int
+    number: genotype
+    combi_method: missing
+    count: 0
+    ignore_non_variants: true
+
+truth_unified_sites:
+- range: {ref: 1, beg: 888861, end: 888867}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: GCGGCTC
+    - dna: G
+      quality: 921
+      frequency: 0.25
+  quality: 921
+- range: {ref: 1, beg: 888868, end: 888880}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: ACACCGGAAGTGC
+    - dna: ACACCGGAAGTGCGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA
+      normalized:
+        range: {beg: 888880, end: 888880}
+        dna: CGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA
+      quality: 2291
+      frequency: 0.25
+    - dna: A
+      quality: 884
+      frequency: 0.25
+  quality: 2291
+- range: {ref: 1, beg: 999964, end: 999965}
+  in_target: {ref: 1, beg: 1, end: 1000000000}
+  alleles:
+    - dna: AC
+    - dna: A
+      quality: 69
+      frequency: 0.25
+  quality: 69
+  unification:
+    - range: {beg: 999964, end: 999971}
+      dna: AACACAC
+      to: 1
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+      ##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+      ##contig=<ID=1,length=20000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
+      1	888861	1_888861_GCGGCTC_G	GCGGCTC	G	921	.	.	GT:DP:AD:SB:GQ:PL:RNC	0/0:44:44,0:.,.,.,.:99:.:..	0/1:94:61,33:33,28,13,20:99:921,0,2368:..
+      1	888868	1_888880_C_CGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA;1_888868_ACACCGGAAGTGC_A	ACACCGGAAGTGC	ACACCGGAAGTGCGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA,A	2291	.	.	GT:DP:AD:SB:GQ:PL:RNC	0/0:44:44,0,0:.,.,.,.:99:.:..	./.:82:.:.,.,.,.:.:.:OO
+      1	999964	1_999964_AC_A	AC	A	69	.	.	GT:DP:AD:SB:GQ:PL:RNC	./1:16:.,4:.,.,.,.:.:.:O.	0/0:53:53,0:.,.,.,.:98:.:..
