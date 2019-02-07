@@ -244,6 +244,7 @@ ExternalProject_Add(catch
 ExternalProject_Get_Property(catch source_dir)
 include_directories(${source_dir}/single_include)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
 add_executable(unit_tests
                 src/diploid.cc test/diploid.cc
                 test/unit_tests.cc

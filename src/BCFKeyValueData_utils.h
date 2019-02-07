@@ -1,5 +1,15 @@
 // Helper code for BCFKeyValueData.cc
 
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include <defs.capnp.h>
+#include "KeyValue.h"
+#include "BCFSerialize.h"
+
+const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
+const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
+const uint64_t MAX_RECORD_LEN = 100000;
+
 namespace GLnexus {
 
 // Memory efficient representation of a bucket range. This could
@@ -313,8 +323,7 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
 }
 
 // Sanity-check an individual bcf1_t record before ingestion.
-static Status validate_bcf(BCFBucketRange& rangeHelper,
-                           const std::vector<std::pair<std::string,size_t> >&contigs,
+static Status validate_bcf(const std::vector<std::pair<std::string,size_t> >&contigs,
                            const std::string& filename,
                            const bcf_hdr_t *hdr,
                            bcf1_t *bcf,
