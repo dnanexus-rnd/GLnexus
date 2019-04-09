@@ -31,8 +31,17 @@
     },
     {
       "name": "config",
+      "help": "preset configuration selection",
+      "choices": ["gatk", "gatk_unfiltered", "xAtlas", "xAtlas_unfiltered", "weCall", "DeepVariant", "Strelka2"],
       "class": "string",
       "default": "gatk"
+    },
+    {
+      "name": "config_yml",
+      "help": "custom configuration .yml file (overrides config)",
+      "class": "file",
+      "patterns": ["*.yml"],
+      "optional": true
     },
     {
       "name": "squeeze",
