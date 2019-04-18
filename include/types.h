@@ -289,7 +289,7 @@ struct top_AQ {
     }
 
     void clear() {
-        memset(&V, 0, sizeof(int)*COUNT);
+        memset(&V, -1, sizeof(int)*COUNT);
         addbuf.clear();
     }
 

@@ -236,7 +236,7 @@ bool check_filtered(const unifier_config& cfg, const minimized_allele& al) {
 }
 
 bool check_AQ(const unifier_config& cfg, const minimized_allele& al) {
-    return (al.second.topAQ.V[0] >= cfg.min_AQ1 || (al.second.copy_number > 1U && al.second.topAQ.V[1] >= cfg.min_AQ2));
+    return (al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2);
 }
 
 bool check_copy_number(const unifier_config& cfg, const minimized_allele& al) {
