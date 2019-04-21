@@ -35,7 +35,7 @@ truth_discovered_alleles:
       dna: 'GAGA'
       is_ref: true
       all_filtered: false
-      top_AQ: [1026]
+      top_AQ: [1026,0]
       zygosity_by_GQ: [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[1,0]]
     - range: {ref: A, beg: 36643700, end: 36643703}
       dna: 'G'

@@ -174,13 +174,14 @@ GLnexus::Status alleles_topAQ(unsigned n_allele, unsigned n_sample, const vector
     for (unsigned i = 0; i < n_allele; i++) {
         ans[i].clear();
         ans[i] += obs[i];
+        assert(ans[i].V[0] >= 0);
     }
 
     return Status::OK();
 }
 
 // for each allele, find the top AQs across the given sample indices, from the BCF record
-// if no genotype likelihoods can be found in the record, then return zeroes
+// if no genotype likelihoods can be found in the record, then return a zero AQ for each allele
 GLnexus::Status bcf_alleles_topAQ(const bcf_hdr_t* hdr, bcf1_t* record, const vector<unsigned>& samples,
                                   vector<top_AQ>& ans) {
     vector<double> gll;
@@ -192,6 +193,7 @@ GLnexus::Status bcf_alleles_topAQ(const bcf_hdr_t* hdr, bcf1_t* record, const ve
         ans.resize(record->n_allele);
         for (auto& v : ans) {
             v.clear();
+            v.V[0] = 0;
         }
         return Status::OK();
     }

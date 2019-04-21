@@ -273,6 +273,9 @@ struct allele {
 const int MAX_AQ = 9999;
 struct top_AQ {
     static const unsigned COUNT = 10;
+
+    // entries of V are initialized to -1, allowing observations with AQ=0 to be
+    // distinguished from lack of observations (up to COUNT)
     int V[COUNT] __attribute__ ((aligned));
 
     // This is a temporary buffer, used when adding observations. It
@@ -285,6 +288,7 @@ struct top_AQ {
 
     top_AQ(int AQ1) {
         clear();
+        assert(AQ1 >= 0);
         V[0] = AQ1;
     }
 
@@ -298,6 +302,7 @@ struct top_AQ {
         memcpy(addbuf.data(), &V, COUNT*sizeof(int));
         memcpy(addbuf.data()+COUNT, rhs, rhs_count*sizeof(int));
         std::partial_sort(addbuf.begin(), addbuf.begin()+COUNT, addbuf.end(), std::greater<int>());
+        assert(std::is_sorted(addbuf.begin(), addbuf.begin()+COUNT, std::greater<int>()));
         memcpy(&V, addbuf.data(), COUNT*sizeof(int));
     }
 
@@ -399,7 +404,11 @@ struct discovered_allele_info {
 
     std::string str() const {
         std::ostringstream os;
-        os << "[ is_ref: " << std::boolalpha << is_ref << " all_filtered: " << std::boolalpha << all_filtered << " maxAQ: " << topAQ.V[0] << " copy number: " << zGQ.copy_number() << "]";
+        int nAQ;
+        for (nAQ = 0; nAQ < topAQ.COUNT && topAQ.V[nAQ] >= 0; nAQ++);
+        os << "[ is_ref: " << std::boolalpha << is_ref << " all_filtered: " << std::boolalpha << all_filtered
+           << " nAQ" << (nAQ == topAQ.COUNT ? ">=" + std::to_string(topAQ.COUNT) : ": " + std::to_string(nAQ))
+           << " maxAQ: " << topAQ.V[0] << " copy number: " << zGQ.copy_number() << "]";
         return os.str();
     }
 };

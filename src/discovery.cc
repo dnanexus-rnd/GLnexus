@@ -83,7 +83,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                     discovered_allele_info ai;
                     ai.is_ref = false;
                     ai.all_filtered = filtered;
-                    ai.topAQ = topAQ[i];
+                    ai.topAQ = topAQ[i]; assert(ai.topAQ.V[0] >= 0);
                     ai.zGQ = zGQ[i];
                     ai.in_target = pos;
                     dsals.insert(make_pair(allele(rng, aldna), ai));
@@ -99,7 +99,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
                     discovered_allele_info ai;
                     ai.is_ref = true;
                     ai.all_filtered = filtered;
-                    ai.topAQ = topAQ[0];
+                    ai.topAQ = topAQ[0]; assert(ai.topAQ.V[0] >= 0);
                     ai.zGQ = zGQ[0];
                     ai.in_target = pos;
                     dsals.insert(make_pair(allele(rng, refdna), ai));

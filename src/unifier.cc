@@ -236,6 +236,9 @@ bool check_filtered(const unifier_config& cfg, const minimized_allele& al) {
 }
 
 bool check_AQ(const unifier_config& cfg, const minimized_allele& al) {
+    assert(al.second.topAQ.V[0] >= 0);
+    // al.second.topAQ.V[1] may be -1, if there was only one observation from
+    // discovery. If so then this can't pass min_AQ2 even if the latter is zero.
     return (al.second.topAQ.V[0] >= cfg.min_AQ1 || al.second.topAQ.V[1] >= cfg.min_AQ2);
 }
 
@@ -255,10 +258,10 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
         // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
         // this might not be the case up until this point, in the rare case when all
         // individuals carrying an allele have weak, homozygous-alt genotype calls
-        if (cfg.min_AQ1 && al.second.topAQ.V[0] >= cfg.min_AQ1) {
+        if (al.second.topAQ.V[0] >= cfg.min_AQ1) {
             al.second.copy_number = std::max(al.second.copy_number, 1U);
         }
-        if (cfg.min_AQ2 && al.second.topAQ.V[1] >= cfg.min_AQ2) {
+        if (al.second.topAQ.V[1] >= cfg.min_AQ2) {
             al.second.copy_number = std::max(al.second.copy_number, 2U);
         }
 
@@ -527,6 +530,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         unified_allele ua(unified_alt.pos, unified_alt.dna);
         ua.normalized = alt;
         ua.quality = alt_info.topAQ.V[0];
+        assert(ua.quality >= 0);
         float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
         ua.frequency = roundf(std::max(1.0f,freq*1e6f))/1e6f;
         us.alleles.push_back(ua);
@@ -556,6 +560,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
     // e.g. evidence from multiple samples doesn't stack
     us.qual = 0;
     for (const auto& p : alts) {
+        assert(p.second.topAQ.V[0] >= 0);
         us.qual = std::max(us.qual, p.second.topAQ.V[0]);
     }
 

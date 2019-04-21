@@ -173,7 +173,8 @@ Status yaml_of_one_discovered_allele(const allele& allele,
         << YAML::Value << YAML::Flow << YAML::BeginSeq;
     for (unsigned i = 0; i < top_AQ::COUNT; i++) {
         auto x = ainfo.topAQ.V[i];
-        if (i > 0 && x <= 0) {
+        assert(i>0 || x >= 0);
+        if (x < 0) {
             break;
         }
         out << x;
