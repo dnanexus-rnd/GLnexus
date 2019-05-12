@@ -80,7 +80,7 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
         auto p = dest.find(allele);
         if (p == dest.end()) {
             dest[allele] = ai;
-        } else {
+        } else if (ai.in_target == p->second.in_target) {
             if (ai.is_ref != p->second.is_ref) {
                 return Status::Invalid("allele appears as both REF and ALT", allele.dna + "@" + allele.pos.str());
             }
@@ -91,6 +91,12 @@ Status merge_discovered_alleles(const discovered_alleles& src, discovered_allele
             if (ai.in_target.size() > p->second.in_target.size()) {
                 p->second.in_target = ai.in_target;
             }
+        } else if (p->second.in_target < ai.in_target) {
+            // It seems that the same allele has been discovered in >1 distinct
+            // target ranges. To avoid double-counting copy number, topAQ,
+            // etc., we'll (arbitrarily) keep the info from the "greater"
+            // target range.
+            p->second = ai;
         }
     }
 

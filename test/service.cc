@@ -106,6 +106,32 @@ TEST_CASE("service::discover_alleles") {
         REQUIRE(mals[6].empty());
     }
 
+    SECTION("allele overlaps two ranges") {
+        vector<range> ranges;
+        ranges.push_back(range(1, 1000, 1002));
+        ranges.push_back(range(1, 1010, 1014));
+        vector<discovered_alleles> mals;
+        s = svc->discover_alleles("<ALL>", ranges, N, mals);
+        REQUIRE(s.ok());
+        REQUIRE(mals.size() == ranges.size());
+        REQUIRE(N == 6);
+
+        // a long allele is found in both ranges
+        REQUIRE(mals[0].size() == 6);
+        REQUIRE(mals[0].find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[0].find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.in_target == range(1, 1000, 1002));
+        REQUIRE(mals[1].size() == 4);
+        REQUIRE(mals[1].find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.zGQ.copy_number() == 3);
+        REQUIRE(mals[1].find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.in_target == range(1, 1010, 1014));
+
+        // merge_discovered_alleles should collapse them without double-counting
+        discovered_alleles merged;
+        REQUIRE(merge_discovered_alleles(mals[0], merged).ok());
+        REQUIRE(merge_discovered_alleles(mals[1], merged).ok());
+        REQUIRE(merged.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.zGQ.copy_number() == 3);
+        REQUIRE(merged.find(allele(range(1, 1001, 1016), "AAAAAAAAAAAAAAA"))->second.in_target == range(1, 1010, 1014));
+    }
+
     SECTION("simulate I/O errors - single") {
         unique_ptr<SimFailBCFData> faildata;
         bool worked = false;

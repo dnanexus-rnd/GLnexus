@@ -38,11 +38,14 @@ struct minimized_allele_info {
 
     void operator+=(const minimized_allele_info& rhs) {
         originals.insert(rhs.originals.begin(), rhs.originals.end());
-        all_filtered = all_filtered && rhs.all_filtered;
-        topAQ += rhs.topAQ;
-        copy_number += rhs.copy_number;
-        if (!in_target.overlaps(rhs.in_target) ||
-            in_target.size() < rhs.in_target.size()) {
+        if (in_target == rhs.in_target) {
+            all_filtered = all_filtered && rhs.all_filtered;
+            topAQ += rhs.topAQ;
+            copy_number += rhs.copy_number;
+        } else if (in_target < rhs.in_target) {
+            all_filtered = rhs.all_filtered;
+            topAQ = rhs.topAQ;
+            copy_number = rhs.copy_number;
             in_target = rhs.in_target;
         }
     }
@@ -564,10 +567,8 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         us.qual = std::max(us.qual, p.second.topAQ.V[0]);
     }
 
-    // We expect the in_target of allthe site's alleles to be the same, but anyway
-    // look for the largest.
     for (const auto& p : alts) {
-        if (p.second.in_target.size() > us.in_target.size()) {
+        if (us.in_target < p.second.in_target) {
             us.in_target = p.second.in_target;
         }
     }
