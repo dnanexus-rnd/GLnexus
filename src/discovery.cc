@@ -68,9 +68,6 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             // find zygosity_by_GQ for each allele
             S(diploid::bcf_zygosity_by_GQ(dataset_header.get(), record.get(), dataset_relevant_samples, zGQ));
 
-            // FIXME -- minor potential bug -- double-counting copy number of
-            // alleles that span multiple discovery ranges
-
             // create a discovered_alleles entry for each alt allele matching [ACGT]+
             // In particular this excludes gVCF <NON_REF> symbolic alleles, and any
             // ALT alleles containing IUPAC degenerate letters. Also, we want to see
