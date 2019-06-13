@@ -49,7 +49,7 @@ static size_t totalRAM() {
 // Given a user-specified memory budget (zero if none), calculate the practical
 // effective memory budget
 size_t calculate_mem_budget(size_t specified_mem_budget) {
-    size_t ans = totalRAM();
+    size_t ans = totalRAM() * 3 / 4;
     if (specified_mem_budget > 0) {
         ans = std::min(ans, specified_mem_budget);
     }
@@ -96,7 +96,7 @@ static Status convertStatus(const rocksdb::Status &s)
 std::shared_ptr<rocksdb::Cache> NewBlockCache(OpenMode mode, size_t mem_budget) {
     assert(mem_budget >= 4U*size_t(1<<30));
     if (mode != OpenMode::BULK_LOAD) {
-        return rocksdb::NewLRUCache(mem_budget / 2, 8);
+        return rocksdb::NewLRUCache(mem_budget * 3 / 4, 8);
     } else {
         // In bulk-load mode we use a lot of memory for write buffers, so
         // provision a smaller block cache to compensate.
