@@ -49,7 +49,7 @@ static size_t totalRAM() {
 // Given a user-specified memory budget (zero if none), calculate the practical
 // effective memory budget
 size_t calculate_mem_budget(size_t specified_mem_budget) {
-    size_t ans = totalRAM() * 3 / 4;
+    size_t ans = totalRAM() * 4 / 5;
     if (specified_mem_budget > 0) {
         ans = std::min(ans, specified_mem_budget);
     }
@@ -100,7 +100,7 @@ std::shared_ptr<rocksdb::Cache> NewBlockCache(OpenMode mode, size_t mem_budget) 
     } else {
         // In bulk-load mode we use a lot of memory for write buffers, so
         // provision a smaller block cache to compensate.
-        return rocksdb::NewLRUCache(mem_budget / 10, 6);
+        return rocksdb::NewLRUCache(mem_budget / 4, 6);
     }
 }
 
@@ -122,7 +122,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
 
     // 1MiB blocks, with a large sharded cache
     rocksdb::BlockBasedTableOptions bbto;
-    bbto.format_version = 2;
+    bbto.format_version = 4;
     bbto.block_size = 1024 * 1024;
     bbto.block_cache = block_cache;
 
@@ -139,8 +139,6 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         opts.memtable_factory.reset(rocksdb::NewHashSkipListRepFactory());
         bbto.index_type = rocksdb::BlockBasedTableOptions::kHashSearch;
     }
-
-    opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 
     if (mode == OpenMode::BULK_LOAD) {
         // Use RocksDB's vector memtable implementation instead of the default
@@ -167,7 +165,14 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         // nothing is getting deleted. The heuristic can also lead to merges
         // above max_merge_width, so disable it.
         opts.compaction_options_universal.max_size_amplification_percent = (1<<30);
+
+        // LRU-cache index & filter blocks to reduce memory usage spikes during
+        // bulk-load compactions
+        bbto.cache_index_and_filter_blocks = true;
+        bbto.cache_index_and_filter_blocks_with_high_priority = true;
     }
+
+    opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
 }
 
 void ApplyDBOptions(OpenMode mode, size_t mem_budget, size_t thread_budget,
