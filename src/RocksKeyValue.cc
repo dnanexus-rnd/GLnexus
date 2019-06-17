@@ -125,6 +125,16 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
     bbto.format_version = 4;
     bbto.block_size = 1024 * 1024;
     bbto.block_cache = block_cache;
+    // RocksDB index & filter blocks use significant amounts of memory
+    // proportional to DB size, and by default stay persistently loaded.
+    // We reconfigure it to put them into our large LRU cache instead, keeping
+    // memory usage relatively insensitive to DB size and thus staying within
+    // predictable budget. The downside is that query/read performance will
+    // degrade cryptically if the memory budget is too low. (Sometimes it's
+    // better to get an OOM crash so that you know what do to, rather than
+    // suffer a 'grayscale' performance problem!)
+    bbto.cache_index_and_filter_blocks = true;
+    bbto.cache_index_and_filter_blocks_with_high_priority = true;
 
     // compress all files with Zstandard
     opts.compression_per_level.clear();
@@ -165,11 +175,6 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         // nothing is getting deleted. The heuristic can also lead to merges
         // above max_merge_width, so disable it.
         opts.compaction_options_universal.max_size_amplification_percent = (1<<30);
-
-        // LRU-cache index & filter blocks to reduce memory usage spikes during
-        // bulk-load compactions
-        bbto.cache_index_and_filter_blocks = true;
-        bbto.cache_index_and_filter_blocks_with_high_priority = true;
     }
 
     opts.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
