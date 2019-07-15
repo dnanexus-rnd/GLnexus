@@ -19,7 +19,7 @@ RUN apt-get -qq update && \
 WORKDIR /
 RUN git clone https://github.com/dnanexus-rnd/GLnexus.git
 WORKDIR /GLnexus
-RUN git fetch --tags origin && git fetch origin "$git_revision" && git checkout "$git_revision" && git submodule update --init --recursive
+RUN git fetch --tags origin && git checkout "$git_revision" && git submodule update --init --recursive
 
 # compile GLnexus
 RUN cmake -DCMAKE_BUILD_TYPE=$build_type . && make -j4
