@@ -323,8 +323,8 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
 }
 
 // hard-coded xAtlas ingestion exceptions
-// VRFromDeletion filter: accessory information
-// VR+RR >= 65536: unreliable QC values
+// filter VRFromDeletion: accessory information
+// format VR+RR >= 65536: unreliable QC values
 static bool xAtlas_ingestion_exceptions(const bcf_hdr_t *hdr, bcf1_t *bcf) {
     if (bcf_has_filter(hdr, bcf, "VRFromDeletion") == 1) {
         return true;
@@ -357,10 +357,8 @@ static Status validate_bcf(const std::vector<std::pair<std::string,size_t> >&con
     }
 
     // A few hard-coded cases where we, reluctantly, skip ingestion
-    // xAtlas VRFromDeletion: accessory information
-    // xAtlas VR+RR >= 65536: reliability issue
     // MAX_RECORD_LEN: blows up database (due to repetition across buckets)
-    //                 and usually stems from gVCF caller bug anyway
+    //                 and usually arises from gVCF caller bug anyway
     if (bcf->rlen >= MAX_RECORD_LEN || xAtlas_ingestion_exceptions(hdr, bcf)) {
         skip_ingestion = true;
         return Status::OK();
