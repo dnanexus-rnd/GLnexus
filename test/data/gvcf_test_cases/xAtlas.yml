@@ -82,6 +82,7 @@ input:
         1	49514	.	AG	A	27	high_coverage	P=0.997937	GT:VR:RR:DP:GQ:PL	0/1:4:5:9:.:61,0,119
         1	49515	.	G	GA	27	single_strand	P=0.998008	GT:VR:RR:DP:GQ:PL	0/1:5:0:9:.:113,0,12
         1	1689669	.	CGGCCCT	C	.	PASS	P=0.999618	GT:VR:RR:DP:GQ:PL	0/1:4:2:6:.:85,0,9
+        1	32916441	.	A	G	0	No_data	P=1	GT:VR:RR:DP:GQ:PL	./.:49153:16383:0:.:-858993459,1077595340,12
     - Fourth.gvcf: |
         zfourth
         1	15890	.	C	.	.	PASS	END=15985;BLOCKAVG_min30p3a	GT:VR:RR:DP:GQ:PL:VRX:RRX:DPX	0/0:0:64:64:.:0,42,177:0,0,0,0:4,7,5.125,1.31022:4,7,5.125,1.31022

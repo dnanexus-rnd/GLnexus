@@ -73,11 +73,13 @@ class VCFData : public Metadata, public BCFData {
             if (bcf_has_filter(hdr.get(), record.get(), "VRFromDeletion") == 1) {
                 continue;
             }
+            bool skip_ingestion = false;
             if (validate) {
-                S(validate_bcf(*contigs, path, hdr.get(), record.get(), 0, 0));
+                S(validate_bcf(*contigs, path, hdr.get(), record.get(), 0, 0, skip_ingestion));
             }
-
-            records.push_back(move(record));
+            if (!skip_ingestion) {
+                records.push_back(move(record));
+            }
         }
 
         ans.header = hdr;
