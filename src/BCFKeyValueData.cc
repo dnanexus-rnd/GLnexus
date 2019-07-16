@@ -944,18 +944,15 @@ static Status bulk_insert_gvcf_key_values(BCFBucketRange& rangeHelper,
             }
         }
 
-        // A few hard-coded cases where we, reluctantly, skip ingestion
-        // VRFromDeletion: accessory information from xAtlas
-        // MAX_RECORD_LEN: blows up database (due to repetition across buckets)
-        //                 and usually stems from gVCF caller bug anyway
-        if (bcf_has_filter(hdr, vt.get(), "VRFromDeletion") == 1 || vt_rng.size() >= MAX_RECORD_LEN) {
+        // Check various aspects of the record's validity; e.g. make sure the
+        // records are coordinate sorted. May also indicate we should just drop
+        // the record for various reasons.
+        bool skip_ingestion = false;
+        S(validate_bcf(metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos, skip_ingestion));
+        if (skip_ingestion) {
             rslt.skipped_records++;
             continue;
         }
-
-        // Check various aspects of the record's validity; e.g. make sure the
-        // records are coordinate sorted.
-        S(validate_bcf(metadata.contigs(), filename, hdr, vt.get(), prev_rid, prev_pos));
 
         // should we start a new bucket?
         if (vt->rid != bucket.rid || vt->pos >= bucket.end) {

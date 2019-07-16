@@ -322,15 +322,46 @@ static bool gvcf_compatible(const MetadataCache& metadata, const bcf_hdr_t *hdr)
     return ans;
 }
 
+// hard-coded xAtlas ingestion exceptions
+// filter VRFromDeletion: accessory information
+// format VR+RR >= 65536: unreliable QC values
+static bool xAtlas_ingestion_exceptions(const bcf_hdr_t *hdr, bcf1_t *bcf) {
+    if (bcf_has_filter(hdr, bcf, "VRFromDeletion") == 1) {
+        return true;
+    }
+
+    htsvecbox<int32_t> vr;
+    int nVR = bcf_get_format_int32(hdr, bcf, "VR", &vr.v, &vr.capacity);
+    if (nVR == 1 && vr[0] != bcf_int32_missing) {
+        htsvecbox<int32_t> rr;
+        int nRR = bcf_get_format_int32(hdr, bcf, "RR", &rr.v, &rr.capacity);
+        if (nRR == 1 && rr[0] != bcf_int32_missing && vr[0]+rr[0] >= 65536) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Sanity-check an individual bcf1_t record before ingestion.
 static Status validate_bcf(const std::vector<std::pair<std::string,size_t> >&contigs,
                            const std::string& filename,
                            const bcf_hdr_t *hdr,
                            bcf1_t *bcf,
-                           int prev_rid, int prev_pos) {
+                           int prev_rid, int prev_pos,
+                           bool& skip_ingestion) {
+    skip_ingestion = false;
     if (bcf_unpack(bcf, BCF_UN_ALL) != 0 || bcf->errcode != 0) {
         return Status::Invalid("invalid VCF record (corrupt format, or undeclared info/format fields)",
                                filename + " " + range(bcf).str(contigs));
+    }
+
+    // A few hard-coded cases where we, reluctantly, skip ingestion
+    // MAX_RECORD_LEN: blows up database (due to repetition across buckets)
+    //                 and usually arises from gVCF caller bug anyway
+    if (bcf->rlen >= MAX_RECORD_LEN || xAtlas_ingestion_exceptions(hdr, bcf)) {
+        skip_ingestion = true;
+        return Status::OK();
     }
 
     // Check that bcf->rlen is calculated correctly based on POS,END if
