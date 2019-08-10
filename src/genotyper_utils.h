@@ -521,14 +521,13 @@ protected:
         assert(format_v.size() == n_samples * count);
 
         for (auto& format_one : format_v) {
-            if (format_one.size() == 1) {
-                ans.push_back(format_one[0]);
-            } else if (format_one.empty() || field_info.combi_method == FieldCombinationMethod::MISSING) {
+            set<string> uniq(format_one.begin(), format_one.end());
+            if (uniq.empty()) {
                 ans.push_back(".");
-            } else if (field_info.combi_method == FieldCombinationMethod::SEMICOLON) {
+            } else if (uniq.size() == 1 || field_info.combi_method == FieldCombinationMethod::SEMICOLON) {
                 ostringstream oss;
                 bool first = true;
-                for (auto& s : set<string>(format_one.begin(), format_one.end())) {
+                for (auto& s : uniq) {
                     if (!first) {
                         oss << ';';
                     }
@@ -536,6 +535,8 @@ protected:
                     first = false;
                 }
                 ans.push_back(oss.str());
+            } else if (field_info.combi_method == FieldCombinationMethod::MISSING) {
+                ans.push_back(".");
             } else {
                 return Status::Invalid("genotyper misconfiguration: unsupported combi_method for string format field.", field_info.name);
             }
@@ -684,9 +685,9 @@ public:
                     int out_ind = get_out_ind_of_value(i, 0, sample_mapping, allele_mapping, n_allele_out);
                     if (out_ind >= 0) {
                         assert(out_ind < format_v.size());
-                        for (const auto& filter : filters) {
-                            format_v[out_ind].push_back(filter);
-                        }
+                        auto& fv = format_v[out_ind];
+                        fv.insert(fv.end(), filters.begin(), filters.end());
+                        // nb: unique-ification of filter strings happens in StringFormatFieldHelper::combine_format_data
                     }
                 }
             }

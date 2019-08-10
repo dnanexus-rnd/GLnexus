@@ -756,7 +756,7 @@ weCall:
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
               type: string
-              combi_method: missing
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
@@ -843,7 +843,7 @@ Strelka2:
               name: FT
               description: '##FORMAT=<ID=FT,Number=1,Type=String,Description="FILTER field from sample gVCF">'
               type: string
-              combi_method: missing
+              combi_method: semicolon
               number: basic
               count: 1
               ignore_non_variants: true
