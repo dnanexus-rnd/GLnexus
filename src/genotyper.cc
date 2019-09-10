@@ -130,7 +130,6 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     // mutate the "original"
     auto record = shared_ptr<bcf1_t>(bcf_dup(vr.p.get()), &bcf_destroy);
     vr.p = record;
-    if (bcf_unpack(record.get(), BCF_UN_ALL)) return Status::Failure("genotyper::prepare_dataset_records bcf_unpack");
     unsigned nGT = diploid::genotypes(record->n_allele);
     range rng(record);
 
@@ -287,6 +286,10 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
 
     vector<shared_ptr<bcf1_t_plus>> ref_records;
     for (const auto& record : relevant_records) {
+        if (bcf_unpack(record.get(), BCF_UN_ALL)) {
+          return Status::Failure(
+              "genotyper::prepare_dataset_records bcf_unpack");
+        }
         auto rp = make_shared<bcf1_t_plus>();
         S(preprocess_record(site, hdr, record, *rp));
         if (rp->is_ref) {
