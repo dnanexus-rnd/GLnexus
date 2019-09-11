@@ -458,54 +458,110 @@ protected:
 };
 
 // Special-case logic for the genotype likelihoods (PL) field:
-// It censors the output in the event the max-likelihood PL (0) cannot be
-// lifted over, as other values would be subject to misinterpretation, being
-// relative to that max-likelihood one.
+// Censors the output in the event the max-likelihood PL (0) cannot be lifted
+// over, as other values would be subject to misinterpretation, being relative
+// to that max-likelihood one. (Also if we project zero but no other values,
+// since this is uninformative anyway.)
 // Also censors any time there are multiple variant records, since we can't
 // combine PLs soundly.
-class PLFieldHelper : public NumericFormatFieldHelper<int32_t> {
+class PLFieldHelper : public FormatFieldHelper {
+protected:
+    vector<int32_t> outPL;
+    htsvecbox<int32_t> buf;
+
 public:
     PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
-        : NumericFormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+        : FormatFieldHelper(field_info_, n_samples_, count_) {
         assert(field_info.name == "PL");
+        assert(field_info.ignore_non_variants);
+        assert(field_info.from == RetainedFieldFrom::FORMAT);
+        assert(field_info.orig_names == vector<string>{"PL"});
+        assert(count >= 3);
+        outPL.resize(n_samples*count, bcf_int32_missing);
+        for (int i = 0; i < n_samples; i++) {
+            // by setting the end-vector marker, we'll write . instead of .,.,. (or longer)
+            // for samples with no information
+            outPL[i*count+1] = bcf_int32_vector_end;
+        }
     }
 
-protected:
-    Status combine_format_data(vector<int32_t>& ans) override {
-        Status s;
-        ans.clear();
-
-        assert(format_v.size() == n_samples * count);
-
-        // for each sample, if we don't have at least one entry equal to zero,
-        // then censor all. Also, censor if we have a zero but no other values,
-        // since this uninformative anyway.
-        for (int i = 0; i < n_samples; i++) {
-            int zeroes = 0, nonzeroes = 0;
-            bool multi = false;
-            for (int j = 0; j < count; j++) {
-                const auto& v = format_v[i*count+j];
-                if (v.size() == 1) {
-                    if (v[0] == 0) {
-                        zeroes++;
-                    } else {
-                        nonzeroes++;
-                    }
-                } else if (v.size() > 1) {
-                    multi = true;
-                }
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                           const map<int, int>& sample_mapping, const vector<int>& allele_mapping,
+                           const int n_allele_out, const vector<string>& field_names, int n_val_per_sample) override {
+        int rv = bcf_get_format_int32(dataset_header, record, "PL", &buf.v, &buf.capacity);
+        if (rv > 0) {
+            int n_val_per_sample = diploid::genotypes(std::max(2U, record->n_allele));
+            if (rv != record->n_sample * n_val_per_sample) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " PL vector length " << rv << ", expected " << record->n_sample * n_val_per_sample;
+                return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
             }
 
-            for (int j = 0; j < count; j++) {
-                if (multi || zeroes == 0 || (zeroes == 1 && nonzeroes == 0)) {
-                    ans.push_back(bcf_int32_missing);
-                } else {
-                    const auto& v = format_v[i*count+j];
-                    ans.push_back(v.size() == 1 ? v[0] : bcf_int32_missing);
+            for (int i=0; i<record->n_sample; i++) {
+                int out_sample = sample_mapping.at(i);
+                if (out_sample >= 0) {
+                    assert(out_sample < n_samples);
+
+                    // if outPL has any values for this sample, censor them all
+                    if (outPL[out_sample*count+1] != bcf_int32_vector_end) {
+                        censor(out_sample, false);
+                        // TODO: make censored_samples a map<int,bool>
+                        continue;
+                    }
+
+                    bool wrote_zero = false, wrote_other = false;
+                    for (int j=0; j < n_val_per_sample; ++j) {
+                        int in_ind = i * n_val_per_sample + j;
+                        int out_ind = get_out_ind_of_value(i, j, sample_mapping, allele_mapping, n_allele_out);
+                        if (out_ind >= 0) {
+                            assert(out_ind < outPL.size());
+                            assert(in_ind < rv);
+                            int32_t v = buf.v[in_ind];
+
+                            if (!wrote_zero && !wrote_other) {
+                                assert(outPL[out_sample*count+1] == bcf_int32_vector_end);
+                                outPL[out_sample*count+1] = bcf_int32_missing;
+                            }
+                            outPL[out_ind] = v;
+                            if (v == 0) {
+                                wrote_zero = true;
+                            } else {
+                                wrote_other = true;
+                            }
+                        }
+                    }
+
+                    if (!(wrote_zero && wrote_other)) {
+                        censor(out_sample, false);
+                    }
                 }
             }
         }
+        return Status::OK();
+    }
 
+    Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) override {
+        assert(n_samples == record->n_sample);
+        assert(outPL.size() == n_samples*count);
+        for (auto& cs : censored_samples) {
+            for (int j = 0; j < count; j++) {
+                outPL[cs.first*count+j] = bcf_int32_missing;
+            }
+            outPL[cs.first*count+1] = bcf_int32_vector_end;
+        }
+        #ifndef NDEBUG
+        for (int i = 0; i < n_samples; i++) {
+            if (outPL[i*count+1] == bcf_int32_vector_end) {
+                assert(outPL[i*count] == bcf_int32_missing);
+                for (int j = 2; j < count; j++) {
+                    assert(outPL[i*count+j] == bcf_int32_missing);
+                }
+            }
+        }
+        #endif
+        if (bcf_update_format_int32(hdr, record, field_info.name.c_str(), outPL.data(), n_samples * count)) {
+            return Status::Failure("genotyper: failed to update record format when executing update_record_format.", field_info.name);
+        }
         return Status::OK();
     }
 };
