@@ -232,9 +232,9 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=21,length=48129895>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12877	NA12878
-      chr21	9412193	chr21_9412193_C_T	C	T	18	.	AF=0.25;AQ=18	GT:GQ:PL:DP:AD:RNC	0/0:50:.:30:30,0:..	0/1:19:18,0,40:75:52,23:..
-      chr21	9412269	chr21_9412269_A_T	A	T	28	.	AF=0.25;AQ=28	GT:GQ:PL:DP:AD:RNC	0/0:50:.:32:32,0:..	0/1:28:28,0,36:81:57,24:..
-      chr21	9412358	chr21_9412358_TA_T	TA	T	35	.	AF=0.25;AQ=35	GT:GQ:PL:DP:AD:RNC	0/0:50:.:21:21,0:..	0/1:35:35,0,44:69:40,28:..
+      chr21	9412193	chr21_9412193_C_T	C	T	18	.	AF=0.25;AQ=18	GT:GQ:PL:DP:AD:RNC	0/0:50:0,90,899:30:30,0:..	0/1:19:18,0,40:75:52,23:..
+      chr21	9412269	chr21_9412269_A_T	A	T	28	.	AF=0.25;AQ=28	GT:GQ:PL:DP:AD:RNC	0/0:50:0,108,1079:32:32,0:..	0/1:28:28,0,36:81:57,24:..
+      chr21	9412358	chr21_9412358_TA_T	TA	T	35	.	AF=0.25;AQ=35	GT:GQ:PL:DP:AD:RNC	0/0:50:0,84,839:21:21,0:..	0/1:35:35,0,44:69:40,28:..
       chr21	9412435	chr21_9412435_T_A	T	A	23	.	AF=0.25;AQ=23	GT:GQ:PL:DP:AD:RNC	0/1:24:23,0,37:44:22,22:..	0/0:14:0,13,42:103:89,14:..
       chr21	9412441	chr21_9412441_TATA_T	TATA	T	31	.	AF=0.5;AQ=31	GT:GQ:PL:DP:AD:RNC	0/1:26:31,0,27:47:25,22:..	0/1:27:27,0,46:98:69,29:..
       chr21	9418260	chr21_9418260_A_T;chr21_9418260_A_C	A	T,C	43	.	AF=0.75,0.25;AQ=43,42	GT:GQ:PL:DP:AD:RNC	1/1:35:36,40,0,.,.,.:91:0,91,0:..	1/2:38:45,48,42,48,0,43:135:0,106,29:..

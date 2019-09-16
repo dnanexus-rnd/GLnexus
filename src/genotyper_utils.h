@@ -459,6 +459,8 @@ protected:
 };
 
 // Special-case logic for the genotype likelihoods (PL) field:
+// Projects values for genotypes involving gVCF symbolic 'other' allele into
+// specific alternate alleles of the output record.
 // Censors the output in the event the max-likelihood PL (0) cannot be lifted
 // over, as other values would be subject to misinterpretation, being relative
 // to that max-likelihood one. (Also if we project zero but no other values,
@@ -498,6 +500,11 @@ public:
                 return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
             }
 
+            // special case: if record is a reference band providing PL for 0/0, 0/*, and */*,
+            // (and for now, output site is biallelic), we'll just blit the PL values for each
+            // sample over
+            bool refPL = is_gvcf_ref_record(record) && n_val_per_sample == 3 && n_allele_out == 2;
+
             for (int i=0; i<record->n_sample; i++) {
                 int out_sample = sample_mapping.at(i);
                 if (out_sample >= 0) {
@@ -512,7 +519,9 @@ public:
                     bool wrote_zero = false, wrote_other = false;
                     for (int j=0; j < n_val_per_sample; ++j) {
                         int in_ind = i * n_val_per_sample + j;
-                        int out_ind = get_out_ind_of_value(i, j, sample_mapping, allele_mapping, n_allele_out);
+                        int out_ind = refPL
+                                        ? out_sample * n_val_per_sample + j
+                                        : get_out_ind_of_value(i, j, sample_mapping, allele_mapping, n_allele_out);
                         if (out_ind >= 0) {
                             assert(out_ind < outPL.size());
                             assert(in_ind < rv);
