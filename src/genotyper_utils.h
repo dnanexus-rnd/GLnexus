@@ -471,6 +471,7 @@ class PLFieldHelper : public FormatFieldHelper {
 protected:
     vector<int32_t> outPL;
     htsvecbox<int32_t> buf;
+    vector<int> out_inds; // save allocations
 
 public:
     PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
@@ -493,17 +494,12 @@ public:
                            const int n_allele_out, const vector<string>& field_names, int n_val_per_sample) override {
         int rv = bcf_get_format_int32(dataset_header, record, "PL", &buf.v, &buf.capacity);
         if (rv > 0) {
-            int n_val_per_sample = diploid::genotypes(std::max(2U, record->n_allele));
+            n_val_per_sample = diploid::genotypes(std::max(2U, record->n_allele));
             if (rv != record->n_sample * n_val_per_sample) {
                 ostringstream errmsg;
                 errmsg << dataset << " " << range(record).str() << " PL vector length " << rv << ", expected " << record->n_sample * n_val_per_sample;
                 return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
             }
-
-            // special case: if record is a reference band providing PL for 0/0, 0/*, and */*,
-            // (and for now, output site is biallelic), we'll just blit the PL values for each
-            // sample over
-            bool refPL = is_gvcf_ref_record(record) && n_val_per_sample == 3 && n_allele_out == 2;
 
             for (int i=0; i<record->n_sample; i++) {
                 int out_sample = sample_mapping.at(i);
@@ -516,14 +512,41 @@ public:
                         continue;
                     }
 
+                    // special case: if record is a reference band providing PL for 0/0, 0/*, and */*,
+                    // copy the 0/* value for any output genotype with one alternate allele and the */*
+                    // value for any output genotype with two alternate alleles.
+                    // (If the output site is biallelic, this just copies the vector for each sample.)
+                    bool refPL = is_gvcf_ref_record(record) && n_val_per_sample == 3;
+
                     bool wrote_zero = false, wrote_other = false;
                     for (int j=0; j < n_val_per_sample; ++j) {
                         int in_ind = i * n_val_per_sample + j;
-                        int out_ind = refPL
-                                        ? out_sample * n_val_per_sample + j
-                                        : get_out_ind_of_value(i, j, sample_mapping, allele_mapping, n_allele_out);
-                        if (out_ind >= 0) {
-                            assert(out_ind < outPL.size());
+                        out_inds.clear();
+
+                        if (!refPL || j == 0) {
+                            int out_ind = get_out_ind_of_value(i, j, sample_mapping, allele_mapping, n_allele_out);
+                            if (out_ind >= 0) {
+                                out_inds.push_back(out_ind);
+                            }
+                        } else {
+                            // the reference band PL for het-ref (element 1) projects into each
+                            // triangular-number index of the output vector; the hom-alt value
+                            // (element 2) projects into each non-triangular index
+                            for (int k = 1, n = 1; k < count; ++k) {
+                                const int tn = n*(n+1)/2;
+                                const bool triangular = (k == tn);
+                                assert(triangular == (diploid::gt_alleles(k).first == 0));
+                                if ((triangular && j == 1) || (!triangular && j == 2)) {
+                                    out_inds.push_back(out_sample*count + k);
+                                    assert(out_inds.back() < outPL.size());
+                                }
+                                if (triangular) {
+                                    n++;
+                                }
+                            }
+                        }
+                        for (const auto out_ind : out_inds) {
+                            assert(out_ind >= 0 && out_ind < outPL.size());
                             assert(in_ind < rv);
                             int32_t v = buf.v[in_ind];
 
