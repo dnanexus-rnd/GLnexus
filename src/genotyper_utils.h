@@ -40,7 +40,8 @@ public:
 
     virtual Status censor(int sample, bool half_call) {
         if (sample < 0 || sample >= n_samples) return Status::Invalid("genotyper::FormatFieldHelper::censor");
-        censored_samples.insert(make_pair(sample, half_call));
+        assert(half_call || censored_samples.find(sample) == censored_samples.end() || !censored_samples[sample]);
+        censored_samples[sample] = half_call;
         return Status::OK();
     }
 
@@ -58,7 +59,7 @@ protected:
     // as missing) under certain circumstances where they might otherwise
     // be unreliable/misleading. In some cases we have a flag to censor
     // only fields discussing the reference allele (for "half-calls")
-    set<pair<int,bool>> censored_samples;
+    map<int,bool> censored_samples;
 
     /// For a given record, give the number of expected values
     /// per sample, based on the format type
@@ -505,7 +506,6 @@ public:
                     // if outPL has any values for this sample, censor them all
                     if (outPL[out_sample*count+1] != bcf_int32_vector_end) {
                         censor(out_sample, false);
-                        // TODO: make censored_samples a map<int,bool>
                         continue;
                     }
 
