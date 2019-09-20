@@ -266,4 +266,6 @@ target_link_libraries(unit_tests glnexus libhts librocksdb libyaml-cpp libz.a li
 include(CTest)
 add_test(NAME unit_tests COMMAND ./unit_tests -d yes)
 add_test(NAME jemalloc_warning COMMAND test/jemalloc_linking.sh)
-add_test(NAME getting_started COMMAND test/getting_started.sh)
+if (CMAKE_BUILD_TYPE MATCHES "Release")
+  add_test(NAME getting_started COMMAND test/getting_started.sh)
+endif()
