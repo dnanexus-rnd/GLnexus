@@ -468,10 +468,9 @@ protected:
 // over, as other values would be subject to misinterpretation, being relative
 // to that max-likelihood one. (Also if we project zero but no other values,
 // since this is uninformative anyway.)
-// TODO:
 // Censors when presented with multiple variant records, since the PLs can't be
 // combined soundly. Presented just with multiple reference bands, uses the one
-// with the smallest value of PL[1] (the least confident in reference).
+// with the least confidence in 0/0 (smallest value of gVCF PL[1]).
 class PLFieldHelper : public FormatFieldHelper {
 protected:
     vector<int32_t> outPL;
@@ -516,15 +515,34 @@ public:
             for (int i=0; i<record->n_sample; i++) {
                 int out_sample = sample_mapping.at(i);
                 if (out_sample >= 0) {
-                    for (int a = 0; a < n_allele_out; ++a) {
-                        int a_in = rev_allele_mapping[a];
-                        if (a_in >= 0) {
-                            for (int b = 0; b <= a; ++b) {
-                                int b_in = rev_allele_mapping[b];
-                                if (b_in >= 0) {
-                                    int v = buf[diploid::alleles_gt(a_in, b_in)];
-                                    outPL[out_sample*count+diploid::alleles_gt(a,b)] = v;
+                    int v0 = outPL[out_sample*count];
+                    if (v0 == 0) {
+                        // previous record with 0/0 as the max-likelihood genotype; proceed if 0/0
+                        // is also max-likelihood in the current record, but with smaller margin
+                        const int margin = buf[i*n_val_per_sample+1];
+                        if (buf[i*n_val_per_sample] == 0 && margin != bcf_int32_missing) {
+                            for (int j = 1; j < count && v0 != bcf_int32_missing; j++) {
+                                const int old_margin = outPL[out_sample*count+j];
+                                if (old_margin != bcf_int32_missing && margin < old_margin) {
+                                    v0 = bcf_int32_missing;
                                 }
+                            }
+                        }
+                    } else if (v0 != bcf_int32_missing) {
+                        // previous record already indicated a variant; bail out since we cannot
+                        // combine the PLs soundly
+                        censor(out_sample, false);
+                    }
+                    if (v0 == bcf_int32_missing) {
+                        for (int a = 0; a < n_allele_out; ++a) {
+                            const int a_in = rev_allele_mapping[a];
+                            for (int b = 0; b <= a; ++b) {
+                                const int b_in = rev_allele_mapping[b];
+                                int v = bcf_int32_missing;
+                                if (a_in >= 0 && b_in >= 0) {
+                                    v = buf[i*n_val_per_sample+diploid::alleles_gt(a_in, b_in)];
+                                }
+                                outPL[out_sample*count+diploid::alleles_gt(a,b)] = v;
                             }
                         }
                     }
@@ -555,6 +573,8 @@ public:
                 for (int j = 0; j < count; ++j) {
                     outPL[i*count+j] = bcf_int32_missing;
                 }
+            }
+            if (outPL[i*count] == bcf_int32_missing) {
                 outPL[i*count+1] = bcf_int32_vector_end;
             }
         }
