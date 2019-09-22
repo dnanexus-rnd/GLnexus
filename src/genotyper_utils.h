@@ -458,20 +458,25 @@ protected:
     }
 };
 
-// Special-case logic for the genotype likelihoods (PL) field:
-// Projects values for genotypes involving gVCF symbolic 'other' allele into
-// specific alternate alleles of the output record.
+// Special-case logic for the genotype likelihoods (PL) field, which involves
+// permuting the Number=G vector from to the genotype order implied by the
+// input record's alleles to the output record's.
+// For output genotypes with alleles not present in a sample's gVCF record,
+// fills PL from the values involving the symbolic 'other' allele, if present;
+// this includes reference bands.
 // Censors the output in the event the max-likelihood PL (0) cannot be lifted
 // over, as other values would be subject to misinterpretation, being relative
 // to that max-likelihood one. (Also if we project zero but no other values,
 // since this is uninformative anyway.)
-// Also censors any time there are multiple variant records, since we can't
-// combine PLs soundly.
+// TODO:
+// Censors when presented with multiple variant records, since the PLs can't be
+// combined soundly. Presented just with multiple reference bands, uses the one
+// with the smallest value of PL[1] (the least confident in reference).
 class PLFieldHelper : public FormatFieldHelper {
 protected:
     vector<int32_t> outPL;
     htsvecbox<int32_t> buf;
-    vector<int> out_inds; // save allocations
+    vector<int> rev_allele_mapping;
 
 public:
     PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
@@ -481,12 +486,7 @@ public:
         assert(field_info.from == RetainedFieldFrom::FORMAT);
         assert(field_info.orig_names == vector<string>{"PL"});
         assert(count >= 3);
-        outPL.resize(n_samples*count, bcf_int32_missing);
-        for (int i = 0; i < n_samples; i++) {
-            // by setting the end-vector marker, we'll write . instead of .,.,. (or longer)
-            // for samples with no information
-            outPL[i*count+1] = bcf_int32_vector_end;
-        }
+        outPL.assign(n_samples*count, bcf_int32_missing);
     }
 
     Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
@@ -501,70 +501,32 @@ public:
                 return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
             }
 
+            int unmapped_allele = -1;
+            if (record->n_allele == 1 || is_symbolic_allele(record->d.allele[record->n_allele-1])) {
+                unmapped_allele = record->n_allele-1;
+            }
+            rev_allele_mapping.assign(n_allele_out, unmapped_allele);
+            for (int i = 0; i < allele_mapping.size(); ++i) {
+                if (allele_mapping[i] >= 0) {
+                    rev_allele_mapping.at(allele_mapping[i]) = i;
+                }
+            }
+            assert(rev_allele_mapping[0] == 0);
+
             for (int i=0; i<record->n_sample; i++) {
                 int out_sample = sample_mapping.at(i);
                 if (out_sample >= 0) {
-                    assert(out_sample < n_samples);
-
-                    // if outPL has any values for this sample, censor them all
-                    if (outPL[out_sample*count+1] != bcf_int32_vector_end) {
-                        censor(out_sample, false);
-                        continue;
-                    }
-
-                    // special case: if record is a reference band providing PL for 0/0, 0/*, and */*,
-                    // copy the 0/* value for any output genotype with one alternate allele and the */*
-                    // value for any output genotype with two alternate alleles.
-                    // (If the output site is biallelic, this just copies the vector for each sample.)
-                    bool refPL = is_gvcf_ref_record(record) && n_val_per_sample == 3;
-
-                    bool wrote_zero = false, wrote_other = false;
-                    for (int j=0; j < n_val_per_sample; ++j) {
-                        int in_ind = i * n_val_per_sample + j;
-                        out_inds.clear();
-
-                        if (!refPL || j == 0) {
-                            int out_ind = get_out_ind_of_value(i, j, sample_mapping, allele_mapping, n_allele_out);
-                            if (out_ind >= 0) {
-                                out_inds.push_back(out_ind);
-                            }
-                        } else {
-                            // the reference band PL for het-ref (element 1) projects into each
-                            // triangular-number index of the output vector; the hom-alt value
-                            // (element 2) projects into each non-triangular index
-                            for (int k = 1, n = 1; k < count; ++k) {
-                                const int tn = n*(n+1)/2;
-                                const bool triangular = (k == tn);
-                                assert(triangular == (diploid::gt_alleles(k).first == 0));
-                                if ((triangular && j == 1) || (!triangular && j == 2)) {
-                                    out_inds.push_back(out_sample*count + k);
-                                    assert(out_inds.back() < outPL.size());
-                                }
-                                if (triangular) {
-                                    n++;
+                    for (int a = 0; a < n_allele_out; ++a) {
+                        int a_in = rev_allele_mapping[a];
+                        if (a_in >= 0) {
+                            for (int b = 0; b <= a; ++b) {
+                                int b_in = rev_allele_mapping[b];
+                                if (b_in >= 0) {
+                                    int v = buf[diploid::alleles_gt(a_in, b_in)];
+                                    outPL[out_sample*count+diploid::alleles_gt(a,b)] = v;
                                 }
                             }
                         }
-                        for (const auto out_ind : out_inds) {
-                            assert(out_ind >= 0 && out_ind < outPL.size());
-                            assert(in_ind < rv);
-                            int32_t v = buf.v[in_ind];
-
-                            if (!wrote_zero && !wrote_other) {
-                                assert(outPL[out_sample*count+1] == bcf_int32_vector_end);
-                                outPL[out_sample*count+1] = bcf_int32_missing;
-                            }
-                            outPL[out_ind] = v;
-                            if (v == 0) {
-                                wrote_zero = true;
-                            } else {
-                                wrote_other = true;
-                            }
-                        }
-                    }
-
-                    if (!(wrote_zero && wrote_other)) {
-                        censor(out_sample, false);
                     }
                 }
             }
@@ -575,22 +537,27 @@ public:
     Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) override {
         assert(n_samples == record->n_sample);
         assert(outPL.size() == n_samples*count);
-        for (auto& cs : censored_samples) {
-            for (int j = 0; j < count; j++) {
-                outPL[cs.first*count+j] = bcf_int32_missing;
-            }
-            outPL[cs.first*count+1] = bcf_int32_vector_end;
-        }
-        #ifndef NDEBUG
-        for (int i = 0; i < n_samples; i++) {
-            if (outPL[i*count+1] == bcf_int32_vector_end) {
-                assert(outPL[i*count] == bcf_int32_missing);
-                for (int j = 2; j < count; j++) {
-                    assert(outPL[i*count+j] == bcf_int32_missing);
+        for (int i = 0; i < n_samples; ++i) {
+            bool censor = (censored_samples.find(i) != censored_samples.end());
+            if (!censor) {
+                bool zero = false, other = false;
+                for (int j = 0; j < count; ++j) {
+                    const int v = outPL[i*count+j];
+                    if (v == 0) {
+                        zero = true;
+                    } else if (v != bcf_int32_missing) {
+                        other = true;
+                    }
                 }
+                censor = !(zero && other);
+            }
+            if (censor) {
+                for (int j = 0; j < count; ++j) {
+                    outPL[i*count+j] = bcf_int32_missing;
+                }
+                outPL[i*count+1] = bcf_int32_vector_end;
             }
         }
-        #endif
         if (bcf_update_format_int32(hdr, record, field_info.name.c_str(), outPL.data(), n_samples * count)) {
             return Status::Failure("genotyper: failed to update record format when executing update_record_format.", field_info.name);
         }
