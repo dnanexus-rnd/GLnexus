@@ -461,18 +461,17 @@ protected:
 // Special-case logic for the genotype likelihoods (PL) field, which involves
 // permuting the Number=G vector from to the genotype order implied by the
 // input record's alleles to the output record's.
-// Censors the output in the event the max-likelihood PL (0) cannot be lifted
-// over, as other values would be subject to misinterpretation, being relative
-// to that max-likelihood one. (Also if we project zero but no other values,
-// since this is uninformative anyway.)
+// Censors the output in the event the max-likelihood PL (0) does not lift
+// over, as the other values are relative to that one. Also if we lift over
+// the zero but no other values, which is uninformative anyway.
 // For output genotypes with alleles not present in a sample's gVCF record,
-// fills PL from the values involving the symbolic 'other' allele, as long as
-// all the record's alternate alleles map into the output record (as otherwise
-// reference confidence would be exaggerated). That's vacuously true for
+// fills PL from the values involving the gVCF symbolic allele, as long as all
+// the record's alternate alleles map into the output record (otherwise we'd
+// tend to exaggerate reference confidence). That's vacuously true for
 // reference bands.
 // Censors when presented with multiple variant records, since the PLs can't be
 // combined soundly. Presented just with multiple reference bands, uses the one
-// with the least confidence in 0/0 (smallest value of gVCF PL[1]).
+// with the least reference confidence (smallest value of gVCF PL[1]).
 class PLFieldHelper : public FormatFieldHelper {
 protected:
     vector<int32_t> outPL;
@@ -509,7 +508,8 @@ public:
             rev_allele_mapping.assign(n_allele_out, -1);
             for (int i = 0; i < allele_mapping.size(); ++i) {
                 if (allele_mapping[i] >= 0) {
-                    rev_allele_mapping.at(allele_mapping[i]) = i;
+                    assert(allele_mapping[i] < n_allele_out);
+                    rev_allele_mapping[allele_mapping[i]] = i;
                 } else if (i < allele_mapping.size()-1 || !has_symbolic_allele) {
                     all_alleles_mapped = false;
                 }
@@ -523,23 +523,31 @@ public:
                 }
             }
 
-            for (int i=0; i<record->n_sample; i++) {
+            for (int i = 0; i<record->n_sample; ++i) {
                 int out_sample = sample_mapping.at(i);
                 if (out_sample >= 0) {
                     int v0 = outPL[out_sample*count];
                     if (v0 == 0) {
-                        // previous record with 0/0 as the max-likelihood genotype; proceed if 0/0
-                        // is also max-likelihood in the current record, but with smaller margin
-                        const int margin = buf[i*n_val_per_sample+1];
-                        if (buf[i*n_val_per_sample] == 0 && margin != bcf_int32_missing) {
-                            int old_margin = bcf_int32_missing;
-                            for (int j = out_sample*count+1; j < (out_sample+1)*count; j++) {
-                                if (outPL[j] != bcf_int32_missing && (old_margin == bcf_int32_missing || outPL[j] < old_margin)) {
-                                    old_margin = outPL[j];
-                                }
+                        // we were previously presented with a record with 0/0 as the max-
+                        // likelihood genotype for this sample; proceed if 0/0 is also max-
+                        // likelihood in the current record, but with smaller margin
+                        if (buf[i*n_val_per_sample] == 0) {
+                            int margin = bcf_int32_missing;
+                            for (int j = i*n_val_per_sample+1; j < (i+1)*n_val_per_sample; ++j) {
+                                margin = (margin != bcf_int32_missing) ? std::min(margin, buf[j])
+                                                                       : buf[j];
                             }
-                            if (old_margin != bcf_int32_missing && margin < old_margin) {
-                                v0 = bcf_int32_missing;
+                            if (margin != bcf_int32_missing) {
+                                int old_margin = bcf_int32_missing;
+                                for (int j = out_sample*count+1; j < (out_sample+1)*count; j++) {
+                                    if (outPL[j] != bcf_int32_missing) {
+                                        old_margin = (old_margin != bcf_int32_missing) ? std::min(old_margin, outPL[j])
+                                                                                       : outPL[j];
+                                    }
+                                }
+                                if (old_margin != bcf_int32_missing && margin < old_margin) {
+                                    v0 = bcf_int32_missing;
+                                }
                             }
                         }
                     } else if (v0 != bcf_int32_missing) {
