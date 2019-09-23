@@ -461,13 +461,15 @@ protected:
 // Special-case logic for the genotype likelihoods (PL) field, which involves
 // permuting the Number=G vector from to the genotype order implied by the
 // input record's alleles to the output record's.
-// For output genotypes with alleles not present in a sample's gVCF record,
-// fills PL from the values involving the symbolic 'other' allele, if present;
-// this includes reference bands.
 // Censors the output in the event the max-likelihood PL (0) cannot be lifted
 // over, as other values would be subject to misinterpretation, being relative
 // to that max-likelihood one. (Also if we project zero but no other values,
 // since this is uninformative anyway.)
+// For output genotypes with alleles not present in a sample's gVCF record,
+// fills PL from the values involving the symbolic 'other' allele, as long as
+// all the record's alternate alleles map into the output record (as otherwise
+// reference confidence would be exaggerated). That's vacuously true for
+// reference bands.
 // Censors when presented with multiple variant records, since the PLs can't be
 // combined soundly. Presented just with multiple reference bands, uses the one
 // with the least confidence in 0/0 (smallest value of gVCF PL[1]).
@@ -500,17 +502,24 @@ public:
                 return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
             }
 
-            int unmapped_allele = -1;
-            if (record->n_allele == 1 || is_symbolic_allele(record->d.allele[record->n_allele-1])) {
-                unmapped_allele = record->n_allele-1;
-            }
-            rev_allele_mapping.assign(n_allele_out, unmapped_allele);
+            bool has_symbolic_allele = is_symbolic_allele(record->d.allele[record->n_allele-1]);
+            bool all_alleles_mapped = true;
+            rev_allele_mapping.assign(n_allele_out, -1);
             for (int i = 0; i < allele_mapping.size(); ++i) {
                 if (allele_mapping[i] >= 0) {
                     rev_allele_mapping.at(allele_mapping[i]) = i;
+                } else if (i < allele_mapping.size()-1 || !has_symbolic_allele) {
+                    all_alleles_mapped = false;
                 }
             }
             assert(rev_allele_mapping[0] == 0);
+            if (has_symbolic_allele && all_alleles_mapped) {
+                for (int i = 0; i < n_allele_out; ++i) {
+                    if (rev_allele_mapping[i] == -1) {
+                        rev_allele_mapping[i] = record->n_allele-1;
+                    }
+                }
+            }
 
             for (int i=0; i<record->n_sample; i++) {
                 int out_sample = sample_mapping.at(i);
@@ -521,11 +530,14 @@ public:
                         // is also max-likelihood in the current record, but with smaller margin
                         const int margin = buf[i*n_val_per_sample+1];
                         if (buf[i*n_val_per_sample] == 0 && margin != bcf_int32_missing) {
-                            for (int j = 1; j < count && v0 != bcf_int32_missing; j++) {
-                                const int old_margin = outPL[out_sample*count+j];
-                                if (old_margin != bcf_int32_missing && margin < old_margin) {
-                                    v0 = bcf_int32_missing;
+                            int old_margin = bcf_int32_missing;
+                            for (int j = out_sample*count+1; j < (out_sample+1)*count; j++) {
+                                if (outPL[j] != bcf_int32_missing && (old_margin == bcf_int32_missing || outPL[j] < old_margin)) {
+                                    old_margin = outPL[j];
                                 }
+                            }
+                            if (old_margin != bcf_int32_missing && margin < old_margin) {
+                                v0 = bcf_int32_missing;
                             }
                         }
                     } else if (v0 != bcf_int32_missing) {
