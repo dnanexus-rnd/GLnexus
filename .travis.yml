@@ -16,7 +16,7 @@ script:
       if [ "$effective_build_type" == "Valgrind" ]; then
         effective_build_type="Release"
       fi
-      cat Dockerfile | docker build --no-cache -t glnexus_tests --build-arg git_revision=$TRAVIS_COMMIT --build-arg build_type=$effective_build_type -
+      docker build --no-cache -t glnexus_tests --build-arg build_type=$effective_build_type .
       # copy the /GLnexus folder out of the image to mount for subsequent use
       docker run --rm -v /:/io glnexus_tests cp -r /GLnexus/ /io
       # Run the tests
