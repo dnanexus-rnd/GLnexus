@@ -534,8 +534,10 @@ public:
                         if (buf[i*n_val_per_sample] == 0) {
                             int margin = bcf_int32_missing;
                             for (int j = i*n_val_per_sample+1; j < (i+1)*n_val_per_sample; ++j) {
-                                margin = (margin != bcf_int32_missing) ? std::min(margin, buf[j])
-                                                                       : buf[j];
+                                if (buf[j] != bcf_int32_missing) {
+                                    margin = (margin != bcf_int32_missing) ? std::min(margin, buf[j])
+                                                                           : buf[j];
+                                }
                             }
                             if (margin != bcf_int32_missing) {
                                 int old_margin = bcf_int32_missing;
