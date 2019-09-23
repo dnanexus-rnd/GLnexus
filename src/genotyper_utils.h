@@ -502,6 +502,8 @@ public:
                 return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
             }
 
+            // invert allele_mapping, including mapping unknown output alleles onto the gVCF
+            // symbolic allele if our conditions for doing so are met
             bool has_symbolic_allele = is_symbolic_allele(record->d.allele[record->n_allele-1]);
             bool all_alleles_mapped = true;
             rev_allele_mapping.assign(n_allele_out, -1);
@@ -541,11 +543,13 @@ public:
                             }
                         }
                     } else if (v0 != bcf_int32_missing) {
-                        // previous record already indicated a variant; bail out since we cannot
-                        // combine the PLs soundly
+                        // previous record had a max-likelihood non-ref genotype; bail out since we
+                        // cannot combine the PLs soundly
                         censor(out_sample, false);
                     }
                     if (v0 == bcf_int32_missing) {
+                        // proceed to fill in outPL for this sample based on the genotype indices
+                        // mapped using rev_allele_mapping
                         for (int a = 0; a < n_allele_out; ++a) {
                             const int a_in = rev_allele_mapping[a];
                             for (int b = 0; b <= a; ++b) {
@@ -570,6 +574,7 @@ public:
         for (int i = 0; i < n_samples; ++i) {
             bool censor = (censored_samples.find(i) != censored_samples.end());
             if (!censor) {
+                // censor if we don't project the zero PL, or project zero and nothing else
                 bool zero = false, other = false;
                 for (int j = 0; j < count; ++j) {
                     const int v = outPL[i*count+j];
@@ -587,6 +592,7 @@ public:
                 }
             }
             if (outPL[i*count] == bcf_int32_missing) {
+                // writes . instead of .,.,. (or longer)
                 outPL[i*count+1] = bcf_int32_vector_end;
             }
         }
