@@ -60,13 +60,13 @@ static int all_steps(const vector<string> &vcf_files,
     // initilize empty database
     string dbpath("GLnexus.DB");
     vector<pair<string,size_t> > contigs;
-    H("initializing database", GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs,
-                                                            bucket_size));
+    H("initialize database", GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs,
+                                                          bucket_size));
 
     {
         // sanity check, see that we can get the contigs back
         vector<pair<string,size_t> > contigs_dbg;
-        H("Reading the contigs back from DB",
+        H("read the contigs back from DB",
           GLnexus::cli::utils::db_get_contigs(console, dbpath, contigs_dbg));
         if (contigs_dbg != contigs)
             return GLnexus::Status::Invalid("error, contigs read from DB do not match originals");
@@ -86,10 +86,16 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     // discover alleles
-    // TODO: if bedfilename is empty, fill ranges with all contigs
     // TODO: overlap allele discovery with final compactions. have db_bulk_load output a RocksKeyValue pointer which we can reuse
     vector<GLnexus::range> ranges;
-    H("parsing the bed file", GLnexus::cli::utils::parse_bed_file(console, bedfilename, contigs, ranges));
+    if (bedfilename.empty()) {
+        console->info("processing full length of {} contigs, as no --bed file was specified", std::to_string(contigs.size()));
+        for (int rid = 0; rid < contigs.size(); ++rid) {
+            ranges.push_back(GLnexus::range(rid, 0, contigs[rid].second));
+        }
+    } else {
+        H("parse the bed file", GLnexus::cli::utils::parse_bed_file(console, bedfilename, contigs, ranges));
+    }
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
     H("discover alleles",
@@ -139,7 +145,7 @@ static int all_steps(const vector<string> &vcf_files,
         hdr_lines.push_back(string("##DX_JOB_ID=")+DX_JOB_ID);
     }
     string outfile("-");
-    H("Genotyping",
+    H("genotype",
       GLnexus::cli::utils::genotype(console, mem_budget, nr_threads, dbpath, genotyper_cfg, sites, hdr_lines, outfile));
 
     return 0;
@@ -150,7 +156,7 @@ void help(const char* prog) {
     cout << "Usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
          << "Merge and joint-call input gVCF files, emitting multi-sample BCF on standard output." << endl << endl
          << "Options:" << endl
-         << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (required)" << endl
+         << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (if omitted, use full length of all contigs)" << endl
          << "  --config X, -c X      configuration preset name or .yml filename (default: gatk)" << endl
          << "  --squeeze, -S         reduce pVCF size by suppressing detail in cells derived from reference bands" << endl
          << "  --list, -l            given files contain lists of gVCF filenames, one per line" << endl
