@@ -734,10 +734,18 @@ struct genotyper_config {
     // FORMAT fields from the original gvcfs to be lifted over to the output
     std::vector<retained_format_field> liftover_fields;
 
+    // Fill in PL values for reference-homozygous entries and other cases
+    // omitted by default. This extra detail is usually of marginal value,
+    // while it's slower to generate and inflates the output. But it can be
+    // useful in particular applications, such as to inform imputation after
+    // shallow sequencing (GLnexus issue #173).
+    bool more_PL = false;
+
     // Suppress usually-unnecessary detail from output to reduce size and
     // improve compressibility. Specifically, in entries indicating no
     // non-reference reads (AD=*,0), report GT and DP only, and round
-    // DP down to a power of two (0, 1, 2, 4, 8, 16, ...)
+    // DP down to a power of two (0, 1, 2, 4, 8, 16, ...).
+    // (overrides more_PL)
     bool squeeze = false;
 
     genotyper_config() = default;

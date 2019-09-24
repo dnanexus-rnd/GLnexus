@@ -461,9 +461,65 @@ protected:
 // Special-case logic for the genotype likelihoods (PL) field, which involves
 // permuting the Number=G vector from to the genotype order implied by the
 // input record's alleles to the output record's.
-// Censors the output in the event the max-likelihood PL (0) does not lift
-// over, as the other values are relative to that one. Also if we lift over
-// the zero but no other values, which is uninformative anyway.
+// It censors the output in the event the max-likelihood PL (0) cannot be
+// lifted over, as other values would be subject to misinterpretation, being
+// relative to that max-likelihood one.
+// Also censors any time there are multiple variant records, since we can't
+// combine PLs soundly.
+// PLs generally aren't lifted over from reference bands since the gVCF
+// symbolic allele isn't equated with specific alternate alleles of the output
+// pVCF site. See PLFieldHelper2.
+class PLFieldHelper : public NumericFormatFieldHelper<int32_t> {
+public:
+    PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
+        : NumericFormatFieldHelper<int32_t>(field_info_, n_samples_, count_) {
+        assert(field_info.name == "PL");
+    }
+
+protected:
+    Status combine_format_data(vector<int32_t>& ans) override {
+        Status s;
+        ans.clear();
+
+        assert(format_v.size() == n_samples * count);
+
+        // for each sample, if we don't have at least one entry equal to zero,
+        // then censor all. Also, censor if we have a zero but no other values,
+        // since this uninformative anyway.
+        for (int i = 0; i < n_samples; i++) {
+            int zeroes = 0, nonzeroes = 0;
+            bool multi = false;
+            for (int j = 0; j < count; j++) {
+                const auto& v = format_v[i*count+j];
+                if (v.size() == 1) {
+                    if (v[0] == 0) {
+                        zeroes++;
+                    } else {
+                        nonzeroes++;
+                    }
+                } else if (v.size() > 1) {
+                    multi = true;
+                }
+            }
+
+            for (int j = 0; j < count; j++) {
+                if (multi || zeroes == 0 || (zeroes == 1 && nonzeroes == 0)) {
+                    ans.push_back(bcf_int32_missing);
+                } else {
+                    const auto& v = format_v[i*count+j];
+                    ans.push_back(v.size() == 1 ? v[0] : bcf_int32_missing);
+                }
+            }
+        }
+
+        return Status::OK();
+    }
+};
+
+// PLFieldHelper2 tries harder to lift over PL from reference bands and some
+// additional corner cases; this is opt-in because it's slower and inflates the
+// output size, typically for little useful information gained. It can be
+// useful in certain applications, like imputation for shallow sequencing.
 // For output genotypes with alleles not present in a sample's gVCF record,
 // fills PL from the values involving the gVCF symbolic allele, as long as all
 // the record's alternate alleles map into the output record (otherwise we'd
@@ -472,14 +528,17 @@ protected:
 // Censors when presented with multiple variant records, since the PLs can't be
 // combined soundly. Presented just with multiple reference bands, uses the one
 // with the least reference confidence (smallest value of gVCF PL[1]).
-class PLFieldHelper : public FormatFieldHelper {
+// Censors the output in the event the max-likelihood PL (0) does not lift
+// over, as the other values are relative to that one. Also if we lift over
+// the zero but no other values, which is uninformative anyway.
+class PLFieldHelper2 : public FormatFieldHelper {
 protected:
     vector<int32_t> outPL;
     htsvecbox<int32_t> buf;
     vector<int> rev_allele_mapping;
 
 public:
-    PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
+    PLFieldHelper2(const retained_format_field& field_info_, int n_samples_, int count_)
         : FormatFieldHelper(field_info_, n_samples_, count_) {
         assert(field_info.name == "PL");
         assert(field_info.ignore_non_variants);
@@ -842,7 +901,11 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
             if (format_field_info.type != RetainedFieldType::INT || format_field_info.number != RetainedFieldNumber::GENOTYPE || format_field_info.combi_method != FieldCombinationMethod::MISSING) {
                 return Status::Invalid("genotyper misconfiguration: PL format field should have type=int, number=genotype, combi_method=missing");
             }
-            format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper(format_field_info, samples.size(), count)));
+            if (cfg.more_PL) {
+                format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper2(format_field_info, samples.size(), count)));
+            } else {
+                format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper(format_field_info, samples.size(), count)));
+            }
         } else switch (format_field_info.type) {
             case RetainedFieldType::INT:
             {
