@@ -153,6 +153,7 @@ void help(const char* prog) {
          << "Options:" << endl
          << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (required)" << endl
          << "  --config X, -c X      configuration preset name or .yml filename (default: gatk)" << endl
+         << "  --more-PL, -P         include PL from reference bands and other cases omitted by default" << endl
          << "  --squeeze, -S         reduce pVCF size by suppressing detail in cells derived from reference bands" << endl
          << "  --list, -l            given files contain lists of gVCF filenames, one per line" << endl
          << "  --mem-gbytes X, -m X  memory budget, in gbytes (default: most of system memory)" << endl
