@@ -21,10 +21,13 @@ For each tagged revision, the [Releases](https://github.com/dnanexus-rnd/GLnexus
 The GLnexus build process has a number of dependencies, but produces a standalone, statically-linked executable `glnexus_cli`. The easiest way to build it is to use our Dockerfile to control all the compile-time dependencies, then simply copy the static executable out of the resting Docker container and put it anywhere you like. 
 
 ```
-# Build GLnexus using its Dockerfile.
-# You can set a specific git revision by adding --build-arg=git_revision=xxxx
-curl -s https://raw.githubusercontent.com/dnanexus-rnd/GLnexus/master/Dockerfile \
-    | docker build --no-cache -t glnexus_tests -
+# Clone repo
+git clone https://github.com/dnanexus-rnd/GLnexus.git
+cd GLnexus
+git checkout vX.Y.Z  # optional, check out desired revision
+
+# Build GLnexus in docker
+docker build --no-cache -t glnexus_tests .
 
 # Run GLnexus unit tests.
 docker run --rm glnexus_tests
@@ -41,7 +44,7 @@ docker run --rm -v $(pwd):/io glnexus_tests cp glnexus_cli /io
 Then,
 
 ```
-git clone --recursive https://github.com/dnanexus-rnd/GLnexus.git
+git clone https://github.com/dnanexus-rnd/GLnexus.git
 cd GLnexus
 cmake -Dtest=ON . && make -j$(nproc) && ctest -V
 ```

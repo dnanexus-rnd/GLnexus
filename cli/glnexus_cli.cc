@@ -168,7 +168,12 @@ int main(int argc, char *argv[]) {
     GLnexus::Status s;
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%t] %+");
-    console->info("glnexus_cli {}, built {}", GIT_REVISION, __TIMESTAMP__);
+    #ifdef NDEBUG
+    #define BUILD_CONFIG "release"
+    #else
+    #define BUILD_CONFIG "debug"
+    #endif
+    console->info("glnexus_cli {} {} {}", BUILD_CONFIG, GIT_REVISION, __TIMESTAMP__);
     GLnexus::cli::utils::detect_jemalloc(console);
 
     if (argc < 2) {
