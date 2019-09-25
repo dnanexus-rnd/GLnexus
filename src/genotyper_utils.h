@@ -519,7 +519,8 @@ protected:
 // PLFieldHelper2 tries harder to lift over PL from reference bands and some
 // additional corner cases; this is opt-in because it's slower and inflates the
 // output size, typically for little useful information gained. It can be
-// useful in certain applications, like imputation for shallow sequencing.
+// useful for compatibility with downstream tools which require 100.0% of PL
+// values populated (e.g. Beagle gl=).
 // For output genotypes with alleles not present in a sample's gVCF record,
 // fills PL from the values involving the gVCF symbolic allele, as long as all
 // the record's alternate alleles map into the output record (otherwise we'd
@@ -531,6 +532,9 @@ protected:
 // Censors the output in the event the max-likelihood PL (0) does not lift
 // over, as the other values are relative to that one. Also if we lift over
 // the zero but no other values, which is uninformative anyway.
+// Censored PL vectors are filled with zeroes instead of the brief . missing
+// vector. Individual PL values for which we have no information are set to 999
+// instead of the . missing value.
 class PLFieldHelper2 : public FormatFieldHelper {
 protected:
     vector<int32_t> outPL;
@@ -655,14 +659,12 @@ public:
                 }
                 censor = !(zero && other);
             }
-            if (censor) {
-                for (int j = 0; j < count; ++j) {
-                    outPL[i*count+j] = bcf_int32_missing;
+            for (int j = i*count; j < (i+1)*count; ++j) {
+                if (censor) {
+                    outPL[j] = 0;
+                } else if (outPL[j] == bcf_int32_missing) {
+                    outPL[j] = 999;
                 }
-            }
-            if (outPL[i*count] == bcf_int32_missing) {
-                // writes . instead of .,.,. (or longer)
-                outPL[i*count+1] = bcf_int32_vector_end;
             }
         }
         if (bcf_update_format_int32(hdr, record, field_info.name.c_str(), outPL.data(), n_samples * count)) {

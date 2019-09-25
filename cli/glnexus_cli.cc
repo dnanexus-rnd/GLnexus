@@ -90,7 +90,7 @@ static int all_steps(const vector<string> &vcf_files,
     // TODO: overlap allele discovery with final compactions. have db_bulk_load output a RocksKeyValue pointer which we can reuse
     vector<GLnexus::range> ranges;
     if (bedfilename.empty()) {
-        console->info("processing full length of {} contigs, as no --bed file was specified", std::to_string(contigs.size()));
+        console->warn("Processing full length of {} contigs, as no --bed was provided. Providing a BED file with regions of interest, if applicable, can speed this up.", std::to_string(contigs.size()));
         for (int rid = 0; rid < contigs.size(); ++rid) {
             ranges.push_back(GLnexus::range(rid, 0, contigs[rid].second));
         }
