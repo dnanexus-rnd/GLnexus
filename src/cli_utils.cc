@@ -761,15 +761,15 @@ weCall:
               count: 1
               ignore_non_variants: true
 DeepVariant:
-    description: "[EXPERIMENTAL] Merge DeepVariant gVCFs with no QC filters or genotype revision"
+    description: Joint call DeepVariant gVCFs
     unifier_config:
-        min_AQ1: 0
-        min_AQ2: 0
+        min_AQ1: 10
+        min_AQ2: 10
         min_GQ: 0
         monoallelic_sites_for_lost_alleles: true
     genotyper_config:
         required_dp: 0
-        revise_genotypes: false
+        revise_genotypes: true
         liftover_fields:
             - orig_names: [MIN_DP, DP]
               name: DP
