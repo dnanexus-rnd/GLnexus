@@ -735,7 +735,7 @@ struct genotyper_config {
     std::vector<retained_format_field> liftover_fields;
 
     // Include PL values from reference bands and other cases omitted by
-    // by default; populate uninformative PL entries with 0 or 999 instead of
+    // by default; populate uninformative PL entries with 0 or 990 instead of
     // missing values. This extra detail is usually of marginal value, while
     // it's slower to generate and inflates the output. But it can be useful
     // for compatibility with downstream tools requiring 100.0% of PL values

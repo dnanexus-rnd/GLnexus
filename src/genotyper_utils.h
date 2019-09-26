@@ -533,7 +533,7 @@ protected:
 // over, as the other values are relative to that one. Also if we lift over
 // the zero but no other values, which is uninformative anyway.
 // Censored PL vectors are filled with zeroes instead of the brief . missing
-// vector. Individual PL values for which we have no information are set to 999
+// vector. Individual PL values for which we have no information are set to 990
 // instead of the . missing value.
 class PLFieldHelper2 : public FormatFieldHelper {
 protected:
@@ -663,7 +663,7 @@ public:
                 if (censor) {
                     outPL[j] = 0;
                 } else if (outPL[j] == bcf_int32_missing) {
-                    outPL[j] = 999;
+                    outPL[j] = 990;
                 }
             }
         }
