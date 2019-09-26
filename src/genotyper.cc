@@ -10,7 +10,7 @@ using namespace std;
 
 // Prevent dependency on unnecessarily new version of glibc/libm
 // https://stackoverflow.com/a/5977518
-__asm__(".symver logf,logf@GLIBC_2.2.5");
+//__asm__(".symver logf,logf@GLIBC_2.2.5");
 
 namespace GLnexus {
 

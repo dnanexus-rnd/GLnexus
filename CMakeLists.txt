@@ -227,6 +227,8 @@ add_executable(glnexus_cli cli/glnexus_cli.cc)
 add_dependencies(glnexus_cli libglnexus)
 target_link_libraries(glnexus_cli glnexus libhts librocksdb libyaml-cpp libz.a libsnappy.a libbz2.a libzstd.a liblzma.a librt.a libcapnp.a libkj.a)
 
+target_link_libraries(glnexus_cli -static)
+
 install(TARGETS glnexus_cli DESTINATION bin)
 
 ################################

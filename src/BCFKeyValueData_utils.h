@@ -5,10 +5,13 @@
 #include <defs.capnp.h>
 #include "KeyValue.h"
 #include "BCFSerialize.h"
+#include "endian.h"
 
 const uint64_t MAX_NUM_CONTIGS_PER_GVCF = 16777216; // 3 bytes wide
 const uint64_t MAX_CONTIG_LEN = 1099511627776;      // 5 bytes wide
 const uint64_t MAX_RECORD_LEN = 100000;
+
+typedef unsigned int uint;
 
 namespace GLnexus {
 
