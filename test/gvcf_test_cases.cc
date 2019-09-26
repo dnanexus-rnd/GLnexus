@@ -827,6 +827,12 @@ TEST_CASE("DeepVariant") {
     GVCFTestCase("deepvariant", v_formats, v_infos, false).perform_gvcf_test();
 }
 
+TEST_CASE("DeepVariant2") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD"};
+    vector<string> v_infos = {"ANR","AF","AQ"};
+    GVCFTestCase("deepvariant2", v_formats, v_infos, false).perform_gvcf_test();
+}
+
 TEST_CASE("strelka2") {
     vector<string> v_formats = {"DP", "GT", "GQ", "AD", "FT"};
     vector<string> v_infos = {"AF","AQ"};

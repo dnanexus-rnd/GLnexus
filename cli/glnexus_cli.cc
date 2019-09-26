@@ -39,7 +39,8 @@ GLnexus::Status s;
 // return 0 on success, 1 on failure.
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
-                     const string &config_name, bool squeeze,
+                     const string &config_name,
+                     bool more_PL, bool squeeze,
                      size_t mem_budget, size_t nr_threads,
                      bool debug,
                      bool iter_compare,
@@ -55,7 +56,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     H("load unifier/genotyper configuration",
-        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_crc32c, squeeze));
+        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_crc32c, more_PL, squeeze));
 
     // initilize empty database
     string dbpath("GLnexus.DB");
@@ -89,7 +90,7 @@ static int all_steps(const vector<string> &vcf_files,
     // TODO: overlap allele discovery with final compactions. have db_bulk_load output a RocksKeyValue pointer which we can reuse
     vector<GLnexus::range> ranges;
     if (bedfilename.empty()) {
-        console->info("processing full length of {} contigs, as no --bed file was specified", std::to_string(contigs.size()));
+        console->warn("Processing full length of {} contigs, as no --bed was provided. Providing a BED file with regions of interest, if applicable, can speed this up.", std::to_string(contigs.size()));
         for (int rid = 0; rid < contigs.size(); ++rid) {
             ranges.push_back(GLnexus::range(rid, 0, contigs[rid].second));
         }
@@ -158,6 +159,7 @@ void help(const char* prog) {
          << "Options:" << endl
          << "  --bed FILE, -b FILE   three-column BED file of ranges to analyze (if omitted, use full length of all contigs)" << endl
          << "  --config X, -c X      configuration preset name or .yml filename (default: gatk)" << endl
+         << "  --more-PL, -P         include PL from reference bands and other cases omitted by default" << endl
          << "  --squeeze, -S         reduce pVCF size by suppressing detail in cells derived from reference bands" << endl
          << "  --list, -l            given files contain lists of gVCF filenames, one per line" << endl
          << "  --mem-gbytes X, -m X  memory budget, in gbytes (default: most of system memory)" << endl
@@ -191,6 +193,7 @@ int main(int argc, char *argv[]) {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
         {"config", required_argument, 0, 'c'},
+        {"more-PL", no_argument, 0, 'P'},
         {"squeeze", no_argument, 0, 'S'},
         {"list", no_argument, 0, 'l'},
         {"mem-gbytes", required_argument, 0, 'm'},
@@ -203,6 +206,7 @@ int main(int argc, char *argv[]) {
 
     int c;
     string config_name = "gatk";
+    bool more_PL = false;
     bool squeeze = false;
     bool list_of_files = false;
     bool debug = false;
@@ -228,6 +232,10 @@ int main(int argc, char *argv[]) {
 
             case 'c':
                 config_name = string(optarg);
+                break;
+
+            case 'P':
+                more_PL = true;
                 break;
 
             case 'S':
@@ -303,5 +311,5 @@ int main(int argc, char *argv[]) {
         vcf_files = vcf_files_precursor;
     }
 
-    return all_steps(vcf_files, bedfilename, config_name, squeeze, mem_budget, nr_threads, debug, iter_compare, bucket_size);
+    return all_steps(vcf_files, bedfilename, config_name, more_PL, squeeze, mem_budget, nr_threads, debug, iter_compare, bucket_size);
 }

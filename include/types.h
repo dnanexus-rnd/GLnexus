@@ -734,10 +734,18 @@ struct genotyper_config {
     // FORMAT fields from the original gvcfs to be lifted over to the output
     std::vector<retained_format_field> liftover_fields;
 
+    // Include PL values from reference bands and other cases omitted by
+    // by default; populate uninformative PL entries with 0 or 999 instead of
+    // missing values. This extra detail is usually of marginal value, while
+    // it's slower to generate and inflates the output. But it can be useful
+    // for compatibility with downstream tools requiring 100.0% of PL values
+    // populated (e.g. Beagle gl=, as discussed on GLnexus issue #173).
+    bool more_PL = false;
+
     // Suppress usually-unnecessary detail from output to reduce size and
     // improve compressibility. Specifically, in entries indicating no
     // non-reference reads (AD=*,0), report GT and DP only, and round
-    // DP down to a power of two (0, 1, 2, 4, 8, 16, ...)
+    // DP down to a power of two (0, 1, 2, 4, 8, 16, ...).
     bool squeeze = false;
 
     genotyper_config() = default;

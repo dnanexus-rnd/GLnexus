@@ -34,6 +34,13 @@ pair<unsigned,unsigned> gt_alleles(unsigned gt) {
     1   2 4 7
     2     5 8
     3       9
+
+       0  1  2  3  4
+    0  0  1  3  6 10
+    1     2  4  7 11
+    2        5  8 12
+    3           9 13
+    4             14
     */
 
     unsigned j = (unsigned)((sqrt(8*gt+1)-1.0)/2.0);

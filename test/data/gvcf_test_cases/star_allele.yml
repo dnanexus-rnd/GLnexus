@@ -46,6 +46,7 @@ input:
 genotyper_config:
   required_dp: 1
   revise_genotypes: false
+  more_PL: true
   liftover_fields:
   - orig_names: [MIN_DP, DP]
     name: DP
@@ -137,6 +138,6 @@ truth_output_vcf:
       ##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
       ##contig=<ID=1,length=20000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      1	888861	1_888861_GCGGCTC_G	GCGGCTC	G	921	.	.	GT:DP:AD:SB:GQ:PL:RNC	0/0:44:44,0:.,.,.,.:99:.:..	0/1:94:61,33:33,28,13,20:99:921,0,2368:..
-      1	888868	1_888880_C_CGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA;1_888868_ACACCGGAAGTGC_A	ACACCGGAAGTGC	ACACCGGAAGTGCGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA,A	2291	.	.	GT:DP:AD:SB:GQ:PL:RNC	0/0:44:44,0,0:.,.,.,.:99:.:..	./.:82:.:.,.,.,.:.:.:OO
-      1	999964	1_999964_AC_A	AC	A	69	.	.	GT:DP:AD:SB:GQ:PL:RNC	./1:16:.,4:.,.,.,.:.:.:O.	0/0:53:53,0:.,.,.,.:98:.:..
+      1	888861	1_888861_GCGGCTC_G	GCGGCTC	G	921	.	.	GT:DP:AD:SB:GQ:PL:RNC	0/0:44:44,0:.,.,.,.:99:0,120,1800:..	0/1:94:61,33:33,28,13,20:99:921,0,2368:..
+      1	888868	1_888880_C_CGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA;1_888868_ACACCGGAAGTGC_A	ACACCGGAAGTGC	ACACCGGAAGTGCGGCTCACACCGGAAGTGAGGCTCACACCGGAAGTGA,A	2291	.	.	GT:DP:AD:SB:GQ:PL:RNC	0/0:44:44,0,0:.,.,.,.:99:0,120,1800,120,1800,1800:..	./.:82:.:.,.,.,.:.:0,0,0,0,0,0:OO
+      1	999964	1_999964_AC_A	AC	A	69	.	.	GT:DP:AD:SB:GQ:PL:RNC	./1:16:.,4:.,.,.,.:.:0,0,0:O.	0/0:53:53,0:.,.,.,.:98:0,98,1485:..
