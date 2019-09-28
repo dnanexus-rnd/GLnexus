@@ -45,7 +45,7 @@ script:
         CMD glnexus_cli" > Dockerfile
         docker build --no-cache -t $dockertag .
         # confirm no warning of jemalloc absence
-        if docker run $dockertag glnexus_cli -h 2>&1 | grep jemalloc ; then
+        if docker run $dockertag glnexus_cli -h 2>&1 | grep 'jemalloc absent' ; then
           exit 1
         fi
         set +x
