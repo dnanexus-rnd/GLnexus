@@ -43,11 +43,8 @@ script:
         ADD glnexus_cli /usr/local/bin/
         ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
         CMD glnexus_cli" > Dockerfile
-        docker build --no-cache -t $dockertag .
-        # confirm no warning of jemalloc absence
-        if docker run $dockertag glnexus_cli -h 2>&1 | grep 'jemalloc absent' ; then
-          exit 1
-        fi
+        docker build --no-cache --squash -t $dockertag .
+        docker run $dockertag glnexus_cli -h 2>&1 | grep 'detected jemalloc'
         set +x
         echo "$QUAY_PASSWORD" | docker login -u="mlin+glnexus" --password-stdin quay.io
         set -x
