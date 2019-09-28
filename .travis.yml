@@ -38,14 +38,12 @@ script:
         mkdir mindocker
         pushd mindocker
         cp ../GLnexus/glnexus_cli .
-        cat << "EOF" > Dockerfile
-        FROM ubuntu:bionic
+        echo "FROM ubuntu:bionic
         RUN apt-get update && apt-get install -y libjemalloc1 bcftools tabix
         ADD glnexus_cli /usr/local/bin/
         ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
-        CMD glnexus_cli
-        EOF
-        docker build --no-cache -t $dockertag
+        CMD glnexus_cli" > Dockerfile
+        docker build --no-cache -t $dockertag .
         # confirm no warning of jemalloc absence
         if docker run $dockertag glnexus_cli -h 2>&1 | grep jemalloc ; then
           exit 1
