@@ -1,6 +1,5 @@
 language: cpp
-sudo: yes
-dist: trusty
+dist: bionic
 
 addons:
   apt:
@@ -10,7 +9,7 @@ addons:
 script:
   # Build and run unit tests
   - |
-      set -ex -o pipefail
+      set -euxo pipefail
       # use the Dockerfile to build the glnexus_tests container
       effective_build_type=$TRAVIS_BUILD_TYPE
       if [ "$effective_build_type" == "Valgrind" ]; then
@@ -19,7 +18,7 @@ script:
       docker build --no-cache -t glnexus_tests --build-arg build_type=$effective_build_type .
       # copy the /GLnexus folder out of the image to mount for subsequent use
       docker run --rm -v /:/io glnexus_tests cp -r /GLnexus/ /io
-      # Run the tests
+      # Run the tests (with valgrind or coveralls as appropriate)
       if [ "$TRAVIS_BUILD_TYPE" == "Valgrind" ]; then
         docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v /GLnexus:/GLnexus glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=test/GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
       else
@@ -33,17 +32,33 @@ script:
           /GLnexus/test/jemalloc_linking.sh
         fi
       fi
-      # launch medium tests from the medium-tests branch only
-      if [ "$TRAVIS_BRANCH" == "medium-tests" ] && [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then bash test/launch_medium_tests.sh; fi
+      if [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then
+        # build a minimal docker image with glnexus_cli & jemalloc, push it to quay.io
+        dockertag="quay.io/mlin/glnexus:$(git describe --tags)"
+        mkdir mindocker
+        pushd mindocker
+        cp ../GLnexus/glnexus_cli .
+        cat << "EOF" > Dockerfile
+        FROM ubuntu:bionic
+        RUN apt-get update && apt-get install -y libjemalloc1 bcftools tabix
+        ADD glnexus_cli
+        ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
+        CMD glnexus_cli
+        EOF
+        docker build --no-cache -t $dockertag
+        # confirm no warning of jemalloc absence
+        if docker run $dockertag glnexus_cli -h 2>&1 | grep jemalloc ; then
+          exit 1
+        fi
+        set +x
+        docker login -u="mlin+glnexus" -p="$QUAY_PASSWORD" quay.io
+        docker push $dockertag
+      fi
 
 env:
   global:
-    # Encrypted Github credential (using yifei's account)
-    - secure: "i/0Zm5ZtBe8oHaRHGBmlXzcaS61VoovEz758LY4GFKl0PncwFfFWAN8Yt2iWBZPLu5hHXudHKNaJc5ORqoqggLYzgDue++6mqL5lQfJbl9Luh/itoi20M9pt+I2dMW+9qLipROH3tTxGSiIVxacRcAbkxMdHz71iiHZ0PViLQ0UyE12ugSqNn81VYUDzgPISc0vs+8I76FGXB7i4Ox1HO2d8OLJwfnzriBXuQyHbLJT4fA1yz53sT+RNc5iTR4/xGA5qfnuGgrjcLZYsjh8bSzjvsYeA3RddIcsjmOhCw/ZvEMIvvqi9oAV//EiO95c8l+GG3U0k/78u7YafROnr901aDXSkS+1KitOT3n9KoQkuDZMpqUGCX30tSBefpnpq8EdxibaUfauhrkf0mNbZepZU18vIGB3h49lGGkBkJ1tR5fw/htnm7hUywXVRkcur/DYqPtsc3aM0HViEGsMplTIEsCYJE/O39Lde1ksJrYQCYp4AAlgmSsrKo0WLydc8gnbfYhxws+NzI2VH5mkr7BCEiK6fG2CIOT0xFJqCQbkhFOKVKyArUBou8bKTAbB7CFZNeMcbUEuVWY5NJ0Gvn4uiYOa47e/P+i8FO/LV+Rcpx8Jabn0E5bL1gRHuMqo7RfdF9B7ape6w2+Qyn2MFkplSfjadVP8mFefMIckYjU4="
-    # GLNEXUS_TEST_PROJECT_ID
-    - secure: "J8yut92zrAcKFAcYFCLUzcYzEalFU+LkTCoMyK1fFt4k+RSM0LwdqvOz1n/SQHHBHW0OiJ2qQ68N8bcvyN7ggaHDfSxZGjBC9/WX1HrUZ7kp2exS/R1iHv20j6gXuy0FHuOGZiEyVq2rjUgtyWqIpwE/nuCLo4P1tqyKSng2ff4Jay41Bjt5FE8BNSLGr1y6I1VjV5lkVb86gbcfKPiaWuvObbTwF4I/pp/d3fjSzvMiZ7P/cT3C2ROpC9NK7UDRgo+qBj057aLyTEuPle0G6LpfnV9eHB+ddGxuXtMyrbDbLR2SCyvOWqlyyWzpzUEafb3v+qL+Oby6JFw/IEPv/Y/Gv8Rz8xEq6Vm1Do58t3kqvi2Puz/cRrZI9IWBuNVJuBJGiAb+BenIMuCdMNAFxMFxO/ENanYRDU3Bo6ZYa4Rin9ROYRyqYsYEU9zRx/Ni/8E2M4MbDXeoPQTx72h+yetzo7IAMIdQOovrLKtUH6+IKitjJKs41oN64syBceNXm3bPEq3FQn1aSMd14kqwUSch0OnMVBzfEE8JXrrOihNzvrPVRHijd4bOYwHtr+vo002xUGwpACaXucQZfSeOYwFJjopG2+1pKuByk4/vItHI3ulArfzxmMLgkmqT9n0Dz0NkCS3NegmBmKd6CsqqWgl6iw9ivvtfWTo88K+ablY="
-    # DX_AUTH_TOKEN (mlin)
-    - secure: "oRCQp7xzW0o3NteAezjgByyChji3oPgPT2ChCSe3trDH2Ebuyo6/rTuT8g0OnyJ+1RGJrdGykJHMJw3k5RxhOpHG6EaZOHY3gKr8pYyf5Jvs7sLFT3e2Td3xAvNig2e4UJ8P0GnXu1VBUUpTt4IctVknGIHhM2kt9QJ7uKZjgEnU/wUpF+JpJFHJQc6PHiDpicjhpYZhrNBtLE2RH0OLL3hvRweVeKsttVbhV5i6arX8d60e9JHbKTmh1QC1WTDfzzcpFGutruztOAZRJ+PUl1eIp82EfbeVatDw2xwN7BMNHjFK5SYD1SwZz/cD0KDlFcPdUk5CJgLKJcLcmjh6baisg4+HpOZHv5hFEk7KdtoWsmoNUqeFJ9PoWT15vwy629bxRYBsFXEDVJ+08siRibos/H9fLs1oW+9rWnmA/cZc9AAjfTtg6IPy2Xtamj1feCKo3qO5gBIa+gQNn2F9wmx4TJ8hPAQDqBw/Ypwz9RMx/8wo4Dq2y+JcWHeOxMNjIi/bHRGhzohaUys/cN4YrTjpPFMnZeK4uCfrKaw020tB+D2JASVyAKx1xPlqAZKbjW7X5p/zxQOfVdVDEVCVQOKS6XInleS5k9qALB1/u7ab3XDc5+A8Y+jaNXlOIoWCqZ73SvFrO8MS6KKCCVgp309BDm0BJ7ssZeahan3ai2E="
+    # QUAY_PASSWORD for https://quay.io/repository/mlin/glnexus
+    - secure: "YHCWM0zdAWNUyyQfmXZyfl/y07lHMPxyHQJaklmql6jFZTITFveNgDE5wXse4AppayPd5pB/ApYjvDm0es/K0aYl6U6uKB84VhajiIeSjOnbZ/ggTJ5ysD3ZenGVjLKiBu3uuZOMcOcVpZG5zD4awmzQskaSuqhC4uj/fYFPsRb17Xn69siySjGHS5QCbriZPaMgA6f4stccGG0e8T08vIg/E/MZqrRhUcLFCCHl8L2KeFaooGUXegHry7kUWWd52sv6edZ+/1svE/L7MEm00IC570TzTGpMGzw6mWhRV6eoEt5F3wsPd3zfPOISf73REDYlySnek3SMO2oP11zAWof7GMGitxS3/RHTEDeQ29ndLsh2QLRCAdvJLAJ25aNZc0AUCpx7U0ifXHmOyg5VmZpKUCbktas/LK4kJ0MaKySpIGO9U3VxFYuo8i4NCC4ECuM+O1NUjR6FneaKBDg0f5JjCIZO6HxdKZHax6iK827FHX2uJk2VgVhRm0+zNRGENq8np595JUlm9V0ona6tJgpIMwGCR8ZjZpPGKoayztkcWifr6iQnl+tFY6YFlY3EshVjTTnwr3sFRgP6drVkXPvTC7y3IbtmIEpLE4Ok6S5l1nrob8leHGw26Q0NNuJ7oUcYJtw8y7RoO4/SSwm1oEOSXBRjI5i1nsg0QnTQQXY="
 
 matrix:
   include:
