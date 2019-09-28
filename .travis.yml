@@ -53,6 +53,7 @@ script:
         set +x
         docker login -u="mlin+glnexus" -p="$QUAY_PASSWORD" quay.io
         docker push $dockertag
+        popd
       fi
 
 env:
