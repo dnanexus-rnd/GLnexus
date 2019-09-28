@@ -37,7 +37,7 @@ script:
         dockertag="quay.io/mlin/glnexus:$(git describe --tags)"
         mkdir mindocker
         pushd mindocker
-        cp ../GLnexus/glnexus_cli .
+        cp /GLnexus/glnexus_cli .
         echo "FROM ubuntu:bionic
         RUN apt-get update && apt-get install -y libjemalloc1 bcftools tabix
         ADD glnexus_cli /usr/local/bin/
