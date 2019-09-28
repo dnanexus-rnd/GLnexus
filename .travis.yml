@@ -41,7 +41,7 @@ script:
         cat << "EOF" > Dockerfile
         FROM ubuntu:bionic
         RUN apt-get update && apt-get install -y libjemalloc1 bcftools tabix
-        ADD glnexus_cli
+        ADD glnexus_cli /usr/local/bin/
         ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
         CMD glnexus_cli
         EOF
