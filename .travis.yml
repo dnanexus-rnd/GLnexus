@@ -49,7 +49,7 @@ script:
           exit 1
         fi
         set +x
-        docker login -u="mlin+glnexus" -p="$QUAY_PASSWORD" quay.io
+        echo "$QUAY_PASSWORD" | docker login -u="mlin+glnexus" --password-stdin quay.io
         set -x
         docker push $dockertag
         popd
