@@ -54,6 +54,7 @@ script:
         docker push $dockertag
         popd
       fi
+      exit 0
 
 env:
   global:
