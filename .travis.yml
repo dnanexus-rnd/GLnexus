@@ -46,9 +46,11 @@ script:
         docker build --no-cache -t $dockertag .
         docker run $dockertag glnexus_cli -h 2>&1 | grep 'detected jemalloc'
         set +x
-        echo "$QUAY_PASSWORD" | docker login -u="mlin+glnexus" --password-stdin quay.io
+        if [ -n "$QUAY_PASSWORD" ]; then
+          echo "$QUAY_PASSWORD" | docker login -u="mlin+glnexus" --password-stdin quay.io
+          docker push $dockertag
+        fi
         set -x
-        docker push $dockertag
         popd
       fi
       exit 0
