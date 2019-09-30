@@ -101,7 +101,7 @@ public:
 
     /// Retrieve the BCF header for a data set.
     virtual Status dataset_header(const std::string& dataset,
-                                  std::shared_ptr<const bcf_hdr_t>& hdr) const = 0;
+                                  std::shared_ptr<const bcf_hdr_t>& hdr) = 0;
 
     /// Retrieve all BCF records in the data set overlapping a range.
     ///

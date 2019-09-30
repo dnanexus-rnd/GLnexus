@@ -171,7 +171,7 @@ public:
         return Status::OK();
     }
 
-    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) const override {
+    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) override {
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
             return Status::NotFound("unknown data set", dataset);
