@@ -408,7 +408,7 @@ shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
 }
 
 Status BCFKeyValueData::dataset_header(const string& dataset,
-                                       shared_ptr<const bcf_hdr_t>& hdr) const {
+                                       shared_ptr<const bcf_hdr_t>& hdr) {
     auto cached = body_->header_cache->end();
     if ((cached = body_->header_cache->find(dataset)) != body_->header_cache->end()) {
         // Return memoized header

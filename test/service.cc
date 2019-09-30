@@ -25,7 +25,7 @@ public:
         return Status::OK();
     }
 
-    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) const override {
+    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) override {
         if (i_++ % fail_every_ == 0) {
             failed_once_ = true;
             return Status::IOError("SIM");
