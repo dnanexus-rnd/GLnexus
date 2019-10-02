@@ -882,7 +882,7 @@ genotyper_config:
       ignore_non_variants: true
     - orig_names: [AD]
       name: AD
-      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
       type: int
       number: alleles
       combi_method: min
@@ -1031,7 +1031,7 @@ truth_output_vcf:
       ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
       ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype likelihoods, Phred encoded">
       ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
-      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=chr12,length=133275309>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11930	NA11931	NA11932	NA11933
