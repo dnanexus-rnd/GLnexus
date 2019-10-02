@@ -485,7 +485,7 @@ gatk:
               ignore_non_variants: true
             - orig_names: [AD]
               name: AD
-              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
               type: int
               number: alleles
               combi_method: min
@@ -535,7 +535,7 @@ gatk_unfiltered:
               ignore_non_variants: true
             - orig_names: [AD]
               name: AD
-              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
               type: int
               number: alleles
               combi_method: min
@@ -721,7 +721,7 @@ weCall:
               ignore_non_variants: true
             - orig_names: [AD]
               name: AD
-              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
               type: int
               number: alleles
               combi_method: min
@@ -781,7 +781,7 @@ DeepVariant:
               ignore_non_variants: true
             - orig_names: [AD]
               name: AD
-              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
               type: int
               number: alleles
               combi_method: min
@@ -824,7 +824,7 @@ Strelka2:
               ignore_non_variants: true
             - orig_names: [AD]
               name: AD
-              description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
               type: int
               number: alleles
               combi_method: min
