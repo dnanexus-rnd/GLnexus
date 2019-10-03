@@ -126,7 +126,8 @@ public:
     /// unpacked again by the dataset_range function.
     ///
     /// The provided header must match the data set, otherwise the behavior is undefined!
-    virtual Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr,
+    virtual Status dataset_range(const std::string& dataset,
+                                 const std::shared_ptr<const bcf_hdr_t>& hdr,
                                  const range& pos, bcf_predicate predicate,
                                  std::vector<std::shared_ptr<bcf1_t> >& records) = 0;
 

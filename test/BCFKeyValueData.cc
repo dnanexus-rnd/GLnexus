@@ -559,7 +559,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         s = data->dataset_header("NA12878D", hdr);
         REQUIRE(s.ok());
         vector<shared_ptr<bcf1_t>> records;
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), nullptr, records);
+        s = data->dataset_range("NA12878D", hdr, range(0, 0, 1000000000), nullptr, records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 5);
@@ -587,7 +587,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(bcf_get_info(hdr.get(), records[4].get(), "END")->v1.i == 10009471); // nb END stays 1-based!
 
         // subset of records
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 10009463, 10009466), nullptr, records);
+        s = data->dataset_range("NA12878D", hdr, range(0, 10009463, 10009466), nullptr, records);
         REQUIRE(s.ok());
 
         REQUIRE(records.size() == 2);
@@ -608,7 +608,7 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
             retval = (bcf->n_allele >= 3);
             return Status::OK();
         };
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000000000), predicate, records);
+        s = data->dataset_range("NA12878D", hdr, range(0, 0, 1000000000), predicate, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
 
@@ -619,15 +619,15 @@ TEST_CASE("BCFKeyValueData BCF retrieval") {
         REQUIRE(string(records[0]->d.allele[2]) == "<NON_REF>");
 
         // empty results
-        s = data->dataset_range("NA12878D", hdr.get(), range(0, 0, 1000), nullptr, records);
+        s = data->dataset_range("NA12878D", hdr, range(0, 0, 1000), nullptr, records);
         REQUIRE((records.size() == 0));
 
-        s = data->dataset_range("NA12878D", hdr.get(), range(1, 10009463, 10009466), nullptr, records);
+        s = data->dataset_range("NA12878D", hdr, range(1, 10009463, 10009466), nullptr, records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE((records.size() == 0));
 
         // bogus dataset
-        s = data->dataset_range("bogus", hdr.get(), range(1, 10009463, 10009466), nullptr, records);
+        s = data->dataset_range("bogus", hdr, range(1, 10009463, 10009466), nullptr, records);
         //REQUIRE(s == StatusCode::NOT_FOUND);
         REQUIRE((records.size() == 0));
     }
@@ -668,7 +668,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
            |<-A1->)       |<-A2->)
            Expected result: empty set
         */
-        s = data->dataset_range("synth_A", hdr.get(), range(0, 1005, 1010), nullptr, records);
+        s = data->dataset_range("synth_A", hdr, range(0, 1005, 1010), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 0);
 
@@ -678,7 +678,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
            |<-A2->)  |<-A4->)
            Expected result: {A1, A2, A3}
         */
-        s = data->dataset_range("synth_A", hdr.get(), range(0, 2003, 2006), nullptr, records);
+        s = data->dataset_range("synth_A", hdr, range(0, 2003, 2006), nullptr, records);
         REQUIRE(s.ok());
 //        for (auto r : records) {
 //            cout << "r= " << r->rid << "," << r->pos << "," << r->rlen << "," << r->shared.s  << endl;
@@ -693,7 +693,7 @@ TEST_CASE("BCFKeyValueData range overlap with a single dataset") {
           |<-A3->)
           Expected result: {A1, A2, A3}
         */
-        s = data->dataset_range("synth_A", hdr.get(), range(0, 3004, 3006), nullptr, records);
+        s = data->dataset_range("synth_A", hdr, range(0, 3004, 3006), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 3);
 
@@ -737,7 +737,7 @@ TEST_CASE("BCFKeyValueData long_confidence_intervals") {
 
         // only reference confidence records are supposed to show up in these queries
         vector<shared_ptr<bcf1_t>> records;
-        s = data->dataset_range("long_ref", hdr.get(), range(0, 1020, 1030), nullptr, records);
+        s = data->dataset_range("long_ref", hdr, range(0, 1020, 1030), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
         REQUIRE(records[0]->pos == 1016);
@@ -745,23 +745,23 @@ TEST_CASE("BCFKeyValueData long_confidence_intervals") {
         REQUIRE(string(records[0]->d.allele[0]) == "A");
         REQUIRE(string(records[0]->d.allele[1]) == "<NON_REF>");
 
-        s = data->dataset_range("long_ref", hdr.get(), range(0, 2100, 2900), nullptr, records);
+        s = data->dataset_range("long_ref", hdr, range(0, 2100, 2900), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
         REQUIRE(records[0]->pos == 2009);
         REQUIRE(string(records[0]->d.allele[0]) == "C");
 
         // Several records are supposed to appear
-        s = data->dataset_range("long_ref", hdr.get(), range(0, 2800, 3010), nullptr, records);
+        s = data->dataset_range("long_ref", hdr, range(0, 2800, 3010), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 5);
 
-        s = data->dataset_range("long_ref", hdr.get(), range(0, 1004, 3000), nullptr, records);
+        s = data->dataset_range("long_ref", hdr, range(0, 1004, 3000), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 8);
 
         // long record is last
-        s = data->dataset_range("long_ref", hdr.get(), range(0, 3000, 4000), nullptr, records);
+        s = data->dataset_range("long_ref", hdr, range(0, 3000, 4000), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 5);
     }
@@ -807,27 +807,27 @@ TEST_CASE("BCFKeyValueData long_confidence_intervals 2") {
         REQUIRE(s.ok());
 
         vector<shared_ptr<bcf1_t>> records;
-        s = data->dataset_range("B", hdr.get(), range(0, 1000, 1108), nullptr, records);
+        s = data->dataset_range("B", hdr, range(0, 1000, 1108), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
 
-        s = data->dataset_range("B", hdr.get(), range(0, 3000, 4000), nullptr, records);
+        s = data->dataset_range("B", hdr, range(0, 3000, 4000), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 5);
 
-        s = data->dataset_range("B", hdr.get(), range(0, 5000, 5010), nullptr, records);
+        s = data->dataset_range("B", hdr, range(0, 5000, 5010), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 2);
         REQUIRE(records[0]->pos == 3198);
         REQUIRE(string(records[0]->d.allele[0]) == "C");
 
-        s = data->dataset_range("B", hdr.get(), range(0, 6000, 6005), nullptr, records);
+        s = data->dataset_range("B", hdr, range(0, 6000, 6005), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 1);
         REQUIRE(records[0]->pos == 4002);
         REQUIRE(string(records[0]->d.allele[0]) == "C");
 
-        s = data->dataset_range("B", hdr.get(), range(0, 8000, 10000), nullptr, records);
+        s = data->dataset_range("B", hdr, range(0, 8000, 10000), nullptr, records);
         REQUIRE(s.ok());
         REQUIRE(records.size() == 0);
     }
@@ -910,7 +910,7 @@ TEST_CASE("BCFData::sampleset_range") {
     vector<shared_ptr<bcf1_t>> records, all_records;
     s = iterators[0]->next(dataset, hdr, records);
     REQUIRE(s.ok());
-    #define check() s = data->dataset_range(dataset, hdr.get(), range(0,0,1000000), nullptr, all_records); \
+    #define check() s = data->dataset_range(dataset, hdr, range(0,0,1000000), nullptr, all_records); \
                     REQUIRE(s.ok()); \
                     REQUIRE(records.size() <= count_if(all_records.begin(), all_records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());})); \
                     REQUIRE(all_of(records.begin(), records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());}))
@@ -1115,7 +1115,7 @@ TEST_CASE("BCFKeyValueData::sampleset_range") {
     shared_ptr<const bcf_hdr_t> hdr;
     vector<shared_ptr<bcf1_t>> records, all_records;
 
-     #define check() s = data->dataset_range(dataset, hdr.get(), range(0,0,10000000), nullptr, all_records); \
+     #define check() s = data->dataset_range(dataset, hdr, range(0,0,10000000), nullptr, all_records); \
                     REQUIRE(s.ok()); \
                     REQUIRE(records.size() <= count_if(all_records.begin(), all_records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());})); \
                     REQUIRE(all_of(records.begin(), records.end(), [&](shared_ptr<bcf1_t>& r){return rng.overlaps(r.get());}))

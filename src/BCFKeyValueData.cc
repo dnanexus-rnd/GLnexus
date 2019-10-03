@@ -522,7 +522,7 @@ static Status ScanBCFBucket(const range& bucket, const string& dataset,
 // found. If an invalid rid is requested, the return value will be an
 // empty list.
 Status BCFKeyValueData::dataset_range(const string& dataset,
-                                      const bcf_hdr_t* hdr,
+                                      const std::shared_ptr<bcf_hdr_t>& hdr,
                                       const range& query,
                                       bcf_predicate predicate,
                                       vector<shared_ptr<bcf1_t> >& records) {

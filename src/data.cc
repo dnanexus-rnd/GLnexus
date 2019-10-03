@@ -117,7 +117,7 @@ Status BCFData::dataset_range_and_header(const string& dataset, const range& pos
                                          vector<shared_ptr<bcf1_t> >& records) {
     Status s;
     S(dataset_header(dataset, hdr));
-    return dataset_range(dataset, hdr.get(), pos, predicate, records);
+    return dataset_range(dataset, hdr, pos, predicate, records);
 }
 
 // default sampleset_range implementation:

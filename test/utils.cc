@@ -180,7 +180,8 @@ public:
         return Status::OK();
     }
 
-    Status dataset_range(const string& dataset, const bcf_hdr_t *hdr,
+    Status dataset_range(const string& dataset,
+                         const std::shared_ptr<const bcf_hdr_t>& hdr,
                          const range& pos, bcf_predicate predicate,
                          vector<shared_ptr<bcf1_t> >& records) override {
         Status s;
