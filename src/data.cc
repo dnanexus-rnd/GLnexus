@@ -113,11 +113,11 @@ Status MetadataCache::sampleset_datasets(const string& sampleset,
 }
 
 Status BCFData::dataset_range_and_header(const string& dataset, const range& pos, bcf_predicate predicate,
-                                         shared_ptr<const bcf_hdr_t>& hdr,
-                                         vector<shared_ptr<bcf1_t> >& records) {
+                                         shared_ptr<const bcf_hdr_t>* hdr,
+                                         vector<shared_ptr<bcf1_t>>* records) {
     Status s;
     S(dataset_header(dataset, hdr));
-    return dataset_range(dataset, hdr.get(), pos, predicate, records);
+    return dataset_range(dataset, hdr->get(), pos, predicate, records);
 }
 
 // default sampleset_range implementation:
@@ -147,7 +147,7 @@ public:
         dataset = *it_++;
 
         vector<shared_ptr<bcf1_t>> all_records;
-        Status s = data_.dataset_range_and_header(dataset, range_, predicate_, hdr, all_records);
+        Status s = data_.dataset_range_and_header(dataset, range_, predicate_, &hdr, &all_records);
         if (s.bad()) {
              if (s == StatusCode::NOT_FOUND) {
                 // censor this error so caller doesn't think this is the normal

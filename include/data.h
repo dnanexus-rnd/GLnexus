@@ -101,7 +101,7 @@ public:
 
     /// Retrieve the BCF header for a data set.
     virtual Status dataset_header(const std::string& dataset,
-                                  std::shared_ptr<const bcf_hdr_t>& hdr) = 0;
+                                  std::shared_ptr<const bcf_hdr_t>* hdr) = 0;
 
     /// Retrieve all BCF records in the data set overlapping a range.
     ///
@@ -128,14 +128,14 @@ public:
     /// The provided header must match the data set, otherwise the behavior is undefined!
     virtual Status dataset_range(const std::string& dataset, const bcf_hdr_t* hdr,
                                  const range& pos, bcf_predicate predicate,
-                                 std::vector<std::shared_ptr<bcf1_t> >& records) = 0;
+                                 std::vector<std::shared_ptr<bcf1_t>>* records) = 0;
 
     /// Wrapper for dataset_range which first fetches the appropriate header
     /// (useful if the caller doesn't already have the header in hand)
     virtual Status dataset_range_and_header(const std::string& dataset,
                                             const range& pos, bcf_predicate predicate,
-                                            std::shared_ptr<const bcf_hdr_t>& hdr,
-                                            std::vector<std::shared_ptr<bcf1_t> >& records);
+                                            std::shared_ptr<const bcf_hdr_t>* hdr,
+                                            std::vector<std::shared_ptr<bcf1_t>>* records);
 
     /// Get iterators for BCF records overlapping the given range in all
     /// datasets containing at least one sample in the designated sample set.

@@ -25,7 +25,7 @@ public:
         return Status::OK();
     }
 
-    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) override {
+    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>* hdr) override {
         if (i_++ % fail_every_ == 0) {
             failed_once_ = true;
             return Status::IOError("SIM");
@@ -34,7 +34,7 @@ public:
     }
 
     Status dataset_range(const string& dataset, const bcf_hdr_t *hdr, const range& pos,
-                         bcf_predicate predicate, vector<shared_ptr<bcf1_t> >& records) override {
+                         bcf_predicate predicate, vector<shared_ptr<bcf1_t>>* records) override {
         if (i_++ % fail_every_ == 0) {
             failed_once_ = true;
             return Status::IOError("SIM");

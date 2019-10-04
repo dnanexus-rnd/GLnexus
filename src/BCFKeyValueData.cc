@@ -408,11 +408,11 @@ shared_ptr<StatsRangeQuery> BCFKeyValueData::getRangeStats() {
 }
 
 Status BCFKeyValueData::dataset_header(const string& dataset,
-                                       shared_ptr<const bcf_hdr_t>& hdr) {
+                                       shared_ptr<const bcf_hdr_t>* hdr) {
     auto cached = body_->header_cache->end();
     if ((cached = body_->header_cache->find(dataset)) != body_->header_cache->end()) {
         // Return memoized header
-        hdr = cached->second;
+        *hdr = cached->second;
         assert(hdr);
         return Status::OK();
     }
@@ -428,10 +428,10 @@ Status BCFKeyValueData::dataset_header(const string& dataset,
     shared_ptr<bcf_hdr_t> ans;
     int consumed;
     S(bcf_raw_read_header((const uint8_t*) data.c_str(), data.size(), consumed, ans));
-    hdr = ans;
+    *hdr = ans;
 
     // Memoize it
-    body_->header_cache->insert(make_pair(dataset, hdr));;
+    body_->header_cache->insert(make_pair(dataset, *hdr));;
     return Status::OK();
 }
 
@@ -525,9 +525,9 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
                                       const bcf_hdr_t* hdr,
                                       const range& query,
                                       bcf_predicate predicate,
-                                      vector<shared_ptr<bcf1_t> >& records) {
+                                      vector<shared_ptr<bcf1_t>>* records) {
     Status s;
-    records.clear();
+    records->clear();
 
     // basic sanity checks
     if (query.rid < 0 || query.beg < 0 || query.end < 0)
@@ -549,13 +549,13 @@ Status BCFKeyValueData::dataset_range(const string& dataset,
         s = body_->db->get0(coll, key, data);
         if (s.ok()) {
             S(ScanBCFBucket(r, dataset, *data, hdr, query, predicate,
-                            first, accu, records));
+                            first, accu, *records));
         } else if (s != StatusCode::NOT_FOUND) {
             return s;
         }
         first = false;
     }
-    accu.nBCFRecordsInRange += records.size();
+    accu.nBCFRecordsInRange += records->size();
 
     // update database statistics
     {
@@ -599,7 +599,7 @@ class BCFBucketIterator : public RangeBCFIterator {
 
         // get the data set header
         Status s;
-        S(data_.dataset_header(dataset, hdr));
+        S(data_.dataset_header(dataset, &hdr));
 
         if (first_) {
             // first call to next(): begin the iteration at the first dataset
