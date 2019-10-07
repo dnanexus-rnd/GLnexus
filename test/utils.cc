@@ -171,24 +171,24 @@ public:
         return Status::OK();
     }
 
-    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>& hdr) override {
+    Status dataset_header(const string& dataset, shared_ptr<const bcf_hdr_t>* hdr) override {
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
             return Status::NotFound("unknown data set", dataset);
         }
-        hdr = p->second.header;
+        *hdr = p->second.header;
         return Status::OK();
     }
 
     Status dataset_range(const string& dataset, const bcf_hdr_t *hdr,
                          const range& pos, bcf_predicate predicate,
-                         vector<shared_ptr<bcf1_t> >& records) override {
+                         vector<shared_ptr<bcf1_t>>* records) override {
         Status s;
         auto p = datasets_.find(dataset);
         if (p == datasets_.end()) {
             return Status::NotFound("unknown data set", dataset);
         }
-        records.clear();
+        records->clear();
         for (const auto& bcf : p->second.records) {
             if (!range(bcf).overlaps(pos))
                 continue;
@@ -200,7 +200,7 @@ public:
                 S(predicate(hdr, bcf.get(), rec_ok));
             }
             if (rec_ok)
-                records.push_back(bcf);
+                records->push_back(bcf);
         }
         return Status::OK();
     }
