@@ -31,24 +31,28 @@ input:
         A	1000	.	C	CG,<NON_REF>	1.38	.	DP=0	GT:GQ:PL:SB	1/1:3:35,3,0,35,3,35:0,0,0,0
         A	1001	.	G	<NON_REF>	.	.	END=2000	GT:DP:GQ:MIN_DP:PL	0/0:2:0:1:0,0,0
 
+config_preset: gatk_unfiltered
+
 genotyper_config:
+  required_dp: 0
+  revise_genotypes: false
   liftover_fields:
-    - orig_names: [MIN_DP, DP]
-      name: DP
-      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
-      type: int
-      combi_method: min
-      number: basic
-      count: 1
-      ignore_non_variants: true
-    - orig_names: [AD]
-      name: AD
-      description: '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
-      type: int
-      number: alleles
-      combi_method: min
-      default_type: zero
-      count: 0
+      - orig_names: [MIN_DP, DP]
+        name: DP
+        description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+        type: int
+        combi_method: min
+        number: basic
+        count: 1
+        ignore_non_variants: true
+      - orig_names: [AD]
+        name: AD
+        description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+        type: int
+        number: alleles
+        combi_method: min
+        default_type: zero
+        count: 0
 
 truth_unified_sites:
 - range: {ref: A, beg: 1000, end: 1000}
@@ -69,4 +73,4 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=A,length=1000000>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B
-      A	1000	.	C	CG	35	.	.	GT:DP:AD:RNC	./.:.:.:MM	1/1:.:0,0:..
+      A	1000	A_1000_C_CG	C	CG	35	.	AF=0.5;AQ=35	GT:DP:AD:RNC	./.:.:0,0:II	1/1:.:0,0:..

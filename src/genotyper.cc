@@ -306,7 +306,7 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
                            ref_records, depth, min_ref_depth));
 
     // ex post facto check for reference confidence records whose GT is other
-    // than 0/0 (probably ./.), which we'll translate to PartialData non-calls
+    // than 0/0 (probably ./.), which we'll translate to InputNonCalled
     // We exclude 'haploid' records from this treatment for now as observed
     // examples (e.g. in Strelka2 gVCFs) don't seem to require it, but this
     // may need to be configurable in the future.
@@ -314,7 +314,7 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
         if (rp->is_ref && !rp->was_haploid) {
             for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
                 if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
-                    rnc = NoCallReason::PartialData;
+                    rnc = NoCallReason::InputNonCalled;
                     return Status::OK();
                 }
             }
@@ -499,6 +499,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // TODO: are depth and allele_mapping checks inside-out????
         #define fill_allele(rec,depth,in_ofs,out_ofs)                             \
             assert(rec);                                                          \
+            genotypes[2*ij.second+(out_ofs)].RNC = NoCallReason::InputNonCalled;  \
             if (rec->gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&             \
                 !bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {               \
                 auto al = bcf_gt_allele(rec->gt[2*ij.first+(in_ofs)]);            \
@@ -620,6 +621,7 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
         assert(ij.second < min_ref_depth.size());
 
         #define fill_monoallelic(ofs)                                             \
+            genotypes[2*ij.second+(ofs)].RNC = NoCallReason::InputNonCalled;      \
             if (record->gt[2*ij.first+ofs] != bcf_int32_vector_end &&             \
                 !bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {               \
                 auto al = bcf_gt_allele(record->gt[2*ij.first+(ofs)]);            \
@@ -926,6 +928,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             RNC_CASE(UnphasedVariants,"U")
             RNC_CASE(OverlappingVariants,"O")
             RNC_CASE(MonoallelicSite,"1")
+            RNC_CASE(InputNonCalled, "I")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }
