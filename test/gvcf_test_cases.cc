@@ -229,13 +229,13 @@ public:
 
         const auto n_config_preset = yaml["config_preset"];
         if (n_config_preset) {
-            string crc32c;
+            string txt, crc32c;
             V(n_config_preset.IsScalar(), "config_preset invalid");
             S(GLnexus::cli::utils::load_config(spdlog::null_logger_st(name),
                                                n_config_preset.Scalar(),
                                                unifier_cfg,
                                                genotyper_cfg,
-                                               crc32c));
+                                               txt, crc32c));
         }
 
         const auto n_unifier_config = yaml["unifier_config"];
@@ -755,7 +755,7 @@ TEST_CASE("join records with unifier preference for small alleles") {
 }
 
 TEST_CASE("DP0_noAD") {
-    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ"};
+    vector<string> v_formats = {"GT", "RNC", "DP", "SB", "AD", "GQ", "RNC"};
     vector<string> v_infos = {};
     GVCFTestCase DP0_case("DP0_noAD", v_formats, v_infos);
     DP0_case.perform_gvcf_test();
@@ -798,14 +798,14 @@ TEST_CASE("xAtlas") {
 }
 
 TEST_CASE("weCall") {
-    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT", "SBPV"};
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT", "SBPV", "RNC"};
     vector<string> v_infos = {"ANR","AF","AQ"};
     GVCFTestCase("weCall", v_formats, v_infos, false).perform_gvcf_test();
 }
 
 
 TEST_CASE("weCall_squeeze") {
-    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT", "SBPV"};
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "FT", "SBPV", "RNC"};
     vector<string> v_infos = {"ANR","AF","AQ"};
     GVCFTestCase("weCall_squeeze", v_formats, v_infos, false).perform_gvcf_test();
 }
@@ -836,15 +836,21 @@ TEST_CASE("edge_spanning_deletion3") {
 }
 
 TEST_CASE("DeepVariant") {
-    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD"};
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "RNC"};
     vector<string> v_infos = {"ANR","AF","AQ"};
     GVCFTestCase("deepvariant", v_formats, v_infos, false).perform_gvcf_test();
 }
 
 TEST_CASE("DeepVariant2") {
-    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD"};
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "RNC"};
     vector<string> v_infos = {"ANR","AF","AQ"};
     GVCFTestCase("deepvariant2", v_formats, v_infos, false).perform_gvcf_test();
+}
+
+TEST_CASE("dv_1000G_chr21_5583275") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "RNC"};
+    vector<string> v_infos = {"ANR","AF","AQ"};
+    GVCFTestCase("dv_1000G_chr21_5583275", v_formats, v_infos, true).perform_gvcf_test();
 }
 
 TEST_CASE("strelka2") {
