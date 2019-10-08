@@ -4,6 +4,9 @@
 #include "types.h"
 #include "utils.cc"
 #include "catch.hpp"
+#include "cli_utils.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/null_sink.h"
 #include "sys/stat.h"
 #include "yaml-cpp/yaml.h"
 using namespace std;
@@ -223,6 +226,17 @@ public:
         string path = string(GVCFTestCaseRootDir()) + "/test/data/gvcf_test_cases/" + name + ".yml";
         YAML::Node yaml = YAML::LoadFile(path);
         V(yaml.IsMap(), "not a map at top level");
+
+        const auto n_config_preset = yaml["config_preset"];
+        if (n_config_preset) {
+            string crc32c;
+            V(n_config_preset.IsScalar(), "config_preset invalid");
+            S(GLnexus::cli::utils::load_config(spdlog::null_logger_st(name),
+                                               n_config_preset.Scalar(),
+                                               unifier_cfg,
+                                               genotyper_cfg,
+                                               crc32c));
+        }
 
         const auto n_unifier_config = yaml["unifier_config"];
         if (n_unifier_config) {
