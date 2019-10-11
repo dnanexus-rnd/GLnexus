@@ -470,7 +470,7 @@ gatk:
         min_AQ2: 40
         min_GQ: 40
         monoallelic_sites_for_lost_alleles: true
-        max_alleles_per_site: 70
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 1
         revise_genotypes: true
@@ -706,7 +706,7 @@ weCall:
         min_AQ2: 30
         min_GQ: 30
         monoallelic_sites_for_lost_alleles: true
-        max_alleles_per_site: 70
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 1
         revise_genotypes: true
