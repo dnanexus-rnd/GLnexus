@@ -470,7 +470,7 @@ gatk:
         min_AQ2: 40
         min_GQ: 40
         monoallelic_sites_for_lost_alleles: true
-        max_alleles_per_site: 70
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 1
         revise_genotypes: true
@@ -706,7 +706,7 @@ weCall:
         min_AQ2: 30
         min_GQ: 30
         monoallelic_sites_for_lost_alleles: true
-        max_alleles_per_site: 70
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 1
         revise_genotypes: true
@@ -853,6 +853,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    const YAML::Node& config,
                    unifier_config& unifier_cfg,
                    genotyper_config& genotyper_cfg,
+                   std::string& config_txt,
                    std::string& config_crc32c,
                    bool squeeze) {
     Status s;
@@ -863,17 +864,29 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
         S(genotyper_config::of_yaml(config["genotyper_config"], genotyper_cfg));
     }
     genotyper_cfg.squeeze = squeeze;
-    YAML::Emitter em;
-    em << YAML::BeginMap
-       << YAML::Key << "unifier_config" << YAML::Value;
-    S(unifier_cfg.yaml(em));
-    em << YAML::Key << "genotyper_config" << YAML::Value;
-    S(genotyper_cfg.yaml(em));
-    em << YAML::EndMap;
-    std::string config_text = em.c_str();
-    logger->info("config:\n{}", config_text);
 
-    config_crc32c = std::to_string(rocksdb::crc32c::Value(config_text.c_str(), config_text.size()));
+    #define WRITE_CONFIG(em)                                   \
+        em << YAML::BeginMap                                   \
+           << YAML::Key << "unifier_config" << YAML::Value;    \
+        S(unifier_cfg.yaml(em));                               \
+        em << YAML::Key << "genotyper_config" << YAML::Value;  \
+        S(genotyper_cfg.yaml(em));                             \
+        em << YAML::EndMap;
+
+    // log a pretty-printed configuration
+    YAML::Emitter pretty;
+    pretty << YAML::Block;
+    WRITE_CONFIG(pretty);
+    logger->info("config:\n{}", pretty.c_str());
+
+    // write one-liner configuration for checksumming & VCF header
+    YAML::Emitter one_line;
+    one_line.SetMapFormat(YAML::Flow);
+    one_line.SetSeqFormat(YAML::Flow);
+    WRITE_CONFIG(one_line);
+    config_txt = one_line.c_str();
+    assert(config_txt.find('\n') == string::npos);
+    config_crc32c = std::to_string(rocksdb::crc32c::Value(config_txt.c_str(), config_txt.size()));
     logger->info("config CRC32C = {}", config_crc32c);
     return Status::OK();
 }
@@ -882,6 +895,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    const std::string& name,
                    unifier_config& unifier_cfg,
                    genotyper_config& genotyper_cfg,
+                   std::string& config_txt,
                    std::string& config_crc32c,
                    bool squeeze) {
     Status s;
@@ -892,7 +906,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
             if (!config || !config.IsMap()) {
                 return Status::IOError("loading configuration YAML file", name);
             }
-            return load_config(logger, config, unifier_cfg, genotyper_cfg, config_crc32c, squeeze);
+            return load_config(logger, config, unifier_cfg, genotyper_cfg, config_txt, config_crc32c, squeeze);
         } catch (YAML::Exception& exn) {
             return Status::IOError("loading configuration YAML file", name);
         }
@@ -902,7 +916,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
         if (!presets || !presets.IsMap() || !presets[name] || !presets[name].IsMap()) {
             return Status::NotFound("unknown configuration preset", name);
         }
-        return load_config(logger, presets[name], unifier_cfg, genotyper_cfg, config_crc32c, squeeze);
+        return load_config(logger, presets[name], unifier_cfg, genotyper_cfg, config_txt, config_crc32c, squeeze);
     }
 }
 
@@ -914,9 +928,9 @@ std::string describe_config_presets() {
     for (YAML::const_iterator it = presets.begin(); it != presets.end(); ++it) {
         unifier_config uc;
         genotyper_config gc;
-        std::string config_crc32c;
+        std::string config_txt, config_crc32c;
         auto logger = spdlog::create<spdlog::sinks::null_sink_st>("null");
-        Status s = load_config(logger, it->second, uc, gc, config_crc32c, false);
+        Status s = load_config(logger, it->second, uc, gc, config_txt, config_crc32c, false);
         spdlog::drop("null");
         if (s.ok()) {
             os << setw(16) << it->first.as<string>();
