@@ -9,7 +9,7 @@ addons:
 script:
   # Build and run unit tests
   - |
-      set -euxo pipefail
+      set -exo pipefail
       # use the Dockerfile to build the glnexus_tests container
       effective_build_type=$TRAVIS_BUILD_TYPE
       if [ "$effective_build_type" == "Valgrind" ]; then
@@ -53,7 +53,6 @@ script:
         set -x
         popd
       fi
-      exit 0
 
 env:
   global:
