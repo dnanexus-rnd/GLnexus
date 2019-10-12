@@ -638,6 +638,28 @@ TEST_CASE("unifier_config") {
             REQUIRE(s.bad());
         }
     }
+
+    SECTION("one-liner") {
+        Status s;
+
+        for (const char* buf : good_examples) {
+            YAML::Node node = YAML::Load(buf);
+            unifier_config uc;
+            s = unifier_config::of_yaml(node, uc);
+            REQUIRE(s.ok());
+
+            YAML::Emitter ans;
+            ans.SetSeqFormat(YAML::Flow);
+            ans.SetMapFormat(YAML::Flow);
+            s = uc.yaml(ans);
+            REQUIRE(s.ok());
+            REQUIRE(string(ans.c_str()).find("\n") == string::npos);
+            node = YAML::Load(ans.c_str());
+            unifier_config uc2;
+            s = unifier_config::of_yaml(node, uc2);
+            REQUIRE(uc == uc2);
+        }
+    }
 }
 
 TEST_CASE("retained_format_field") {
@@ -800,7 +822,7 @@ liftover_fields:
             s = gc.yaml(ans);
             REQUIRE(ans.good());
             REQUIRE(s.ok());
-            char const *res1 = ans.c_str();
+            string res1 = ans.c_str();
 
             node = YAML::Load(res1);
             s = genotyper_config::of_yaml(node, gc2);
@@ -814,8 +836,41 @@ liftover_fields:
             s = gc2.yaml(ans2);
             REQUIRE(ans2.good());
             REQUIRE(s.ok());
-            const char *res2 = ans2.c_str();
-            REQUIRE(*res1 == *res2);
+            string res2 = ans2.c_str();
+            REQUIRE(res1 == res2);
+        }
+    }
+
+    SECTION("one-liners") {
+        for (const char* buf : good_examples) {
+            Status s;
+            genotyper_config gc, gc2;
+
+            YAML::Node node = YAML::Load(buf);
+            s = genotyper_config::of_yaml(node, gc);
+            REQUIRE(s.ok());
+
+            YAML::Emitter ans;
+            ans.SetMapFormat(YAML::Flow);
+            ans.SetSeqFormat(YAML::Flow);
+            s = gc.yaml(ans);
+            REQUIRE(ans.good());
+            REQUIRE(s.ok());
+            string res1 = ans.c_str();
+            REQUIRE(res1.find('\n') == string::npos);
+
+            node = YAML::Load(res1);
+            s = genotyper_config::of_yaml(node, gc2);
+            REQUIRE(s.ok());
+
+            YAML::Emitter ans2;
+            ans2.SetMapFormat(YAML::Flow);
+            ans2.SetSeqFormat(YAML::Flow);
+            s = gc2.yaml(ans2);
+            REQUIRE(ans2.good());
+            REQUIRE(s.ok());
+            string res2 = ans2.c_str();
+            REQUIRE(res1 == res2);
         }
     }
 

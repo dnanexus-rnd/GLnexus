@@ -191,6 +191,10 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
                                  const vector<string>& extra_header_lines,
                                  shared_ptr<bcf_hdr_t>& ans) {
     vector<string> hdr_lines;
+    hdr_lines.push_back("##GLnexusVersion=" + string(GIT_REVISION));
+    for (const auto& line : extra_header_lines) {
+        hdr_lines.push_back(line);
+    }
     hdr_lines.push_back("##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency estimate for each alternate allele\">");
     hdr_lines.push_back("##INFO=<ID=AQ,Number=A,Type=Integer,Description=\"Allele Quality score reflecting evidence for each alternate allele (Phred scale)\">");
     hdr_lines.push_back("##FILTER=<ID=MONOALLELIC,Description=\"Site represents one ALT allele in a region with multiple variants that could not be unified into non-overlapping multi-allelic sites\">");
@@ -203,10 +207,6 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
         ostringstream stm;
         stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
         hdr_lines.push_back(stm.str());
-    }
-    hdr_lines.push_back("##GLnexusVersion=" + string(GIT_REVISION));
-    for (const auto& line : extra_header_lines) {
-        hdr_lines.push_back(line);
     }
 
     shared_ptr<bcf_hdr_t> hdr(bcf_hdr_init("w1"), &bcf_hdr_destroy);

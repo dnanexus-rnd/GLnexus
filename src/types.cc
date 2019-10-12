@@ -814,7 +814,6 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
 
 Status genotyper_config::yaml(YAML::Emitter& ans) const {
     Status s;
-    ans << YAML::Block;
     ans << YAML::BeginMap;
 
     ans << YAML::Key << "revise_genotypes" << YAML::Value << revise_genotypes;

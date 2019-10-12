@@ -48,7 +48,7 @@ static int all_steps(const vector<string> &vcf_files,
     GLnexus::Status s;
     GLnexus::unifier_config unifier_cfg;
     GLnexus::genotyper_config genotyper_cfg;
-    string cfg_crc32c;
+    string cfg_txt, cfg_crc32c;
 
     if (vcf_files.empty()) {
         console->error("No source GVCF files specified");
@@ -56,7 +56,7 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     H("load unifier/genotyper configuration",
-        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_crc32c, more_PL, squeeze));
+        GLnexus::cli::utils::load_config(console, config_name, unifier_cfg, genotyper_cfg, cfg_txt, cfg_crc32c, more_PL, squeeze));
 
     // initilize empty database
     string dbpath("GLnexus.DB");
@@ -139,7 +139,11 @@ static int all_steps(const vector<string> &vcf_files,
 
     // genotype
     genotyper_cfg.output_residuals = debug;
-    vector<string> hdr_lines = { ("##GLnexusConfig="+config_name), ("##GLnexusConfigCRC32C="+cfg_crc32c) };
+    vector<string> hdr_lines = {
+        ("##GLnexusConfigName="+config_name),
+        ("##GLnexusConfigCRC32C="+cfg_crc32c),
+        ("##GLnexusConfig="+cfg_txt)
+    };
     auto DX_JOB_ID = std::getenv("DX_JOB_ID");
     if (DX_JOB_ID) {
         // if running in DNAnexus, record job ID in header

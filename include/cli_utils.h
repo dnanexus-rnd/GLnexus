@@ -90,6 +90,7 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    const std::string& name,
                    unifier_config& unifier_cfg,
                    genotyper_config& genotyper_cfg,
+                   std::string& config_txt,
                    std::string& config_crc32c,
                    bool more_PL = false,
                    bool squeeze = false);
