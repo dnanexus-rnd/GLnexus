@@ -40,7 +40,8 @@ public:
 
     virtual Status censor(int sample, bool half_call) {
         if (sample < 0 || sample >= n_samples) return Status::Invalid("genotyper::FormatFieldHelper::censor");
-        censored_samples.insert(make_pair(sample, half_call));
+        assert(half_call || censored_samples.find(sample) == censored_samples.end() || !censored_samples[sample]);
+        censored_samples[sample] = half_call;
         return Status::OK();
     }
 
@@ -58,7 +59,7 @@ protected:
     // as missing) under certain circumstances where they might otherwise
     // be unreliable/misleading. In some cases we have a flag to censor
     // only fields discussing the reference allele (for "half-calls")
-    set<pair<int,bool>> censored_samples;
+    map<int,bool> censored_samples;
 
     /// For a given record, give the number of expected values
     /// per sample, based on the format type
@@ -457,12 +458,17 @@ protected:
     }
 };
 
-// Special-case logic for the genotype likelihoods (PL) field:
+// Special-case logic for the genotype likelihoods (PL) field, which involves
+// permuting the Number=G vector from to the genotype order implied by the
+// input record's alleles to the output record's.
 // It censors the output in the event the max-likelihood PL (0) cannot be
 // lifted over, as other values would be subject to misinterpretation, being
 // relative to that max-likelihood one.
 // Also censors any time there are multiple variant records, since we can't
 // combine PLs soundly.
+// PLs generally aren't lifted over from reference bands since the gVCF
+// symbolic allele isn't equated with specific alternate alleles of the output
+// pVCF site. See PLFieldHelper2.
 class PLFieldHelper : public NumericFormatFieldHelper<int32_t> {
 public:
     PLFieldHelper(const retained_format_field& field_info_, int n_samples_, int count_)
@@ -506,6 +512,164 @@ protected:
             }
         }
 
+        return Status::OK();
+    }
+};
+
+// PLFieldHelper2 tries harder to lift over PL from reference bands and some
+// additional corner cases; this is opt-in because it's slower and inflates the
+// output size, typically for little useful information gained. It can be
+// useful for compatibility with downstream tools which require 100.0% of PL
+// values populated (e.g. Beagle gl=).
+// For output genotypes with alleles not present in a sample's gVCF record,
+// fills PL from the values involving the gVCF symbolic allele, as long as all
+// the record's alternate alleles map into the output record (otherwise we'd
+// tend to exaggerate reference confidence). That's vacuously true for
+// reference bands.
+// Censors when presented with multiple variant records, since the PLs can't be
+// combined soundly. Presented just with multiple reference bands, uses the one
+// with the least reference confidence (smallest value of gVCF PL[1]).
+// Censors the output in the event the max-likelihood PL (0) does not lift
+// over, as the other values are relative to that one. Also if we lift over
+// the zero but no other values, which is uninformative anyway.
+// Censored PL vectors are filled with zeroes instead of the brief . missing
+// vector. Individual PL values for which we have no information are set to 990
+// instead of the . missing value.
+class PLFieldHelper2 : public FormatFieldHelper {
+protected:
+    vector<int32_t> outPL;
+    htsvecbox<int32_t> buf;
+    vector<int> rev_allele_mapping;
+
+public:
+    PLFieldHelper2(const retained_format_field& field_info_, int n_samples_, int count_)
+        : FormatFieldHelper(field_info_, n_samples_, count_) {
+        assert(field_info.name == "PL");
+        assert(field_info.ignore_non_variants);
+        assert(field_info.from == RetainedFieldFrom::FORMAT);
+        assert(field_info.orig_names == vector<string>{"PL"});
+        assert(count >= 3);
+        outPL.assign(n_samples*count, bcf_int32_missing);
+    }
+
+    Status add_record_data(const string& dataset, const bcf_hdr_t* dataset_header, bcf1_t* record,
+                           const map<int, int>& sample_mapping, const vector<int>& allele_mapping,
+                           const int n_allele_out, const vector<string>& field_names, int n_val_per_sample) override {
+        int rv = bcf_get_format_int32(dataset_header, record, "PL", &buf.v, &buf.capacity);
+        if (rv > 0) {
+            n_val_per_sample = diploid::genotypes(std::max(2U, record->n_allele));
+            if (rv != record->n_sample * n_val_per_sample) {
+                ostringstream errmsg;
+                errmsg << dataset << " " << range(record).str() << " PL vector length " << rv << ", expected " << record->n_sample * n_val_per_sample;
+                return Status::Invalid("genotyper: unexpected result when fetching record FORMAT field", errmsg.str());
+            }
+
+            // invert allele_mapping, including mapping unknown output alleles onto the gVCF
+            // symbolic allele if our conditions for doing so are met
+            bool has_symbolic_allele = is_symbolic_allele(record->d.allele[record->n_allele-1]);
+            bool all_alleles_mapped = true;
+            rev_allele_mapping.assign(n_allele_out, -1);
+            for (int i = 0; i < allele_mapping.size(); ++i) {
+                if (allele_mapping[i] >= 0) {
+                    assert(allele_mapping[i] < n_allele_out);
+                    rev_allele_mapping[allele_mapping[i]] = i;
+                } else if (i < allele_mapping.size()-1 || !has_symbolic_allele) {
+                    all_alleles_mapped = false;
+                }
+            }
+            assert(rev_allele_mapping[0] == 0);
+            if (has_symbolic_allele && all_alleles_mapped) {
+                for (int i = 0; i < n_allele_out; ++i) {
+                    if (rev_allele_mapping[i] == -1) {
+                        rev_allele_mapping[i] = record->n_allele-1;
+                    }
+                }
+            }
+
+            for (int i = 0; i<record->n_sample; ++i) {
+                int out_sample = sample_mapping.at(i);
+                if (out_sample >= 0) {
+                    int v0 = outPL[out_sample*count];
+                    if (v0 == 0) {
+                        // we were previously presented with a record with 0/0 as the max-
+                        // likelihood genotype for this sample; proceed if 0/0 is also max-
+                        // likelihood in the current record, but with smaller margin
+                        if (buf[i*n_val_per_sample] == 0) {
+                            int margin = bcf_int32_missing;
+                            for (int j = i*n_val_per_sample+1; j < (i+1)*n_val_per_sample; ++j) {
+                                if (buf[j] != bcf_int32_missing) {
+                                    margin = (margin != bcf_int32_missing) ? std::min(margin, buf[j])
+                                                                           : buf[j];
+                                }
+                            }
+                            if (margin != bcf_int32_missing) {
+                                int old_margin = bcf_int32_missing;
+                                for (int j = out_sample*count+1; j < (out_sample+1)*count; j++) {
+                                    if (outPL[j] != bcf_int32_missing) {
+                                        old_margin = (old_margin != bcf_int32_missing) ? std::min(old_margin, outPL[j])
+                                                                                       : outPL[j];
+                                    }
+                                }
+                                if (old_margin != bcf_int32_missing && margin < old_margin) {
+                                    v0 = bcf_int32_missing;
+                                }
+                            }
+                        }
+                    } else if (v0 != bcf_int32_missing) {
+                        // previous record had a max-likelihood non-ref genotype; bail out since we
+                        // cannot combine the PLs soundly
+                        censor(out_sample, false);
+                    }
+                    if (v0 == bcf_int32_missing) {
+                        // proceed to fill in outPL for this sample based on the genotype indices
+                        // mapped using rev_allele_mapping
+                        for (int a = 0; a < n_allele_out; ++a) {
+                            const int a_in = rev_allele_mapping[a];
+                            for (int b = 0; b <= a; ++b) {
+                                const int b_in = rev_allele_mapping[b];
+                                int v = bcf_int32_missing;
+                                if (a_in >= 0 && b_in >= 0) {
+                                    v = buf[i*n_val_per_sample+diploid::alleles_gt(a_in, b_in)];
+                                }
+                                outPL[out_sample*count+diploid::alleles_gt(a,b)] = v;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return Status::OK();
+    }
+
+    Status update_record_format(const bcf_hdr_t* hdr, bcf1_t* record) override {
+        assert(n_samples == record->n_sample);
+        assert(outPL.size() == n_samples*count);
+        for (int i = 0; i < n_samples; ++i) {
+            bool censor = (censored_samples.find(i) != censored_samples.end());
+            if (!censor) {
+                // censor if we don't project the zero PL, or project zero and nothing else
+                bool zero = false, other = false;
+                for (int j = 0; j < count; ++j) {
+                    const int v = outPL[i*count+j];
+                    if (v == 0) {
+                        zero = true;
+                    } else if (v != bcf_int32_missing) {
+                        other = true;
+                    }
+                }
+                censor = !(zero && other);
+            }
+            for (int j = i*count; j < (i+1)*count; ++j) {
+                if (censor) {
+                    outPL[j] = 0;
+                } else if (outPL[j] == bcf_int32_missing) {
+                    outPL[j] = 990;
+                }
+            }
+        }
+        if (bcf_update_format_int32(hdr, record, field_info.name.c_str(), outPL.data(), n_samples * count)) {
+            return Status::Failure("genotyper: failed to update record format when executing update_record_format.", field_info.name);
+        }
         return Status::OK();
     }
 };
@@ -739,7 +903,11 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
             if (format_field_info.type != RetainedFieldType::INT || format_field_info.number != RetainedFieldNumber::GENOTYPE || format_field_info.combi_method != FieldCombinationMethod::MISSING) {
                 return Status::Invalid("genotyper misconfiguration: PL format field should have type=int, number=genotype, combi_method=missing");
             }
-            format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper(format_field_info, samples.size(), count)));
+            if (cfg.more_PL) {
+                format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper2(format_field_info, samples.size(), count)));
+            } else {
+                format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper(format_field_info, samples.size(), count)));
+            }
         } else switch (format_field_info.type) {
             case RetainedFieldType::INT:
             {

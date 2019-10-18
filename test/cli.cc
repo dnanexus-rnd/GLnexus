@@ -66,10 +66,10 @@ TEST_CASE("cli") {
         GLnexus::unifier_config unifier_cfg;
         GLnexus::genotyper_config genotyper_cfg;
         string config_preset = "gatk";
-        string config_crc32c, config_crc32c2;
-        s = cli::utils::load_config(console, config_preset, unifier_cfg, genotyper_cfg, config_crc32c);
+        string config_txt, config_crc32c, config_crc32c2;
+        s = cli::utils::load_config(console, config_preset, unifier_cfg, genotyper_cfg, config_txt, config_crc32c);
         REQUIRE(s.ok());
-        REQUIRE(config_crc32c == "4268227464");
+        REQUIRE(config_crc32c == "1067085245");
 
         YAML::Emitter em;
         em << YAML::BeginMap
@@ -81,7 +81,7 @@ TEST_CASE("cli") {
         ofstream outfile(DB_DIR + "/config.yml");
         outfile << em.c_str();
         outfile.close();
-        s = cli::utils::load_config(console, DB_DIR + "/config.yml", unifier_cfg, genotyper_cfg, config_crc32c2);
+        s = cli::utils::load_config(console, DB_DIR + "/config.yml", unifier_cfg, genotyper_cfg, config_txt, config_crc32c2);
         REQUIRE(s.ok());
         REQUIRE(config_crc32c == config_crc32c2);
 

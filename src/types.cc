@@ -814,7 +814,6 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
 
 Status genotyper_config::yaml(YAML::Emitter& ans) const {
     Status s;
-    ans << YAML::Block;
     ans << YAML::BeginMap;
 
     ans << YAML::Key << "revise_genotypes" << YAML::Value << revise_genotypes;
@@ -824,6 +823,7 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
     ans << YAML::Key << "ref_dp_format" << YAML::Value << ref_dp_format;
     ans << YAML::Key << "output_residuals" << YAML::Value << output_residuals;
+    ans << YAML::Key << "more_PL" << YAML::Value << more_PL;
     ans << YAML::Key << "squeeze" << YAML::Value << squeeze;
 
     ans << YAML::Key << "output_format" << YAML::Value;
@@ -894,6 +894,12 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
     if (n_output_residuals) {
         V(n_output_residuals.IsScalar(), "invalid output_residuals");
         ans.output_residuals = n_output_residuals.as<bool>();
+    }
+
+    const auto n_more_PL = yaml["more_PL"];
+    if (n_more_PL) {
+        V(n_more_PL.IsScalar(), "invalid more_PL");
+        ans.more_PL = n_more_PL.as<bool>();
     }
 
     const auto n_squeeze = yaml["squeeze"];

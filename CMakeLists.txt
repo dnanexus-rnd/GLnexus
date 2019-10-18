@@ -84,7 +84,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/v6.2.2.tar.gz
+    URL https://github.com/facebook/rocksdb/archive/v6.2.4.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
@@ -106,7 +106,7 @@ set_property(TARGET librocksdb PROPERTY IMPORTED_LOCATION ${LIBROCKSDB_A})
 # After build, double-check external/src/yaml-cpp-stamp/yaml-cpp-build-out.log
 # to make sure CFLAGS were set as expected
 ExternalProject_Add(yaml-cpp
-    URL https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.2.zip
+    URL https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.zip
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND cmake -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-march=ivybridge .
     BUILD_IN_SOURCE 1
@@ -150,7 +150,7 @@ set(FCMM_INCLUDE_DIR ${source_dir})
 include_directories(${FCMM_INCLUDE_DIR})
 
 ExternalProject_Add(spdlog
-    URL https://github.com/gabime/spdlog/archive/v1.3.1.tar.gz
+    URL https://github.com/gabime/spdlog/archive/v1.4.1.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
