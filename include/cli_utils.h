@@ -93,7 +93,8 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
                    std::string& config_txt,
                    std::string& config_crc32c,
                    bool more_PL = false,
-                   bool squeeze = false);
+                   bool squeeze = false,
+                   bool trim_uncalled_alleles = false);
 
 std::string describe_config_presets();
 

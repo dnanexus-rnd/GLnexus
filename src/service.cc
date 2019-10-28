@@ -387,12 +387,12 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
 
         if (s.ok() && s_i.ok()) {
             // if everything's OK, proceed to write the record
-            assert(bcf_i);
-            s = bcf_out->write(bcf_i.get());
+            if (bcf_i) {
+                s = bcf_out->write(bcf_i.get());
+            }
             if (s.bad()) {
                 abort = true;
-            }
-            else if (residual_rec != nullptr) {
+            } else if (residual_rec != nullptr) {
                 // We have a residuals record, write it to disk.
                 s = residualsFile->write_record(*residual_rec);
                 if (s.bad()) {

@@ -748,6 +748,12 @@ struct genotyper_config {
     // DP down to a power of two (0, 1, 2, 4, 8, 16, ...).
     bool squeeze = false;
 
+    // It's possible for an allele to be included in the pVCF but not actually
+    // called in any of the samples; this is rare and usually associated with
+    // low-quality genotype calls being revised away. If this setting is true,
+    // then any such alleles are trimmed off as a postprocessing step.
+    bool trim_uncalled_alleles = false;
+
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}

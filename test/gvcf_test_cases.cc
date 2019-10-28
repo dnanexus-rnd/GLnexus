@@ -845,3 +845,9 @@ TEST_CASE("star_allele") {
     GVCFTestCase DP0_case("star_allele", v_formats, v_infos);
     DP0_case.perform_gvcf_test();
 }
+
+TEST_CASE("trim_uncalled_alleles") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD"};
+    vector<string> v_infos = {"ANR","AF","AQ"};
+    GVCFTestCase("trim_uncalled_alleles", v_formats, v_infos, false).perform_gvcf_test();
+}

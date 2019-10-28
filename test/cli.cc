@@ -69,7 +69,7 @@ TEST_CASE("cli") {
         string config_txt, config_crc32c, config_crc32c2;
         s = cli::utils::load_config(console, config_preset, unifier_cfg, genotyper_cfg, config_txt, config_crc32c);
         REQUIRE(s.ok());
-        REQUIRE(config_crc32c == "1067085245");
+        REQUIRE(config_crc32c == "268790301");
 
         YAML::Emitter em;
         em << YAML::BeginMap
