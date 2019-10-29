@@ -13,6 +13,8 @@ namespace GLnexus {
 //
 // residual_rec: in case there are call losses, generate a YAML formatted record giving
 // the context. This is used offline to improve the algorithms.
+//
+// May set ans to nullptr if the site ends up with all ALT alleles trimmed.
 Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData& data,
                      const unified_site& site,
                      const std::string& sampleset, const std::vector<std::string>& samples,

@@ -1,0 +1,137 @@
+readme: |
+  Engineered to trigger --trim-uncalled-alleles code paths
+
+input:
+  header : |-
+    ##fileformat=VCFv4.2
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##FILTER=<ID=RefCall,Description="Genotyping model thinks this site is reference.">
+    ##FILTER=<ID=LowQual,Description="Confidence in this variant being real is below calling threshold.">
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="End position (for use with symbolic alleles)">
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Conditional genotype quality">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">
+    ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block.">
+    ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Read depth for each allele">
+    ##FORMAT=<ID=VAF,Number=A,Type=Float,Description="Variant allele fractions.">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype likelihoods rounded to the closest integer">
+    ##contig=<ID=chr12,length=133275309>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - NA11930.gvcf: |
+        NA11930
+        chr12	111759337	.	T	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:29:0,99,1229
+        chr12	111760001	.	C	<*>	0	.	END=111760356	GT:GQ:MIN_DP:PL	0/0:50:23:0,114,1139
+    - NA11931.gvcf: |
+        NA11931
+        chr12	111759759	.	A	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:28:0,87,869
+        chr12	111760001	.	C	<*>	0	.	END=111761000	GT:GQ:MIN_DP:PL	0/0:50:25:0,99,989
+        chr12	111761001	.	C	<*>	0	.	END=111762000	GT:GQ:MIN_DP:PL	0/0:48:24:0,87,869
+        chr12	111762001	.	T	<*>	0	.	END=111762345	GT:GQ:MIN_DP:PL	0/0:50:21:0,90,1139
+    - NA11932.gvcf: |
+        NA11932
+        chr12	111759001	.	G	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:27:0,144,1439
+        chr12	111760001	.	C	<*>	0	.	END=111760032	GT:GQ:MIN_DP:PL	0/0:48:26:0,84,839
+        chr12	111760033	.	A	G,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:2:0,2,0:1,0:1,10,0,990,990,990
+        chr12	111760034	.	C	<*>	0	.	END=111760072	GT:GQ:MIN_DP:PL	0/0:27:29:0,27,749
+        chr12	111760073	.	A	G,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:2:0,2,0:1,0:1,10,0,990,990,990
+        chr12	111760074	.	G	<*>	0	.	END=111760349	GT:GQ:MIN_DP:PL	0/0:50:21:0,81,809
+    - NA11933.gvcf: |
+        NA11933
+        chr12	111759964	.	A	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:21:0,63,629
+        chr12	111760001	.	C	<*>	0	.	END=111760032	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
+        chr12	111760033	.	A	C,<*>	69.5	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:33:0,33,0:1,0:69,68,0,990,990,990
+        chr12	111760034	.	T	<*>	0	.	END=111760216	GT:GQ:MIN_DP:PL	0/0:50:26:0,99,989
+        chr12	111760217	.	C	G,<*>	66	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:60:30:0,30,0:1,0:65,61,0,990,990,990
+        chr12	111760218	.	G	<*>	0	.	END=111760566	GT:GQ:MIN_DP:PL	0/0:50:24:0,90,899
+
+unifier_config:
+    min_AQ1: 1
+    min_AQ2: 1
+    min_GQ: 0
+    monoallelic_sites_for_lost_alleles: true
+
+genotyper_config:
+    required_dp: 0
+    revise_genotypes: true
+    more_PL: true
+    trim_uncalled_alleles: true
+    liftover_fields:
+    - orig_names: [MIN_DP, DP]
+      name: DP
+      description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+      type: int
+      combi_method: min
+      number: basic
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [AD]
+      name: AD
+      description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+      type: int
+      number: alleles
+      combi_method: min
+      default_type: zero
+      count: 0
+    - orig_names: [GQ]
+      name: GQ
+      description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+      type: int
+      number: basic
+      combi_method: min
+      count: 1
+      ignore_non_variants: true
+    - orig_names: [PL]
+      name: PL
+      description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+      type: int
+      number: genotype
+      combi_method: missing
+      count: 0
+      ignore_non_variants: true
+
+truth_unified_sites:
+- range: {ref: chr12, beg: 111760033, end: 111760033}
+  in_target: {ref: chr12, beg: 1, end: 1000000000}
+  alleles:
+    - dna: A
+    - dna: C
+      quality: 69
+      frequency: 0.25
+    - dna: G
+      quality: 1
+      frequency: 0.25
+  quality: 69
+- range: {ref: chr12, beg: 111760073, end: 111760073}
+  in_target: {ref: chr12, beg: 1, end: 1000000000}
+  alleles:
+    - dna: A
+    - dna: G
+      quality: 1
+      frequency: 0.25
+  quality: 1
+- range: {ref: chr12, beg: 111760217, end: 111760217}
+  in_target: {ref: chr12, beg: 1, end: 1000000000}
+  alleles:
+    - dna: C
+    - dna: G
+      quality: 65
+      frequency: 0.25
+  quality: 65
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency estimate for each alternate allele">
+      ##INFO=<ID=AQ,Number=A,Type=Integer,Description="Allele Quality score reflecting evidence from all samples (Phred scale)">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype likelihoods, Phred encoded">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=chr12,length=133275309>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11930	NA11931	NA11932	NA11933
+      chr12	111760033	chr12_111760033_A_C	A	C	69	.	AF=0.25;AQ=69	GT:DP:AD:GQ:PL:RNC	0/0:23:23,0:50:0,114,1139:..	0/0:25:25,0:50:0,99,989:..	0/0:2:0,0:5:1,990,990:..	1/1:33:0,33:62:69,68,0:..
+      chr12	111760217	chr12_111760217_C_G	C	G	65	.	AF=0.25;AQ=65	GT:DP:AD:GQ:PL:RNC	0/0:23:23,0:50:0,114,1139:..	0/0:25:25,0:50:0,99,989:..	0/0:21:21,0:50:0,81,809:..	1/1:30:0,30:55:65,61,0:..
