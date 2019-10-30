@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
     size_t mem_budget = 0, nr_threads = 0;
     size_t bucket_size = GLnexus::BCFKeyValueData::default_bucket_size;
 
-    while (-1 != (c = getopt_long(argc, argv, "hb:dIx:m:t:c:",
+    while (-1 != (c = getopt_long(argc, argv, "hPSadil:b:x:m:t:c:",
                                   long_options, nullptr))) {
         switch (c) {
             case 'b':

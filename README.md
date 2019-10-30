@@ -12,7 +12,7 @@ The [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Start
 
 ### [Prebuilt executables](https://github.com/dnanexus-rnd/GLnexus/releases)
 
-For each tagged revision, the [Releases](https://github.com/dnanexus-rnd/GLnexus/releases) page has a static executable suitable for most Linux x86-64 hosts; just download it and `chmod +x glnexus_cli`.
+For each tagged revision, the [Releases](https://github.com/dnanexus-rnd/GLnexus/releases) page has a static executable suitable for most Linux x86-64 hosts; just download it and `chmod +x glnexus_cli`. Each release also provides a lightweight Docker image wrapping `glnexus_cli`.
 
 ### Build & test
 

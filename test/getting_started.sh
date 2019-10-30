@@ -15,7 +15,7 @@ rm -rf /tmp/dv_platinum6_chr21_gvcf/ GLnexus.DB/
 tar xf /tmp/dv_platinum6_chr21_gvcf.tar -C /tmp
 
 echo -e "chr21\t0\t48129895" > /tmp/dv_platinum6_chr21_gvcf/hg19_chr21.bed
-time $HERE/../glnexus_cli --config DeepVariant --squeeze --bed /tmp/dv_platinum6_chr21_gvcf/hg19_chr21.bed \
+time $HERE/../glnexus_cli --config DeepVariant --squeeze -a --bed /tmp/dv_platinum6_chr21_gvcf/hg19_chr21.bed \
     /tmp/dv_platinum6_chr21_gvcf/*.gvcf.gz > /tmp/dv_platinum6_chr21_gvcf/dv_platinum6_chr21.bcf
 
 echo "--- Getting Started examples OK"
