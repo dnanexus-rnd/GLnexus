@@ -770,6 +770,8 @@ DeepVariant:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        more_PL: true
+        trim_uncalled_alleles: true
         liftover_fields:
             - orig_names: [MIN_DP, DP]
               name: DP
@@ -813,6 +815,8 @@ DeepVariantWGS:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        more_PL: true
+        trim_uncalled_alleles: true
         liftover_fields:
             - orig_names: [MIN_DP, DP]
               name: DP
@@ -856,6 +860,8 @@ DeepVariantWES:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        more_PL: true
+        trim_uncalled_alleles: true
         liftover_fields:
             - orig_names: [MIN_DP, DP]
               name: DP
