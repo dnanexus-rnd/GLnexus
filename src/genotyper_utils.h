@@ -903,7 +903,7 @@ Status setup_format_helpers(vector<unique_ptr<FormatFieldHelper>>& format_helper
             if (format_field_info.type != RetainedFieldType::INT || format_field_info.number != RetainedFieldNumber::GENOTYPE || format_field_info.combi_method != FieldCombinationMethod::MISSING) {
                 return Status::Invalid("genotyper misconfiguration: PL format field should have type=int, number=genotype, combi_method=missing");
             }
-            if (cfg.more_PL) {
+            if (cfg.more_PL && !cfg.squeeze) {
                 format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper2(format_field_info, samples.size(), count)));
             } else {
                 format_helpers.push_back(unique_ptr<FormatFieldHelper>(new PLFieldHelper(format_field_info, samples.size(), count)));
