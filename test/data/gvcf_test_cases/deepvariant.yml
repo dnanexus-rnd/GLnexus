@@ -51,6 +51,11 @@ input:
         chr21	16188963	.	CAT	C,<*>	5.5	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:3:32:20,12,0:0.375,0:2,3,0,990,990,990
         chr21	16188966	.	A	<*>	0	.	END=16188966	GT:GQ:MIN_DP:PL	0/0:50:50:0,150,1499
         chr21	16188967	.	C	G,<*>	5.5	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:3:32:20,12,0:0.375,0:2,3,0,990,990,990
+        chr21	17539021	.	T	<*>	0	.	END=17539055	GT:GQ:MIN_DP:PL	0/0:50:22:0,72,719
+        chr21	17539056	.	ACG	A,<*>	44.7	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:42:27:0,27,0:1,0:44,46,0,990,990,990
+        chr21	17539059	.	C	<*>	0	.	END=17539059	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
+        chr21	17539060	.	ATG	A,<*>	54	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:45:28:0,28,0:1,0:53,45,0,990,990,990
+        chr21	17539063	.	C	<*>	0	.	END=17539171	GT:GQ:MIN_DP:PL	0/0:50:27:0,84,839
     - NA12877.gvcf: |
         NA12877
         chr21	9412001	.	A	<*>	0	.	END=9412144	GT:GQ:MIN_DP:PL	0/0:50:23:0,84,839
@@ -83,6 +88,9 @@ input:
         chr21	16188963	.	C	<*>	0	.	END=16188964	GT:GQ:MIN_DP:PL	0/0:50:50:0,150,1499
         chr21	16188965	.	TAC	T,<*>	5.5	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:3:32:20,12,0:0.375,0:2,3,0,990,990,990
         chr21	16188967	.	CATAT	TAT,<*>	5.5	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:3:32:20,12,0:0.375,0:2,3,0,990,990,990
+        chr21	17539021	.	T	<*>	0	.	END=17539053	GT:GQ:MIN_DP:PL	0/0:50:22:0,72,719
+        chr21	17539054	.	TTACGCATGCTT	T,<*>	44.7	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:42:27:0,27,0:1,0:66,46,0,990,990,990
+        chr21	17539066	.	T	<*>	0	.	END=17539171	GT:GQ:MIN_DP:PL	0/0:50:27:0,84,839
 
 unifier_config:
     min_AQ1: 0
@@ -217,6 +225,26 @@ truth_unified_sites:
       frequency: 0.5
   lost_allele_frequency: 0.5
   quality: 2
+- range: {ref: chr21, beg: 17539054, end: 17539065}
+  in_target: {ref: chr21, beg: 1, end: 1000000000}
+  alleles:
+    - dna: TTACGCATGCTT
+    - dna: T
+      quality: 66
+      frequency: 0.5
+    - dna: TTACGCACTT
+      normalized:
+        range: {beg: 17539060, end: 17539062}
+        dna: A
+      quality: 53
+      frequency: 0.5
+    - dna: TTACATGCTT
+      normalized:
+        range: {beg: 17539056, end: 17539058}
+        dna: A
+      quality: 44
+      frequency: 0.5
+  quality: 66
 
 truth_output_vcf:
   - truth.vcf: |
@@ -242,3 +270,4 @@ truth_output_vcf:
       chr21	16188963	chr21_16188963_CAT_C	CAT	C	2	.	AF=0.5;AQ=2	GT:DP:AD:GQ:PL:RNC	./0:32:20,0:3:.:-.	1/1:32:20,12:3:2,3,0:..
       chr21	16188965	chr21_16188965_TAC_T	TAC	T	2	MONOALLELIC	AF=0.5;AQ=2	GT:DP:AD:GQ:PL:RNC	./.:32:.,12:.:.:OO	./.:32:.,0:3:.:11
       chr21	16188967	chr21_16188967_C_G	C	G	2	.	AF=0.5;AQ=2	GT:DP:AD:GQ:PL:RNC	./.:32:.:.:.:OO	1/1:32:20,12:3:2,3,0:..
+      chr21	17539054	chr21_17539054_TTACGCATGCTT_T;chr21_17539060_ATG_A;chr21_17539056_ACG_A	TTACGCATGCTT	T,TTACGCACTT,TTACATGCTT	66	.	AF=0.5,0.5,0.5;AQ=66,53,44	GT:DP:AD:GQ:PL:RNC	1/1:27:0,27,0,0:42:66,46,0,.,.,.,.,.,.,.:..	./.:22:.:.:.:UU

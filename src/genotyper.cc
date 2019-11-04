@@ -421,6 +421,21 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // Otherwise, bail with OverlappingVariants.
 
         range intersection(records_non00[0]->p);
+        for (auto& a_record : records_non00) {
+            range record_rng(a_record->p);
+            assert(record_rng.rid == intersection.rid);
+            intersection.beg = max(record_rng.beg, intersection.beg);
+            intersection.end = min(record_rng.end, intersection.end);
+        }
+        if (intersection.beg >= intersection.end) {
+            for (int i = 0; i < bcf_nsamples; i++) {
+                genotypes[sample_mapping.at(i)*2].RNC =
+                    genotypes[sample_mapping.at(i)*2+1].RNC =
+                        NoCallReason::UnphasedVariants;
+            }
+            return Status::OK();
+        }
+
         vector<tuple<float,shared_ptr<bcf1_t_plus>,bool>> usable_half_calls;
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
@@ -455,15 +470,6 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                 genotypes[sample_mapping.at(i)*2].RNC =
                     genotypes[sample_mapping.at(i)*2+1].RNC =
                         NoCallReason::OverlappingVariants;
-            }
-            return Status::OK();
-        }
-
-        if (intersection.beg >= intersection.end) {
-            for (int i = 0; i < bcf_nsamples; i++) {
-                genotypes[sample_mapping.at(i)*2].RNC =
-                    genotypes[sample_mapping.at(i)*2+1].RNC =
-                        NoCallReason::UnphasedVariants;
             }
             return Status::OK();
         }
