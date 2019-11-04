@@ -1,6 +1,6 @@
 #pragma once
+#include "data.h"
 #include "types.h"
-#include "BCFKeyValueData.h"
 
 // Algorithms used in allele discovery.
 
