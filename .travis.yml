@@ -15,7 +15,7 @@ script:
       if [ "$effective_build_type" == "Valgrind" ]; then
         effective_build_type="Release"
       fi
-      docker build --no-cache -t glnexus_tests --build-arg build_type=$effective_build_type .
+      docker build --no-cache -t glnexus_tests --target builder --build-arg build_type=$effective_build_type .
       # copy the /GLnexus folder out of the image to mount for subsequent use
       docker run --rm -v /:/io glnexus_tests cp -r /GLnexus/ /io
       # Run the tests (with valgrind or coveralls as appropriate)
@@ -33,17 +33,9 @@ script:
         fi
       fi
       if [ "$TRAVIS_BUILD_TYPE" == "Release" ]; then
-        # build a minimal docker image with glnexus_cli & jemalloc, push it to quay.io
+        # build the minimal docker image with glnexus_cli & jemalloc, push it to quay.io
         dockertag="quay.io/mlin/glnexus:$(git describe --tags)"
-        mkdir mindocker
-        pushd mindocker
-        cp /GLnexus/glnexus_cli .
-        echo "FROM ubuntu:bionic
-        RUN apt-get update && apt-get install -y libjemalloc1 bcftools tabix
-        ADD glnexus_cli /usr/local/bin/
-        ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
-        CMD glnexus_cli" > Dockerfile
-        docker build --no-cache -t $dockertag .
+        docker build -t $dockertag .
         docker run $dockertag glnexus_cli -h 2>&1 | grep 'detected jemalloc'
         set +x
         if [ -n "${QUAY_PASSWORD:-}" ]; then
@@ -51,7 +43,6 @@ script:
           docker push $dockertag
         fi
         set -x
-        popd
       fi
 
 env:
