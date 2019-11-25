@@ -261,7 +261,7 @@ static Status yaml_verify_begin_doc_list(std::istream &is) {
         if (marker != yaml_begin_doc)
             return Status::Invalid("document does not start with `---`");
         return Status::OK();
-    } catch (exception e) {
+    } catch (exception& e) {
         string err = e.what();
         return Status::Failure("exception caught in yaml_verify_begin_doc_list: ", err);
     }
@@ -278,7 +278,7 @@ static Status yaml_verify_eof(std::istream &is) {
             return Status::Invalid("Found YAML end-of-document marker, but there is unread data");
         }
         return Status::OK();
-    } catch (exception e) {
+    } catch (exception& e) {
         string err = e.what();
         return Status::Failure("exception caught in yaml_verify_eof: ", err);
     }
@@ -315,7 +315,7 @@ static Status yaml_get_next_document(std::istream &is,
         if (!is.good())
             return Status::IOError("reading yaml stream");
         return Status::Invalid("premature end of document, did not find end-of-document marker");
-    } catch (exception e) {
+    } catch (exception& e) {
         string err = e.what();
         return Status::Failure("exception caught in yaml_get_next_document: ", err);
     }
@@ -957,9 +957,9 @@ Status load_config(std::shared_ptr<spdlog::logger> logger,
     if (config["genotyper_config"]) {
         S(genotyper_config::of_yaml(config["genotyper_config"], genotyper_cfg));
     }
-    genotyper_cfg.more_PL = more_PL;
-    genotyper_cfg.squeeze = squeeze;
-    genotyper_cfg.trim_uncalled_alleles = trim_uncalled_alleles;
+    genotyper_cfg.more_PL = genotyper_cfg.more_PL || more_PL;
+    genotyper_cfg.squeeze = genotyper_cfg.squeeze || squeeze;
+    genotyper_cfg.trim_uncalled_alleles = genotyper_cfg.trim_uncalled_alleles || trim_uncalled_alleles;
 
     #define WRITE_CONFIG(em)                                   \
         em << YAML::BeginMap                                   \

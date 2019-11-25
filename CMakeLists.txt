@@ -84,11 +84,11 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/v6.2.4.tar.gz
+    URL https://github.com/facebook/rocksdb/archive/v6.4.6.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export USE_SSE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42' && make -n static_lib && make -j$(nproc) static_lib"
+    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export USE_SSE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42 -DROCKSDB_NO_DYNAMIC_EXTENSION' && make -n static_lib && make -j$(nproc) static_lib"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
@@ -150,7 +150,7 @@ set(FCMM_INCLUDE_DIR ${source_dir})
 include_directories(${FCMM_INCLUDE_DIR})
 
 ExternalProject_Add(spdlog
-    URL https://github.com/gabime/spdlog/archive/v1.4.1.tar.gz
+    URL https://github.com/gabime/spdlog/archive/v1.4.2.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1

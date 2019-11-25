@@ -162,14 +162,17 @@ void help(const char* prog) {
     cout << "Usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
          << "Merge and joint-call input gVCF files, emitting multi-sample BCF on standard output." << endl << endl
          << "Options:" << endl
-         << "  --bed FILE, -b FILE            three-column BED file of ranges to analyze (if omitted, use full length of all contigs)" << endl
          << "  --config X, -c X               configuration preset name or .yml filename (default: gatk)" << endl
+         << "  --bed FILE, -b FILE            three-column BED file with ranges to analyze (if neither --range nor --bed: use full length of all contigs)" << endl
+         << "  --list, -l                     expect given files to contain lists of gVCF filenames, one per line" << endl << endl
+
          << "  --more-PL, -P                  include PL from reference bands and other cases omitted by default" << endl
          << "  --squeeze, -S                  reduce pVCF size by suppressing detail in cells derived from reference bands" << endl
-         << "  --trim-uncalled-alleles, -a    remove alleles with no output GT calls in postprocessing" << endl
-         << "  --list, -l                     given files contain lists of gVCF filenames, one per line" << endl
+         << "  --trim-uncalled-alleles, -a    remove alleles with no output GT calls in postprocessing" << endl << endl
+
          << "  --mem-gbytes X, -m X           memory budget, in gbytes (default: most of system memory)" << endl
-         << "  --threads X, -t X              thread budget (default: all hardware threads)" << endl
+         << "  --threads X, -t X              thread budget (default: all hardware threads)" << endl << endl
+
          << "  --help, -h                     print this help message" << endl
          << endl << "Configuration presets:" << endl;
     cout << GLnexus::cli::utils::describe_config_presets() << endl;
