@@ -27,7 +27,7 @@ cd GLnexus
 git checkout vX.Y.Z  # optional, check out desired revision
 
 # Build GLnexus in docker
-docker build --no-cache -t glnexus_tests .
+docker build --target builder -t glnexus_tests .
 
 # Run GLnexus unit tests.
 docker run --rm glnexus_tests
