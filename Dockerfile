@@ -37,6 +37,6 @@ RUN apt-get -qq update && apt-get -qq install -y libjemalloc2 bcftools tabix
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 COPY --from=builder /GLnexus/glnexus_cli /usr/local/bin/
 ADD https://github.com/mlin/spVCF/releases/download/v1.0.0/spvcf /usr/local/bin/
-RUN chmod +x /usr/local/bin/{glnexus_cli,spvcf}
+RUN chmod +x /usr/local/bin/spvcf
 
 CMD glnexus_cli
