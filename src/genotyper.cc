@@ -108,12 +108,12 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     for (const auto& sample : sample_mapping) {
         assert(sample.first < vr.p->n_sample);
         auto al1 = vr.gt.v[sample.first*2];
-        if (!bcf_gt_is_missing(al1) && vr.allele_mapping.at(bcf_gt_allele(al1)) == -1) {
+        if (!bcf_gt_is_missing(al1) && vr.allele_mapping.at(bcf_gt_allele(al1)) == -1 && !us.monoallelic) {
             needs_revision = true;
             break;
         }
         auto al2 = vr.gt.v[sample.first*2+1];
-        if (!bcf_gt_is_missing(al2) && vr.allele_mapping.at(bcf_gt_allele(al2)) == -1) {
+        if (!bcf_gt_is_missing(al2) && vr.allele_mapping.at(bcf_gt_allele(al2)) == -1 && !us.monoallelic) {
             needs_revision = true;
             break;
         }
@@ -155,7 +155,9 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     for (unsigned gt = 0; gt < gt_log_prior.size(); gt++) {
         auto als = diploid::gt_alleles(gt);
         if (vr.allele_mapping.at(als.first) == -1 || vr.allele_mapping.at(als.second) == -1) {
-            gt_log_prior[gt] = lost_log_prior;
+            if (!us.monoallelic) {
+                gt_log_prior[gt] = lost_log_prior;
+            }
         } else if (als.first > 0 && als.first == als.second) {
             gt_log_prior[gt] = log(std::max(us.alleles[vr.allele_mapping[als.first]].frequency,
                                             cfg.min_assumed_allele_frequency));
