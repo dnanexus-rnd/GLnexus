@@ -767,6 +767,7 @@ DeepVariant:
         min_AQ2: 10
         min_GQ: 0
         monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
@@ -812,6 +813,7 @@ DeepVariantWGS:
         min_AQ2: 10
         min_GQ: 0
         monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
@@ -857,6 +859,7 @@ DeepVariantWES:
         min_AQ2: 20
         min_GQ: 20
         monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
