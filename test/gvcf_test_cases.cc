@@ -853,6 +853,12 @@ TEST_CASE("dv_1000G_chr21_5583275") {
     GVCFTestCase("dv_1000G_chr21_5583275", v_formats, v_infos, true).perform_gvcf_test();
 }
 
+TEST_CASE("dv_1000G_chr17_2517459") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "RNC"};
+    vector<string> v_infos = {"ANR","AF","AQ"};
+    GVCFTestCase("dv_1000G_chr17_2517459", v_formats, v_infos, false).perform_gvcf_test();
+}
+
 TEST_CASE("strelka2") {
     vector<string> v_formats = {"DP", "GT", "GQ", "AD", "FT"};
     vector<string> v_infos = {"AF","AQ"};

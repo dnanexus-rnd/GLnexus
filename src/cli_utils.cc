@@ -771,6 +771,7 @@ DeepVariant:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        allow_partial_data: true
         more_PL: true
         trim_uncalled_alleles: true
         liftover_fields:
@@ -817,6 +818,7 @@ DeepVariantWGS:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        allow_partial_data: true
         more_PL: true
         trim_uncalled_alleles: true
         liftover_fields:
@@ -863,6 +865,7 @@ DeepVariantWES:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        allow_partial_data: true
         more_PL: true
         trim_uncalled_alleles: true
         liftover_fields:

@@ -801,7 +801,7 @@ Status retained_format_field::of_yaml(const YAML::Node& yaml, unique_ptr<retaine
         V(n_ignore_non_variants.IsScalar(), "invalid ignore_non_variants value");
         try {
             ignore_non_variants = n_ignore_non_variants.as<bool>();
-        } catch (YAML::Exception e) {
+        } catch (YAML::Exception& e) {
             V(false, "invalid ignore_non_variants value");
         }
     }

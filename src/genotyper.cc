@@ -310,12 +310,14 @@ Status prepare_dataset_records(const genotyper_config& cfg, const unified_site& 
     // We exclude 'haploid' records from this treatment for now as observed
     // examples (e.g. in Strelka2 gVCFs) don't seem to require it, but this
     // may need to be configurable in the future.
-    for (const auto& rp : all_records) {
-        if (rp->is_ref && !rp->was_haploid) {
-            for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
-                if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
-                    rnc = NoCallReason::InputNonCalled;
-                    return Status::OK();
+    if (variant_records.empty() || !cfg.allow_partial_data) {
+        for (const auto& rp : all_records) {
+            if (rp->is_ref && !rp->was_haploid) {
+                for (unsigned i = 0; i < 2*rp->p->n_sample; i++) {
+                    if (bcf_gt_is_missing(rp->gt[i]) || bcf_gt_allele(rp->gt[i]) != 0) {
+                        rnc = NoCallReason::InputNonCalled;
+                        return Status::OK();
+                    }
                 }
             }
         }
