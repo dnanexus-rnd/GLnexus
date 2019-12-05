@@ -1,0 +1,71 @@
+readme: |
+  1000G dv_1000G_chr17_2517459
+
+  A site exercising code path for a non-called reference band near a variant record (with allow_partial_data=true)
+
+input:
+  header : |-
+    ##fileformat=VCFv4.2
+    ##FILTER=<ID=PASS,Description="All filters passed">
+    ##FILTER=<ID=RefCall,Description="Genotyping model thinks this site is reference.">
+    ##FILTER=<ID=LowQual,Description="Confidence in this variant being real is below calling threshold."
+    ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+    ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+    ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth of all passing filters reads.">
+    ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block.">
+    ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Read depth for each allele">
+    ##FORMAT=<ID=VAF,Number=A,Type=Float,Description="Variant allele fractions.">
+    ##FORMAT=<ID=GL,Number=G,Type=Float,Description="Genotype likelihoods, log10 encoded">
+    ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype likelihoods, Phred encoded">
+    ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+    ##contig=<ID=chr17,length=83257441>
+    #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - NA12878.gvcf: |
+        NA12878
+        chr17	2517445	.	A	<*>	0	.	END=2517455	GT:GQ:MIN_DP:PL	0/0:50:30:0,66,899
+        chr17	2517456	.	G	<*>	0	.	END=2517456	GT:GQ:MIN_DP:PL	./.:0:29:62,0,632
+        chr17	2517457	.	A	<*>	0	.	END=2517458	GT:GQ:MIN_DP:PL	0/0:50:31:0,93,929
+        chr17	2517459	.	A	G,<*>	38.9	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:38:28:14,12,0:0.428571,0:38,0,47,990,990,990
+        chr17	2517460	.	A	<*>	0	.	END=2517461	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
+
+    - NA19771.gvcf: |
+        NA19771
+        chr17	2517445	.	A	<*>	0	.	END=2517455	GT:GQ:MIN_DP:PL	0/0:50:32:0,66,899
+        chr17	2517456	.	GAAA	G,<*>	47	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:47:32:18,12,0:0.375,0:46,0,65,990,990,990
+        chr17	2517460	.	A	<*>	0	.	END=2517461	GT:GQ:MIN_DP:PL	0/0:50:20:0,60,599
+
+config_preset: DeepVariant
+
+truth_unified_sites:
+- range: {ref: chr17, beg: 2517456, end: 2517459}
+  in_target: {ref: chr17, beg: 1, end: 1000000000}
+  alleles:
+    - dna: GAAA
+    - dna: G
+      quality: 46
+      frequency: 0.25
+    - dna: GAAG
+      normalized:
+        range: {beg: 2517459, end: 2517459}
+        dna: G
+      quality: 38
+      frequency: 0.25
+  quality: 46
+
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency estimate for each alternate allele">
+      ##INFO=<ID=AQ,Number=A,Type=Integer,Description="Allele Quality score reflecting evidence from all samples (Phred scale)">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype likelihoods, Phred encoded">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=chr17,length=83257441>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA19771
+      chr17	2517456	chr17_2517456_GAAA_G;chr17_2517459_A_G	GAAA	G,GAAG	46	.	AF=0.25,0.25;AQ=46,38	GT:DP:AD:GQ:PL:RNC	0/2:28:14,0,12:38:38,990,990,0,990,47:..	0/1:32:18,12,0:47:46,0,65,990,990,990:..

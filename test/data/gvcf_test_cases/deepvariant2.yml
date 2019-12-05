@@ -866,6 +866,7 @@ config_preset: DeepVariant
 genotyper_config:
     required_dp: 0
     revise_genotypes: false
+    allow_partial_data: true
     more_PL: true
     liftover_fields:
     - orig_names: [MIN_DP, DP]
