@@ -289,18 +289,30 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
     for (const minimized_allele& mal : valleles) {
         // find existing site(s) overlapping this allele
         auto related_site = sites.end();
-        bool multiple_sites = false;
-        for (auto site = sites.begin(); site != sites.end(); site++) {
+        bool reject = false;
+        for (auto site = sites.begin(); site != sites.end() && !reject; site++) {
             if (mal.first.pos.overlaps(site->first)) {
                 if (related_site == sites.end()) {
-                    related_site = site;
+                    if (cfg.preference == UnifierPreference::Small) {
+                        // for preference=small, also require overlap with all
+                        // alleles currently at the site
+                        for (const auto& site_allele : site->second) {
+                            if (!mal.first.pos.overlaps(site_allele.first.pos)) {
+                                reject = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!reject) {
+                        related_site = site;
+                    }
                 } else {
-                    multiple_sites = true;
+                    reject = true;
                     break;
                 }
             }
         }
-        if (multiple_sites) {
+        if (reject) {
             // reject since this allele overlaps multiple existing sites
             pruned.insert(mal);
             continue;
