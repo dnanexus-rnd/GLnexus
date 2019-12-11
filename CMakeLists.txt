@@ -209,6 +209,7 @@ add_library(glnexus
             include/KeyValue.h src/KeyValue.cc
             include/BCFSerialize.h src/BCFSerialize.cc
             include/BCFKeyValueData.h src/BCFKeyValueData.cc
+            include/BCF_utils.h src/BCF_utils.cc
             include/RocksKeyValue.h src/RocksKeyValue.cc
             include/cli_utils.h src/cli_utils.cc
             test/utils.cc)
