@@ -5,7 +5,7 @@
 #include "genotyper.h"
 using namespace std;
 using namespace GLnexus;
-#include "BCFKeyValueData_utils.h"
+#include "BCF_utils.h"
 
 // serves data from VCF files in the test/data directory
 // x.vcf is loaded as data set "x" with a sample set "x", and a sample set for
