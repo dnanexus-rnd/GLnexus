@@ -119,6 +119,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     const std::string &dbpath,
                     const std::vector<range> &ranges,   // limit the bulk load to these ranges
                     std::vector<std::pair<std::string,size_t>> &contigs, // output param
+                    std::unique_ptr<KeyValue::DB> *db_out = nullptr, // if supplied, return db ptr (after flush)
                     bool delete_gvcf_after_load = false);
 
 // Discover alleles in the database. Return discovered alleles, and the sample count.
@@ -129,6 +130,13 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
                         discovered_alleles &dsals,
                         unsigned &sample_count);
+Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
+                        size_t nr_threads, KeyValue::DB *db,
+                        const std::vector<range> &ranges,
+                        const std::vector<std::pair<std::string,size_t> > &contigs,
+                        discovered_alleles &dsals,
+                        unsigned &sample_count);
+
 
 // Run unifier on given discovered alleles.
 // input dsals is cleared by side-effect to save memory
