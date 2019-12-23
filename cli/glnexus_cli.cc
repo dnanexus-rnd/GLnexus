@@ -74,6 +74,10 @@ static int all_steps(const vector<string> &vcf_files,
             return GLnexus::Status::Invalid("error, contigs read from DB do not match originals");
     }
 
+    if (nr_threads == 0) {
+        nr_threads = std::thread::hardware_concurrency();
+    }
+
     // Load the GVCFs into the database
     unique_ptr<GLnexus::KeyValue::DB> db;
     {
@@ -101,9 +105,9 @@ static int all_steps(const vector<string> &vcf_files,
     }
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
+    auto nr_threads_m2 = nr_threads > 2 ? nr_threads-2 : 1; // reserve threads for DB bg compactions
     H("discover alleles",
-      GLnexus::cli::utils::discover_alleles(console, (nr_threads > 2 ? nr_threads - 2 : 1), // reserve threads for DB compactions
-                                            db.get(), ranges, contigs, dsals, sample_count));
+      GLnexus::cli::utils::discover_alleles(console, nr_threads_m2, db.get(), ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
         console->info("Writing discovered alleles as YAML to {}", filename);
@@ -119,19 +123,30 @@ static int all_steps(const vector<string> &vcf_files,
         dsals_by_contig[al.pos.rid][al] = dai;
     }
 
-    console->info("Finishing database compaction...");
-    db.reset();  // doing this now maximizes available memory for unifier
+    // unify sites (parallel over dsals_by_contig)
+    ctpl::thread_pool unify_pool(nr_threads_m2);
+    vector<future<GLnexus::Status>> statuses;
+    vector<vector<GLnexus::unified_site>> sites_by_contig(contigs.size());
+    vector<GLnexus::unifier_stats> stats_by_contig(contigs.size());
+    for (size_t i = 0; i < contigs.size(); i++) {
+        statuses.push_back(unify_pool.push([&, i](int tid){
+            return GLnexus::cli::utils::unify_sites(console, unifier_cfg, contigs, dsals_by_contig[i],
+                                                    sample_count, sites_by_contig[i], stats_by_contig[i]);
+        }));
+    }
 
-    // unify sites
-    // we could parallelize over dsals_by_contig although this might increase memory usage.
     vector<GLnexus::unified_site> sites;
     GLnexus::unifier_stats stats;
-    for (auto& dsals_i : dsals_by_contig) {
-        GLnexus::unifier_stats stats1;
-        H("unify sites",
-          GLnexus::cli::utils::unify_sites(console, unifier_cfg, contigs, dsals_i, sample_count, sites, stats1));
-        stats += stats1;
+    for (size_t i = 0; i < contigs.size(); i++) {
+        H("unify sites", statuses[i].get());
+        stats += stats_by_contig[i];
+        auto& sites_i = sites_by_contig[i];
+        sites.insert(sites.end(), make_move_iterator(sites_i.begin()),
+                                  make_move_iterator(sites_i.end()));
+        sites_i.clear();
     }
+    assert(std::is_sorted(sites.begin(), sites.end()));
+
     console->info("unified to {} sites cleanly with {} ALT alleles. {} ALT alleles were {} and {} were filtered out on quality thresholds.",
                   sites.size(), stats.unified_alleles, stats.lost_alleles,
                   (unifier_cfg.monoallelic_sites_for_lost_alleles ? "additionally included in monoallelic sites" : "lost due to failure to unify"),
@@ -142,6 +157,9 @@ static int all_steps(const vector<string> &vcf_files,
         H("write unified sites to file",
           GLnexus::cli::utils::write_unified_sites_to_file(sites, contigs, filename));
     }
+
+    console->info("Finishing database compaction...");
+    db.reset();
 
     // genotype
     genotyper_cfg.output_residuals = debug;
