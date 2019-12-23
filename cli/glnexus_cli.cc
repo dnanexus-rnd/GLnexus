@@ -75,12 +75,14 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     // Load the GVCFs into the database
+    unique_ptr<GLnexus::KeyValue::DB> db;
     {
         // use an empty range filter
         vector<GLnexus::range> ranges;
         H("bulk load into DB",
-          GLnexus::cli::utils::db_bulk_load(console, mem_budget, nr_threads, vcf_files, dbpath, ranges, contigs, false));
+          GLnexus::cli::utils::db_bulk_load(console, mem_budget, nr_threads, vcf_files, dbpath, ranges, contigs, &db, false));
     }
+    assert(db);
 
     if (iter_compare) {
         H("compare database iteration methods",
@@ -88,7 +90,6 @@ static int all_steps(const vector<string> &vcf_files,
     }
 
     // discover alleles
-    // TODO: overlap allele discovery with final compactions. have db_bulk_load output a RocksKeyValue pointer which we can reuse
     vector<GLnexus::range> ranges;
     if (bedfilename.empty()) {
         console->warn("Processing full length of {} contigs, as no --bed was provided. Providing a BED file with regions of interest, if applicable, can speed this up.", std::to_string(contigs.size()));
@@ -101,7 +102,8 @@ static int all_steps(const vector<string> &vcf_files,
     GLnexus::discovered_alleles dsals;
     unsigned sample_count = 0;
     H("discover alleles",
-      GLnexus::cli::utils::discover_alleles(console, mem_budget, nr_threads, dbpath, ranges, contigs, dsals, sample_count));
+      GLnexus::cli::utils::discover_alleles(console, (nr_threads > 2 ? nr_threads - 2 : 1), // reserve threads for DB compactions
+                                            db.get(), ranges, contigs, dsals, sample_count));
     if (debug) {
         string filename("/tmp/dsals.yml");
         console->info("Writing discovered alleles as YAML to {}", filename);
@@ -116,6 +118,9 @@ static int all_steps(const vector<string> &vcf_files,
         assert(al.pos.rid >= 0 && al.pos.rid < contigs.size());
         dsals_by_contig[al.pos.rid][al] = dai;
     }
+
+    console->info("Finishing database compaction...");
+    db.reset();  // doing this now maximizes available memory for unifier
 
     // unify sites
     // we could parallelize over dsals_by_contig although this might increase memory usage.

@@ -1140,6 +1140,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     const string &dbpath,
                     const vector<range> &ranges_i,
                     std::vector<std::pair<std::string,size_t> > &contigs, // output param
+                    std::unique_ptr<KeyValue::DB> *db_out, // output
                     bool delete_gvcf_after_load) {
     Status s;
 
@@ -1256,9 +1257,17 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
         return Status::Failure("One or more gVCF inputs failed validation or database loading; check log for details.");
     }
 
-    logger->info("Flushing and compacting database...");
+    logger->info("Flushing database...");
+    data.reset();
     S(db->flush());
-    db.reset();
+    // db destructor waits for compactions to converge, which can be lengthy.
+    // if caller asks for db_out, then we leave this up to them.
+    if (db_out) {
+        std::swap(db, *db_out);
+    } else {
+        logger->info("Compacting database...");
+        db.reset();
+    }
     logger->info("Bulk load complete!");
     return Status::OK();
 }
@@ -1272,12 +1281,6 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         unsigned &sample_count) {
     Status s;
     unique_ptr<KeyValue::DB> db;
-    unique_ptr<BCFKeyValueData> data;
-    dsals.clear();
-
-    if (nr_threads == 0) {
-        nr_threads = std::thread::hardware_concurrency();
-    }
 
     // open the database in read-only mode
     RocksKeyValue::config cfg;
@@ -1286,7 +1289,25 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     cfg.mem_budget = mem_budget;
     cfg.thread_budget = nr_threads;
     S(RocksKeyValue::Open(dbpath, cfg, db));
-    S(BCFKeyValueData::Open(db.get(), data));
+
+    return discover_alleles(logger, nr_threads, db.get(), ranges, contigs, dsals, sample_count);
+}
+
+Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
+                        size_t nr_threads, KeyValue::DB* db,
+                        const vector<range> &ranges,
+                        const std::vector<std::pair<std::string,size_t> > &contigs,
+                        discovered_alleles &dsals,
+                        unsigned &sample_count) {
+    Status s;
+    unique_ptr<BCFKeyValueData> data;
+    dsals.clear();
+
+    if (nr_threads == 0) {
+        nr_threads = std::thread::hardware_concurrency();
+    }
+
+    S(BCFKeyValueData::Open(db, data));
 
     // start service, discover alleles
     service_config svccfg;
