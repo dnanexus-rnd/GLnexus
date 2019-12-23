@@ -1319,7 +1319,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     S(data->all_samples_sampleset(sampleset));
     logger->info("found sample set {}", sampleset);
 
-    logger->info("discovering alleles in {} range(s)", ranges.size());
+    logger->info("discovering alleles in {} range(s) on {} threads", ranges.size(), nr_threads);
     vector<discovered_alleles> valleles;
     S(svc->discover_alleles(sampleset, ranges, sample_count, valleles));
 
