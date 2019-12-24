@@ -1217,7 +1217,7 @@ Status db_bulk_load(std::shared_ptr<spdlog::logger> logger,
                     datasets_loaded.insert(dataset);
                     size_t n = datasets_loaded.size();
                     if (n % 100 == 0) {
-                        logger->info("{} ({})...", n, dataset);
+                        logger->info("{}/{} ({})...", n, gvcfs.size(), dataset);
                     }
                 }
                 return ls;
@@ -1365,7 +1365,6 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
                 const vector<string>& extra_header_lines,
                 const string &output_filename) {
     Status s;
-    logger->info("Lifting over {} fields", genotyper_cfg.liftover_fields.size());
 
     if (nr_threads == 0) {
         nr_threads = std::thread::hardware_concurrency();
@@ -1394,8 +1393,8 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
 
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
-    logger->info("found sample set {}", sampleset);
 
+    logger->info("genotyping {} sites; sample set = {} threads = {}", sites.size(), sampleset, nr_threads);
     S(svc->genotype_sites(genotyper_cfg, sampleset, sites, output_filename));
     logger->info("genotyping complete!");
 
