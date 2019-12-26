@@ -1,5 +1,7 @@
 readme: |
   Engineered to trigger --trim-uncalled-alleles code paths
+  Also tests that the genotyper won't revise 1/1 to 0/0 even if the GLs suggest 0/0 is more likely
+  than 0/1.
 
 input:
   header : |-
@@ -20,30 +22,20 @@ input:
   body:
     - NA11930.gvcf: |
         NA11930
-        chr12	111759337	.	T	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:29:0,99,1229
-        chr12	111760001	.	C	<*>	0	.	END=111760356	GT:GQ:MIN_DP:PL	0/0:50:23:0,114,1139
+        chr12	111760001	.	C	<*>	0	.	END=111760566	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
     - NA11931.gvcf: |
         NA11931
-        chr12	111759759	.	A	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:28:0,87,869
-        chr12	111760001	.	C	<*>	0	.	END=111761000	GT:GQ:MIN_DP:PL	0/0:50:25:0,99,989
-        chr12	111761001	.	C	<*>	0	.	END=111762000	GT:GQ:MIN_DP:PL	0/0:48:24:0,87,869
-        chr12	111762001	.	T	<*>	0	.	END=111762345	GT:GQ:MIN_DP:PL	0/0:50:21:0,90,1139
+        chr12	111760073	.	AT	A,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:99:20:0,20,0:1,0:990,99,0,990,990,990
+        chr12	111760075	.	C	<*>	0	.	END=111760566	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
     - NA11932.gvcf: |
         NA11932
-        chr12	111759001	.	G	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:27:0,144,1439
-        chr12	111760001	.	C	<*>	0	.	END=111760032	GT:GQ:MIN_DP:PL	0/0:48:26:0,84,839
-        chr12	111760033	.	A	G,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:2:0,2,0:1,0:1,10,0,990,990,990
-        chr12	111760034	.	C	<*>	0	.	END=111760072	GT:GQ:MIN_DP:PL	0/0:27:29:0,27,749
-        chr12	111760073	.	A	G,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:2:0,2,0:1,0:1,10,0,990,990,990
-        chr12	111760074	.	G	<*>	0	.	END=111760349	GT:GQ:MIN_DP:PL	0/0:50:21:0,81,809
+        chr12	111760073	.	A	G,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:66:20:10,10,0:1,0:66,0,60,990,990,990
+        chr12	111760074	.	T	C,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	0/1:66:20:10,10,0:1,0:66,0,60,990,990,990
+        chr12	111760075	.	C	<*>	0	.	END=111760566	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
     - NA11933.gvcf: |
         NA11933
-        chr12	111759964	.	A	<*>	0	.	END=111760000	GT:GQ:MIN_DP:PL	0/0:50:21:0,63,629
-        chr12	111760001	.	C	<*>	0	.	END=111760032	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
-        chr12	111760033	.	A	C,<*>	69.5	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:33:0,33,0:1,0:69,68,0,990,990,990
-        chr12	111760034	.	T	<*>	0	.	END=111760216	GT:GQ:MIN_DP:PL	0/0:50:26:0,99,989
-        chr12	111760217	.	C	G,<*>	66	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:60:30:0,30,0:1,0:65,61,0,990,990,990
-        chr12	111760218	.	G	<*>	0	.	END=111760566	GT:GQ:MIN_DP:PL	0/0:50:24:0,90,899
+        chr12	111760001	.	C	<*>	0	.	END=111760099	GT:GQ:MIN_DP:PL	0/0:50:28:0,84,839
+        chr12	111760100	.	A	G,<*>	1	PASS	.	GT:GQ:DP:AD:VAF:PL	1/1:66:2:0,2,0:1,0:1,2,0,990,990,990
 
 unifier_config:
     min_AQ1: 1
@@ -91,18 +83,27 @@ genotyper_config:
       ignore_non_variants: true
 
 truth_unified_sites:
-- range: {ref: chr12, beg: 111760033, end: 111760033}
+- range: {ref: chr12, beg: 111760073, end: 111760074}
   in_target: {ref: chr12, beg: 1, end: 1000000000}
   alleles:
+    - dna: AT
     - dna: A
-    - dna: C
-      quality: 69
+      quality: 990
       frequency: 0.25
-    - dna: G
-      quality: 1
-      frequency: 0.25
-  quality: 69
-- range: {ref: chr12, beg: 111760073, end: 111760073}
+    - dna: GT
+      normalized:
+        range: {beg: 111760073, end: 111760073}
+        dna: G
+      quality: 66
+      frequency: 0.125
+    - dna: AC
+      normalized:
+        range: {beg: 111760074, end: 111760074}
+        dna: C
+      quality: 66
+      frequency: 0.125
+  quality: 990
+- range: {ref: chr12, beg: 111760100, end: 111760100}
   in_target: {ref: chr12, beg: 1, end: 1000000000}
   alleles:
     - dna: A
@@ -110,14 +111,6 @@ truth_unified_sites:
       quality: 1
       frequency: 0.25
   quality: 1
-- range: {ref: chr12, beg: 111760217, end: 111760217}
-  in_target: {ref: chr12, beg: 1, end: 1000000000}
-  alleles:
-    - dna: C
-    - dna: G
-      quality: 65
-      frequency: 0.25
-  quality: 65
 
 truth_output_vcf:
   - truth.vcf: |
@@ -133,5 +126,5 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=chr12,length=133275309>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11930	NA11931	NA11932	NA11933
-      chr12	111760033	chr12_111760033_A_C	A	C	69	.	AF=0.25;AQ=69	GT:DP:AD:GQ:PL:RNC	0/0:23:23,0:50:0,114,1139:..	0/0:25:25,0:50:0,99,989:..	0/0:2:0,0:5:1,990,990:..	1/1:33:0,33:62:69,68,0:..
-      chr12	111760217	chr12_111760217_C_G	C	G	65	.	AF=0.25;AQ=65	GT:DP:AD:GQ:PL:RNC	0/0:23:23,0:50:0,114,1139:..	0/0:25:25,0:50:0,99,989:..	0/0:21:21,0:50:0,81,809:..	1/1:30:0,30:55:65,61,0:..
+      chr12	111760073	chr12_111760073_AT_A	AT	A	990	.	AF=0.25;AQ=990	GT:DP:AD:GQ:PL:RNC	0/0:28:28,0:50:0,84,839:..	1/1:20:0,20:93:990,99,0:..	./.:20:.:.:0,0,0:UU	0/0:28:28,0:50:0,84,839:..
+      chr12	111760100	chr12_111760100_A_G	A	G	1	.	AF=0.25;AQ=1	GT:DP:AD:GQ:PL:RNC	0/0:28:28,0:50:0,84,839:..	0/0:28:28,0:50:0,84,839:..	0/0:28:28,0:50:0,84,839:..	0/1:2:0,2:1:1,2,0:..

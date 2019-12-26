@@ -105,6 +105,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     // slightly if we did continue, but we judge this not to justify the
     // calculations/allocations we'd do to get there.
     bool needs_revision = false;
+    bool homalt = false;
     for (const auto& sample : sample_mapping) {
         assert(sample.first < vr.p->n_sample);
         auto al1 = vr.gt.v[sample.first*2];
@@ -120,6 +121,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
         if (!bcf_gt_is_missing(al1) && !bcf_gt_is_missing(al2) &&
             bcf_gt_allele(al1) > 0 && bcf_gt_allele(al1) == bcf_gt_allele(al2)) {
             needs_revision = true;
+            homalt = true;
             break;
         }
     }
@@ -168,22 +170,32 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     for (const auto& sample : sample_mapping) {
         assert(sample.first < record->n_sample);
         // add "priors" to genotype likelihoods; keep track of MAP and 2nd (silver)
+        // if we're revising a hom-ALT call, exclude hom-REF from consideration
         double* sample_gll = gll.data() + sample.first*nGT;
         double map_gll = log(0), silver_gll = log(0);
-        int map_gt = -1;
+        int map_gt = -1, silver_gt = -1;
         for (int g = 0; g < nGT; g++) {
             auto g_ll = sample_gll[g] + gt_log_prior[g];
             if (g_ll > map_gll) {
                 silver_gll = map_gll;
+                silver_gt = map_gt;
                 map_gll = g_ll;
                 map_gt = g;
             } else if (g_ll > silver_gll) {
                 silver_gll = g_ll;
+                silver_gt = g;
             }
         }
         assert(map_gt >= 0 && map_gt < nGT);
         assert(map_gll >= silver_gll);
+        assert(silver_gt >= 0 && silver_gt < nGT);
         assert(silver_gll > log(0));
+
+        if (homalt && map_gt == 0) {
+            // special case, prevent revision of 1/1 (or 2/2 ...) to 0/0
+            // (however, keep GLL values so as not to inflate GQ)
+            map_gt = silver_gt;
+        }
 
         // record MAP genotype and recalculate GQ
         const auto revised_alleles = diploid::gt_alleles(map_gt);
