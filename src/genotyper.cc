@@ -872,25 +872,6 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         return Status::Failure("bcf_update_alleles");
     }
 
-    // populate ID column with a normalized representation of each ALT
-    ostringstream anr;
-    for (int i = 1; i < site.alleles.size(); i++) {
-        const auto& norm = site.alleles[i].normalized;
-        if (!site.pos.contains(norm.pos)) {
-            return Status::Failure("logic error: unified allele normalized representation isn't contained within site", site.pos.str());
-        }
-        if (i > 1) {
-            anr << ";";
-        }
-        anr << bcf_seqname(hdr, ans.get())
-            << "_" << (norm.pos.beg+1)
-            << "_" << site.alleles[0].dna.substr(norm.pos.beg - site.pos.beg, norm.pos.size())
-            << "_" << norm.dna;
-    }
-    if (bcf_update_id(hdr, ans.get(), anr.str().c_str())) {
-        return Status::Failure("bcf_update_id", anr.str());
-    }
-
     // AF
     vector<float> af;
     bool output_af = true;
@@ -981,6 +962,30 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         if (ans->n_allele < 2) {
             ans.reset();
         }
+    }
+
+    // populate ID column with a normalized representation of each ALT
+    // (accounting for possible bcf_trim_alleles)
+    ostringstream anr;
+    for (int i = 1, j = 1; i < ans->n_allele; i++, j++) {
+        while (ans->d.allele[i] != site.alleles[j].dna) {
+            if (++j >= site.alleles.size()) {
+                return Status::Failure("BUG: bcf_trim_alleles() modified alleles in unexpected way");
+            }
+        }
+        assert(cfg.trim_uncalled_alleles && i <= j || i == j);
+        const auto& norm = site.alleles[j].normalized;
+        assert(site.pos.contains(norm.pos));
+        if (i > 1) {
+            anr << ";";
+        }
+        anr << bcf_seqname(hdr, ans.get())
+            << "_" << (norm.pos.beg+1)
+            << "_" << site.alleles[0].dna.substr(norm.pos.beg - site.pos.beg, norm.pos.size())
+            << "_" << norm.dna;
+    }
+    if (bcf_update_id(hdr, ans.get(), anr.str().c_str())) {
+        return Status::Failure("bcf_update_id", anr.str());
     }
 
     // Overwrite the output BCF record with a duplicate. Why? This forces htslib to
