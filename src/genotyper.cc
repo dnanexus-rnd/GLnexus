@@ -440,7 +440,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
             return Status::OK();
         }
 
-        vector<tuple<float,shared_ptr<bcf1_t_plus>,bool>> usable_half_calls;
+        vector<tuple<float,size_t,shared_ptr<bcf1_t_plus>,bool>> usable_half_calls;
         for (auto& a_record : records_non00) {
             range record_rng(a_record->p);
             assert(record_rng.rid == intersection.rid);
@@ -460,11 +460,11 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
                 bool usable1 = al1 > 0 && a_record->allele_mapping[al1] > 0;
                 if (usable0) {
                     assert(!usable1);
-                    usable_half_calls.push_back(make_tuple(-1.0f*a_record->p->qual,a_record,false));
+                    usable_half_calls.push_back(make_tuple(-1.0f*a_record->p->qual,usable_half_calls.size(),a_record,false));
                 }
                 if (usable1) {
                     assert(!usable0);
-                    usable_half_calls.push_back(make_tuple(-1.0f*a_record->p->qual,a_record,true));
+                    usable_half_calls.push_back(make_tuple(-1.0f*a_record->p->qual,usable_half_calls.size(),a_record,true));
                 }
             }
         }
@@ -481,15 +481,15 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         // sorts usable half-call records by decreasing qual
         sort(usable_half_calls.begin(), usable_half_calls.end());
 
-        auto& r1 = get<1>(usable_half_calls[0]);
+        auto& r1 = get<2>(usable_half_calls[0]);
         record = r1.get();
         variant_records_used.push_back(r1);
-        call_mode = get<2>(usable_half_calls[0]) ? 1 : 0;
+        call_mode = get<3>(usable_half_calls[0]) ? 1 : 0;
         if (usable_half_calls.size() == 2) {
-            auto& r2 = get<1>(usable_half_calls[1]);
+            auto& r2 = get<2>(usable_half_calls[1]);
             record2 = r2.get();
             variant_records_used.push_back(r2);
-            call_mode2 = get<2>(usable_half_calls[1]) ? 1 : 0;
+            call_mode2 = get<3>(usable_half_calls[1]) ? 1 : 0;
         }
     }
 
