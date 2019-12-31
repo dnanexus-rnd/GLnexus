@@ -39,6 +39,7 @@ GLnexus::Status s;
 // return 0 on success, 1 on failure.
 static int all_steps(const vector<string> &vcf_files,
                      const string &bedfilename,
+                     const string &dbpath,
                      const string &config_name,
                      bool more_PL, bool squeeze, bool trim_uncalled_alleles,
                      size_t mem_budget, size_t nr_threads,
@@ -60,7 +61,6 @@ static int all_steps(const vector<string> &vcf_files,
                                          more_PL, squeeze, trim_uncalled_alleles));
 
     // initilize empty database
-    string dbpath("GLnexus.DB");
     vector<pair<string,size_t> > contigs;
     H("initialize database", GLnexus::cli::utils::db_init(console, dbpath, vcf_files[0], contigs,
                                                           bucket_size));
@@ -185,6 +185,7 @@ void help(const char* prog) {
     cout << "Usage: " << prog << " [options] /vcf/file/1 .. /vcf/file/N" << endl
          << "Merge and joint-call input gVCF files, emitting multi-sample BCF on standard output." << endl << endl
          << "Options:" << endl
+         << "  --dir DIR, -d DIR              scratch directory path (mustn't already exist; default: ./GLnexus.DB)" << endl
          << "  --config X, -c X               configuration preset name or .yml filename (default: gatk)" << endl
          << "  --bed FILE, -b FILE            three-column BED file with ranges to analyze (if neither --range nor --bed: use full length of all contigs)" << endl
          << "  --list, -l                     expect given files to contain lists of gVCF filenames, one per line" << endl << endl
@@ -224,6 +225,7 @@ int main(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"bed", required_argument, 0, 'b'},
+        {"dir", required_argument, 0, 'd'},
         {"config", required_argument, 0, 'c'},
         {"more-PL", no_argument, 0, 'P'},
         {"squeeze", no_argument, 0, 'S'},
@@ -232,12 +234,13 @@ int main(int argc, char *argv[]) {
         {"mem-gbytes", required_argument, 0, 'm'},
         {"threads", required_argument, 0, 't'},
         {"bucket_size", required_argument, 0, 'x'},
-        {"debug", no_argument, 0, 'd'},
+        {"debug", no_argument, 0, 'g'},
         {"iter_compare", no_argument, 0, 'i'},
         {0, 0, 0, 0}
     };
 
     int c;
+    string dbpath = "GLnexus.DB";
     string config_name = "gatk";
     bool more_PL = false;
     bool squeeze = false;
@@ -252,6 +255,10 @@ int main(int argc, char *argv[]) {
     while (-1 != (c = getopt_long(argc, argv, "hPSadil:b:x:m:t:c:",
                                   long_options, nullptr))) {
         switch (c) {
+            case 'd':
+                dbpath = string(optarg);
+                break;
+
             case 'b':
                 bedfilename = string(optarg);
                 if (bedfilename.size() == 0) {
@@ -280,7 +287,7 @@ int main(int argc, char *argv[]) {
                 trim_uncalled_alleles = true;
                 break;
 
-            case 'd':
+            case 'g':
                 debug = true;
                 break;
 
@@ -349,5 +356,6 @@ int main(int argc, char *argv[]) {
         vcf_files = vcf_files_precursor;
     }
 
-    return all_steps(vcf_files, bedfilename, config_name, more_PL, squeeze, trim_uncalled_alleles, mem_budget, nr_threads, debug, iter_compare, bucket_size);
+    return all_steps(vcf_files, bedfilename, dbpath, config_name, more_PL, squeeze, trim_uncalled_alleles,
+                     mem_budget, nr_threads, debug, iter_compare, bucket_size);
 }
