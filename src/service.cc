@@ -197,6 +197,8 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
     }
     hdr_lines.push_back("##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency estimate for each alternate allele\">");
     hdr_lines.push_back("##INFO=<ID=AQ,Number=A,Type=Integer,Description=\"Allele Quality score reflecting evidence for each alternate allele (Phred scale)\">");
+    hdr_lines.push_back("##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Allele count in genotypes\">");
+    hdr_lines.push_back("##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">");
     hdr_lines.push_back("##FILTER=<ID=MONOALLELIC,Description=\"Site represents one ALT allele in a region with multiple variants that could not be unified into non-overlapping multi-allelic sites\">");
     hdr_lines.push_back("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
     hdr_lines.push_back("##FORMAT=<ID=RNC,Number=2,Type=Character,Description=\"Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, I = gVCF input site is non-called, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present, 1 = site is Monoallelic, no assertion about presence of REF or ALT allele\">");
