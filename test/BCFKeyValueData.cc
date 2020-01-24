@@ -1527,7 +1527,7 @@ TEST_CASE("BCFKeyValueData NA12878 import and query") {
         auto fut = threadpool.push([&, i](int tid){
             Status ls;
             auto qrec = all_chr17[rand() % all_chr17.size()];
-            int lo = max(0, qrec->pos - (rand() % 10));
+            int lo = max(hts_pos_t(0), qrec->pos - (rand() % 10));
             int hi = lo+(rand()%10)+1;
             range q(16, lo, hi);
 

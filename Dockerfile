@@ -13,7 +13,7 @@ RUN apt-get -qq update && \
      apt-get -qq install -y --no-install-recommends --no-install-suggests \
      curl wget ca-certificates git-core less netbase \
      g++ cmake autoconf make file valgrind \
-     libjemalloc-dev libzip-dev libsnappy-dev libbz2-dev zlib1g-dev liblzma-dev libzstd-dev \
+     libjemalloc-dev libzip-dev libsnappy-dev libbz2-dev zlib1g-dev liblzma-dev libzstd-dev libcurl4-openssl-dev \
      python-pyvcf
 
 # Copy in the local source tree / build context
