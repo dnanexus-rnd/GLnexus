@@ -934,30 +934,23 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         return Status::Failure("bcf_add_filter MONOALLELIC");
     }
 
-    if (residualsFlag &&
-        !lost_calls_info.empty()) {
-        // Write loss record to the residuals file, useful for offline debugging.
-        residual_rec = make_shared<string>();
-        S(residuals_gen_record(site, hdr, ans.get(), lost_calls_info,
-                               cache, samples,
-                               *residual_rec));
-    }
-
     if (cfg.trim_uncalled_alleles) {
         if (bcf_trim_alleles(hdr, ans.get()) < 0) {
             return Status::Failure("bcf_trim_alleles");
         }
+        assert(ans->n_allele <= site.alleles.size());
         if (ans->n_allele < 2) {
             ans.reset();
         }
     }
 
-    // populate ID column with a normalized representation of each ALT
-    // (accounting for possible bcf_trim_alleles)
     if (ans) {
+        // populate ID column with a normalized representation of each ALT
+        // (accounting for possible bcf_trim_alleles)
         ostringstream anr;
         for (int i = 1, j = 1; i < ans->n_allele; i++, j++) {
-            while (ans->d.allele[i] != site.alleles[j].dna) {
+            assert(j < site.alleles.size());
+            while (ans->d.allele[i] != site.alleles.at(j).dna) {
                 if (++j >= site.alleles.size()) {
                     return Status::Failure("BUG: bcf_trim_alleles() modified alleles in unexpected way");
                 }
@@ -973,21 +966,28 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 << "_" << site.alleles[0].dna.substr(norm.pos.beg - site.pos.beg, norm.pos.size())
                 << "_" << norm.dna;
         }
-        if (bcf_update_id(hdr, ans.get(), anr.str().c_str())) {
-            return Status::Failure("bcf_update_id", anr.str());
+        string anr_str = anr.str();
+        if (bcf_update_id(hdr, ans.get(), anr_str.c_str())) {
+            return Status::Failure("bcf_update_id", anr_str);
         }
-    }
 
-    // Overwrite the output BCF record with a duplicate. Why? This forces htslib to
-    // perform some internal serialization of the data (see the static bcf1_sync
-    // function in vcf.c, which we can't call directly, but is called by bcf_dup).
-    // htslib would otherwise do this serialization implicitly while writing the
-    // record out to a file, but by doing it explicitly here, we get to do some of the
-    // work in the current worker thread rather than the single thread responsible for
-    // writing out the file.
-    if (ans) {
+        // Overwrite the output BCF record with a duplicate. Why? This forces htslib to
+        // perform some internal serialization of the data (see the static bcf1_sync
+        // function in vcf.c, which we can't call directly, but is called by bcf_dup).
+        // htslib would otherwise do this serialization implicitly while writing the
+        // record out to a file, but by doing it explicitly here, we get to do some of the
+        // work in the current worker thread rather than the single thread responsible for
+        // writing out the file.
         auto ans2 = shared_ptr<bcf1_t>(bcf_dup(ans.get()), &bcf_destroy);
         ans = move(ans2);
+
+        if (residualsFlag && !lost_calls_info.empty()) {
+            // Write loss record to the residuals file, useful for offline debugging.
+            residual_rec = make_shared<string>();
+            S(residuals_gen_record(site, hdr, ans.get(), lost_calls_info,
+                                    cache, samples,
+                                    *residual_rec));
+        }
     }
 
     return Status::OK();
