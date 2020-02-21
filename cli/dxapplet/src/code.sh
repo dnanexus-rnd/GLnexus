@@ -16,6 +16,7 @@ main() {
     export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 
     # Make sure jemalloc is in use
+    glnexus_cli -h
     check_use_of_jemalloc_lib
 
     # download inputs.
