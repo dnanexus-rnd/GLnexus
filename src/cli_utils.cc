@@ -1455,7 +1455,7 @@ Status genotype(std::shared_ptr<spdlog::logger> logger,
     string sampleset;
     S(data->all_samples_sampleset(sampleset));
 
-    logger->info("genotyping {} sites; sample set = {} threads = {}", sites.size(), sampleset, nr_threads);
+    logger->info("genotyping {} sites; sample set = {} mem_budget = {} threads = {}", sites.size(), sampleset, mem_budget, nr_threads);
     S(svc->genotype_sites(genotyper_cfg, sampleset, sites, output_filename));
     logger->info("genotyping complete!");
 

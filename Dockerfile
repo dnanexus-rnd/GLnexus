@@ -14,7 +14,7 @@ RUN apt-get -qq update && \
      curl wget ca-certificates git-core less netbase \
      g++ cmake autoconf make file valgrind \
      libjemalloc-dev libzip-dev libsnappy-dev libbz2-dev zlib1g-dev liblzma-dev libzstd-dev \
-     python-pyvcf
+     python-pyvcf bcftools pv
 
 # Copy in the local source tree / build context
 ADD . /GLnexus
@@ -32,7 +32,7 @@ FROM ubuntu:19.10
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get -qq update && apt-get -qq install -y libjemalloc2 bcftools tabix
+RUN apt-get -qq update && apt-get -qq install -y libjemalloc2 bcftools tabix pv
 
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 COPY --from=builder /GLnexus/glnexus_cli /usr/local/bin/
