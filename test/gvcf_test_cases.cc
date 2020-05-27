@@ -429,7 +429,7 @@ public:
 
         string diff_out_path = temp_dir_path +  "output.diff";
 
-        string diff_cmd = "python " + string(GVCFTestCaseRootDir()) +  "/test/testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
+        string diff_cmd = "PYTHONPATH= python3 " + string(GVCFTestCaseRootDir()) +  "/test/testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
         diff_cmd += " --quiet";
         if (!validated_formats.empty()) {
             diff_cmd += " --formats ";

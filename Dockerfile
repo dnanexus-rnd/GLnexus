@@ -14,7 +14,7 @@ RUN apt-get -qq update && \
      curl wget ca-certificates git-core less netbase \
      g++ cmake autoconf make file valgrind \
      libjemalloc-dev libzip-dev libsnappy-dev libbz2-dev zlib1g-dev liblzma-dev libzstd-dev \
-     python-pyvcf bcftools pv
+     python3-pyvcf bcftools pv
 
 # Copy in the local source tree / build context
 ADD . /GLnexus
@@ -27,8 +27,8 @@ RUN cmake -DCMAKE_BUILD_TYPE=$build_type . && make -j4
 CMD ctest -V
 
 # Second stage: copy glnexus_cli into a slimmer image
-# use ubuntu 19.10+ to get multi-threaded bgzip with libdeflate
-FROM ubuntu:19.10
+# use ubuntu 20.04+ to get multi-threaded bgzip with libdeflate
+FROM ubuntu:20.04
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 ENV DEBIAN_FRONTEND noninteractive

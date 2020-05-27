@@ -84,7 +84,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 #      b) go through perf/FlameGraph profiling flow and check that no
 #         rocksdb function has a big chunk like 5% or more
 ExternalProject_Add(rocksdb
-    URL https://github.com/facebook/rocksdb/archive/v6.6.4.tar.gz
+    URL https://github.com/facebook/rocksdb/archive/v6.8.1.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
@@ -150,7 +150,7 @@ set(FCMM_INCLUDE_DIR ${source_dir})
 include_directories(${FCMM_INCLUDE_DIR})
 
 ExternalProject_Add(spdlog
-    URL https://github.com/gabime/spdlog/archive/v1.5.0.tar.gz
+    URL https://github.com/gabime/spdlog/archive/v1.6.1.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1

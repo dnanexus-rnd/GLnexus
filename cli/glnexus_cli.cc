@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
     #else
     #define BUILD_CONFIG "debug"
     #endif
-    console->info("glnexus_cli {} {} {}", BUILD_CONFIG, GIT_REVISION, __TIMESTAMP__);
+    console->info("glnexus_cli {} {} {}", BUILD_CONFIG, GIT_REVISION, __DATE__);
     GLnexus::cli::utils::detect_jemalloc(console);
 
     if (argc < 2) {
