@@ -873,7 +873,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
     }
     if (output_af && bcf_update_info_float(hdr, ans.get(), "AF", af.data(), af.size()) != 0) {
-        return Status::Failure("bcf_update_info_int32 AQ");
+        return Status::Failure("bcf_update_info_int32 AF");
     }
 
     // AQ
