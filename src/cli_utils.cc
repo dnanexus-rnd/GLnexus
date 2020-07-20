@@ -962,6 +962,53 @@ DeepVariantWES:
               combi_method: missing
               count: 0
               ignore_non_variants: true
+DeepVariant_unfiltered:
+    description: Merge DeepVariant gVCFs with no QC filters or genotype revision
+    unifier_config:
+        min_AQ1: 0
+        min_AQ2: 0
+        min_GQ: 0
+        monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        allow_partial_data: true
+        more_PL: true
+        trim_uncalled_alleles: true
+        liftover_fields:
+            - orig_names: [MIN_DP, DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
 Strelka2:
     description: "[EXPERIMENTAL] Merge Strelka2 gVCFs with no QC filters or genotype revision"
     unifier_config:
