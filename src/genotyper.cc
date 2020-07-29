@@ -853,7 +853,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // Clean up emission order of alleles
     for(size_t i=0; i < samples.size(); i++) {
         if ((genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing) ||
-            genotypes[2*i].allele > genotypes[2*i+1].allele) {
+            genotypes[2*i].allele > genotypes[2*i+1].allele ||
+            (genotypes[2*i].allele == bcf_gt_missing && genotypes[2*i].RNC == NoCallReason::HaploidCall)) {
             swap(genotypes[2*i], genotypes[2*i+1]);
         }
     }
