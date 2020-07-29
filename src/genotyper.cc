@@ -515,6 +515,10 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         #define fill_allele(rec,depth,in_ofs,out_ofs)                             \
             assert(rec);                                                          \
             genotypes[2*ij.second+(out_ofs)].RNC = NoCallReason::InputNonCalled;  \
+            if (rec->was_haploid &&                                               \
+                bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {                \
+                genotypes[2*ij.second+(out_ofs)].RNC = NoCallReason::HaploidCall; \
+            }                                                                     \
             if (rec->gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&             \
                 !bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {               \
                 auto al = bcf_gt_allele(rec->gt[2*ij.first+(in_ofs)]);            \
@@ -637,6 +641,10 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
 
         #define fill_monoallelic(ofs)                                             \
             genotypes[2*ij.second+(ofs)].RNC = NoCallReason::InputNonCalled;      \
+            if (record->was_haploid &&                                            \
+                bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {                \
+                genotypes[2*ij.second+(ofs)].RNC = NoCallReason::HaploidCall;     \
+            }                                                                     \
             if (record->gt[2*ij.first+ofs] != bcf_int32_vector_end &&             \
                 !bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {               \
                 auto al = bcf_gt_allele(record->gt[2*ij.first+(ofs)]);            \
@@ -925,6 +933,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             RNC_CASE(OverlappingVariants,"O")
             RNC_CASE(MonoallelicSite,"1")
             RNC_CASE(InputNonCalled, "I")
+            RNC_CASE(HaploidCall, "H")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }

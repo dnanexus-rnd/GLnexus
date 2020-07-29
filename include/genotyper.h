@@ -36,6 +36,7 @@ enum class NoCallReason {
     OverlappingVariants,  /// site spans multiple variants which overlap each other
     MonoallelicSite,      /// site is monoallelic; no assertion about the presence of either ref or alt allele
     InputNonCalled,       /// the relevant input gVCF record is itself non-called
+    HaploidCall,          /// genotype consists of the only allele
 };
 
 /// A single allele call and metadata; diploid samples each have two calls
