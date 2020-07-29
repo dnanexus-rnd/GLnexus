@@ -96,6 +96,11 @@ static inline bool is_deletion(const string& ref, const string& alt) {
 Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
                         const map<int, int>& sample_mapping,
                         const bcf_hdr_t* hdr, bcf1_t_plus& vr) {
+    // Skip revision of genotypes for haploid variants. It breaks analysis as
+    // there're only `n_allele` PL values, not `n_allele * (n_allele + 1) / 2`
+    // values as in diploid variants.
+    if (vr.was_haploid)
+        return Status::OK();
     assert(!vr.is_ref);
     // Speed optimization: our prior on genotypes will be effectively flat
     // if there are no lost ALT alleles or homozygous-ALT genotypes called, so
