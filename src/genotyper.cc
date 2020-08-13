@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <math.h>
 #include <algorithm>
 #include "genotyper.h"
 #include "diploid.h"
