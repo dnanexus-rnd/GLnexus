@@ -767,6 +767,7 @@ DeepVariant:
         min_AQ2: 0
         min_GQ: 0
         monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
     genotyper_config:
         required_dp: 0
         revise_genotypes: false
