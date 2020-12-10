@@ -767,7 +767,7 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
     string data;
     s = body_->db->get(coll, dataset, data);
     if (s.ok()) {
-        return Status::Exists("data set already exists",
+        return Status::Exists("data set already exists; each gVCF should have a unique filename",
                               dataset + " (" + filename + ")");
     } else if (s != StatusCode::NOT_FOUND) {
         return s;
@@ -777,7 +777,8 @@ static Status verify_dataset_and_samples(BCFKeyValueData_body *body_,
         string ignored_dataset;
         s = metadata.sample_dataset(sample, ignored_dataset);
         if (s.ok()) {
-            return Status::Exists("sample already exists", sample + " " + dataset + " (" + filename + ")");
+            return Status::Exists("sample already exists; each input gVCF should have a unique sample name (header column #10)",
+                                  sample + " " + dataset + " (" + filename + ")");
         } else if (s != StatusCode::NOT_FOUND) {
             return s;
         }
@@ -1038,12 +1039,12 @@ static Status import_gvcf_inner(BCFKeyValueData_body *body_,
 
         // Make sure dataset and samples are not being added by another thread/user
         if (body_->amd.datasets.count(dataset) > 0)
-            return Status::Exists("data set is currently being added",
+            return Status::Exists("data set is currently being added; each input gVCF should have a unique filename",
                                   dataset + " (" + filename + ")");
 
         for (const auto& sample : rslt.samples)
             if (body_->amd.samples.count(sample) > 0)
-                return Status::Exists("sample is currently being added",
+                return Status::Exists("sample is currently being added; each input gVCF should have a unique sample name (header column #10)",
                                       sample + " (" + filename + ")");
 
         // Add to active MD
