@@ -313,8 +313,8 @@ Status Service::genotype_sites(const genotyper_config& cfg, const string& sample
     // set up the residuals file
     unique_ptr<ResidualsFile> residualsFile = nullptr;
     string res_filename;
-    if (filename != "-" && filename.find(".") > 0) {
-        int lastindex = filename.find_last_of(".");
+    if (filename != "-" && filename.find('.') > 0) {
+        int lastindex = filename.find_last_of('.');
         string rawname = filename.substr(0, lastindex);
         res_filename = rawname + ".residuals.yml";
     } else {
