@@ -826,6 +826,7 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
     ans << YAML::Key << "more_PL" << YAML::Value << more_PL;
     ans << YAML::Key << "squeeze" << YAML::Value << squeeze;
     ans << YAML::Key << "trim_uncalled_alleles" << YAML::Value << trim_uncalled_alleles;
+    ans << YAML::Key << "top_two_half_calls" << YAML::Value << top_two_half_calls;
 
     ans << YAML::Key << "output_format" << YAML::Value;
     if (output_format == GLnexusOutputFormat::BCF) {
@@ -914,6 +915,13 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
         V(n_more_PL.IsScalar(), "invalid trim_uncalled_alleles");
         ans.trim_uncalled_alleles = n_trim_uncalled_alleles.as<bool>();
     }
+
+    const auto n_top_two_half_calls = yaml["top_two_half_calls"];
+    if (n_top_two_half_calls) {
+        V(n_more_PL.IsScalar(), "invalid top_two_half_calls");
+        ans.top_two_half_calls = n_top_two_half_calls.as<bool>();
+    }
+
 
     const auto n_output_format = yaml["output_format"];
     if (n_output_format) {
