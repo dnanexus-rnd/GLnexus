@@ -918,7 +918,7 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
 
     const auto n_top_two_half_calls = yaml["top_two_half_calls"];
     if (n_top_two_half_calls) {
-        V(n_more_PL.IsScalar(), "invalid top_two_half_calls");
+        V(n_top_two_half_calls.IsScalar(), "invalid top_two_half_calls");
         ans.top_two_half_calls = n_top_two_half_calls.as<bool>();
     }
 

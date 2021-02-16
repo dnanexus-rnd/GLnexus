@@ -1,0 +1,87 @@
+readme: |
+  Repeats join_records_overlapping.yml with genotyper_config::top_two_half_calls
+input:
+  header : |-
+      ##fileformat=VCFv4.2
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+      ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+      ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+      ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+      ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+      ##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+      ##contig=<ID=A,length=10000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+  body:
+    - A.gvcf: |
+        A
+        A	907766	.	G	<NON_REF>	.	.	END=907983	GT:DP:GQ:MIN_DP:PL	0/0:76:99:21:0,63,872
+        A	917766	.	G	<NON_REF>	.	.	END=917983	GT:DP:GQ:MIN_DP:PL	0/0:76:99:21:0,63,872
+    - B.gvcf: |
+        B
+        A	907747	.	T	<NON_REF>	.	.	END=907970	GT:DP:GQ:MIN_DP:PL	0/0:70:99:25:0,75,1034
+        A	907971	.	C	A,CA,<NON_REF>	719.73	.	.	GT:AD:DP:GQ:PL:SB	0/1:17,26,2,0:45:99:806,0,715,757,422,1190,800,476,1164,1204:3,14,7,19
+        A	907972	.	A	<NON_REF>	.	.	END=908766	GT:DP:GQ:MIN_DP:PL	0/0:53:0:53:0,0,1770
+    - C.gvcf: |
+        C
+        A	907969	.	AAC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/0:50,3,0:53:45:0,45,1855,151,1864,1970:9,41,0,0
+        A	907971	.	C	A,<NON_REF>	552.77	.	.	GT:AD:DP:GQ:PL:SB	0/1:32,21,0:53:99:581,0,934,677,996,1673:6,26,3,18
+        A	907972	.	A	<NON_REF>	.	.	END=908766	GT:DP:GQ:MIN_DP:PL	0/0:58:0:58:0,0,1608
+        A	917970	.	AC	G,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	0/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
+        A	917970	.	AC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/1:24,3,0:27:4:4,0,500,75,509,584:4,20,0,3
+        A	917971	.	C	A,<NON_REF>	500.22	.	.	GT:AD:DP:GQ:PL:SB	0/1:3,24,0:27:4:700,0,4,505,75,580:0,3,4,20
+    - D.gvcf: |
+        D
+        A	907969	.	A	<NON_REF>	.	.	END=907969	GT:DP:GQ:MIN_DP:PL	0/0:39:60:39:0,60,900
+        A	907970	.	AC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/1:24,3,0:27:4:4,0,500,75,509,584:4,20,0,3
+        A	907971	.	C	A,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	0/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
+        A	907972	.	A	<NON_REF>	.	.	END=907972	GT:DP:GQ:MIN_DP:PL	0/0:32:0:32:0,0,996
+        A	917970	.	AC	A,<NON_REF>	0	.	.	GT:AD:DP:GQ:PL:SB	0/1:24,3,0:27:4:4,0,500,75,509,584:4,20,0,3
+        A	917971	.	C	A,<NON_REF>	468.22	.	.	GT:AD:DP:GQ:PL:SB	1/1:3,24,0:27:4:496,0,4,505,75,580:0,3,4,20
+
+genotyper_config:
+  top_two_half_calls: true
+
+truth_unified_sites:
+- range: {ref: A, beg: 907970, end: 907971}
+  alleles:
+    - dna: AC
+    - dna: AA
+      normalized:
+        range: {beg: 907971, end: 907971}
+        dna: A
+      quality: 757
+      frequency: 0.375
+    - dna: A
+      quality: 4
+      frequency: 0.125
+  quality: 757
+- range: {ref: A, beg: 917970, end: 917971}
+  alleles:
+    - dna: AC
+    - dna: AA
+      normalized:
+        range: {beg: 917971, end: 917971}
+        dna: A
+      quality: 505
+      frequency: 0.375
+    - dna: A
+      quality: 4
+      frequency: 0.25
+    - dna: G
+      quality: 496
+      frequency: 0.125
+  quality: 505
+
+truth_output_vcf:
+  - truth.vcf: |
+      ##fileformat=VCFv4.2
+      ##FILTER=<ID=PASS,Description="All filters passed">
+      ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+      ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
+      ##contig=<ID=A,length=1000000>
+      #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C	D
+      A	907970	.	AC	AA,A	757	.	.	GT:RNC	0/0:..	0/1:..	0/1:..	1/2:..
+      A	917970	.	AC	AA,A,G	505	.	.	GT:RNC	0/0:..	./.:MM	1/3:..	./.:OO
