@@ -484,7 +484,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         record = r1.get();
         variant_records_used.push_back(r1);
         call_mode = get<3>(usable_half_calls[0]) ? 1 : 0;
-        if (usable_half_calls.size() == 2) {
+        if (usable_half_calls.size() == 2 || (cfg.top_two_half_calls && usable_half_calls.size() > 2)) {
             auto& r2 = get<2>(usable_half_calls[1]);
             record2 = r2.get();
             variant_records_used.push_back(r2);

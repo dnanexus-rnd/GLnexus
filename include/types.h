@@ -754,6 +754,14 @@ struct genotyper_config {
     // then any such alleles are trimmed off as a postprocessing step.
     bool trim_uncalled_alleles = false;
 
+    // Should a sample's gVCF present more than two overlapping, heterozygous
+    // REF/ALT calls, GLnexus normally generates only one 'half-call', with the
+    // highest-quality ALT. With top_two_half_calls, it instead generates a
+    // full diploid call with the best two of the overlapping ALTs. This
+    // preserves more of the original information, but obfuscates the fact that
+    // something unusual was happening at the locus.
+    bool top_two_half_calls = false;
+
     genotyper_config() = default;
 
     genotyper_config(GLnexusOutputFormat _output_format) : output_format(_output_format) {}
