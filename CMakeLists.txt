@@ -74,7 +74,7 @@ set_property(TARGET libhts PROPERTY IMPORTED_LOCATION ${LIBHTS_A})
 # 1. Verify AVX is used (nonzero results):
 #      objdump -d external/src/rocksdb/librocksdb.a | grep vzeroupper | wc -l
 # 2. Verify Haswell-and-newer instructions are NOT used (zero results):
-#      objdump -d external/src/rocksdb/librocksdb.a | grep shlx
+#      objdump -d external/src/rocksdb/librocksdb.a | egrep "[[:space:]]andn[[:space:]]"
 # 3. Verify accelerated CRC32 is used (nonzero results):
 #      objdump -d external/src/rocksdb/librocksdb.a | grep crc32q
 # 4. Verify compiler optimizations performed:
@@ -88,7 +88,7 @@ ExternalProject_Add(rocksdb
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/external
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export USE_SSE=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42 -DROCKSDB_NO_DYNAMIC_EXTENSION' && make -n static_lib && make -j$(nproc) static_lib"
+    BUILD_COMMAND bash -c "export PORTABLE=1 && export DISABLE_JEMALLOC=1 && export OPT='-DNDEBUG -O3 -march=ivybridge -msse4.2 -DHAVE_SSE42 -mpclmul -DROCKSDB_NO_DYNAMIC_EXTENSION' && make -n static_lib && make -j$(nproc) static_lib"
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_BUILD ON
