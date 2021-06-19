@@ -707,6 +707,11 @@ struct genotyper_config {
     /// Suggested value: 1/(2N) but not less than 0.0001
     float min_assumed_allele_frequency = 0.0001;
 
+    // Phred-linear transformation of the joint genotyping prior (y=mx+b);
+    // calibrates its "strength" relative to the magnitude of the upstream
+    // gVCFs' genotype likelihoods.
+    float prior_calibration_m = 1.0, prior_calibration_b = 0.0;
+
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
 

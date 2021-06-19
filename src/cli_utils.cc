@@ -832,6 +832,8 @@ DeepVariant:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        prior_calibration_m: 0.8
+        prior_calibration_b: 7.0
         allow_partial_data: true
         more_PL: true
         trim_uncalled_alleles: true
@@ -879,6 +881,8 @@ DeepVariantWGS:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        prior_calibration_m: 0.8
+        prior_calibration_b: 7.0
         allow_partial_data: true
         more_PL: true
         trim_uncalled_alleles: true
@@ -926,6 +930,8 @@ DeepVariantWES:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
+        prior_calibration_m: 0.8
+        prior_calibration_b: 7.0
         allow_partial_data: true
         more_PL: true
         trim_uncalled_alleles: true

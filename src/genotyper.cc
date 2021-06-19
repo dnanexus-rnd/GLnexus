@@ -150,6 +150,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     // construct "prior" over genotypes which penalizes lost ALT alleles and
     // homozygous-ALT genotypes (otherwise flat)
     const float lost_log_prior = log(std::max(us.lost_allele_frequency, cfg.min_assumed_allele_frequency));
+    bool calibration = cfg.prior_calibration_m != 1.0 || cfg.prior_calibration_b != 0.0;
     vector<double> gt_log_prior(nGT, 0.0);
     for (unsigned gt = 0; gt < gt_log_prior.size(); gt++) {
         auto als = diploid::gt_alleles(gt);
@@ -160,6 +161,10 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
         } else if (als.first > 0 && als.first == als.second) {
             gt_log_prior[gt] = log(std::max(us.alleles[vr.allele_mapping[als.first]].frequency,
                                             cfg.min_assumed_allele_frequency));
+        }
+        if (calibration && gt_log_prior[gt] != 0.0) {
+            gt_log_prior[gt] = std::min(0.0, cfg.prior_calibration_m*gt_log_prior[gt]
+                                              + cfg.prior_calibration_b*log(10.0)/10.0);
         }
     }
 
