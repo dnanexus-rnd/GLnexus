@@ -1,0 +1,62 @@
+name: build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        BUILD_TYPE: [Debug, Coverage, Valgrind, Release]
+    steps:
+    - name: docker login
+      uses: docker/login-action@v1
+      with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: deps
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get install -y libjemalloc-dev
+    - name: docker build
+      run: |
+        effective_build_type='${{ matrix.BUILD_TYPE }}'
+        if [ "$effective_build_type" == "Valgrind" ]; then
+          effective_build_type="Release"
+        fi
+        docker build --no-cache -t glnexus_tests --target builder --build-arg build_type=$effective_build_type .
+        # copy the /GLnexus folder out of the image to mount for subsequent use
+        docker run --rm -v /:/io glnexus_tests cp -r /GLnexus/ /io
+    - name: tests
+      if: ${{ matrix.BUILD_TYPE != 'Valgrind' }}
+      run: |
+        docker run --rm -v /GLnexus:/GLnexus glnexus_tests
+        sudo chown -R $USER /GLnexus
+        /GLnexus/test/jemalloc_linking.sh
+    - name: coverage
+      if: ${{ matrix.BUILD_TYPE == 'Coverage' }}
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      run: |
+        sudo pip install -U cpp-coveralls
+        pushd /GLnexus && coveralls --include src --include include --gcov-options '\-lp' && popd
+    - name: valgrind
+      if: ${{ matrix.BUILD_TYPE == 'Valgrind' }}
+      run: |
+        docker run --rm -e ROCKSDB_VALGRIND_RUN=1 -v /GLnexus:/GLnexus glnexus_tests bash -ex -o pipefail -c "valgrind --soname-synonyms=somalloc=*jemalloc* --suppressions=test/GLnexus.supp --leak-check=full --gen-suppressions=all --error-exitcode=1 ./unit_tests -d yes"
+    - name: glnexus_cli
+      if: ${{ matrix.BUILD_TYPE == 'Release' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: glnexus_cli
+        path: /GLnexus/glnexus_cli
+    - name: ghcr.io/dnanexus-rnd/glnexus
+      if: ${{ matrix.BUILD_TYPE == 'Release' }}
+      run: |
+        dockertag="ghcr.io/dnanexus-rnd/glnexus:$(git describe --tags)"
+        docker build -t $dockertag .
+        docker run $dockertag glnexus_cli -h 2>&1 | grep 'detected jemalloc'
+        docker push $dockertag
