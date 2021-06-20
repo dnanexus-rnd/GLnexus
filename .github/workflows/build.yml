@@ -53,4 +53,5 @@ jobs:
         dockertag="ghcr.io/dnanexus-rnd/glnexus:$(git describe --tags)"
         docker build -t $dockertag .
         docker run $dockertag glnexus_cli -h 2>&1 | grep 'detected jemalloc'
+        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
         docker push $dockertag
