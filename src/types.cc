@@ -818,8 +818,8 @@ Status genotyper_config::yaml(YAML::Emitter& ans) const {
 
     ans << YAML::Key << "revise_genotypes" << YAML::Value << revise_genotypes;
     ans << YAML::Key << "min_assumed_allele_frequency" << YAML::Value << min_assumed_allele_frequency;
-    ans << YAML::Key << "prior_calibration_m" << YAML::Value << prior_calibration_m;
-    ans << YAML::Key << "prior_calibration_b" << YAML::Value << prior_calibration_b;
+    ans << YAML::Key << "snv_prior_calibration" << YAML::Value << snv_prior_calibration;
+    ans << YAML::Key << "indel_prior_calibration" << YAML::Value << indel_prior_calibration;
     ans << YAML::Key << "required_dp" << YAML::Value << required_dp;
     ans << YAML::Key << "allow_partial_data" << YAML::Value << allow_partial_data;
     ans << YAML::Key << "allele_dp_format" << YAML::Value << allele_dp_format;
@@ -870,18 +870,18 @@ Status genotyper_config::of_yaml(const YAML::Node& yaml, genotyper_config& ans) 
         V(ans.min_assumed_allele_frequency >= 0 && ans.min_assumed_allele_frequency <= 1.0, "invalid min_assumed_allele_frequency");
     }
 
-    const auto n_prior_calibration_m = yaml["prior_calibration_m"];
-    if (n_prior_calibration_m) {
-        V(n_prior_calibration_m.IsScalar(), "invalid prior_calibration_m");
-        ans.prior_calibration_m = n_prior_calibration_m.as<float>();
-        V(ans.prior_calibration_m >= 0 && ans.prior_calibration_m <= 1.0, "invalid prior_calibration_m");
+    const auto n_snv_prior_calibration = yaml["snv_prior_calibration"];
+    if (n_snv_prior_calibration) {
+        V(n_snv_prior_calibration.IsScalar(), "invalid snv_prior_calibration");
+        ans.snv_prior_calibration = n_snv_prior_calibration.as<float>();
+        V(ans.snv_prior_calibration >= 0, "invalid snv_prior_calibration");
     }
 
-    const auto n_prior_calibration_b = yaml["prior_calibration_b"];
-    if (n_prior_calibration_b) {
-        V(n_prior_calibration_b.IsScalar(), "invalid prior_calibration_b");
-        ans.prior_calibration_b = n_prior_calibration_b.as<float>();
-        V(ans.prior_calibration_b == ans.prior_calibration_b, "invalid prior_calibration_b");
+    const auto n_indel_prior_calibration = yaml["indel_prior_calibration"];
+    if (n_indel_prior_calibration) {
+        V(n_indel_prior_calibration.IsScalar(), "invalid indel_prior_calibration");
+        ans.indel_prior_calibration = n_indel_prior_calibration.as<float>();
+        V(ans.indel_prior_calibration >= 0, "invalid indel_prior_calibration");
     }
 
     const auto n_required_dp = yaml["required_dp"];

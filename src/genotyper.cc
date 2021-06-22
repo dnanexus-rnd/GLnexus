@@ -150,7 +150,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     // construct "prior" over genotypes which penalizes lost ALT alleles and
     // homozygous-ALT genotypes (otherwise flat)
     const float lost_log_prior = log(std::max(us.lost_allele_frequency, cfg.min_assumed_allele_frequency));
-    bool calibration = cfg.prior_calibration_m != 1.0 || cfg.prior_calibration_b != 0.0;
+    bool calibration = cfg.snv_prior_calibration != 1.0 || cfg.indel_prior_calibration != 1.0;
     vector<double> gt_log_prior(nGT, 0.0);
     for (unsigned gt = 0; gt < gt_log_prior.size(); gt++) {
         auto als = diploid::gt_alleles(gt);
@@ -163,8 +163,13 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
                                             cfg.min_assumed_allele_frequency));
         }
         if (calibration && gt_log_prior[gt] != 0.0) {
-            gt_log_prior[gt] = std::min(0.0, cfg.prior_calibration_m*gt_log_prior[gt]
-                                              + cfg.prior_calibration_b*log(10.0)/10.0);
+            bool gt_has_indel = (vr.allele_mapping.at(als.first) > 0 &&
+                                 us.alleles[vr.allele_mapping[als.first]].dna.size() != us.alleles[0].dna.size())
+                                    ||
+                                (vr.allele_mapping.at(als.second) > 0 &&
+                                 us.alleles[vr.allele_mapping[als.second]].dna.size() != us.alleles[0].dna.size());
+            float prior_calibration = gt_has_indel ? cfg.indel_prior_calibration : cfg.snv_prior_calibration;
+            gt_log_prior[gt] = std::min(0.0, prior_calibration*gt_log_prior[gt]);
         }
     }
 
