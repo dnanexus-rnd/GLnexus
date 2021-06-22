@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <math.h>
 #include <algorithm>
 #include "genotyper.h"
 #include "diploid.h"
@@ -153,6 +152,7 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
     // construct "prior" over genotypes which penalizes lost ALT alleles and
     // homozygous-ALT genotypes (otherwise flat)
     const float lost_log_prior = log(std::max(us.lost_allele_frequency, cfg.min_assumed_allele_frequency));
+    bool calibration = cfg.snv_prior_calibration != 1.0 || cfg.indel_prior_calibration != 1.0;
     vector<double> gt_log_prior(nGT, 0.0);
     for (unsigned gt = 0; gt < gt_log_prior.size(); gt++) {
         auto als = diploid::gt_alleles(gt);
@@ -163,6 +163,15 @@ Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
         } else if (als.first > 0 && als.first == als.second) {
             gt_log_prior[gt] = log(std::max(us.alleles[vr.allele_mapping[als.first]].frequency,
                                             cfg.min_assumed_allele_frequency));
+        }
+        if (calibration && gt_log_prior[gt] != 0.0) {
+            bool gt_has_indel = (vr.allele_mapping.at(als.first) > 0 &&
+                                 us.alleles[vr.allele_mapping[als.first]].dna.size() != us.alleles[0].dna.size())
+                                    ||
+                                (vr.allele_mapping.at(als.second) > 0 &&
+                                 us.alleles[vr.allele_mapping[als.second]].dna.size() != us.alleles[0].dna.size());
+            float prior_calibration = gt_has_indel ? cfg.indel_prior_calibration : cfg.snv_prior_calibration;
+            gt_log_prior[gt] = std::min(0.0, prior_calibration*gt_log_prior[gt]);
         }
     }
 
@@ -497,7 +506,7 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         record = r1.get();
         variant_records_used.push_back(r1);
         call_mode = get<3>(usable_half_calls[0]) ? 1 : 0;
-        if (usable_half_calls.size() == 2) {
+        if (usable_half_calls.size() == 2 || (cfg.top_two_half_calls && usable_half_calls.size() > 2)) {
             auto& r2 = get<2>(usable_half_calls[1]);
             record2 = r2.get();
             variant_records_used.push_back(r2);
@@ -885,7 +894,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         }
     }
     if (output_af && bcf_update_info_float(hdr, ans.get(), "AF", af.data(), af.size()) != 0) {
-        return Status::Failure("bcf_update_info_int32 AQ");
+        return Status::Failure("bcf_update_info_int32 AF");
     }
 
     // AQ
@@ -946,30 +955,23 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
         return Status::Failure("bcf_add_filter MONOALLELIC");
     }
 
-    if (residualsFlag &&
-        !lost_calls_info.empty()) {
-        // Write loss record to the residuals file, useful for offline debugging.
-        residual_rec = make_shared<string>();
-        S(residuals_gen_record(site, hdr, ans.get(), lost_calls_info,
-                               cache, samples,
-                               *residual_rec));
-    }
-
     if (cfg.trim_uncalled_alleles) {
         if (bcf_trim_alleles(hdr, ans.get()) < 0) {
             return Status::Failure("bcf_trim_alleles");
         }
+        assert(ans->n_allele <= site.alleles.size());
         if (ans->n_allele < 2) {
             ans.reset();
         }
     }
 
-    // populate ID column with a normalized representation of each ALT
-    // (accounting for possible bcf_trim_alleles)
     if (ans) {
+        // populate ID column with a normalized representation of each ALT
+        // (accounting for possible bcf_trim_alleles)
         ostringstream anr;
         for (int i = 1, j = 1; i < ans->n_allele; i++, j++) {
-            while (ans->d.allele[i] != site.alleles[j].dna) {
+            assert(j < site.alleles.size());
+            while (ans->d.allele[i] != site.alleles.at(j).dna) {
                 if (++j >= site.alleles.size()) {
                     return Status::Failure("BUG: bcf_trim_alleles() modified alleles in unexpected way");
                 }
@@ -985,21 +987,28 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
                 << "_" << site.alleles[0].dna.substr(norm.pos.beg - site.pos.beg, norm.pos.size())
                 << "_" << norm.dna;
         }
-        if (bcf_update_id(hdr, ans.get(), anr.str().c_str())) {
-            return Status::Failure("bcf_update_id", anr.str());
+        string anr_str = anr.str();
+        if (bcf_update_id(hdr, ans.get(), anr_str.c_str())) {
+            return Status::Failure("bcf_update_id", anr_str);
         }
-    }
 
-    // Overwrite the output BCF record with a duplicate. Why? This forces htslib to
-    // perform some internal serialization of the data (see the static bcf1_sync
-    // function in vcf.c, which we can't call directly, but is called by bcf_dup).
-    // htslib would otherwise do this serialization implicitly while writing the
-    // record out to a file, but by doing it explicitly here, we get to do some of the
-    // work in the current worker thread rather than the single thread responsible for
-    // writing out the file.
-    if (ans) {
+        // Overwrite the output BCF record with a duplicate. Why? This forces htslib to
+        // perform some internal serialization of the data (see the static bcf1_sync
+        // function in vcf.c, which we can't call directly, but is called by bcf_dup).
+        // htslib would otherwise do this serialization implicitly while writing the
+        // record out to a file, but by doing it explicitly here, we get to do some of the
+        // work in the current worker thread rather than the single thread responsible for
+        // writing out the file.
         auto ans2 = shared_ptr<bcf1_t>(bcf_dup(ans.get()), &bcf_destroy);
         ans = move(ans2);
+
+        if (residualsFlag && !lost_calls_info.empty()) {
+            // Write loss record to the residuals file, useful for offline debugging.
+            residual_rec = make_shared<string>();
+            S(residuals_gen_record(site, hdr, ans.get(), lost_calls_info,
+                                    cache, samples,
+                                    *residual_rec));
+        }
     }
 
     return Status::OK();

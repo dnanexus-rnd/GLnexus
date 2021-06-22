@@ -707,6 +707,11 @@ struct genotyper_config {
     /// Suggested value: 1/(2N) but not less than 0.0001
     float min_assumed_allele_frequency = 0.0001;
 
+    // Scale factors calibrating the "strength" of the joint genotyping prior
+    // during genotype revision, relative to the genotype log-likelihoods in
+    // the upstream gVCF
+    float snv_prior_calibration = 1.0, indel_prior_calibration = 1.0;
+
     /// Require any allele call to be supported by at least this depth
     size_t required_dp = 0;
 
@@ -753,6 +758,14 @@ struct genotyper_config {
     // low-quality genotype calls being revised away. If this setting is true,
     // then any such alleles are trimmed off as a postprocessing step.
     bool trim_uncalled_alleles = false;
+
+    // Should a sample's gVCF present more than two overlapping, heterozygous
+    // REF/ALT calls, GLnexus normally generates only one 'half-call', with the
+    // highest-quality ALT. With top_two_half_calls, it instead generates a
+    // full diploid call with the best two of the overlapping ALTs. This
+    // preserves more of the original information, but obfuscates the fact that
+    // something unusual was happening at the locus.
+    bool top_two_half_calls = false;
 
     genotyper_config() = default;
 

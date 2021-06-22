@@ -429,7 +429,7 @@ public:
 
         string diff_out_path = temp_dir_path +  "output.diff";
 
-        string diff_cmd = "python " + string(GVCFTestCaseRootDir()) +  "/test/testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
+        string diff_cmd = "PYTHONPATH= python3 " + string(GVCFTestCaseRootDir()) +  "/test/testOutputVcf.py --input " + out_vcf_path + " --truth " + truth_vcf_path;
         diff_cmd += " --quiet";
         if (!validated_formats.empty()) {
             diff_cmd += " --formats ";
@@ -738,6 +738,11 @@ TEST_CASE("liftover field: integration") {
 
 TEST_CASE("join record logic test: overlapping records") {
     GVCFTestCase join_record_case("join_records_overlapping");
+    join_record_case.perform_gvcf_test();
+}
+
+TEST_CASE("join record logic test: overlapping records top_two_half_calls") {
+    GVCFTestCase join_record_case("join_records_overlapping_top2");
     join_record_case.perform_gvcf_test();
 }
 

@@ -53,7 +53,7 @@ size_t calculate_mem_budget(size_t specified_mem_budget) {
     if (specified_mem_budget > 0) {
         ans = std::min(ans, specified_mem_budget);
     }
-    ans = std::max(ans, 4U*size_t(1<<30));
+    ans = std::max(ans, size_t(1<<30));
     return ans;
 }
 
@@ -94,7 +94,7 @@ static Status convertStatus(const rocksdb::Status &s)
 
 // Create RocksDB block cache to be shared among all collections in one database
 std::shared_ptr<rocksdb::Cache> NewBlockCache(OpenMode mode, size_t mem_budget) {
-    assert(mem_budget >= 4U*size_t(1<<30));
+    assert(mem_budget >= size_t(1<<30));
     if (mode != OpenMode::BULK_LOAD) {
         return rocksdb::NewLRUCache(mem_budget * 3 / 4, 8);
     } else {
@@ -159,7 +159,7 @@ void ApplyColumnFamilyOptions(OpenMode mode, size_t prefix_length, size_t mem_bu
         opts.memtable_factory = std::make_shared<rocksdb::VectorRepFactory>();
 
         // Increase memtable size
-        assert(mem_budget >= 4U*size_t(1<<30));
+        assert(mem_budget >= size_t(1<<30));
         opts.write_buffer_size = mem_budget / 6;
         opts.max_write_buffer_number = 4;
         opts.min_write_buffer_number_to_merge = 1;

@@ -242,17 +242,17 @@ def write_diff(diff_entries, template):
     writer = vcf.Writer(sys.stdout, template)
 
     if unmatched_i_rows:
-        print "## Unmatched vcf row(s) in Input File"
+        print("## Unmatched vcf row(s) in Input File")
         for row in unmatched_i_rows:
             writer.write_record(row)
 
     if unmatched_t_rows:
-        print "## Unmatched vcf row(s) in Truth File"
+        print("## Unmatched vcf row(s) in Truth File")
         for row in unmatched_t_rows:
             writer.write_record(row)
 
     if differing_rows:
-        print "## Matched row(s) which differ in Input and Truth Files"
+        print("## Matched row(s) which differ in Input and Truth Files")
         for row in differing_rows:
             writer.write_record(row)
 

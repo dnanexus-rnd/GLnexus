@@ -2,9 +2,11 @@
 **From DNAnexus R&D: scalable gVCF merging and joint variant calling for population sequencing projects.**
 (GL, genotype likelihood)
 
-### [bioRxiv preprint](http://dx.doi.org/10.1101/343970)
+### Reading
 
-In our [manuscript](http://dx.doi.org/10.1101/343970) with collaborators at [Regeneron Genetics Center](https://www.regeneron.com/genetics-center) and [Baylor College of Medicine](https://www.hgsc.bcm.edu/), we detail the design of GLnexus and scientific validation using up to 240,000 human exomes and 22,600 genomes. Compared to the DNAnexus cloud-native deployment used for such large projects, this open-source version produces identical scientific results but lacks some of the scalability and production-oriented features.
+[Our 2018 manuscript](http://dx.doi.org/10.1101/343970) with collaborators at [Regeneron Genetics Center](https://www.regeneron.com/genetics-center) and [Baylor College of Medicine](https://www.hgsc.bcm.edu/) details the design of GLnexus and scientific validation using up to 240,000 human exomes and 22,600 genomes. Compared to the DNAnexus cloud-native deployment used for such large projects, this open-source version produces identical scientific results but lacks some of the scalability and production-oriented features.
+
+NEW for 2020: [Accurate, scalable cohort variant calls using DeepVariant and GLnexus](https://doi.org/10.1101/2020.02.10.942086) (by Google Health team) including [public bucket](https://console.cloud.google.com/storage/browser/brain-genomics-public/research/cohort/1KGP/) with 1000 Genomes Project [modern resequencing](https://www.internationalgenome.org/data-portal/data-collection/30x-grch38) products.
 
 ### [Getting Started](https://github.com/dnanexus-rnd/GLnexus/wiki/Getting-Started)
 

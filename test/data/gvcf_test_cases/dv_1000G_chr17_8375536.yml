@@ -103,8 +103,8 @@ truth_output_vcf:
       ##FORMAT=<ID=RNC,Number=G,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present">
       ##contig=<ID=chr17,length=83257441>
       #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA19771	NA19772
-      chr17	8375536	chr17_8375536_A_G	A	G	56	.	AF=0.333333;AQ=56	GT:DP:AD:GQ:PL:RNC	./.:36:2,0:26:0,0,0:--	1/1:26:1,25:37:56,42,0:..	0/0:26:26,0:50:0,69,929:..
+      chr17	8375536	chr17_8375536_A_G	A	G	56	.	AF=0.333333;AQ=56	GT:DP:AD:GQ:PL:RNC	./.:36:2,0:26:0,0,0:--	1/1:26:1,25:39:56,42,0:..	0/0:26:26,0:50:0,69,929:..
       chr17	8375536	chr17_8375536_AT_A	AT	A	44	MONOALLELIC	AF=0.166667;AQ=44	GT:DP:AD:GQ:PL:RNC	./1:36:.,23:26:0,0,0:1.	./.:25:.,0:42:0,0,0:11	./.:26:.,0:42:0,0,0:11
       chr17	8375536	chr17_8375536_ATT_A	ATT	A	26	MONOALLELIC	AF=0.166667;AQ=26	GT:DP:AD:GQ:PL:RNC	./1:36:.,11:26:0,0,0:1.	./.:25:.,0:42:0,0,0:11	./.:26:.,0:42:0,0,0:11
-      chr17	8375537	chr17_8375537_T_G	T	G	56	.	AF=0.333333;AQ=56	GT:DP:AD:GQ:PL:RNC	./.:36:2,0:26:0,0,0:--	0/0:25:25,0:50:0,78,779:..	1/1:26:1,25:37:56,42,0:..
-      chr17	8375538	chr17_8375538_T_C	T	C	56	.	AF=0.333333;AQ=56	GT:DP:AD:GQ:PL:RNC	./.:36:2,0:26:0,0,0:--	0/0:25:25,0:50:0,78,779:..	1/1:26:1,25:37:56,42,0:..
+      chr17	8375537	chr17_8375537_T_G	T	G	56	.	AF=0.333333;AQ=56	GT:DP:AD:GQ:PL:RNC	./.:36:2,0:26:0,0,0:--	0/0:25:25,0:50:0,78,779:..	1/1:26:1,25:39:56,42,0:..
+      chr17	8375538	chr17_8375538_T_C	T	C	56	.	AF=0.333333;AQ=56	GT:DP:AD:GQ:PL:RNC	./.:36:2,0:26:0,0,0:--	0/0:25:25,0:50:0,78,779:..	1/1:26:1,25:39:56,42,0:..
