@@ -957,6 +957,20 @@ Status update_format_fields(const genotyper_config& cfg, const string& dataset, 
             records_to_use = &all_records;
         }
 
+        bool has_haploid_records = false;
+        for (const auto& record : *records_to_use) {
+            if (record->was_haploid) {
+                has_haploid_records = true;
+                break;
+            }
+        }
+        if ((format_helper->field_info.number == RetainedFieldNumber::GENOTYPE) && has_haploid_records) {
+            for (const auto& p : sample_mapping) {
+                S(format_helper->censor(p.second, false));
+            }
+            continue;
+        }
+
         for (const auto& record : *records_to_use) {
             s = format_helper->add_record_data(dataset, dataset_header, record->p.get(),
                                                sample_mapping, record->allele_mapping, site.alleles.size());

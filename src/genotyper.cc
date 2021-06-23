@@ -95,6 +95,11 @@ static inline bool is_deletion(const string& ref, const string& alt) {
 Status revise_genotypes(const genotyper_config& cfg, const unified_site& us,
                         const map<int, int>& sample_mapping,
                         const bcf_hdr_t* hdr, bcf1_t_plus& vr) {
+    // Skip revision of genotypes for haploid variants. It breaks analysis as
+    // there're only `n_allele` PL values, not `n_allele * (n_allele + 1) / 2`
+    // values as in diploid variants.
+    if (vr.was_haploid)
+        return Status::OK();
     assert(!vr.is_ref);
     // Speed optimization: our prior on genotypes will be effectively flat
     // if there are no lost ALT alleles or homozygous-ALT genotypes called, so
@@ -531,6 +536,10 @@ static Status translate_genotypes(const genotyper_config& cfg, const unified_sit
         #define fill_allele(rec,depth,in_ofs,out_ofs)                             \
             assert(rec);                                                          \
             genotypes[2*ij.second+(out_ofs)].RNC = NoCallReason::InputNonCalled;  \
+            if (rec->was_haploid &&                                               \
+                bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {                \
+                genotypes[2*ij.second+(out_ofs)].RNC = NoCallReason::HaploidCall; \
+            }                                                                     \
             if (rec->gt[2*ij.first+in_ofs] != bcf_int32_vector_end &&             \
                 !bcf_gt_is_missing(rec->gt[2*ij.first+(in_ofs)])) {               \
                 auto al = bcf_gt_allele(rec->gt[2*ij.first+(in_ofs)]);            \
@@ -653,6 +662,10 @@ static Status translate_monoallelic(const genotyper_config& cfg, const unified_s
 
         #define fill_monoallelic(ofs)                                             \
             genotypes[2*ij.second+(ofs)].RNC = NoCallReason::InputNonCalled;      \
+            if (record->was_haploid &&                                            \
+                bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {                \
+                genotypes[2*ij.second+(ofs)].RNC = NoCallReason::HaploidCall;     \
+            }                                                                     \
             if (record->gt[2*ij.first+ofs] != bcf_int32_vector_end &&             \
                 !bcf_gt_is_missing(record->gt[2*ij.first+(ofs)])) {               \
                 auto al = bcf_gt_allele(record->gt[2*ij.first+(ofs)]);            \
@@ -861,7 +874,8 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
     // Clean up emission order of alleles
     for(size_t i=0; i < samples.size(); i++) {
         if ((genotypes[2*i].allele != bcf_gt_missing && genotypes[2*i+1].allele == bcf_gt_missing) ||
-            genotypes[2*i].allele > genotypes[2*i+1].allele) {
+            genotypes[2*i].allele > genotypes[2*i+1].allele ||
+            (genotypes[2*i].allele == bcf_gt_missing && genotypes[2*i].RNC == NoCallReason::HaploidCall)) {
             swap(genotypes[2*i], genotypes[2*i+1]);
         }
     }
@@ -941,6 +955,7 @@ Status genotype_site(const genotyper_config& cfg, MetadataCache& cache, BCFData&
             RNC_CASE(OverlappingVariants,"O")
             RNC_CASE(MonoallelicSite,"1")
             RNC_CASE(InputNonCalled, "I")
+            RNC_CASE(HaploidCall, "H")
             default:
                 assert(c.RNC == NoCallReason::MissingData);
         }
