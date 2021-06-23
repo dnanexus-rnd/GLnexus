@@ -968,6 +968,56 @@ DeepVariantWES:
               combi_method: missing
               count: 0
               ignore_non_variants: true
+DeepVariantWES_MED_DP:
+    description: Joint call DeepVariant whole exome sequencing gVCFs, populating 0/0 DP from MED_DP instead of MIN_DP
+    unifier_config:
+        min_AQ1: 35
+        min_AQ2: 20
+        min_GQ: 20
+        monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: true
+        snv_prior_calibration: 0.375
+        indel_prior_calibration: 0.375
+        allow_partial_data: true
+        more_PL: true
+        trim_uncalled_alleles: true
+        ref_dp_format: MED_DP
+        liftover_fields:
+            - orig_names: [MED_DP, DP]
+              name: DP
+              description: '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'
+              type: int
+              combi_method: min
+              number: basic
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [AD]
+              name: AD
+              description: '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+              type: int
+              number: alleles
+              combi_method: min
+              default_type: zero
+              count: 0
+            - orig_names: [GQ]
+              name: GQ
+              description: '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
+              type: int
+              number: basic
+              combi_method: min
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [PL]
+              name: PL
+              description: '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype Likelihoods">'
+              type: int
+              number: genotype
+              combi_method: missing
+              count: 0
+              ignore_non_variants: true
 DeepVariant_unfiltered:
     description: Merge DeepVariant gVCFs with no QC filters or genotype revision
     unifier_config:
