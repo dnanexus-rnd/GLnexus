@@ -930,7 +930,7 @@ DeepVariantWES:
     genotyper_config:
         required_dp: 0
         revise_genotypes: true
-        snv_prior_calibration: 0.5
+        snv_prior_calibration: 0.375
         indel_prior_calibration: 0.375
         allow_partial_data: true
         more_PL: true
