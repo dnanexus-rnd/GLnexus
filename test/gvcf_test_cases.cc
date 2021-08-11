@@ -852,6 +852,12 @@ TEST_CASE("DeepVariant2") {
     GVCFTestCase("deepvariant2", v_formats, v_infos, false).perform_gvcf_test();
 }
 
+TEST_CASE("DeepVariant_norm") {
+    vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "RNC"};
+    vector<string> v_infos = {"ANR","AF","AQ"};
+    GVCFTestCase("deepvariant_norm", v_formats, v_infos, false).perform_gvcf_test();
+}
+
 TEST_CASE("dv_1000G_chr21_5583275") {
     vector<string> v_formats = {"DP", "GT", "GQ", "PL", "AD", "RNC"};
     vector<string> v_infos = {"ANR","AF","AQ"};
