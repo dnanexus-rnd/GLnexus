@@ -20,8 +20,9 @@ bool gvcf_compatible(const MetadataCache &metadata, const bcf_hdr_t *hdr) {
     ans = false;
   } else {
     for (int i = 0; i < ncontigs; i++) {
+      auto len = hdr->id[BCF_DT_CTG][i].val->info[0];
       if (std::string(contignames[i]) != contigs[i].first ||
-          hdr->id[BCF_DT_CTG][i].val->info[0] != contigs[i].second) {
+          (len > 0 && len != contigs[i].second)) {
         ans = false;
         break;
       }

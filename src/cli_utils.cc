@@ -1109,6 +1109,81 @@ Strelka2:
               number: basic
               count: 1
               ignore_non_variants: true
+GxS:
+    description: '[EXPERIMENTAL] merging for GxS'
+    unifier_config:
+        min_AQ1: 0
+        min_AQ2: 0
+        min_GQ: 0
+        monoallelic_sites_for_lost_alleles: true
+        max_alleles_per_site: 32
+    genotyper_config:
+        required_dp: 0
+        revise_genotypes: false
+        allow_partial_data: true
+        more_PL: true
+        trim_uncalled_alleles: true
+        liftover_fields:
+            - orig_names: [DS]
+              name: DS
+              description: '##FORMAT=<ID=DS,Number=1,Type=Float,Description="Genotype dosage">'
+              type: float
+              number: basic
+              combi_method: max
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [GP]
+              name: GP
+              description: '##FORMAT=<ID=GP,Number=3,Type=Float,Description="Genotype posteriors">'
+              type: float
+              number: basic
+              combi_method: missing
+              count: 3
+              ignore_non_variants: true
+            - orig_names: [HS]
+              name: HS
+              description: '##FORMAT=<ID=HS,Number=1,Type=Integer,Description="Sampled haplotype pairs packed into integers (max: 16 pairs, see NMAIN header line)">'
+              type: int
+              number: basic
+              combi_method: missing
+              count: 1
+              ignore_non_variants: true
+            - orig_names: [RAF]
+              name: RAF
+              description: '##FORMAT=<ID=RAF,Number=A,Type=Float,Description="ALT allele frequency in the reference panel">'
+              from: info
+              type: float
+              number: alt
+              count: 0
+              combi_method: missing
+              ignore_non_variants: true
+            - orig_names: [AF]
+              name: TAF
+              description: '##FORMAT=<ID=TAF,Number=A,Type=Float,Description="ALT allele frequency computed from DS/GP field across target samples">'
+              from: info
+              type: float
+              number: alt
+              count: 0
+              combi_method: missing
+              ignore_non_variants: true
+            - orig_names: [INFO]
+              name: IIS
+              description: '##FORMAT=<ID=IIS,Number=A,Type=Float,Description="Imputation information or quality score">'
+              from: info
+              type: float
+              number: alt
+              count: 0
+              combi_method: missing
+              ignore_non_variants: true
+            - orig_names: [BUF]
+              name: BUF
+              description: '##FORMAT=<ID=BUF,Number=A,Type=Integer,Description="Is it a variant site falling within buffer regions? (0=no/1=yes)">'
+              from: info
+              type: int
+              number: alt
+              count: 0
+              combi_method: missing
+              ignore_non_variants: true
 )eof";
 
 Status load_config(std::shared_ptr<spdlog::logger> logger,
@@ -1245,14 +1320,23 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
     }
     int ncontigs = 0;
     const char **contignames = bcf_hdr_seqnames(hdr.get(), &ncontigs);
+    bool dummy_length = false;
     for (int i = 0; i < ncontigs; i++) {
         if (hdr->id[BCF_DT_CTG][i].val == nullptr) {
             return Status::Invalid("Invalid gVCF header in ", exemplar_gvcf);
         }
-        contigs.push_back(make_pair(string(contignames[i]),
-                                    hdr->id[BCF_DT_CTG][i].val->info[0]));
+        auto len = hdr->id[BCF_DT_CTG][i].val->info[0];
+        if (len <= 0) {
+            len = 1000000000;
+            dummy_length = true;
+        }
+        contigs.push_back(make_pair(string(contignames[i]), len));
     }
     free(contignames);
+    if (dummy_length) {
+        logger->warn("no length specified for one or more contigs; assumed no lengthier than 1Gbp");
+    }
+
 
     // create and initialize the database
     RocksKeyValue::config cfg;

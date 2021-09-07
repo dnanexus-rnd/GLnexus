@@ -16,7 +16,7 @@ namespace GLnexus {
 // We assume the chromosome ploidy is two in our serialization format.
 static_assert(zygosity_by_GQ::PLOIDY == 2, "PLOIDY needs to be two");
 
-regex regex_id ("[-_a-zA-Z0-9\\.]{1,100}");
+regex regex_id ("[-_a-zA-Z0-9\\.]{1,1024}");
 
 // We'd prefer is_dna and is_iupac_nucleotides be done with regex as originally.
 // However we ran into some appalling libstdc++ regex bugs with long strings
