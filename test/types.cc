@@ -584,12 +584,12 @@ unification:
 
 TEST_CASE("unifier_config") {
     const char* buf1 = 1 + R"(
-        {min_allele_copy_number: 5.0,
+        {min_allele_copy_number: 5,
          max_alleles_per_site:  44,
          preference: common}
 )";
     const char* buf2 = 1 + R"(
-        {min_allele_copy_number: 5.0,
+        {min_allele_copy_number: 5,
          minGQ: 60,
          max_alleles_per_site:  1,
          preference: small}
@@ -617,12 +617,12 @@ TEST_CASE("unifier_config") {
     }
 
     const char* buf3 = 1 + R"(
-        {min_allele_copy_number: 5.0,
+        {min_allele_copy_number: 5,
          max_alleles_per_site:  -1,
          preference: small}
 )";
     const char* buf4 = 1 + R"(
-        {min_allele_copy_number: 2.0,
+        {min_allele_copy_number: 2,
          max_alleles_per_site:  1,
          preference: foobar}
 )";

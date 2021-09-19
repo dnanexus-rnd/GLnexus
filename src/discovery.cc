@@ -8,7 +8,8 @@ namespace GLnexus {
 Status discover_alleles_from_iterator(const set<string>& samples,
                                       const range& pos,
                                       RangeBCFIterator& iterator,
-                                      discovered_alleles& final_dsals) {
+                                      discovered_alleles& final_dsals,
+                                      bool include_zero_copies) {
     Status s;
 
     // get dataset BCF records
@@ -76,7 +77,7 @@ Status discover_alleles_from_iterator(const set<string>& samples,
             for (int i = 1; i < record->n_allele; i++) {
                 string aldna(record->d.allele[i]);
                 transform(aldna.begin(), aldna.end(), aldna.begin(), ::toupper);
-                if (aldna.size() > 0 && is_dna(aldna) && zGQ[i].copy_number(0) > 0) {
+                if (aldna.size() > 0 && is_dna(aldna) && (include_zero_copies || zGQ[i].copy_number(0) > 0)) {
                     discovered_allele_info ai;
                     ai.is_ref = false;
                     ai.all_filtered = filtered;

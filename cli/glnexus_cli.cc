@@ -107,7 +107,8 @@ static int all_steps(const vector<string> &vcf_files,
     unsigned sample_count = 0;
     auto nr_threads_m2 = nr_threads > 2 ? nr_threads-2 : 1; // reserve threads for DB bg compactions
     H("discover alleles",
-      GLnexus::cli::utils::discover_alleles(console, nr_threads_m2, db.get(), ranges, contigs, dsals, sample_count));
+      GLnexus::cli::utils::discover_alleles(console, nr_threads_m2, db.get(), ranges, contigs, dsals, sample_count,
+                                            unifier_cfg.min_allele_copy_number == 0));
     if (debug) {
         string filename("/tmp/dsals.yml");
         console->info("Writing discovered alleles as YAML to {}", filename);

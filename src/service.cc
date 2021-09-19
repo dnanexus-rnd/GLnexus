@@ -57,6 +57,7 @@ Status Service::Start(const service_config& cfg, Metadata& metadata, BCFData& da
 
 Status Service::discover_alleles(const string& sampleset, const range& pos,
                                  unsigned& N, discovered_alleles& ans,
+                                 bool include_zero_copies,
                                  atomic<bool>* ext_abort) {
     // Find the data sets containing the samples in the sample set.
     shared_ptr<const set<string>> samples, datasets;
@@ -97,7 +98,7 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
             }
 
             discovered_alleles dsals;
-            Status ls = discover_alleles_from_iterator(*samples, pos, *raw_iter, dsals);
+            Status ls = discover_alleles_from_iterator(*samples, pos, *raw_iter, dsals, include_zero_copies);
             results[i] = move(dsals);
             return ls;
         });
@@ -134,7 +135,8 @@ Status Service::discover_alleles(const string& sampleset, const range& pos,
 }
 
 Status Service::discover_alleles(const string& sampleset, const vector<range>& ranges,
-                                 unsigned& N, vector<discovered_alleles>& ans, atomic<bool>* ext_abort) {
+                                 unsigned& N, vector<discovered_alleles>& ans,
+                                 bool include_zero_copies, atomic<bool>* ext_abort) {
     atomic<bool> abort(false);
     vector<future<Status>> statuses;
     vector<discovered_alleles> results(ranges.size());
@@ -150,7 +152,7 @@ Status Service::discover_alleles(const string& sampleset, const vector<range>& r
 
             discovered_alleles dsals;
             unsigned tmpN;
-            Status ls = discover_alleles(sampleset, range, tmpN, dsals, &abort);
+            Status ls = discover_alleles(sampleset, range, tmpN, dsals, include_zero_copies, &abort);
             if (ls.ok()) {
                 if (i == 0) {
                     // tmpN should be the same across all ranges

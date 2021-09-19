@@ -129,13 +129,15 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         const std::vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
                         discovered_alleles &dsals,
-                        unsigned &sample_count);
+                        unsigned &sample_count,
+                        bool include_zero_copies = false);
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         size_t nr_threads, KeyValue::DB *db,
                         const std::vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
                         discovered_alleles &dsals,
-                        unsigned &sample_count);
+                        unsigned &sample_count,
+                        bool include_zero_copies = false);
 
 
 // Run unifier on given discovered alleles.

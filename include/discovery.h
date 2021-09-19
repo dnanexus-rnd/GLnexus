@@ -10,7 +10,8 @@ namespace GLnexus {
 Status discover_alleles_from_iterator(const std::set<std::string>& samples,
                                       const range& pos,
                                       RangeBCFIterator& iterator,
-                                      discovered_alleles& dsals);
+                                      discovered_alleles& dsals,
+                                      bool include_zero_copies = false);
 
 // verify that the discovered_alleles has a REF allele for each ALT allele, and that the REF
 // alleles are all consistent with each other.

@@ -527,7 +527,7 @@ Status unifier_config::of_yaml(const YAML::Node& yaml, unifier_config& ans) {
     const auto n_min_allele_copy_number = yaml["min_allele_copy_number"];
     if (n_min_allele_copy_number) {
         V(n_min_allele_copy_number.IsScalar(), "invalid min_allele_copy_number");
-        ans.min_allele_copy_number = n_min_allele_copy_number.as<float>();
+        ans.min_allele_copy_number = n_min_allele_copy_number.as<int>();
         V(ans.min_allele_copy_number >= 0, "invalid min_allele_copy_number");
     }
 

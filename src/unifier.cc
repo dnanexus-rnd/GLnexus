@@ -258,14 +258,16 @@ auto prune_alleles(const unifier_config& cfg, const minimized_alleles& alleles, 
 
     // filter alleles with insufficient copy number or AQ
     for (auto al : alleles) {
-        // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
-        // this might not be the case up until this point, in the rare case when all
-        // individuals carrying an allele have weak, homozygous-alt genotype calls
-        if (al.second.topAQ.V[0] >= cfg.min_AQ1) {
-            al.second.copy_number = std::max(al.second.copy_number, 1U);
-        }
-        if (al.second.topAQ.V[1] >= cfg.min_AQ2) {
-            al.second.copy_number = std::max(al.second.copy_number, 2U);
+        if (cfg.min_allele_copy_number > 0) {
+            // fix-up pass: ensure copy_number is >=1 for any allele with sufficient AQ.
+            // this might not be the case up until this point, in the rare case when all
+            // individuals carrying an allele have weak, homozygous-alt genotype calls
+            if (al.second.topAQ.V[0] >= cfg.min_AQ1) {
+                al.second.copy_number = std::max(al.second.copy_number, 1U);
+            }
+            if (al.second.topAQ.V[1] >= cfg.min_AQ2) {
+                al.second.copy_number = std::max(al.second.copy_number, 2U);
+            }
         }
 
         if (check_filtered(cfg, al) && check_AQ(cfg, al) && check_copy_number(cfg, al)) {
@@ -547,7 +549,7 @@ Status unify_alleles(const unifier_config& cfg, unsigned N, const range& pos,
         ua.quality = alt_info.topAQ.V[0];
         assert(ua.quality >= 0);
         float freq = float(alt_info.copy_number)/(N*zygosity_by_GQ::PLOIDY);
-        ua.frequency = roundf(std::max(1.0f,freq*1e6f))/1e6f;
+        ua.frequency = roundf(freq*1e6f)/1e6f;
         us.alleles.push_back(ua);
 
         for (const auto& original : alt_info.originals) {

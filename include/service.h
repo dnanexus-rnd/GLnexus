@@ -50,6 +50,7 @@ public:
     /// ABORTED.
     Status discover_alleles(const std::string& sampleset, const range& pos,
                             unsigned& N, discovered_alleles& ans,
+                            bool include_zero_copies = false,
                             std::atomic<bool>* abort = nullptr);
 
     /// Discover all the alleles contained within each of the given disjoint
@@ -59,6 +60,7 @@ public:
     /// anticipated size of the results.
     Status discover_alleles(const std::string& sampleset, const std::vector<range>& ranges,
                             unsigned& N, std::vector<discovered_alleles>& ans,
+                            bool include_zero_copies = false,
                             std::atomic<bool>* abort = nullptr);
 
     /// Genotype a set of samples at the given sites, producing a BCF file.

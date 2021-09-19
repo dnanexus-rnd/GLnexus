@@ -1117,12 +1117,13 @@ GxS:
         min_GQ: 0
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 32
+        min_allele_copy_number: 0
     genotyper_config:
         required_dp: 0
         revise_genotypes: false
         allow_partial_data: true
         more_PL: true
-        trim_uncalled_alleles: true
+        trim_uncalled_alleles: false
         liftover_fields:
             - orig_names: [DS]
               name: DS
@@ -1526,7 +1527,8 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         const vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
                         discovered_alleles &dsals,
-                        unsigned &sample_count) {
+                        unsigned &sample_count,
+                        bool include_zero_copies) {
     Status s;
     unique_ptr<KeyValue::DB> db;
 
@@ -1538,7 +1540,8 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
     cfg.thread_budget = nr_threads;
     S(RocksKeyValue::Open(dbpath, cfg, db));
 
-    return discover_alleles(logger, nr_threads, db.get(), ranges, contigs, dsals, sample_count);
+    return discover_alleles(logger, nr_threads, db.get(), ranges, contigs, dsals,
+                            sample_count, include_zero_copies);
 }
 
 Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
@@ -1546,7 +1549,8 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
                         const vector<range> &ranges,
                         const std::vector<std::pair<std::string,size_t> > &contigs,
                         discovered_alleles &dsals,
-                        unsigned &sample_count) {
+                        unsigned &sample_count,
+                        bool include_zero_copies) {
     Status s;
     unique_ptr<BCFKeyValueData> data;
     dsals.clear();
@@ -1569,7 +1573,7 @@ Status discover_alleles(std::shared_ptr<spdlog::logger> logger,
 
     logger->info("discovering alleles in {} range(s) on {} threads", ranges.size(), nr_threads);
     vector<discovered_alleles> valleles;
-    S(svc->discover_alleles(sampleset, ranges, sample_count, valleles));
+    S(svc->discover_alleles(sampleset, ranges, sample_count, valleles, include_zero_copies));
 
     for (auto it = valleles.begin(); it != valleles.end(); ++it) {
         S(merge_discovered_alleles(*it, dsals));
