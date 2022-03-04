@@ -209,7 +209,13 @@ static Status prepare_bcf_header(const vector<pair<string,size_t> >& contigs,
     }
     for (const auto& ctg : contigs) {
         ostringstream stm;
-        stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
+        if (ctg.second != 1000000042) {
+            stm << "##contig=<ID=" << ctg.first << ",length=" << ctg.second << ">";
+        } else {
+            // 1000000042 is a dummy value set by cli_utils::db_init() when the gVCFs omit the
+            // contig lengths
+            stm << "##contig=<ID=" << ctg.first << ">";
+        }
         hdr_lines.push_back(stm.str());
     }
 

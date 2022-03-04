@@ -1328,7 +1328,7 @@ Status db_init(std::shared_ptr<spdlog::logger> logger,
         }
         auto len = hdr->id[BCF_DT_CTG][i].val->info[0];
         if (len <= 0) {
-            len = 1000000000;
+            len = 1000000042;
             dummy_length = true;
         }
         contigs.push_back(make_pair(string(contignames[i]), len));
