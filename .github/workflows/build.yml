@@ -53,10 +53,10 @@ jobs:
       with:
         name: glnexus_cli
         path: /GLnexus/glnexus_cli
-    - name: ghcr.io/dnanexus-rnd/glnexus
+    - name: ghcr.io/dnanexus/glnexus
       if: ${{ matrix.BUILD_TYPE == 'Release' }}
       run: |
-        dockertag="ghcr.io/dnanexus-rnd/glnexus:$(git describe --tags)"
+        dockertag="ghcr.io/dnanexus/glnexus:$(git describe --tags)"
         docker build -t $dockertag .
         docker run $dockertag glnexus_cli -h 2>&1 | grep 'detected jemalloc'
         docker push $dockertag
