@@ -21,7 +21,8 @@
     {
       "name": "bed_ranges_to_genotype",
       "help": "limit genotyping to these ranges",
-      "class": "file"
+      "class": "file",
+      "optional": true
     },
     {
       "name": "output_name",
@@ -32,7 +33,7 @@
     {
       "name": "config",
       "help": "preset configuration selection",
-      "choices": ["gatk", "gatk_unfiltered", "xAtlas", "xAtlas_unfiltered", "weCall", "DeepVariant", "Strelka2"],
+      "choices": ["gatk", "gatk_unfiltered", "xAtlas", "xAtlas_unfiltered", "weCall", "DeepVariant", "Strelka2", "GxS"],
       "class": "string",
       "default": "gatk"
     },
@@ -124,7 +125,7 @@
     "execDepends": [
       {"name": "sysstat"},
       {"name": "numactl"},
-      {"name": "libjemalloc1"},
+      {"name": "libjemalloc2"},
       {"name": "pigz"}
     ],
     "systemRequirements": {
@@ -133,7 +134,8 @@
       }
     },
     "distribution": "Ubuntu",
-    "release": "16.04"
+    "release": "20.04",
+    "version": "0"
   },
   "access": {
     "network": ["*"]

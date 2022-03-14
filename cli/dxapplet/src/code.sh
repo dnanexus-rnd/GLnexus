@@ -13,7 +13,7 @@ main() {
     dstat -cmdn 60 &
 
     # Replace malloc with jemalloc
-    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
     # Make sure jemalloc is in use
     glnexus_cli -h
@@ -32,10 +32,11 @@ main() {
     find in/gvcf -type f > /tmp/gvcf_list
     wc -l /tmp/gvcf_list
 
-    debug_flags=""
+    bed_ranges=""
     if [[ $bed_ranges_to_genotype ]]; then
-        bed_ranges=$(find in/bed_ranges_to_genotype -type f)
+        bed_ranges="--bed $(find in/bed_ranges_to_genotype -type f)"
     fi
+    debug_flags=""
     if [[ $debug == "true" ]]; then
         debug_flags+=" --debug"
     fi
@@ -71,7 +72,7 @@ main() {
     fi
 
     mkdir -p out/vcf
-    time numactl --interleave=all glnexus_cli $config_arg $squeeze_arg --list --bed $bed_ranges $bucket_size_arg $debug_flags /tmp/gvcf_list \
+    time numactl --interleave=all glnexus_cli $config_arg $squeeze_arg --list $bed_ranges $bucket_size_arg $debug_flags /tmp/gvcf_list \
         | bcftools view - | $squeeze_cmd | bgzip --threads $(nproc) -c > "out/vcf/${output_name}.vcf.${compress_ext}"
 
     if [[ "$perf" == "true" ]]; then
