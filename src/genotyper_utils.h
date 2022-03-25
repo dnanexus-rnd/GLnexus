@@ -371,7 +371,7 @@ public:
                             all_missing = false;
                         }
                     }
-                    if (all_missing && field_info.number != RetainedFieldNumber::BASIC) {
+                    if (all_missing && field_info.number != RetainedFieldNumber::BASIC && count > 1) {
                         // If all entries for a sample are missing, make the VCF output field have just
                         // one missing value (.) instead of an array of missing values (eg .,.,.,.) to
                         // save space in variable-length vectors.
