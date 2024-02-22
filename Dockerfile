@@ -1,7 +1,7 @@
 # Dockerfile for building GLnexus. The resulting container image runs the unit tests
 # by default. It has in its working directory the statically linked glnexus_cli
 # executable which can be copied out.
-FROM ubuntu:18.04 AS builder
+FROM ubuntu:22.04 AS builder
 MAINTAINER DNAnexus
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
@@ -28,7 +28,7 @@ CMD ctest -V
 
 # Second stage: copy glnexus_cli into a slimmer image
 # use ubuntu 20.04+ to get multi-threaded bgzip with libdeflate
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 ENV DEBIAN_FRONTEND noninteractive
