@@ -830,7 +830,7 @@ DeepVariant:
         monoallelic_sites_for_lost_alleles: true
         max_alleles_per_site: 32
     genotyper_config:
-        required_dp: 0
+        required_dp: 2
         revise_genotypes: true
         snv_prior_calibration: 0.6
         indel_prior_calibration: 0.45
